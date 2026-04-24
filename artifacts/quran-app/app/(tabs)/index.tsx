@@ -9,7 +9,6 @@ import {
   RefreshControl,
   ActivityIndicator,
   Modal,
-  TextInput,
   TouchableWithoutFeedback,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,9 +18,7 @@ import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useQuran, type Goal } from "@/contexts/QuranContext";
 import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
-import { SURAH_DATA, JUZ_STARTS } from "@/constants/surahData";
-
-const SURAH_18_AYAH_COUNT = 110;
+import { SURAH_DATA } from "@/constants/surahData";
 
 function GoalModal({
   visible,
@@ -38,7 +35,6 @@ function GoalModal({
 }) {
   const [ayahsPerDay, setAyahsPerDay] = useState(currentGoal?.ayahsPerDay ?? 10);
   const s = styles(colors);
-
   const options = [1, 5, 10, 20, 50, 100];
 
   return (
@@ -91,7 +87,10 @@ export default function HomeScreen() {
   const colors = useColors();
   const s = styles(colors);
   const insets = useSafeAreaInsets();
-  const { recentProgress, lastListened, goal, setGoal, todayEntry, onlineUsers, savedWords } = useQuran();
+  const {
+    recentProgress, lastListened, goal, setGoal, todayEntry, onlineUsers, savedWords,
+    savedSurahs, removeSavedSurah,
+  } = useQuran();
   const [surahs, setSurahs] = useState<ApiSurah[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -115,6 +114,12 @@ export default function HomeScreen() {
   const goalMet = goal ? todayAyahs >= goal.ayahsPerDay : false;
   const isFriday = new Date().getDay() === 5;
 
+  const surahMap = useMemo(() => {
+    const m: Record<number, ApiSurah> = {};
+    for (const s of surahs) m[s.number] = s;
+    return m;
+  }, [surahs]);
+
   const juzGroups = useMemo(() => {
     if (surahs.length === 0) return [];
     const groups: { juz: number; surahs: ApiSurah[] }[] = [];
@@ -131,8 +136,7 @@ export default function HomeScreen() {
     return groups;
   }, [surahs]);
 
-  const topPaddingWeb = Platform.OS === "web" ? 67 : insets.top;
-  const hasRecent = recentProgress.length > 0;
+  const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   return (
     <>
@@ -150,7 +154,7 @@ export default function HomeScreen() {
       >
         <LinearGradient
           colors={[colors.primary, "#2D7D4F"]}
-          style={[s.hero, { paddingTop: topPaddingWeb + 16 }]}
+          style={[s.hero, { paddingTop: topPad + 16 }]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
@@ -198,7 +202,7 @@ export default function HomeScreen() {
                 <View>
                   <Text style={s.goalProgressTitle}>Your Accomplishment</Text>
                   <Text style={s.goalProgressSub}>
-                    {todayAyahs} / {goal.ayahsPerDay} ayahs today {goalMet ? "— Goal met!" : ""}
+                    {todayAyahs} / {goal.ayahsPerDay} ayahs today{goalMet ? " — Goal met! 🎉" : ""}
                   </Text>
                 </View>
                 <TouchableOpacity onPress={() => setGoalModalVisible(true)} activeOpacity={0.7}>
@@ -226,80 +230,119 @@ export default function HomeScreen() {
           activeOpacity={0.85}
         >
           <View style={s.quizCtaLeft}>
-            <Ionicons name="game-controller" size={22} color={colors.primary} />
+            <View style={s.quizCtaIcon}>
+              <Ionicons name="game-controller" size={20} color={colors.primaryForeground} />
+            </View>
             <View>
               <Text style={s.quizCtaTitle}>Test Yourself!</Text>
               <Text style={s.quizCtaSub}>
-                {savedWords.length === 0 ? "Save words while reading to start" : `${savedWords.length} words ready to quiz`}
+                {savedWords.length === 0 ? "Save words while reading to start" : `${savedWords.length} words ready — tap to begin`}
               </Text>
             </View>
           </View>
           <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
         </TouchableOpacity>
 
-        {hasRecent ? (
-          <>
-            <View style={s.section}>
-              <View style={s.sectionHeader}>
-                <Text style={s.sectionTitle}>Last Visited</Text>
-                <TouchableOpacity onPress={() => router.push("/(tabs)/quran")} activeOpacity={0.7}>
-                  <Text style={s.seeAll}>See All Surahs</Text>
-                </TouchableOpacity>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.recentList}>
-                {recentProgress.map((p) => (
-                  <TouchableOpacity
-                    key={p.surahNumber}
-                    style={s.recentCard}
-                    onPress={() => router.push(`/surah/${p.surahNumber}?ayah=${p.ayahNumberInSurah}`)}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={s.recentArabic}>{SURAH_DATA[p.surahNumber - 1]?.name ?? ""}</Text>
-                    <Text style={s.recentName}>{p.surahName}</Text>
-                    <Text style={s.recentAyah}>Ayah {p.ayahNumberInSurah}</Text>
-                    <View style={s.recentPlayIcon}>
-                      <Ionicons name="play" size={14} color={colors.primaryForeground} />
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </>
-        ) : (
+        {recentProgress.length > 0 && (
           <View style={s.section}>
             <View style={s.sectionHeader}>
-              <Text style={s.sectionTitle}>All Surahs by Juz</Text>
+              <Text style={s.sectionTitle}>Last Visited</Text>
+              <TouchableOpacity onPress={() => router.push("/(tabs)/quran")} activeOpacity={0.7}>
+                <Text style={s.seeAll}>See All</Text>
+              </TouchableOpacity>
             </View>
-            {loading ? (
-              <ActivityIndicator color={colors.primary} style={{ paddingVertical: 20 }} />
-            ) : (
-              juzGroups.map(group => (
-                <View key={group.juz}>
-                  <View style={s.juzDivider}>
-                    <Text style={s.juzLabel}>Juz {group.juz}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.horizList}>
+              {recentProgress.map((p) => (
+                <TouchableOpacity
+                  key={p.surahNumber}
+                  style={s.recentCard}
+                  onPress={() => router.push(`/surah/${p.surahNumber}?ayah=${p.ayahNumberInSurah}`)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={s.recentArabic}>{SURAH_DATA[p.surahNumber - 1]?.name ?? ""}</Text>
+                  <Text style={s.recentName}>{p.surahName}</Text>
+                  <Text style={s.recentAyah}>Ayah {p.ayahNumberInSurah}</Text>
+                  <View style={s.recentPlayIcon}>
+                    <Ionicons name="play" size={12} color={colors.primaryForeground} />
                   </View>
-                  {group.surahs.map(surah => (
-                    <TouchableOpacity
-                      key={surah.number}
-                      style={s.surahRow}
-                      onPress={() => router.push(`/surah/${surah.number}`)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={s.surahNumber}>
-                        <Text style={s.surahNumberText}>{surah.number}</Text>
-                      </View>
-                      <View style={s.surahInfo}>
-                        <Text style={s.surahName}>{surah.englishName}</Text>
-                        <Text style={s.surahMeta}>{surah.numberOfAyahs} ayahs • {surah.revelationType}</Text>
-                      </View>
-                      <Text style={s.surahArabic}>{surah.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              ))
-            )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         )}
+
+        {savedSurahs.length > 0 && (
+          <View style={s.section}>
+            <View style={s.sectionHeader}>
+              <Text style={s.sectionTitle}>Saved Surahs</Text>
+              <TouchableOpacity onPress={() => router.push("/(tabs)/quran")} activeOpacity={0.7}>
+                <Text style={s.seeAll}>Manage</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.horizList}>
+              {savedSurahs.map((num) => {
+                const meta = SURAH_DATA[num - 1];
+                const apiSurah = surahMap[num];
+                if (!meta) return null;
+                return (
+                  <TouchableOpacity
+                    key={num}
+                    style={s.savedCard}
+                    onPress={() => router.push(`/surah/${num}`)}
+                    activeOpacity={0.85}
+                  >
+                    <View style={s.savedCardHeader}>
+                      <Text style={s.savedCardArabic}>{meta.name}</Text>
+                      <TouchableOpacity
+                        onPress={() => removeSavedSurah(num)}
+                        activeOpacity={0.7}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <Ionicons name="bookmark" size={16} color={colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={s.savedCardName}>{meta.englishName}</Text>
+                    <Text style={s.savedCardCount}>{meta.ayahCount} ayahs</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>All Surahs by Juz</Text>
+          </View>
+          {loading ? (
+            <ActivityIndicator color={colors.primary} style={{ paddingVertical: 20 }} />
+          ) : (
+            juzGroups.map(group => (
+              <View key={group.juz}>
+                <View style={s.juzDivider}>
+                  <Text style={s.juzLabel}>Juz {group.juz}</Text>
+                </View>
+                {group.surahs.map(surah => (
+                  <TouchableOpacity
+                    key={surah.number}
+                    style={s.surahRow}
+                    onPress={() => router.push(`/surah/${surah.number}`)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={s.surahNumber}>
+                      <Text style={s.surahNumberText}>{surah.number}</Text>
+                    </View>
+                    <View style={s.surahInfo}>
+                      <Text style={s.surahName}>{surah.englishName}</Text>
+                      <Text style={s.surahMeta}>{surah.numberOfAyahs} ayahs • {surah.revelationType}</Text>
+                    </View>
+                    <Text style={s.surahArabic}>{surah.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))
+          )}
+        </View>
       </ScrollView>
 
       <GoalModal
@@ -381,18 +424,24 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderColor: colors.border,
     },
     quizCtaLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-    quizCtaTitle: { fontSize: 15, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
+    quizCtaIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+    quizCtaTitle: { fontSize: 15, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
     quizCtaSub: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
     section: { marginTop: 8 },
     sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12 },
     sectionTitle: { fontSize: 17, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
     seeAll: { fontSize: 13, color: colors.primary, fontFamily: "Inter_600SemiBold" },
-    recentList: { paddingHorizontal: 16, gap: 10 },
+    horizList: { paddingHorizontal: 16, gap: 10 },
     recentCard: { width: 120, backgroundColor: colors.card, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: colors.border },
     recentArabic: { fontSize: 18, color: colors.primary, marginBottom: 4 },
     recentName: { fontSize: 13, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
     recentAyah: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
-    recentPlayIcon: { marginTop: 8, width: 26, height: 26, borderRadius: 13, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+    recentPlayIcon: { marginTop: 8, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+    savedCard: { width: 130, backgroundColor: colors.card, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: colors.border },
+    savedCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+    savedCardArabic: { fontSize: 18, color: colors.primary },
+    savedCardName: { fontSize: 13, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
+    savedCardCount: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
     juzDivider: { backgroundColor: colors.muted, paddingHorizontal: 16, paddingVertical: 6 },
     juzLabel: { fontSize: 11, fontWeight: "700", color: colors.accent, letterSpacing: 0.8, fontFamily: "Inter_700Bold" },
     surahRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.card },

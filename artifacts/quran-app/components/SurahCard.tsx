@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import type { ApiSurah } from "@/services/quranApi";
 
@@ -8,9 +8,11 @@ interface Props {
   surah: ApiSurah;
   onPress: () => void;
   isRecent?: boolean;
+  isSaved?: boolean;
+  onSave?: () => void;
 }
 
-export function SurahCard({ surah, onPress, isRecent }: Props) {
+export function SurahCard({ surah, onPress, isRecent, isSaved, onSave }: Props) {
   const colors = useColors();
   const s = styles(colors);
 
@@ -28,11 +30,27 @@ export function SurahCard({ surah, onPress, isRecent }: Props) {
       </View>
       <View style={s.right}>
         <Text style={s.arabicName}>{surah.name}</Text>
-        {isRecent && (
-          <View style={s.recentBadge}>
-            <Feather name="clock" size={10} color={colors.accent} />
-          </View>
-        )}
+        <View style={s.badges}>
+          {isRecent && (
+            <View style={s.recentBadge}>
+              <Feather name="clock" size={10} color={colors.accent} />
+            </View>
+          )}
+          {onSave && (
+            <TouchableOpacity
+              onPress={(e) => { e.stopPropagation(); onSave(); }}
+              style={s.saveBtn}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons
+                name={isSaved ? "bookmark" : "bookmark-outline"}
+                size={18}
+                color={isSaved ? colors.primary : colors.mutedForeground}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -64,9 +82,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       color: colors.primary,
       fontFamily: "Inter_600SemiBold",
     },
-    info: {
-      flex: 1,
-    },
+    info: { flex: 1 },
     englishName: {
       fontSize: 16,
       fontWeight: "600",
@@ -79,15 +95,13 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginTop: 2,
       fontFamily: "Inter_400Regular",
     },
-    right: {
-      alignItems: "flex-end",
-    },
+    right: { alignItems: "flex-end", gap: 4 },
     arabicName: {
       fontSize: 20,
       color: colors.primary,
       fontFamily: "System",
     },
-    recentBadge: {
-      marginTop: 4,
-    },
+    badges: { flexDirection: "row", alignItems: "center", gap: 6 },
+    recentBadge: {},
+    saveBtn: { padding: 2 },
   });

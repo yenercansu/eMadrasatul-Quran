@@ -25,7 +25,7 @@ export default function QuranScreen() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"all" | "meccan" | "medinan">("all");
-  const { recentProgress } = useQuran();
+  const { recentProgress, saveSurah, removeSavedSurah, isSurahSaved } = useQuran();
 
   useEffect(() => {
     fetchSurahs().then(setSurahs).finally(() => setLoading(false));
@@ -54,7 +54,7 @@ export default function QuranScreen() {
     <View style={s.container}>
       <View style={[s.header, { paddingTop: topPad + 12 }]}>
         <Text style={s.title}>Al-Quran</Text>
-        <Text style={s.subtitle}>114 Surahs</Text>
+        <Text style={s.subtitle}>114 Surahs — tap <Feather name="bookmark" size={12} color={colors.mutedForeground} /> to save</Text>
         <View style={s.searchRow}>
           <View style={s.searchBar}>
             <Feather name="search" size={16} color={colors.mutedForeground} />
@@ -94,13 +94,18 @@ export default function QuranScreen() {
         <FlatList
           data={filtered}
           keyExtractor={(item) => String(item.number)}
-          renderItem={({ item }) => (
-            <SurahCard
-              surah={item}
-              onPress={() => router.push(`/surah/${item.number}`)}
-              isRecent={recentNumbers.has(item.number)}
-            />
-          )}
+          renderItem={({ item }) => {
+            const saved = isSurahSaved(item.number);
+            return (
+              <SurahCard
+                surah={item}
+                onPress={() => router.push(`/surah/${item.number}`)}
+                isRecent={recentNumbers.has(item.number)}
+                isSaved={saved}
+                onSave={() => saved ? removeSavedSurah(item.number) : saveSurah(item.number)}
+              />
+            );
+          }}
           contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 120 : 120 }}
           showsVerticalScrollIndicator={false}
           scrollEnabled={!!filtered.length}
@@ -138,9 +143,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Inter_400Regular",
       marginBottom: 12,
     },
-    searchRow: {
-      marginBottom: 10,
-    },
+    searchRow: { marginBottom: 10 },
     searchBar: {
       flexDirection: "row",
       alignItems: "center",
@@ -156,10 +159,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       color: colors.foreground,
       fontFamily: "Inter_400Regular",
     },
-    filterRow: {
-      flexDirection: "row",
-      gap: 8,
-    },
+    filterRow: { flexDirection: "row", gap: 8 },
     filterChip: {
       paddingHorizontal: 14,
       paddingVertical: 6,
@@ -181,11 +181,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       color: colors.primary,
       fontFamily: "Inter_600SemiBold",
     },
-    empty: {
-      alignItems: "center",
-      paddingVertical: 60,
-      gap: 12,
-    },
+    empty: { alignItems: "center", paddingVertical: 60, gap: 12 },
     emptyText: {
       fontSize: 16,
       color: colors.mutedForeground,
