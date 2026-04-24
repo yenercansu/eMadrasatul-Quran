@@ -114,23 +114,55 @@ export default function QuizScreen() {
           <View style={s.idleIcon}>
             <Ionicons name="game-controller" size={48} color={colors.primaryForeground} />
           </View>
-          <Text style={s.idleTitle}>Test Your Knowledge</Text>
-          <Text style={s.idleSub}>
-            {savedWords.length} words in your library ready for review
-          </Text>
-          <View style={s.modesInfo}>
-            <View style={s.modeRow}>
-              <Ionicons name="help-circle" size={20} color={colors.primary} />
-              <Text style={s.modeText}>Word meaning questions</Text>
-            </View>
-            <View style={s.modeRow}>
-              <Ionicons name="text" size={20} color={colors.primary} />
-              <Text style={s.modeText}>Fill in the blank from the ayah</Text>
-            </View>
-          </View>
-          <TouchableOpacity style={s.startBtn} onPress={startQuiz} activeOpacity={0.85}>
-            <Text style={s.startBtnText}>Start Quiz</Text>
-          </TouchableOpacity>
+          <Text style={s.idleTitle}>Test Yourself!</Text>
+
+          {savedWords.length === 0 ? (
+            <>
+              <Text style={s.idleSub}>Build your vocabulary and test your knowledge</Text>
+              <View style={s.howToBox}>
+                <Text style={s.howToTitle}>How to add words</Text>
+                <View style={s.howToStep}>
+                  <View style={s.howToNum}><Text style={s.howToNumText}>1</Text></View>
+                  <Text style={s.howToText}>Open any Surah from the Quran tab</Text>
+                </View>
+                <View style={s.howToStep}>
+                  <View style={s.howToNum}><Text style={s.howToNumText}>2</Text></View>
+                  <Text style={s.howToText}>Long-press on any Arabic word</Text>
+                </View>
+                <View style={s.howToStep}>
+                  <View style={s.howToNum}><Text style={s.howToNumText}>3</Text></View>
+                  <Text style={s.howToText}>Tap "Save to Library" to add it</Text>
+                </View>
+                <View style={s.howToStep}>
+                  <View style={s.howToNum}><Text style={s.howToNumText}>4</Text></View>
+                  <Text style={s.howToText}>Come back here to quiz yourself!</Text>
+                </View>
+              </View>
+              <TouchableOpacity style={s.goReadBtn} onPress={() => router.push("/(tabs)/quran")} activeOpacity={0.85}>
+                <Ionicons name="book-outline" size={18} color={colors.primaryForeground} />
+                <Text style={s.goReadBtnText}>Start Reading</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={s.idleSub}>
+                {savedWords.length} {savedWords.length === 1 ? "word" : "words"} in your library ready for review
+              </Text>
+              <View style={s.modesInfo}>
+                <View style={s.modeRow}>
+                  <Ionicons name="help-circle" size={20} color={colors.primary} />
+                  <Text style={s.modeText}>Word meaning questions</Text>
+                </View>
+                <View style={s.modeRow}>
+                  <Ionicons name="text" size={20} color={colors.primary} />
+                  <Text style={s.modeText}>Fill in the blank from the ayah</Text>
+                </View>
+              </View>
+              <TouchableOpacity style={s.startBtn} onPress={startQuiz} activeOpacity={0.85}>
+                <Text style={s.startBtnText}>Start Quiz</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </ScrollView>
       </View>
     );
@@ -494,5 +526,63 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontSize: 16,
       color: colors.foreground,
       fontFamily: "Inter_400Regular",
+    },
+    howToBox: {
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 20,
+      width: "100%",
+      gap: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    howToTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: colors.foreground,
+      fontFamily: "Inter_700Bold",
+      marginBottom: 4,
+    },
+    howToStep: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    howToNum: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.primary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    howToNumText: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: colors.primaryForeground,
+      fontFamily: "Inter_700Bold",
+    },
+    howToText: {
+      flex: 1,
+      fontSize: 14,
+      color: colors.foreground,
+      fontFamily: "Inter_400Regular",
+    },
+    goReadBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      backgroundColor: colors.primary,
+      paddingHorizontal: 32,
+      paddingVertical: 14,
+      borderRadius: 14,
+      width: "100%",
+    },
+    goReadBtnText: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: colors.primaryForeground,
+      fontFamily: "Inter_700Bold",
     },
   });

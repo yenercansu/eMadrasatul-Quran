@@ -7,7 +7,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   Platform,
-  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
@@ -20,7 +19,9 @@ import { AyahItem } from "@/components/AyahItem";
 import { AudioPlayerBar } from "@/components/AudioPlayerBar";
 import { SettingsSheet } from "@/components/SettingsSheet";
 import { WordModal } from "@/components/WordModal";
+import { RangeSelectorModal } from "@/components/RangeSelectorModal";
 import { fetchSurahWithTranslations, fetchTafsir, type SurahDetail, type ApiAyah } from "@/services/quranApi";
+import { SURAH_DATA } from "@/constants/surahData";
 
 export default function SurahScreen() {
   const colors = useColors();
@@ -35,14 +36,16 @@ export default function SurahScreen() {
   const [tafsir, setTafsir] = useState<SurahDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [rangeVisible, setRangeVisible] = useState(false);
   const [activeAyah, setActiveAyah] = useState<number | null>(null);
   const [wordModal, setWordModal] = useState<{ visible: boolean; word: string; translation: string; ayahNum: number }>({
     visible: false, word: "", translation: "", ayahNum: 0,
   });
 
-  const { settings, saveProgress } = useQuran();
-  const { audioState, playAyah, setOnNextAyah } = useAudio();
+  const { settings, saveProgress, recordAyahRead } = useQuran();
+  const { audioState, playAyah, playRange, setOnNextAyah } = useAudio();
   const listRef = useRef<FlatList<ApiAyah>>(null);
+  const arabicRef = useRef<SurahDetail | null>(null);
 
   useEffect(() => {
     loadData();
@@ -57,23 +60,28 @@ export default function SurahScreen() {
         settings.showTafsir ? fetchTafsir(surahNum) : Promise.resolve(null),
       ]);
       setArabic(main.arabic);
+      arabicRef.current = main.arabic;
       setTranslation(main.translation);
       setTransliteration(main.transliteration);
       if (tafsirData) setTafsir(tafsirData);
 
       setOnNextAyah((surahN, ayahN) => {
-        playAyah(surahN, ayahN, main.arabic.ayahs.length, settings.repeatCount);
-        setActiveAyah(ayahN);
+        const totalAyahs = SURAH_DATA[surahN - 1]?.ayahCount ?? (surahN === surahNum ? main.arabic.ayahs.length : 10);
+        playAyah(surahN, ayahN, totalAyahs, settings.repeatCount);
+        setActiveAyah(surahN === surahNum ? ayahN : null);
+        recordAyahRead(surahN);
         saveProgress({
           surahNumber: surahN,
           ayahNumber: ayahN,
           ayahNumberInSurah: ayahN,
-          surahName: main.arabic.englishName,
+          surahName: SURAH_DATA[surahN - 1]?.englishName ?? main.arabic.englishName,
         });
-        const idx = ayahN - 1;
-        setTimeout(() => {
-          listRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.3 });
-        }, 100);
+        if (surahN === surahNum) {
+          const idx = ayahN - 1;
+          setTimeout(() => {
+            listRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.3 });
+          }, 100);
+        }
       });
 
       if (ayahParam) {
@@ -101,6 +109,7 @@ export default function SurahScreen() {
     const firstAyah = 1;
     playAyah(surahNum, firstAyah, arabic.ayahs.length, settings.repeatCount);
     setActiveAyah(firstAyah);
+    recordAyahRead(surahNum);
     saveProgress({
       surahNumber: surahNum,
       ayahNumber: firstAyah,
@@ -108,6 +117,10 @@ export default function SurahScreen() {
       surahName: arabic.englishName,
     });
   }, [arabic, surahNum, settings.repeatCount]);
+
+  const currentAyahForRange = audioState.currentSurah === surahNum && audioState.currentAyah
+    ? audioState.currentAyah
+    : parseInt(ayahParam ?? "1", 10) || 1;
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const basmala = surahNum !== 1 && surahNum !== 9;
@@ -127,6 +140,9 @@ export default function SurahScreen() {
           )}
         </View>
         <View style={s.headerActions}>
+          <TouchableOpacity onPress={() => setRangeVisible(true)} style={s.headerBtn} activeOpacity={0.7}>
+            <Ionicons name="list" size={22} color={colors.primary} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={handlePlayAll} style={s.headerBtn} activeOpacity={0.7}>
             <Ionicons name="play-circle" size={26} color={colors.primary} />
           </TouchableOpacity>
@@ -178,6 +194,23 @@ export default function SurahScreen() {
       <AudioPlayerBar />
 
       <SettingsSheet visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
+
+      <RangeSelectorModal
+        visible={rangeVisible}
+        currentSurah={surahNum}
+        currentAyah={currentAyahForRange}
+        onConfirm={(range, repeatCount) => {
+          playRange(range, repeatCount);
+          recordAyahRead(range.startSurah);
+          saveProgress({
+            surahNumber: range.startSurah,
+            ayahNumber: range.startAyah,
+            ayahNumberInSurah: range.startAyah,
+            surahName: SURAH_DATA[range.startSurah - 1]?.englishName ?? "",
+          });
+        }}
+        onClose={() => setRangeVisible(false)}
+      />
 
       <WordModal
         visible={wordModal.visible}
