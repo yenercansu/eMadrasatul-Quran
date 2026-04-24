@@ -44,7 +44,8 @@ function shuffle<T>(arr: T[]): T[] {
 async function buildQuestions(words: SavedWord[]): Promise<QuizQuestion[]> {
   if (words.length < 2) return [];
 
-  const translations = words.map(w => w.translation);
+  const wordsWithTranslation = words.filter(w => w.translation && w.translation.trim().length > 0);
+  const allArabics = words.map(w => w.arabic);
   const selectedWords = shuffle(words).slice(0, 10);
 
   const verseTexts: Record<string, string> = {};
@@ -57,19 +58,40 @@ async function buildQuestions(words: SavedWord[]): Promise<QuizQuestion[]> {
     })
   );
 
-  return selectedWords.map((word, i) => {
-    const mode: QuizMode = i % 2 === 0 ? "word-meaning" : "fill-blank";
+  let wordMeaningToggle = true;
+
+  return selectedWords.map((word) => {
+    const hasTranslation = word.translation && word.translation.trim().length > 0;
+    const canDoWordMeaning = hasTranslation && wordsWithTranslation.length >= 2;
+
+    let mode: QuizMode;
+    if (!canDoWordMeaning) {
+      mode = "fill-blank";
+    } else {
+      mode = wordMeaningToggle ? "word-meaning" : "fill-blank";
+      wordMeaningToggle = !wordMeaningToggle;
+    }
+
     const verseKey = `${word.surahNumber}:${word.ayahNumber}`;
     const verseText = verseTexts[verseKey] ?? "";
 
     if (mode === "word-meaning") {
-      const others = shuffle(translations.filter(t => t !== word.translation)).slice(0, 3);
-      const options = shuffle([word.translation, ...others]);
+      const otherTranslations = shuffle(
+        wordsWithTranslation
+          .filter(w => w.translation !== word.translation)
+          .map(w => w.translation)
+      ).slice(0, 3);
+      while (otherTranslations.length < 3) {
+        otherTranslations.push("Unknown meaning");
+      }
+      const options = shuffle([word.translation, ...otherTranslations]);
       const correctIndex = options.indexOf(word.translation);
       return { word, options, correctIndex, mode };
     } else {
-      const arabicWords = words.map(w => w.arabic);
-      const otherArabics = shuffle(arabicWords.filter(a => a !== word.arabic)).slice(0, 3);
+      const otherArabics = shuffle(allArabics.filter(a => a !== word.arabic)).slice(0, 3);
+      while (otherArabics.length < 3) {
+        otherArabics.push("ـ");
+      }
       const options = shuffle([word.arabic, ...otherArabics]);
       const correctIndex = options.indexOf(word.arabic);
       let blankVerseText = verseText;

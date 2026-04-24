@@ -302,9 +302,16 @@ export default function SurahScreen() {
   const [wordModal, setWordModal] = useState<{ visible: boolean; word: string; ayahNum: number }>({
     visible: false, word: "", ayahNum: 0,
   });
+  const [ayahRepeatOverrides, setAyahRepeatOverrides] = useState<Record<number, number>>({});
 
-  const { settings, saveProgress, recordAyahRead, highlightedWords } = useQuran();
+  const { settings, saveProgress, recordAyahRead, highlightedWords, saveWord } = useQuran();
   const { audioState, playAyah, playRange, setOnNextAyah } = useAudio();
+
+  useEffect(() => {
+    // When global repeat count changes, clear all per-ayah overrides
+    setAyahRepeatOverrides({});
+  }, [settings.repeatCount]);
+
   const listRef = useRef<FlatList<ApiAyah>>(null);
 
   useEffect(() => {
@@ -361,6 +368,32 @@ export default function SurahScreen() {
   const handleWordLongPress = useCallback((word: string, ayahNum: number) => {
     setWordModal({ visible: true, word, ayahNum });
   }, []);
+
+  const handleSaveAyah = useCallback((ayah: ApiAyah) => {
+    const words = ayah.text.split(" ").filter(Boolean);
+    words.forEach(word => {
+      saveWord({
+        arabic: word,
+        translation: "",
+        surahNumber: surahNum,
+        ayahNumber: ayah.numberInSurah,
+        highlighted: false,
+      });
+    });
+  }, [surahNum, saveWord]);
+
+  const handleRepeatSelect = useCallback((ayahNum: number, count: number) => {
+    setAyahRepeatOverrides(prev => ({ ...prev, [ayahNum]: count }));
+    if (!arabic) return;
+    playAyah(surahNum, ayahNum, arabic.ayahs.length, count);
+    recordAyahRead(surahNum);
+    saveProgress({
+      surahNumber: surahNum,
+      ayahNumber: ayahNum,
+      ayahNumberInSurah: ayahNum,
+      surahName: arabic.englishName,
+    });
+  }, [arabic, surahNum, playAyah, recordAyahRead, saveProgress]);
 
   const handlePlayAll = useCallback(() => {
     if (!arabic) return;
@@ -496,6 +529,9 @@ export default function SurahScreen() {
               isActive={activeAyah === item.numberInSurah || audioState.currentAyah === item.numberInSurah}
               onPress={() => handleAyahPress(item.numberInSurah)}
               onWordLongPress={(word, ayahNum) => handleWordLongPress(word, ayahNum)}
+              onSaveAyah={handleSaveAyah}
+              onRepeatSelect={handleRepeatSelect}
+              ayahRepeat={ayahRepeatOverrides[item.numberInSurah] ?? null}
             />
           )}
           contentContainerStyle={{ paddingBottom: 180 }}
