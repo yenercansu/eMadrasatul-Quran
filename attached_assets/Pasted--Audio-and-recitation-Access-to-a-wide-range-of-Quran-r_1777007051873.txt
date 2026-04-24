@@ -1,0 +1,41 @@
+
+Audio and recitation:
+• Access to a wide range of Quran reciters through integrated audio APIs
+• Ability to play, pause, and switch between reciters بسهولة
+• Option to split ayahs into smaller audio segments for focused memorization
+• Ability to loop specific ayah parts or words up to 10x for repetition
+Progress tracking:
+• Automatic saving of the last listened ayah, allowing users to continue from the same point next time
+• Main screen displays recently accessed ayahs for quick return
+• Resume feature available directly on the home screen, on the tile showing recent ayahs, allowing users to continue exactly where they stopped without entering the ayah view
+Tafsir and content layers:
+• Integration of multiple Tafsir sources within the app
+• Toggle to show or hide Tafsir
+• Toggle to show or hide translations
+• Toggle to show or hide transliterations
+• All toggles off enables a clean reading mode with minimal distractions
+• Option to read in Mushaf style as well
+Word level interaction:
+• Press and hold any word to instantly view its meaning
+• Word by word translation available on interaction, displayed as a pop up; the pop up includes the translation and options to “add to library” and “highlight the word”
+• Ability to tap or drag words to save them into a personal vocabulary library
+Vocabulary and quiz system:
+• Personal word library built from saved words
+• Quiz mode that tests the meanings of saved words
+• Drag and drop interaction to add words into the quiz system
+• Clear and immediate feedback during quizzes to reinforce learning
+How ayahs are shown:
+• Each page displays 10 ayahs 
+Memorization support:
+• Ability to highlight difficult words for focused practice; long press on a word to apply highlight, long press again to remove it
+• Practice mode that isolates selected highlighted words or specific ayah segments for targeted memorization
+Gamification:
+• After adding words to the library, users can enter a game mode from within the library
+• In the game, users are either asked for the meanings of words in Turkish or presented with an ayah where a previously saved word is removed
+• The removed word is replaced with multiple choice options, and users must select the correct word from the given choices
+• If a user likes a specific test, they can generate a temporary link and share it with a friend; the link expires once the test is closed to prevent unnecessary database load
+Customization and visual tools:
+• Color coding system that links Arabic words with their translation and transliteration
+• Toggle to turn color coding on or off
+• Tajweed color coding toggle for pronunciation guidance
+• Automatic rule: when translation color coding is active, Tajweed color coding is turned off to avoid visual overload

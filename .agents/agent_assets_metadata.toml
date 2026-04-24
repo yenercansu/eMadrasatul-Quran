@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "9Wbv-CKyLZREkc-69Crwq"
+uri = "file://artifacts/quran-app/assets/images/icon.png"
+type = "image"
+title = "quran app icon"
+
+[[generated]]
+id = "e-1-0Jh2SE5Cc9Y-oPb_S"
+uri = "file://artifacts/quran-app/assets/images/splash-icon.png"
+type = "image"
+title = "quran splash screen"

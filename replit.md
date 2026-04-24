@@ -16,6 +16,32 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 
+## Artifacts
+
+### Quran App (Mobile - Expo)
+- **Path**: `artifacts/quran-app/`
+- **Preview**: `/` (root)
+- **Description**: Full-featured Quran mobile app inspired by Quran.com
+
+**Features:**
+- Audio playback with 6 reciters via Islamic Network CDN API
+- Play/pause/next/prev controls with repeat (1x–10x) per ayah
+- Progress tracking with AsyncStorage — resumes from last position
+- Translation (en.asad), transliteration, and Tafsir toggles
+- Clean reading mode (all toggles off)
+- Word-level interaction: long-press any word to see meaning + save to library
+- Personal vocabulary library with highlighted words
+- Quiz/game mode: word-meaning and fill-in-blank questions from saved words
+- Settings sheet: reciter selection, repeat count, display toggles, color coding toggle
+- Tajweed/translation color coding (mutually exclusive toggles)
+- Home screen with resume CTA, recently read surahs, stats
+- Tab navigation: Home, Quran (searchable surah list), Library
+
+**Services:**
+- Quran text: https://api.alquran.cloud/v1
+- Audio CDN: https://cdn.islamic.network/quran/audio/128/{reciter}/{surah}{ayah}.mp3
+- Local persistence: AsyncStorage (no backend)
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages
