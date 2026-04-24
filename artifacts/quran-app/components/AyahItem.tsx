@@ -15,11 +15,17 @@ import { useQuran } from "@/contexts/QuranContext";
 import { useAudio } from "@/contexts/AudioContext";
 import type { ApiAyah } from "@/services/quranApi";
 
+export interface TafsirEntry {
+  edition: string;
+  name: string;
+  ayah: ApiAyah;
+}
+
 interface Props {
   arabic: ApiAyah;
   translation?: ApiAyah;
   transliteration?: ApiAyah;
-  tafsir?: ApiAyah;
+  tafsirs?: TafsirEntry[];
   surahNumber: number;
   surahName: string;
   totalAyahs: number;
@@ -37,7 +43,7 @@ export function AyahItem({
   arabic,
   translation,
   transliteration,
-  tafsir,
+  tafsirs,
   surahNumber,
   surahName,
   totalAyahs,
@@ -200,12 +206,12 @@ export function AyahItem({
             <Text style={s.translationText}>{translation.text}</Text>
           )}
 
-          {settings.showTafsir && tafsir && (
-            <View style={s.tafsirContainer}>
-              <Text style={s.tafsirLabel}>Tafsir</Text>
-              <Text style={s.tafsirText}>{tafsir.text}</Text>
+          {settings.showTafsir && tafsirs && tafsirs.length > 0 && tafsirs.map((entry) => (
+            <View key={entry.edition} style={s.tafsirContainer}>
+              <Text style={s.tafsirLabel}>{entry.name}</Text>
+              <Text style={s.tafsirText}>{entry.ayah?.text ?? ""}</Text>
             </View>
-          )}
+          ))}
         </TouchableOpacity>
 
         {isCurrentlyPlaying && audioState.isPlaying && (

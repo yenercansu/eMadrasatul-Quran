@@ -20,10 +20,11 @@ import { useQuran } from "@/contexts/QuranContext";
 import { useAudio } from "@/contexts/AudioContext";
 import { AyahItem } from "@/components/AyahItem";
 import { AudioPlayerBar } from "@/components/AudioPlayerBar";
-import { SettingsSheet } from "@/components/SettingsSheet";
+import { SettingsSheet, TAFSIR_EDITIONS } from "@/components/SettingsSheet";
 import { WordModal } from "@/components/WordModal";
 import { RangeSelectorModal } from "@/components/RangeSelectorModal";
 import { fetchSurahWithTranslations, fetchTafsir, type SurahDetail, type ApiAyah } from "@/services/quranApi";
+import { type TafsirEntry } from "@/components/AyahItem";
 import { SURAH_DATA } from "@/constants/surahData";
 
 const AYAHS_PER_PAGE = 10;
@@ -292,7 +293,7 @@ export default function SurahScreen() {
   const [arabic, setArabic] = useState<SurahDetail | null>(null);
   const [translation, setTranslation] = useState<SurahDetail | null>(null);
   const [transliteration, setTransliteration] = useState<SurahDetail | null>(null);
-  const [tafsir, setTafsir] = useState<SurahDetail | null>(null);
+  const [tafsirDataMap, setTafsirDataMap] = useState<Record<string, SurahDetail>>({});
   const [loading, setLoading] = useState(true);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [rangeVisible, setRangeVisible] = useState(false);
@@ -322,14 +323,24 @@ export default function SurahScreen() {
   async function loadData() {
     setLoading(true);
     try {
-      const [main, tafsirData] = await Promise.all([
+      const selectedTafsirs = settings.selectedTafsirs ?? ["en.maarifulquran"];
+      const [main, tafsirResults] = await Promise.all([
         fetchSurahWithTranslations(surahNum),
-        settings.showTafsir ? fetchTafsir(surahNum) : Promise.resolve(null),
+        settings.showTafsir
+          ? Promise.all(selectedTafsirs.map(ed => fetchTafsir(surahNum, ed).catch(() => null)))
+          : Promise.resolve([] as (SurahDetail | null)[]),
       ]);
       setArabic(main.arabic);
       setTranslation(main.translation);
       setTransliteration(main.transliteration);
-      if (tafsirData) setTafsir(tafsirData);
+      if (settings.showTafsir) {
+        const map: Record<string, SurahDetail> = {};
+        selectedTafsirs.forEach((ed, i) => {
+          const data = tafsirResults[i];
+          if (data) map[ed] = data;
+        });
+        setTafsirDataMap(map);
+      }
 
       setOnNextAyah((surahN, ayahN) => {
         const totalAyahs = SURAH_DATA[surahN - 1]?.ayahCount ?? (surahN === surahNum ? main.arabic.ayahs.length : 10);
@@ -522,7 +533,11 @@ export default function SurahScreen() {
               arabic={item}
               translation={translation?.ayahs[item.numberInSurah - 1]}
               transliteration={transliteration?.ayahs[item.numberInSurah - 1]}
-              tafsir={tafsir?.ayahs[item.numberInSurah - 1]}
+              tafsirs={Object.entries(tafsirDataMap).map(([edId, surahDetail]): TafsirEntry => ({
+                  edition: edId,
+                  name: TAFSIR_EDITIONS.find(t => t.id === edId)?.name ?? edId,
+                  ayah: surahDetail.ayahs[item.numberInSurah - 1],
+                }))}
               surahNumber={surahNum}
               surahName={arabic?.englishName ?? ""}
               totalAyahs={arabic?.ayahs.length ?? 0}

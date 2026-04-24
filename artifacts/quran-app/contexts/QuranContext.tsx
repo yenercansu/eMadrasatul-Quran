@@ -50,6 +50,7 @@ interface Settings {
   showTranslation: boolean;
   showTransliteration: boolean;
   showTafsir: boolean;
+  selectedTafsirs: string[];
   colorCoding: boolean;
   tajweedColorCoding: boolean;
   mushafMode: boolean;
@@ -89,6 +90,7 @@ const DEFAULT_SETTINGS: Settings = {
   showTranslation: true,
   showTransliteration: false,
   showTafsir: false,
+  selectedTafsirs: ["en.maarifulquran"],
   colorCoding: false,
   tajweedColorCoding: false,
   mushafMode: false,

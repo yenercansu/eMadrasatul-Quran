@@ -8,14 +8,77 @@ import {
   StyleSheet,
   Platform,
   ActivityIndicator,
+  Animated,
 } from "react-native";
+import Swipeable from "react-native-gesture-handler/Swipeable";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { SurahCard } from "@/components/SurahCard";
 import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
 import { useQuran } from "@/contexts/QuranContext";
+
+function SwipeableSurahCard({
+  surah,
+  isRecent,
+  isSaved,
+  onSave,
+  onPress,
+  colors,
+}: {
+  surah: ApiSurah;
+  isRecent: boolean;
+  isSaved: boolean;
+  onSave: () => void;
+  onPress: () => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const s = styles(colors);
+
+  const renderRightActions = (progress: Animated.AnimatedInterpolation<number>) => {
+    const trans = progress.interpolate({
+      inputRange: [0, 1], outputRange: [90, 0],
+    });
+    return (
+      <Animated.View
+        style={[
+          s.swipeAction,
+          { transform: [{ translateX: trans }], backgroundColor: isSaved ? "#D9534F" : colors.primary },
+        ]}
+      >
+        <Ionicons name={isSaved ? "bookmark" : "bookmark-outline"} size={22} color="#FFFFFF" />
+        <Text style={s.swipeActionText}>{isSaved ? "Unsave" : "Save"}</Text>
+      </Animated.View>
+    );
+  };
+
+  const handleSwipeAction = () => {
+    Haptics.notificationAsync(
+      isSaved ? Haptics.NotificationFeedbackType.Warning : Haptics.NotificationFeedbackType.Success
+    );
+    onSave();
+  };
+
+  return (
+    <Swipeable
+      renderRightActions={renderRightActions}
+      rightThreshold={60}
+      overshootRight={false}
+      friction={2}
+      onSwipeableOpen={handleSwipeAction}
+    >
+      <SurahCard
+        surah={surah}
+        onPress={onPress}
+        isRecent={isRecent}
+        isSaved={isSaved}
+        onSave={onSave}
+      />
+    </Swipeable>
+  );
+}
 
 export default function QuranScreen() {
   const colors = useColors();
@@ -54,7 +117,10 @@ export default function QuranScreen() {
     <View style={s.container}>
       <View style={[s.header, { paddingTop: topPad + 12 }]}>
         <Text style={s.title}>Al-Quran</Text>
-        <Text style={s.subtitle}>114 Surahs — tap <Feather name="bookmark" size={12} color={colors.mutedForeground} /> to save</Text>
+        <Text style={s.subtitle}>
+          114 Surahs — tap <Feather name="bookmark" size={12} color={colors.mutedForeground} /> to save
+          {" · "}swipe ← to save/unsave
+        </Text>
         <View style={s.searchRow}>
           <View style={s.searchBar}>
             <Feather name="search" size={16} color={colors.mutedForeground} />
@@ -97,12 +163,13 @@ export default function QuranScreen() {
           renderItem={({ item }) => {
             const saved = isSurahSaved(item.number);
             return (
-              <SurahCard
+              <SwipeableSurahCard
                 surah={item}
-                onPress={() => router.push(`/surah/${item.number}`)}
                 isRecent={recentNumbers.has(item.number)}
                 isSaved={saved}
                 onSave={() => saved ? removeSavedSurah(item.number) : saveSurah(item.number)}
+                onPress={() => router.push(`/surah/${item.number}`)}
+                colors={colors}
               />
             );
           }}
@@ -131,18 +198,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
-    title: {
-      fontSize: 26,
-      fontWeight: "700",
-      color: colors.foreground,
-      fontFamily: "Inter_700Bold",
-    },
-    subtitle: {
-      fontSize: 13,
-      color: colors.mutedForeground,
-      fontFamily: "Inter_400Regular",
-      marginBottom: 12,
-    },
+    title: { fontSize: 26, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
+    subtitle: { fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginBottom: 12 },
     searchRow: { marginBottom: 10 },
     searchBar: {
       flexDirection: "row",
@@ -153,12 +210,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       height: 40,
       gap: 8,
     },
-    searchInput: {
-      flex: 1,
-      fontSize: 15,
-      color: colors.foreground,
-      fontFamily: "Inter_400Regular",
-    },
+    searchInput: { flex: 1, fontSize: 15, color: colors.foreground, fontFamily: "Inter_400Regular" },
     filterRow: { flexDirection: "row", gap: 8 },
     filterChip: {
       paddingHorizontal: 14,
@@ -168,23 +220,16 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderColor: colors.border,
       backgroundColor: colors.card,
     },
-    filterChipActive: {
-      borderColor: colors.primary,
-      backgroundColor: colors.secondary,
+    filterChipActive: { borderColor: colors.primary, backgroundColor: colors.secondary },
+    filterText: { fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
+    filterTextActive: { color: colors.primary, fontFamily: "Inter_600SemiBold" },
+    swipeAction: {
+      width: 90,
+      justifyContent: "center",
+      alignItems: "center",
+      gap: 4,
     },
-    filterText: {
-      fontSize: 13,
-      color: colors.mutedForeground,
-      fontFamily: "Inter_400Regular",
-    },
-    filterTextActive: {
-      color: colors.primary,
-      fontFamily: "Inter_600SemiBold",
-    },
+    swipeActionText: { fontSize: 12, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
     empty: { alignItems: "center", paddingVertical: 60, gap: 12 },
-    emptyText: {
-      fontSize: 16,
-      color: colors.mutedForeground,
-      fontFamily: "Inter_400Regular",
-    },
+    emptyText: { fontSize: 16, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
   });

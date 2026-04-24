@@ -460,18 +460,12 @@ export default function QuizScreen() {
         </View>
 
         {quizState === "answered" && (
-          <View style={s.feedbackRow}>
-            <TouchableOpacity style={s.removeWordBtn} onPress={handleRemoveAndSkip} activeOpacity={0.8}>
-              <Feather name="trash-2" size={15} color={colors.destructive} />
-              <Text style={s.removeWordBtnText}>Remove word</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.nextBtn} onPress={handleNext} activeOpacity={0.85}>
-              <Text style={s.nextBtnText}>
-                {currentIndex + 1 >= questions.length ? "See Results" : "Next"}
-              </Text>
-              <Feather name="arrow-right" size={16} color={colors.primaryForeground} />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={s.nextBtn} onPress={handleNext} activeOpacity={0.85}>
+            <Text style={s.nextBtnText}>
+              {currentIndex + 1 >= questions.length ? "See Results" : "Next"}
+            </Text>
+            <Feather name="arrow-right" size={16} color={colors.primaryForeground} />
+          </TouchableOpacity>
         )}
       </ScrollView>
 
