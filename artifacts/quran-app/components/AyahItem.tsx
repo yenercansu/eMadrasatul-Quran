@@ -14,6 +14,7 @@ import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
 import { useAudio } from "@/contexts/AudioContext";
 import type { ApiAyah } from "@/services/quranApi";
+import { SelectRangeModal } from "@/components/SelectRangeModal";
 
 export interface TafsirEntry {
   edition: string;
@@ -60,6 +61,7 @@ export function AyahItem({
   const { audioState, playAyah, pauseAudio, resumeAudio } = useAudio();
   const swipeRef = useRef<Swipeable>(null);
   const [savePulse, setSavePulse] = useState(false);
+  const [selectRangeVisible, setSelectRangeVisible] = useState(false);
 
   const isCurrentlyPlaying =
     audioState.currentSurah === surahNumber &&
@@ -150,9 +152,19 @@ export function AyahItem({
           <View style={s.ayahBadge}>
             <Text style={s.ayahNumber}>{arabic.numberInSurah}</Text>
           </View>
+          <TouchableOpacity
+            style={s.selectRangeBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setSelectRangeVisible(true);
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="repeat" size={13} color={colors.primary} />
+            <Text style={s.selectRangeBtnText}>Select Range</Text>
+          </TouchableOpacity>
           {ayahRepeat && ayahRepeat > 1 ? (
             <View style={s.repeatBadge}>
-              <Ionicons name="repeat" size={11} color={colors.accent} />
               <Text style={s.repeatBadgeText}>{ayahRepeat}x</Text>
             </View>
           ) : null}
@@ -166,7 +178,7 @@ export function AyahItem({
                 <Ionicons name="play" size={16} color={colors.mutedForeground} />
               )}
             </TouchableOpacity>
-            <TouchableOpacity style={s.actionBtn} activeOpacity={0.7}>
+            <TouchableOpacity style={s.actionBtn} activeOpacity={0.7} onPress={handleSave}>
               <Feather name="bookmark" size={15} color={colors.mutedForeground} />
             </TouchableOpacity>
             <TouchableOpacity style={s.actionBtn} activeOpacity={0.7}>
@@ -177,25 +189,26 @@ export function AyahItem({
 
         <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
           <View style={s.arabicContainer}>
-            <Text style={s.arabicText} textBreakStrategy="highQuality">
+            <View style={s.arabicWordsWrap}>
               {arabicWords.map((word, idx) => {
                 const highlighted = isWordHighlighted(word, surahNumber, arabic.numberInSurah);
                 return (
-                  <Text
+                  <TouchableOpacity
                     key={`${idx}-${word}`}
                     onLongPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                       onWordLongPress?.(word, arabic.numberInSurah);
                     }}
                     delayLongPress={400}
-                    style={highlighted ? s.highlightedWord : undefined}
+                    activeOpacity={0.7}
                   >
-                    {word}
-                    {idx < arabicWords.length - 1 ? " " : ""}
-                  </Text>
+                    <Text style={[s.arabicWord, highlighted && s.highlightedWord]}>
+                      {word}
+                    </Text>
+                  </TouchableOpacity>
                 );
               })}
-            </Text>
+            </View>
           </View>
 
           {settings.showTransliteration && transliteration && (
@@ -222,6 +235,15 @@ export function AyahItem({
           </View>
         )}
       </View>
+
+      <SelectRangeModal
+        visible={selectRangeVisible}
+        onClose={() => setSelectRangeVisible(false)}
+        ayahNum={arabic.numberInSurah}
+        words={arabicWords}
+        surahNumber={surahNumber}
+        totalAyahs={totalAyahs}
+      />
     </Swipeable>
   );
 }
@@ -278,13 +300,36 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontWeight: "700",
       fontFamily: "Inter_700Bold",
     },
+    selectRangeBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      backgroundColor: colors.secondary,
+      borderWidth: 1.5,
+      borderColor: colors.primary + "55",
+      borderRadius: 20,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+    },
+    selectRangeBtnText: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: colors.primary,
+      fontFamily: "Inter_700Bold",
+    },
     actions: { flexDirection: "row", gap: 4, marginLeft: "auto" },
     actionBtn: { padding: 8 },
-    arabicContainer: { paddingVertical: 8 },
-    arabicText: {
+    arabicContainer: { paddingVertical: 12 },
+    arabicWordsWrap: {
+      flexDirection: "row-reverse",
+      flexWrap: "wrap",
+      gap: 10,
+      rowGap: 14,
+      justifyContent: "flex-start",
+    },
+    arabicWord: {
       fontSize: 28,
-      lineHeight: 52,
-      textAlign: "right",
+      lineHeight: 44,
       color: colors.foreground,
       fontFamily: Platform.OS === "ios" ? "System" : undefined,
       writingDirection: "rtl",
@@ -292,6 +337,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     highlightedWord: {
       backgroundColor: colors.accent + "55",
       color: colors.accent,
+      borderRadius: 4,
+      paddingHorizontal: 2,
     },
     transliterationText: {
       fontSize: 14,
