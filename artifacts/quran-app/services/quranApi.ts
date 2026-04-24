@@ -30,6 +30,7 @@ export interface SurahDetail {
   englishName: string;
   englishNameTranslation: string;
   revelationType: string;
+  numberOfAyahs: number;
   ayahs: ApiAyah[];
 }
 
@@ -91,6 +92,16 @@ export async function fetchTafsir(
   const res = await fetch(`${BASE_URL}/surah/${surahNumber}/${edition}`);
   const data = await res.json();
   return data.data;
+}
+
+export async function fetchAyahText(surahNum: number, ayahNum: number): Promise<string> {
+  try {
+    const res = await fetch(`${BASE_URL}/ayah/${surahNum}:${ayahNum}/quran-uthmani`);
+    const data = await res.json();
+    return data.data?.text ?? "";
+  } catch {
+    return "";
+  }
 }
 
 export function getAudioUrl(surahNum: number, ayahNum: number, reciterId: string): string {

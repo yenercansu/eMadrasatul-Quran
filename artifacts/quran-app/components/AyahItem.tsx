@@ -1,12 +1,11 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Platform,
-  PanResponder,
-  Alert,
+  Pressable,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -25,7 +24,7 @@ interface Props {
   totalAyahs: number;
   isActive: boolean;
   onPress: () => void;
-  onWordLongPress?: (word: string, translation: string, ayahNum: number) => void;
+  onWordLongPress?: (word: string, ayahNum: number) => void;
 }
 
 export function AyahItem({
@@ -42,7 +41,7 @@ export function AyahItem({
 }: Props) {
   const colors = useColors();
   const s = styles(colors);
-  const { settings } = useQuran();
+  const { settings, isWordHighlighted } = useQuran();
   const { audioState, playAyah, pauseAudio, resumeAudio } = useAudio();
 
   const isCurrentlyPlaying =
@@ -67,7 +66,7 @@ export function AyahItem({
     }
   }, [isCurrentlyPlaying, audioState.isPlaying, surahNumber, arabic.numberInSurah, totalAyahs, settings.repeatCount]);
 
-  const arabicWords = arabic.text.split(" ");
+  const arabicWords = arabic.text.split(" ").filter(Boolean);
 
   return (
     <View style={[s.container, isActive && s.activeContainer]}>
@@ -97,7 +96,23 @@ export function AyahItem({
       <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
         <View style={s.arabicContainer}>
           <Text style={s.arabicText} textBreakStrategy="highQuality">
-            {arabic.text}
+            {arabicWords.map((word, idx) => {
+              const highlighted = isWordHighlighted(word, surahNumber, arabic.numberInSurah);
+              return (
+                <Text
+                  key={`${idx}-${word}`}
+                  onLongPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    onWordLongPress?.(word, arabic.numberInSurah);
+                  }}
+                  delayLongPress={400}
+                  style={highlighted ? s.highlightedWord : undefined}
+                >
+                  {word}
+                  {idx < arabicWords.length - 1 ? " " : ""}
+                </Text>
+              );
+            })}
           </Text>
         </View>
 
@@ -162,16 +177,9 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontWeight: "600",
       fontFamily: "Inter_600SemiBold",
     },
-    actions: {
-      flexDirection: "row",
-      gap: 4,
-    },
-    actionBtn: {
-      padding: 8,
-    },
-    arabicContainer: {
-      paddingVertical: 8,
-    },
+    actions: { flexDirection: "row", gap: 4 },
+    actionBtn: { padding: 8 },
+    arabicContainer: { paddingVertical: 8 },
     arabicText: {
       fontSize: 28,
       lineHeight: 52,
@@ -179,6 +187,10 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       color: colors.foreground,
       fontFamily: Platform.OS === "ios" ? "System" : undefined,
       writingDirection: "rtl",
+    },
+    highlightedWord: {
+      backgroundColor: colors.accent + "55",
+      color: colors.accent,
     },
     transliterationText: {
       fontSize: 14,
@@ -222,12 +234,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       justifyContent: "center",
       paddingTop: 8,
     },
-    dot: {
-      width: 4,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: colors.primary,
-    },
+    dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: colors.primary },
     dot1: {},
     dot2: { opacity: 0.6 },
     dot3: { opacity: 0.3 },

@@ -7,8 +7,9 @@ import {
   ScrollView,
   Platform,
   Modal,
-  TouchableWithoutFeedback,
   FlatList,
+  Share,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
@@ -16,15 +17,19 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useQuran, type SavedWord } from "@/contexts/QuranContext";
+import { fetchAyahText } from "@/services/quranApi";
+import { SURAH_DATA } from "@/constants/surahData";
 
 type QuizMode = "word-meaning" | "fill-blank";
-type QuizState = "answering" | "answered" | "finished" | "no-words";
+type QuizState = "loading" | "answering" | "answered" | "finished" | "no-words";
 
 interface QuizQuestion {
   word: SavedWord;
   options: string[];
   correctIndex: number;
   mode: QuizMode;
+  verseText?: string;
+  blankVerseText?: string;
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -36,19 +41,47 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-function generateQuestions(words: SavedWord[]): QuizQuestion[] {
+async function buildQuestions(words: SavedWord[]): Promise<QuizQuestion[]> {
   if (words.length < 2) return [];
+
   const translations = words.map(w => w.translation);
-  return shuffle(words.slice(0, 10)).map(word => {
-    const others = shuffle(translations.filter(t => t !== word.translation)).slice(0, 3);
-    const options = shuffle([word.translation, ...others]);
-    const correctIndex = options.indexOf(word.translation);
-    const mode: QuizMode = Math.random() > 0.5 ? "word-meaning" : "fill-blank";
-    return { word, options, correctIndex, mode };
+  const selectedWords = shuffle(words).slice(0, 10);
+
+  const verseTexts: Record<string, string> = {};
+  await Promise.all(
+    selectedWords.map(async (word) => {
+      const key = `${word.surahNumber}:${word.ayahNumber}`;
+      if (!verseTexts[key]) {
+        verseTexts[key] = await fetchAyahText(word.surahNumber, word.ayahNumber);
+      }
+    })
+  );
+
+  return selectedWords.map((word, i) => {
+    const mode: QuizMode = i % 2 === 0 ? "word-meaning" : "fill-blank";
+    const verseKey = `${word.surahNumber}:${word.ayahNumber}`;
+    const verseText = verseTexts[verseKey] ?? "";
+
+    if (mode === "word-meaning") {
+      const others = shuffle(translations.filter(t => t !== word.translation)).slice(0, 3);
+      const options = shuffle([word.translation, ...others]);
+      const correctIndex = options.indexOf(word.translation);
+      return { word, options, correctIndex, mode };
+    } else {
+      const arabicWords = words.map(w => w.arabic);
+      const otherArabics = shuffle(arabicWords.filter(a => a !== word.arabic)).slice(0, 3);
+      const options = shuffle([word.arabic, ...otherArabics]);
+      const correctIndex = options.indexOf(word.arabic);
+      let blankVerseText = verseText;
+      if (verseText.includes(word.arabic)) {
+        blankVerseText = verseText.replace(word.arabic, "______");
+      }
+      return { word, options, correctIndex, mode, verseText, blankVerseText };
+    }
   });
 }
 
-function NoWordsScreen({ colors, insets, topPad }: { colors: ReturnType<typeof useColors>; insets: any; topPad: number }) {
+function NoWordsScreen({ colors, topPad }: { colors: ReturnType<typeof useColors>; topPad: number }) {
   const s = styles(colors);
   return (
     <View style={[s.container, { paddingTop: topPad }]}>
@@ -62,33 +95,29 @@ function NoWordsScreen({ colors, insets, topPad }: { colors: ReturnType<typeof u
 
       <ScrollView contentContainerStyle={s.noWordsContent} showsVerticalScrollIndicator={false}>
         <View style={s.noWordsGraphic}>
-          <View style={s.graphicStep}>
-            <View style={s.graphicSurahMock}>
-              <View style={s.graphicAyahRow}>
-                <View style={[s.graphicWordChip, { backgroundColor: colors.secondary }]}>
-                  <Text style={s.graphicArabicWord}>بِسْمِ</Text>
-                </View>
-                <View style={[s.graphicWordChip, s.graphicWordHighlight]}>
-                  <Text style={[s.graphicArabicWord, { color: colors.primaryForeground }]}>اللَّهِ</Text>
-                  <View style={s.longPressHint}>
-                    <Text style={s.longPressHintText}>Hold</Text>
-                  </View>
-                </View>
-                <View style={[s.graphicWordChip, { backgroundColor: colors.secondary }]}>
-                  <Text style={s.graphicArabicWord}>الرَّحْمَٰنِ</Text>
+          <View style={s.graphicSurahMock}>
+            <View style={s.graphicAyahRow}>
+              <View style={[s.graphicWordChip, { backgroundColor: colors.secondary }]}>
+                <Text style={s.graphicArabicWord}>بِسْمِ</Text>
+              </View>
+              <View style={[s.graphicWordChip, s.graphicWordHighlight]}>
+                <Text style={[s.graphicArabicWord, { color: colors.primaryForeground }]}>اللَّهِ</Text>
+                <View style={s.longPressHint}>
+                  <Text style={s.longPressHintText}>Hold</Text>
                 </View>
               </View>
-            </View>
-            <View style={s.graphicArrow}>
-              <Feather name="arrow-down" size={20} color={colors.primary} />
-            </View>
-            <View style={s.graphicPopup}>
-              <Text style={s.graphicPopupArabic}>اللَّهِ</Text>
-              <Text style={s.graphicPopupTrans}>Allah / God</Text>
-              <View style={s.graphicSaveBtn}>
-                <Ionicons name="bookmark-outline" size={14} color={colors.primaryForeground} />
-                <Text style={s.graphicSaveBtnText}>Save to Library</Text>
+              <View style={[s.graphicWordChip, { backgroundColor: colors.secondary }]}>
+                <Text style={s.graphicArabicWord}>الرَّحْمَٰنِ</Text>
               </View>
+            </View>
+          </View>
+          <Feather name="arrow-down" size={20} color={colors.primary} />
+          <View style={s.graphicPopup}>
+            <Text style={s.graphicPopupArabic}>اللَّهِ</Text>
+            <Text style={s.graphicPopupTrans}>Allah / God</Text>
+            <View style={s.graphicSaveBtn}>
+              <Ionicons name="bookmark-outline" size={14} color={colors.primaryForeground} />
+              <Text style={s.graphicSaveBtnText}>Add to Library</Text>
             </View>
           </View>
         </View>
@@ -100,7 +129,7 @@ function NoWordsScreen({ colors, insets, topPad }: { colors: ReturnType<typeof u
           {[
             { num: "1", icon: "book-open" as const, text: "Open any Surah from the Quran tab" },
             { num: "2", icon: "hand" as const, text: "Long-press on any Arabic word" },
-            { num: "3", icon: "bookmark" as const, text: "Tap \"Save to Library\" in the popup" },
+            { num: "3", icon: "bookmark" as const, text: "Tap \"Add to Library\" in the popup" },
             { num: "4", icon: "zap" as const, text: "Come back here to test yourself!" },
           ].map(step => (
             <View key={step.num} style={s.howToStep}>
@@ -113,11 +142,7 @@ function NoWordsScreen({ colors, insets, topPad }: { colors: ReturnType<typeof u
           ))}
         </View>
 
-        <TouchableOpacity
-          style={s.goReadBtn}
-          onPress={() => router.replace("/(tabs)/quran")}
-          activeOpacity={0.85}
-        >
+        <TouchableOpacity style={s.goReadBtn} onPress={() => router.replace("/(tabs)/quran")} activeOpacity={0.85}>
           <Ionicons name="book-outline" size={18} color={colors.primaryForeground} />
           <Text style={s.goReadBtnText}>Start Reading</Text>
         </TouchableOpacity>
@@ -150,7 +175,7 @@ function WordsManagerModal({
           <Text style={s.headerTitle}>Manage Words</Text>
           <View style={{ width: 38 }} />
         </View>
-        <Text style={s.wordsManagerSub}>{words.length} words in quiz pool — tap × to remove</Text>
+        <Text style={s.wordsManagerSub}>{words.length} words in quiz pool — tap trash to remove</Text>
         <FlatList
           data={words}
           keyExtractor={item => item.id}
@@ -160,20 +185,16 @@ function WordsManagerModal({
               <View style={s.wordManagerInfo}>
                 <Text style={s.wordManagerArabic}>{item.arabic}</Text>
                 <Text style={s.wordManagerTrans}>{item.translation}</Text>
-                <Text style={s.wordManagerMeta}>Surah {item.surahNumber} : {item.ayahNumber}</Text>
+                <Text style={s.wordManagerMeta}>Surah {item.surahNumber} : Ayah {item.ayahNumber}</Text>
               </View>
-              <TouchableOpacity
-                onPress={() => onRemove(item.id)}
-                style={s.wordManagerRemove}
-                activeOpacity={0.7}
-              >
+              <TouchableOpacity onPress={() => onRemove(item.id)} style={s.wordManagerRemove} activeOpacity={0.7}>
                 <Feather name="trash-2" size={16} color={colors.destructive} />
               </TouchableOpacity>
             </View>
           )}
           ListEmptyComponent={
             <View style={s.wordManagerEmpty}>
-              <Text style={s.wordManagerEmptyText}>No words left — go read and save some!</Text>
+              <Text style={s.wordManagerEmptyText}>No words yet — go read and save some!</Text>
             </View>
           }
         />
@@ -193,20 +214,26 @@ export default function QuizScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [score, setScore] = useState(0);
-  const [quizState, setQuizState] = useState<QuizState>("answering");
+  const [quizState, setQuizState] = useState<QuizState>("loading");
   const [wordsManagerVisible, setWordsManagerVisible] = useState(false);
 
-  const initQuiz = useCallback((words: SavedWord[]) => {
-    const q = generateQuestions(words);
-    if (q.length === 0) {
+  const initQuiz = useCallback(async (words: SavedWord[]) => {
+    if (words.length < 2) {
       setQuizState("no-words");
       return;
     }
-    setQuestions(q);
-    setCurrentIndex(0);
-    setScore(0);
-    setSelectedAnswer(null);
-    setQuizState("answering");
+    setQuizState("loading");
+    try {
+      const q = await buildQuestions(words);
+      if (q.length === 0) { setQuizState("no-words"); return; }
+      setQuestions(q);
+      setCurrentIndex(0);
+      setScore(0);
+      setSelectedAnswer(null);
+      setQuizState("answering");
+    } catch {
+      setQuizState("no-words");
+    }
   }, []);
 
   useEffect(() => {
@@ -240,22 +267,35 @@ export default function QuizScreen() {
     const word = questions[currentIndex]?.word;
     if (!word) return;
     removeWord(word.id);
-    // Rebuild questions without this word
     const remaining = savedWords.filter(w => w.id !== word.id);
-    const newQ = generateQuestions(remaining);
-    if (newQ.length === 0) {
-      setQuizState("no-words");
-      return;
-    }
-    setQuestions(newQ);
-    const newIdx = Math.min(currentIndex, newQ.length - 1);
-    setCurrentIndex(newIdx);
-    setSelectedAnswer(null);
-    setQuizState("answering");
+    initQuiz(remaining);
   }, [questions, currentIndex, savedWords, removeWord]);
 
+  const handleShare = useCallback(async () => {
+    const wordList = savedWords
+      .slice(0, 10)
+      .map((w, i) => `${i + 1}. ${w.arabic} — ${w.translation}`)
+      .join("\n");
+    const surahName = SURAH_DATA[savedWords[0]?.surahNumber - 1]?.englishName ?? "Al-Faatiha";
+    await Share.share({
+      message: `📖 Quran Vocabulary Quiz — ${savedWords.length} words\n\nTest yourself on these words:\n${wordList}\n\nStart with Surah ${surahName} and explore more words in Al-Quran app!`,
+      title: "Quran Vocabulary Quiz",
+    });
+  }, [savedWords]);
+
+  if (quizState === "loading") {
+    return (
+      <View style={[s.container, { paddingTop: topPad, justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator color={colors.primary} size="large" />
+        <Text style={{ marginTop: 16, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+          Preparing your quiz...
+        </Text>
+      </View>
+    );
+  }
+
   if (quizState === "no-words" || savedWords.length < 2) {
-    return <NoWordsScreen colors={colors} insets={insets} topPad={topPad} />;
+    return <NoWordsScreen colors={colors} topPad={topPad} />;
   }
 
   const currentQ = questions[currentIndex];
@@ -270,7 +310,9 @@ export default function QuizScreen() {
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>Results</Text>
-          <View style={{ width: 38 }} />
+          <TouchableOpacity onPress={handleShare} style={s.backBtn} activeOpacity={0.7}>
+            <Feather name="share-2" size={20} color={colors.primary} />
+          </TouchableOpacity>
         </View>
         <View style={s.resultsContent}>
           <View style={[s.scoreCircle, { borderColor: percentage >= 70 ? colors.primary : colors.accent }]}>
@@ -296,6 +338,7 @@ export default function QuizScreen() {
   }
 
   const isWordMeaning = currentQ.mode === "word-meaning";
+  const isFillBlank = currentQ.mode === "fill-blank";
 
   return (
     <View style={[s.container, { paddingTop: topPad }]}>
@@ -303,9 +346,7 @@ export default function QuizScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.7}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>
-          {currentIndex + 1} / {questions.length}
-        </Text>
+        <Text style={s.headerTitle}>{currentIndex + 1} / {questions.length}</Text>
         <TouchableOpacity onPress={() => setWordsManagerVisible(true)} style={s.backBtn} activeOpacity={0.7}>
           <Feather name="list" size={20} color={colors.foreground} />
         </TouchableOpacity>
@@ -319,29 +360,42 @@ export default function QuizScreen() {
         <View style={s.questionCard}>
           <View style={s.modeBadge}>
             <Ionicons
-              name={isWordMeaning ? "help-circle" : "text"}
+              name={isWordMeaning ? "help-circle" : "book-outline"}
               size={14}
               color={colors.primary}
             />
             <Text style={s.modeBadgeText}>
-              {isWordMeaning ? "What does this mean?" : "Fill in the blank"}
+              {isWordMeaning ? "What does this word mean?" : "Fill in the blank"}
             </Text>
           </View>
 
           {isWordMeaning ? (
-            <Text style={s.arabicQuestion}>{currentQ.word.arabic}</Text>
+            <>
+              <Text style={s.arabicQuestion}>{currentQ.word.arabic}</Text>
+              <Text style={s.questionSub}>Surah {currentQ.word.surahNumber} • Ayah {currentQ.word.ayahNumber}</Text>
+            </>
           ) : (
             <View style={s.fillBlankContainer}>
-              <Text style={s.fillBlankContext}>
-                Surah {currentQ.word.surahNumber}, Ayah {currentQ.word.ayahNumber}
-              </Text>
-              <Text style={s.fillBlankPrompt}>
-                {"___"} means: <Text style={s.fillBlankArabic}>{currentQ.word.arabic}</Text>
-              </Text>
+              <View style={s.fillBlankContext}>
+                <Text style={s.fillBlankContextLabel}>
+                  {SURAH_DATA[currentQ.word.surahNumber - 1]?.englishName ?? `Surah ${currentQ.word.surahNumber}`} • Ayah {currentQ.word.ayahNumber}
+                </Text>
+              </View>
+              {currentQ.blankVerseText ? (
+                <Text style={s.fillBlankVerse} textBreakStrategy="highQuality">
+                  {currentQ.blankVerseText}
+                </Text>
+              ) : (
+                <View style={s.fillBlankNoVerse}>
+                  <Text style={s.fillBlankPromptLabel}>Which word belongs here?</Text>
+                  <Text style={s.fillBlankArabicHint}>{currentQ.word.arabic}</Text>
+                  <Text style={s.fillBlankArrow}>↑</Text>
+                  <Text style={s.fillBlankBlankLine}>_ _ _ _ _ _</Text>
+                </View>
+              )}
+              <Text style={s.fillBlankInstruct}>Select the correct Arabic word</Text>
             </View>
           )}
-
-          <Text style={s.questionSub}>Surah {currentQ.word.surahNumber} • Ayah {currentQ.word.ayahNumber}</Text>
         </View>
 
         <View style={s.optionsGrid}>
@@ -369,7 +423,9 @@ export default function QuizScreen() {
                 activeOpacity={0.8}
                 disabled={quizState === "answered"}
               >
-                <Text style={[s.optionText, { color: textColor }]}>{option}</Text>
+                <Text style={[s.optionText, { color: textColor }, isFillBlank && s.optionTextArabic]}>
+                  {option}
+                </Text>
                 {showResult && isCorrect && (
                   <Ionicons name="checkmark-circle" size={18} color={colors.primaryForeground} />
                 )}
@@ -383,11 +439,7 @@ export default function QuizScreen() {
 
         {quizState === "answered" && (
           <View style={s.feedbackRow}>
-            <TouchableOpacity
-              style={s.removeWordBtn}
-              onPress={handleRemoveAndSkip}
-              activeOpacity={0.8}
-            >
+            <TouchableOpacity style={s.removeWordBtn} onPress={handleRemoveAndSkip} activeOpacity={0.8}>
               <Feather name="trash-2" size={15} color={colors.destructive} />
               <Text style={s.removeWordBtnText}>Remove word</Text>
             </TouchableOpacity>
@@ -425,14 +477,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderBottomColor: colors.border,
     },
     backBtn: { padding: 8, width: 38 },
-    headerTitle: {
-      flex: 1,
-      textAlign: "center",
-      fontSize: 16,
-      fontWeight: "700",
-      color: colors.foreground,
-      fontFamily: "Inter_700Bold",
-    },
+    headerTitle: { flex: 1, textAlign: "center", fontSize: 16, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
     quizProgressBar: { height: 3, backgroundColor: colors.border },
     quizProgressFill: { height: "100%", backgroundColor: colors.primary },
     quizContent: { padding: 16, gap: 16, paddingBottom: 40 },
@@ -454,11 +499,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderRadius: 20,
       marginBottom: 20,
     },
-    modeBadgeText: {
-      fontSize: 12,
-      color: colors.primary,
-      fontFamily: "Inter_600SemiBold",
-    },
+    modeBadgeText: { fontSize: 12, color: colors.primary, fontFamily: "Inter_600SemiBold" },
     arabicQuestion: {
       fontSize: 42,
       color: colors.foreground,
@@ -467,11 +508,25 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       lineHeight: 60,
       marginBottom: 12,
     },
-    fillBlankContainer: { alignItems: "center", marginBottom: 12 },
-    fillBlankContext: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginBottom: 8 },
-    fillBlankPrompt: { fontSize: 20, color: colors.foreground, fontFamily: "Inter_400Regular", textAlign: "center" },
-    fillBlankArabic: { fontSize: 24, color: colors.primary, fontFamily: "System" },
     questionSub: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
+    fillBlankContainer: { alignItems: "center", gap: 12, width: "100%" },
+    fillBlankContext: { alignItems: "center" },
+    fillBlankContextLabel: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
+    fillBlankVerse: {
+      fontSize: 22,
+      lineHeight: 44,
+      textAlign: "right",
+      writingDirection: "rtl",
+      color: colors.foreground,
+      fontFamily: Platform.OS === "ios" ? "System" : undefined,
+      width: "100%",
+    },
+    fillBlankNoVerse: { alignItems: "center", gap: 8 },
+    fillBlankPromptLabel: { fontSize: 14, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
+    fillBlankArabicHint: { fontSize: 28, color: colors.primary, fontFamily: "System" },
+    fillBlankArrow: { fontSize: 18, color: colors.primary },
+    fillBlankBlankLine: { fontSize: 18, color: colors.mutedForeground, letterSpacing: 4, fontFamily: "Inter_400Regular" },
+    fillBlankInstruct: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontStyle: "italic" },
     optionsGrid: { gap: 10 },
     optionBtn: {
       flexDirection: "row",
@@ -482,6 +537,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderWidth: 1.5,
     },
     optionText: { flex: 1, fontSize: 16, fontFamily: "Inter_400Regular" },
+    optionTextArabic: { fontSize: 20, fontFamily: Platform.OS === "ios" ? "System" : undefined, textAlign: "right" },
     feedbackRow: { flexDirection: "row", gap: 10, alignItems: "center" },
     removeWordBtn: {
       flexDirection: "row",
@@ -525,8 +581,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderWidth: 1,
       borderColor: colors.border,
       alignItems: "center",
+      gap: 12,
     },
-    graphicStep: { alignItems: "center", gap: 12, width: "100%" },
     graphicSurahMock: {
       backgroundColor: colors.background,
       borderRadius: 12,
@@ -549,7 +605,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingVertical: 2,
     },
     longPressHintText: { fontSize: 9, color: colors.card, fontFamily: "Inter_600SemiBold" },
-    graphicArrow: { marginVertical: 4 },
     graphicPopup: {
       backgroundColor: colors.card,
       borderRadius: 14,
@@ -559,11 +614,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       gap: 6,
       borderWidth: 1,
       borderColor: colors.border,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 4,
     },
     graphicPopupArabic: { fontSize: 22, color: colors.primary, fontFamily: "System" },
     graphicPopupTrans: { fontSize: 14, color: colors.foreground, fontFamily: "Inter_400Regular" },
@@ -613,4 +663,5 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     wordManagerRemove: { padding: 10, borderRadius: 10, backgroundColor: "#FFF0F0" },
     wordManagerEmpty: { padding: 40, alignItems: "center" },
     wordManagerEmptyText: { fontSize: 14, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center" },
+    destructive: { color: "#E53E3E" },
   });

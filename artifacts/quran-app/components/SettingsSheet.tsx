@@ -21,24 +21,32 @@ interface Props {
 
 function SettingRow({
   label,
+  sublabel,
   value,
   onToggle,
   colors,
+  disabled,
 }: {
   label: string;
+  sublabel?: string;
   value: boolean;
   onToggle: () => void;
   colors: ReturnType<typeof useColors>;
+  disabled?: boolean;
 }) {
   const s = styles(colors);
   return (
-    <View style={s.row}>
-      <Text style={s.rowLabel}>{label}</Text>
+    <View style={[s.row, disabled && s.rowDisabled]}>
+      <View style={{ flex: 1 }}>
+        <Text style={[s.rowLabel, disabled && s.rowLabelDisabled]}>{label}</Text>
+        {sublabel && <Text style={s.rowSublabel}>{sublabel}</Text>}
+      </View>
       <Switch
         value={value}
         onValueChange={onToggle}
         trackColor={{ false: colors.muted, true: colors.primary }}
         thumbColor={colors.primaryForeground}
+        disabled={disabled}
       />
     </View>
   );
@@ -66,6 +74,16 @@ export function SettingsSheet({ visible, onClose }: Props) {
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false}>
+                <Text style={s.sectionLabel}>READING MODE</Text>
+
+                <SettingRow
+                  label="Mushaf Style"
+                  sublabel="Page layout · disables all overlays"
+                  value={settings.mushafMode}
+                  onToggle={() => updateSettings({ mushafMode: !settings.mushafMode })}
+                  colors={colors}
+                />
+
                 <Text style={s.sectionLabel}>DISPLAY</Text>
 
                 <SettingRow
@@ -73,24 +91,22 @@ export function SettingsSheet({ visible, onClose }: Props) {
                   value={settings.showTranslation}
                   onToggle={() => updateSettings({ showTranslation: !settings.showTranslation })}
                   colors={colors}
+                  disabled={settings.mushafMode}
                 />
                 <SettingRow
                   label="Transliteration"
+                  sublabel={settings.tajweedColorCoding ? "Disabled while Tajweed is on" : undefined}
                   value={settings.showTransliteration}
                   onToggle={() => updateSettings({ showTransliteration: !settings.showTransliteration })}
                   colors={colors}
+                  disabled={settings.mushafMode || settings.tajweedColorCoding}
                 />
                 <SettingRow
                   label="Tafsir"
                   value={settings.showTafsir}
                   onToggle={() => updateSettings({ showTafsir: !settings.showTafsir })}
                   colors={colors}
-                />
-                <SettingRow
-                  label="Mushaf Style"
-                  value={settings.mushafMode}
-                  onToggle={() => updateSettings({ mushafMode: !settings.mushafMode })}
-                  colors={colors}
+                  disabled={settings.mushafMode}
                 />
 
                 <Text style={s.sectionLabel}>COLOR CODING</Text>
@@ -100,12 +116,15 @@ export function SettingsSheet({ visible, onClose }: Props) {
                   value={settings.colorCoding}
                   onToggle={() => updateSettings({ colorCoding: !settings.colorCoding })}
                   colors={colors}
+                  disabled={settings.mushafMode}
                 />
                 <SettingRow
                   label="Tajweed Color Coding"
+                  sublabel={settings.showTransliteration ? "Turns off transliteration" : undefined}
                   value={settings.tajweedColorCoding}
                   onToggle={() => updateSettings({ tajweedColorCoding: !settings.tajweedColorCoding })}
                   colors={colors}
+                  disabled={settings.mushafMode}
                 />
 
                 <Text style={s.sectionLabel}>AUDIO</Text>
@@ -115,19 +134,11 @@ export function SettingsSheet({ visible, onClose }: Props) {
                   {RECITERS.map((r) => (
                     <TouchableOpacity
                       key={r.id}
-                      style={[
-                        s.reciterChip,
-                        settings.selectedReciter === r.id && s.reciterChipActive,
-                      ]}
+                      style={[s.reciterChip, settings.selectedReciter === r.id && s.reciterChipActive]}
                       onPress={() => updateSettings({ selectedReciter: r.id })}
                       activeOpacity={0.8}
                     >
-                      <Text
-                        style={[
-                          s.reciterChipText,
-                          settings.selectedReciter === r.id && s.reciterChipTextActive,
-                        ]}
-                      >
+                      <Text style={[s.reciterChipText, settings.selectedReciter === r.id && s.reciterChipTextActive]}>
                         {r.name}
                       </Text>
                     </TouchableOpacity>
@@ -139,19 +150,11 @@ export function SettingsSheet({ visible, onClose }: Props) {
                   {repeatOptions.map((n) => (
                     <TouchableOpacity
                       key={n}
-                      style={[
-                        s.repeatChip,
-                        settings.repeatCount === n && s.repeatChipActive,
-                      ]}
+                      style={[s.repeatChip, settings.repeatCount === n && s.repeatChipActive]}
                       onPress={() => updateSettings({ repeatCount: n })}
                       activeOpacity={0.8}
                     >
-                      <Text
-                        style={[
-                          s.repeatChipText,
-                          settings.repeatCount === n && s.repeatChipTextActive,
-                        ]}
-                      >
+                      <Text style={[s.repeatChipText, settings.repeatCount === n && s.repeatChipTextActive]}>
                         {n}x
                       </Text>
                     </TouchableOpacity>
@@ -178,7 +181,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       padding: 20,
-      maxHeight: "85%",
+      maxHeight: "88%",
     },
     handle: {
       width: 36,
@@ -200,9 +203,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       color: colors.foreground,
       fontFamily: "Inter_700Bold",
     },
-    closeBtn: {
-      padding: 4,
-    },
+    closeBtn: { padding: 4 },
     sectionLabel: {
       fontSize: 11,
       fontWeight: "700",
@@ -216,14 +217,22 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      paddingVertical: 14,
+      paddingVertical: 12,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
+    rowDisabled: { opacity: 0.4 },
     rowLabel: {
       fontSize: 15,
       color: colors.foreground,
       fontFamily: "Inter_400Regular",
+    },
+    rowLabelDisabled: { color: colors.mutedForeground },
+    rowSublabel: {
+      fontSize: 11,
+      color: colors.mutedForeground,
+      fontFamily: "Inter_400Regular",
+      marginTop: 2,
     },
     subLabel: {
       fontSize: 13,
@@ -232,9 +241,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginTop: 12,
       marginBottom: 8,
     },
-    recitersRow: {
-      marginBottom: 8,
-    },
+    recitersRow: { marginBottom: 8 },
     reciterChip: {
       paddingHorizontal: 14,
       paddingVertical: 8,
@@ -244,25 +251,10 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginRight: 8,
       backgroundColor: colors.card,
     },
-    reciterChipActive: {
-      borderColor: colors.primary,
-      backgroundColor: colors.secondary,
-    },
-    reciterChipText: {
-      fontSize: 13,
-      color: colors.mutedForeground,
-      fontFamily: "Inter_400Regular",
-    },
-    reciterChipTextActive: {
-      color: colors.primary,
-      fontWeight: "600",
-      fontFamily: "Inter_600SemiBold",
-    },
-    repeatRow: {
-      flexDirection: "row",
-      gap: 8,
-      flexWrap: "wrap",
-    },
+    reciterChipActive: { borderColor: colors.primary, backgroundColor: colors.secondary },
+    reciterChipText: { fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
+    reciterChipTextActive: { color: colors.primary, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
+    repeatRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
     repeatChip: {
       paddingHorizontal: 16,
       paddingVertical: 8,
@@ -271,17 +263,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderColor: colors.border,
       backgroundColor: colors.card,
     },
-    repeatChipActive: {
-      borderColor: colors.primary,
-      backgroundColor: colors.primary,
-    },
-    repeatChipText: {
-      fontSize: 14,
-      color: colors.mutedForeground,
-      fontFamily: "Inter_400Regular",
-    },
-    repeatChipTextActive: {
-      color: colors.primaryForeground,
-      fontFamily: "Inter_600SemiBold",
-    },
+    repeatChipActive: { borderColor: colors.primary, backgroundColor: colors.primary },
+    repeatChipText: { fontSize: 14, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
+    repeatChipTextActive: { color: colors.primaryForeground, fontFamily: "Inter_600SemiBold" },
   });
