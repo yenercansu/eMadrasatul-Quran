@@ -372,7 +372,7 @@ export default function HomeScreen() {
                       <View style={[s.progressDecoIcon, done && s.progressDecoIconDone]}>
                         <Feather name={icon} size={12} color={done ? "#FFFFFF" : "#C0C0C0"} />
                       </View>
-                      <Text style={[s.progressDecoLabel, done && s.progressDecoLabelDone]}>{label}</Text>
+                      {false && <Text style={[s.progressDecoLabel, done && s.progressDecoLabelDone]}>{label}</Text>}
                     </View>
                   );
                 })}

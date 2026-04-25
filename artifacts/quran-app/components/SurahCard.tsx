@@ -10,9 +10,11 @@ interface Props {
   isRecent?: boolean;
   isSaved?: boolean;
   onSave?: () => void;
+  isChecked?: boolean;
+  onCheck?: () => void;
 }
 
-export function SurahCard({ surah, onPress, isRecent, isSaved, onSave }: Props) {
+export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, isChecked, onCheck }: Props) {
   const colors = useColors();
   const s = styles(colors);
 
@@ -25,6 +27,20 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave }: Props) 
         <View style={s.meta}>
           <Text style={s.type}>{surah.revelationType}</Text>
         </View>
+        {onCheck && (
+          <TouchableOpacity
+            onPress={(e) => { e.stopPropagation(); onCheck(); }}
+            style={[s.checkBtn, isChecked && s.checkBtnActive]}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons
+              name={isChecked ? "checkmark-circle" : "checkmark-circle-outline"}
+              size={20}
+              color={isChecked ? "#FFFFFF" : "#C0C0C0"}
+            />
+          </TouchableOpacity>
+        )}
         {onSave && (
           <TouchableOpacity
             onPress={(e) => { e.stopPropagation(); onSave(); }}
@@ -102,6 +118,17 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       textTransform: "uppercase",
     },
     saveBtn: { padding: 2 },
+    checkBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: "#F0F0F0",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    checkBtnActive: {
+      backgroundColor: "#1A1A1A",
+    },
     recentDot: {
       width: 8, height: 8, borderRadius: 4, backgroundColor: "#4F46E5",
     },

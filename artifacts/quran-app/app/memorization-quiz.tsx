@@ -532,7 +532,7 @@ type QuizMode = null | "follow-up" | "fill-blank";
 export default function MemorizationQuizScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
-  const { recentProgress, surahPositions } = useQuran();
+  const { recentProgress, surahPositions, checkedSurahs } = useQuran();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const [mode, setMode] = useState<QuizMode>(null);
@@ -541,9 +541,9 @@ export default function MemorizationQuizScreen() {
   const [finalScore, setFinalScore] = useState(0);
 
   const getAvailableSurahs = useCallback(() => {
-    const pool = [...DEFAULT_SURAHS];
-    return pool;
-  }, []);
+    const checked = DEFAULT_SURAHS.filter(s => checkedSurahs.includes(s.number));
+    return checked.length > 0 ? checked : [...DEFAULT_SURAHS];
+  }, [checkedSurahs]);
 
   const startQuiz = useCallback((selectedMode: "follow-up" | "fill-blank") => {
     const surahs = getAvailableSurahs();

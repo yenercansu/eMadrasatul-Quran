@@ -255,7 +255,7 @@ const practiceStyles = (colors: ReturnType<typeof useColors>) =>
   });
 
 const SWIPE_THRESHOLD = 65;
-const REPEAT_OPTIONS = [2, 3, 5, 10];
+const REPEAT_OPTIONS = [1, 3, 5, 10];
 
 interface CardSwipeStackProps {
   ayahs: ApiAyah[];
@@ -518,7 +518,7 @@ function CardSwipeStack({
                 activeOpacity={0.8}
               >
                 <Text style={cs.repeatOptionNum}>{count}×</Text>
-                <Text style={cs.repeatOptionLabel}>{count === 2 ? "twice" : count === 3 ? "3 times" : count === 5 ? "5 times" : "10 times"}</Text>
+                <Text style={cs.repeatOptionLabel}>{count === 1 ? "once" : count === 3 ? "3 times" : count === 5 ? "5 times" : "10 times"}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -1259,8 +1259,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       gap: 2,
     },
     modeBtn: {
-      paddingHorizontal: 16,
-      paddingVertical: 7,
+      paddingHorizontal: 26,
+      paddingVertical: 9,
       borderRadius: 10,
     },
     modeBtnActive: {

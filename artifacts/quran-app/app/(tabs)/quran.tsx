@@ -28,6 +28,8 @@ function SwipeableSurahCard({
   isSaved,
   onSave,
   onPress,
+  isChecked,
+  onCheck,
   colors,
 }: {
   surah: ApiSurah;
@@ -35,6 +37,8 @@ function SwipeableSurahCard({
   isSaved: boolean;
   onSave: () => void;
   onPress: () => void;
+  isChecked: boolean;
+  onCheck: () => void;
   colors: ReturnType<typeof useColors>;
 }) {
   const s = styles(colors);
@@ -77,6 +81,8 @@ function SwipeableSurahCard({
         isRecent={isRecent}
         isSaved={isSaved}
         onSave={onSave}
+        isChecked={isChecked}
+        onCheck={onCheck}
       />
     </Swipeable>
   );
@@ -90,7 +96,7 @@ export default function QuranScreen() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<FilterType>("all");
-  const { recentProgress, saveSurah, removeSavedSurah, isSurahSaved } = useQuran();
+  const { recentProgress, saveSurah, removeSavedSurah, isSurahSaved, isSurahChecked, toggleCheckedSurah } = useQuran();
 
   useEffect(() => {
     fetchSurahs().then(setSurahs).finally(() => setLoading(false));
@@ -174,6 +180,7 @@ export default function QuranScreen() {
           keyExtractor={(item) => String(item.number)}
           renderItem={({ item }) => {
             const saved = isSurahSaved(item.number);
+            const checked = isSurahChecked(item.number);
             return (
               <SwipeableSurahCard
                 surah={item}
@@ -181,6 +188,8 @@ export default function QuranScreen() {
                 isSaved={saved}
                 onSave={() => saved ? removeSavedSurah(item.number) : saveSurah(item.number)}
                 onPress={() => router.push(`/surah/${item.number}`)}
+                isChecked={checked}
+                onCheck={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); toggleCheckedSurah(item.number, item.numberOfAyahs); }}
                 colors={colors}
               />
             );

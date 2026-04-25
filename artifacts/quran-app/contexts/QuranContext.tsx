@@ -110,6 +110,9 @@ interface QuranContextType {
   getTodayGoalAyahs: () => GoalAyah[];
   surahPositions: Record<number, number>;
   saveSurahPosition: (surahNum: number, ayahIndex: number) => void;
+  checkedSurahs: number[];
+  toggleCheckedSurah: (surahNum: number, ayahCount: number) => void;
+  isSurahChecked: (surahNum: number) => boolean;
 }
 
 const TOTAL_AYAHS = 6236;
@@ -171,6 +174,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const [onlineUsers] = useState(() => Math.floor(12000 + Math.random() * 4000));
   const [quranPosition, setQuranPosition] = useState(0);
   const [surahPositions, setSurahPositions] = useState<Record<number, number>>({});
+  const [checkedSurahs, setCheckedSurahs] = useState<number[]>([]);
 
   useEffect(() => { loadData(); }, []);
 
@@ -181,6 +185,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         "quran_last_listened", "quran_goal", "quran_daily_entries",
         "quran_account", "quran_saved_surahs", "quran_highlighted_words",
         "quran_saved_ayahs", "quran_position", "quran_surah_positions",
+        "quran_checked_surahs",
       ];
       const results = await AsyncStorage.multiGet(keys);
       const map = Object.fromEntries(results.map(([k, v]) => [k, v]));
@@ -197,6 +202,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       if (map.quran_daily_entries) setDailyEntries(JSON.parse(map.quran_daily_entries));
       if (map.quran_position) setQuranPosition(JSON.parse(map.quran_position));
       if (map.quran_surah_positions) setSurahPositions(JSON.parse(map.quran_surah_positions));
+      if (map.quran_checked_surahs) setCheckedSurahs(JSON.parse(map.quran_checked_surahs));
     } catch {}
   }
 
@@ -296,6 +302,30 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const toggleCheckedSurah = useCallback((surahNum: number, ayahCount: number) => {
+    const wasChecked = checkedSurahs.includes(surahNum);
+    setCheckedSurahs((prev) => {
+      const next = prev.includes(surahNum) ? prev.filter(n => n !== surahNum) : [...prev, surahNum];
+      AsyncStorage.setItem("quran_checked_surahs", JSON.stringify(next));
+      return next;
+    });
+    if (!wasChecked) {
+      const today = getTodayStr();
+      const isKahf = surahNum === 18 && isFriday();
+      const increment = Math.min(ayahCount, 10);
+      setDailyEntries((de) => {
+        const idx = de.findIndex(e => e.date === today);
+        let next: DailyEntry[];
+        if (idx >= 0) { next = de.map((e, i) => i === idx ? { ...e, ayahsRead: e.ayahsRead + increment, kahfCompleted: e.kahfCompleted || isKahf } : e); }
+        else { next = [{ date: today, ayahsRead: increment, kahfCompleted: isKahf }, ...de].slice(0, 365); }
+        AsyncStorage.setItem("quran_daily_entries", JSON.stringify(next));
+        return next;
+      });
+    }
+  }, [checkedSurahs]);
+
+  const isSurahChecked = useCallback((surahNum: number) => checkedSurahs.includes(surahNum), [checkedSurahs]);
+
   const recordAyahRead = useCallback((surahNumber: number) => {
     const today = getTodayStr();
     const isKahf = surahNumber === 18 && isFriday();
@@ -324,6 +354,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       onlineUsers,
       quranPosition, advanceQuranPosition, getTodayGoalAyahs,
       surahPositions, saveSurahPosition,
+      checkedSurahs, toggleCheckedSurah, isSurahChecked,
     }}>
       {children}
     </QuranContext.Provider>

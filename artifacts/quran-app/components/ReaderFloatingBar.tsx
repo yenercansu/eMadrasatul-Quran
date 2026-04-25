@@ -4,10 +4,10 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Platform,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
 interface TafsirEdition {
@@ -52,6 +52,16 @@ export function ReaderFloatingBar({
 }: Props) {
   const colors = useColors();
   const s = styles(colors);
+  const insets = useSafeAreaInsets();
+  const EDGE_GAP = Math.max(insets.bottom + 12, 20);
+  const TAB_BAR_HEIGHT = 54;
+  const wrapperStyle = {
+    position: "absolute" as const,
+    bottom: EDGE_GAP + TAB_BAR_HEIGHT + EDGE_GAP,
+    left: EDGE_GAP,
+    right: EDGE_GAP,
+    gap: 8,
+  };
   const [activePopup, setActivePopup] = useState<Popup>(null);
 
   const toggle = (fn: () => void) => {
@@ -80,7 +90,7 @@ export function ReaderFloatingBar({
   };
 
   return (
-    <View style={s.wrapper}>
+    <View style={wrapperStyle}>
       {activePopup === "tafsir" && !mushafMode && (
         <View style={s.popup}>
           <View style={s.popupHeader}>
@@ -226,9 +236,9 @@ const styles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     wrapper: {
       position: "absolute",
-      bottom: Platform.OS === "ios" ? 105 : 90,
-      left: 16,
-      right: 16,
+      bottom: 90,
+      left: 20,
+      right: 20,
       gap: 8,
     },
     popup: {
