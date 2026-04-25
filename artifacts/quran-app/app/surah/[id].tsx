@@ -10,7 +10,9 @@ import {
   ScrollView,
   Modal,
   TouchableWithoutFeedback,
+  Dimensions,
 } from "react-native";
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
@@ -28,6 +30,7 @@ import { fetchSurahWithTranslations, fetchTafsir, type SurahDetail, type ApiAyah
 import { type TafsirEntry } from "@/components/AyahItem";
 import { SURAH_DATA } from "@/constants/surahData";
 
+const SCREEN_WIDTH = Dimensions.get("window").width;
 const AYAHS_PER_PAGE = 10;
 const MUSHAF_BG = "#F5EDD6";
 
@@ -266,6 +269,7 @@ export default function SurahScreen() {
   const [practiceVisible, setPracticeVisible] = useState(false);
   const [activeAyah, setActiveAyah] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [currentAyahIndex, setCurrentAyahIndex] = useState(0);
   const [wordModal, setWordModal] = useState<{ visible: boolean; word: string; ayahNum: number }>({
     visible: false, word: "", ayahNum: 0,
   });
@@ -275,7 +279,10 @@ export default function SurahScreen() {
     settings, updateSettings,
     saveProgress, recordAyahRead, highlightedWords,
     saveWord, saveAyah,
+    surahPositions, saveSurahPosition,
   } = useQuran();
+
+  const cardListRef = useRef<FlatList<ApiAyah>>(null);
   const { audioState, playAyah, playRange, setOnNextAyah } = useAudio();
 
   useEffect(() => {
@@ -333,13 +340,30 @@ export default function SurahScreen() {
         if (surahN === surahNum) {
           const pageForAyah = Math.ceil(ayahN / AYAHS_PER_PAGE);
           setCurrentPage(pageForAyah);
+          const cardIdx = ayahN - 1;
+          setCurrentAyahIndex(cardIdx);
+          saveSurahPosition(surahN, cardIdx);
+          setTimeout(() => {
+            cardListRef.current?.scrollToIndex({ index: cardIdx, animated: true });
+          }, 100);
         }
       });
 
+      // Auto-resume: use saved position, then ayahParam, then start from beginning
+      const savedPos = surahPositions[surahNum];
+      let initialIndex = 0;
       if (ayahParam) {
-        const idx = parseInt(ayahParam, 10);
-        const pageForAyah = Math.ceil(idx / AYAHS_PER_PAGE);
+        initialIndex = Math.max(0, parseInt(ayahParam, 10) - 1);
+      } else if (savedPos !== undefined) {
+        initialIndex = savedPos;
+      }
+      if (initialIndex > 0) {
+        const pageForAyah = Math.ceil((initialIndex + 1) / AYAHS_PER_PAGE);
         setCurrentPage(pageForAyah);
+        setCurrentAyahIndex(initialIndex);
+        setTimeout(() => {
+          cardListRef.current?.scrollToIndex({ index: initialIndex, animated: false });
+        }, 300);
       }
     } finally {
       setLoading(false);
@@ -472,15 +496,17 @@ export default function SurahScreen() {
       </View>
 
       <View style={s.modeNavBar}>
-        <TouchableOpacity
-          style={[s.pageCornerBtn, s.pageCornerBtnLeft, isLastPage && s.pageCornerBtnDisabled]}
-          onPress={goToNextPage}
-          disabled={isLastPage}
-          activeOpacity={0.75}
-        >
-          <Feather name="chevron-left" size={16} color={isLastPage ? "#C0C0C0" : "#1A1A1A"} />
-          <Text style={[s.pageCornerText, isLastPage && s.pageCornerTextDisabled]}>Next</Text>
-        </TouchableOpacity>
+        {settings.mushafMode ? (
+          <TouchableOpacity
+            style={[s.pageCornerBtn, s.pageCornerBtnLeft, isLastPage && s.pageCornerBtnDisabled]}
+            onPress={goToNextPage}
+            disabled={isLastPage}
+            activeOpacity={0.75}
+          >
+            <Feather name="chevron-left" size={16} color={isLastPage ? "#C0C0C0" : "#1A1A1A"} />
+            <Text style={[s.pageCornerText, isLastPage && s.pageCornerTextDisabled]}>Next</Text>
+          </TouchableOpacity>
+        ) : <View style={{ minWidth: 70 }} />}
 
         <View style={s.modeSwitcher}>
           <TouchableOpacity
@@ -499,18 +525,20 @@ export default function SurahScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={[s.pageCornerBtn, s.pageCornerBtnRight, isFirstPage && s.pageCornerBtnDisabled]}
-          onPress={goToPrevPage}
-          disabled={isFirstPage}
-          activeOpacity={0.75}
-        >
-          <Text style={[s.pageCornerText, isFirstPage && s.pageCornerTextDisabled]}>Prev</Text>
-          <Feather name="chevron-right" size={16} color={isFirstPage ? "#C0C0C0" : "#1A1A1A"} />
-        </TouchableOpacity>
+        {settings.mushafMode ? (
+          <TouchableOpacity
+            style={[s.pageCornerBtn, s.pageCornerBtnRight, isFirstPage && s.pageCornerBtnDisabled]}
+            onPress={goToPrevPage}
+            disabled={isFirstPage}
+            activeOpacity={0.75}
+          >
+            <Text style={[s.pageCornerText, isFirstPage && s.pageCornerTextDisabled]}>Prev</Text>
+            <Feather name="chevron-right" size={16} color={isFirstPage ? "#C0C0C0" : "#1A1A1A"} />
+          </TouchableOpacity>
+        ) : <View style={{ minWidth: 70 }} />}
       </View>
 
-      {!loading && arabic && isFirstPage && (
+      {!loading && arabic && isFirstPage && settings.mushafMode && (
         <View style={s.surahInfo}>
           <Text style={s.surahArabicName}>{arabic.name}</Text>
           {basmala && (
@@ -519,7 +547,7 @@ export default function SurahScreen() {
         </View>
       )}
 
-      {!loading && totalPages > 1 && (
+      {!loading && settings.mushafMode && totalPages > 1 && (
         <View style={s.pageIndicatorBar}>
           <Text style={s.pageIndicatorText}>
             Page {currentPage} of {totalPages}
@@ -543,9 +571,25 @@ export default function SurahScreen() {
         </ScrollView>
       ) : (
         <FlatList
-          ref={listRef}
-          data={pageAyahs}
+          ref={cardListRef}
+          data={arabic?.ayahs ?? []}
           keyExtractor={(item) => String(item.numberInSurah)}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          decelerationRate="fast"
+          getItemLayout={(_, index) => ({
+            length: SCREEN_WIDTH,
+            offset: SCREEN_WIDTH * index,
+            index,
+          })}
+          onMomentumScrollEnd={(e) => {
+            const newIndex = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+            if (newIndex !== currentAyahIndex) {
+              setCurrentAyahIndex(newIndex);
+              saveSurahPosition(surahNum, newIndex);
+            }
+          }}
           renderItem={({ item }) => {
             const translationAyah = translation?.ayahs[item.numberInSurah - 1];
             const transliterationAyah = transliteration?.ayahs[item.numberInSurah - 1];
@@ -562,28 +606,99 @@ export default function SurahScreen() {
                 }
               }
             }
+            const showBasmala = item.numberInSurah === 1 && surahNum !== 1 && surahNum !== 9;
             return (
-              <AyahItem
-                arabic={item}
-                translation={translationAyah}
-                transliteration={transliterationAyah}
-                tafsirs={tafsirs}
-                surahNumber={surahNum}
-                surahName={arabic?.englishName ?? ""}
-                totalAyahs={arabic?.ayahs.length ?? 0}
-                isActive={activeAyah === item.numberInSurah}
-                onPress={() => handleAyahPress(item.numberInSurah)}
-                onWordLongPress={handleWordLongPress}
-                onSaveAyah={handleSaveAyah}
-                onRepeatSelect={handleRepeatSelect}
-                ayahRepeat={ayahRepeatOverrides[item.numberInSurah] ?? null}
-              />
+              <View style={s.cardPage}>
+                <ScrollView
+                  style={s.cardScroll}
+                  contentContainerStyle={s.cardScrollContent}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View style={s.ayahCard}>
+                    <View style={s.cardHeader}>
+                      <View style={s.cardSurahBadge}>
+                        <Text style={s.cardSurahNum}>{surahNum}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.cardSurahName}>{arabic?.englishName ?? ""}</Text>
+                        <Text style={s.cardAyahNum}>Ayah {item.numberInSurah}</Text>
+                      </View>
+                      <Text style={s.cardCounter}>{item.numberInSurah} / {arabic?.ayahs.length}</Text>
+                    </View>
+
+                    {showBasmala && (
+                      <Text style={s.cardBasmala}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
+                    )}
+
+                    <Text style={s.cardArabicText}>{item.text}</Text>
+
+                    {settings.showTransliteration && transliterationAyah && (
+                      <Text style={s.cardTransliteration}>{transliterationAyah.text}</Text>
+                    )}
+                    {settings.showTranslation && translationAyah && (
+                      <View style={s.cardTranslationBox}>
+                        <Text style={s.cardTranslation}>{translationAyah.text}</Text>
+                      </View>
+                    )}
+                    {tafsirs.length > 0 && tafsirs.map(t => (
+                      <View key={t.edition} style={s.cardTafsirBox}>
+                        <Text style={s.cardTafsirName}>{t.name}</Text>
+                        <Text style={s.cardTafsirText}>{t.ayah.text}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  <View style={s.cardNavRow}>
+                    <TouchableOpacity
+                      style={[s.cardNavBtn, currentAyahIndex === 0 && s.cardNavBtnDisabled]}
+                      onPress={() => {
+                        if (currentAyahIndex > 0) {
+                          const newIdx = currentAyahIndex - 1;
+                          setCurrentAyahIndex(newIdx);
+                          saveSurahPosition(surahNum, newIdx);
+                          cardListRef.current?.scrollToIndex({ index: newIdx, animated: true });
+                        }
+                      }}
+                      disabled={currentAyahIndex === 0}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="chevron-left" size={18} color={currentAyahIndex === 0 ? "#C0C0C0" : "#1A1A1A"} />
+                    </TouchableOpacity>
+
+                    <View style={s.cardNavDots}>
+                      {[...Array(Math.min(arabic?.ayahs.length ?? 1, 5))].map((_, i) => {
+                        const total = arabic?.ayahs.length ?? 1;
+                        const spread = Math.max(0, Math.floor((currentAyahIndex / total) * 5));
+                        const active = i === Math.min(spread, 4);
+                        return <View key={i} style={[s.cardNavDot, active && s.cardNavDotActive]} />;
+                      })}
+                    </View>
+
+                    <TouchableOpacity
+                      style={[s.cardNavBtn, currentAyahIndex === (arabic?.ayahs.length ?? 1) - 1 && s.cardNavBtnDisabled]}
+                      onPress={() => {
+                        const total = arabic?.ayahs.length ?? 1;
+                        if (currentAyahIndex < total - 1) {
+                          const newIdx = currentAyahIndex + 1;
+                          setCurrentAyahIndex(newIdx);
+                          saveSurahPosition(surahNum, newIdx);
+                          cardListRef.current?.scrollToIndex({ index: newIdx, animated: true });
+                        }
+                      }}
+                      disabled={currentAyahIndex === (arabic?.ayahs.length ?? 1) - 1}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="chevron-right" size={18} color={currentAyahIndex === (arabic?.ayahs.length ?? 1) - 1 ? "#C0C0C0" : "#1A1A1A"} />
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+              </View>
             );
           }}
-          contentContainerStyle={{ paddingBottom: 170 }}
-          showsVerticalScrollIndicator={false}
-          initialNumToRender={10}
-          maxToRenderPerBatch={10}
+          windowSize={5}
+          maxToRenderPerBatch={3}
+          removeClippedSubviews={true}
+          style={{ flex: 1 }}
         />
       )}
 
@@ -737,4 +852,112 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     pageIndicatorText: { fontSize: 12, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
     pageIndicatorRange: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
+    cardPage: {
+      width: SCREEN_WIDTH,
+      flex: 1,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+    },
+    cardScroll: { flex: 1 },
+    cardScrollContent: { paddingBottom: 180 },
+    ayahCard: {
+      backgroundColor: "#FFFFFF",
+      borderRadius: 24,
+      padding: 24,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.09,
+      shadowRadius: 18,
+      elevation: 6,
+      borderWidth: 1,
+      borderColor: "#F0F0F0",
+      gap: 16,
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    cardSurahBadge: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: "#1A1A1A",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    cardSurahNum: { fontSize: 14, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+    cardSurahName: { fontSize: 15, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+    cardAyahNum: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 1 },
+    cardCounter: { fontSize: 12, color: "#B0B0B0", fontFamily: "Inter_400Regular" },
+    cardBasmala: {
+      fontSize: 20,
+      color: "#1A1A1A",
+      textAlign: "center",
+      fontFamily: Platform.OS === "ios" ? "System" : undefined,
+      lineHeight: 38,
+      paddingTop: 4,
+    },
+    cardArabicText: {
+      fontSize: 30,
+      lineHeight: 56,
+      color: "#1A1A1A",
+      textAlign: "right",
+      writingDirection: "rtl",
+      fontFamily: Platform.OS === "ios" ? "System" : undefined,
+    },
+    cardTransliteration: {
+      fontSize: 14,
+      lineHeight: 22,
+      color: "#6B6B6B",
+      fontFamily: "Inter_400Regular",
+      fontStyle: "italic",
+    },
+    cardTranslationBox: {
+      borderTopWidth: 1,
+      borderTopColor: "#F0F0F0",
+      paddingTop: 14,
+    },
+    cardTranslation: {
+      fontSize: 15,
+      lineHeight: 24,
+      color: "#4A4A4A",
+      fontFamily: "Inter_400Regular",
+    },
+    cardTafsirBox: {
+      borderTopWidth: 1,
+      borderTopColor: "#F0F0F0",
+      paddingTop: 12,
+      gap: 4,
+    },
+    cardTafsirName: { fontSize: 10, fontWeight: "700", color: "#9A9A9A", letterSpacing: 1, fontFamily: "Inter_700Bold" },
+    cardTafsirText: { fontSize: 13, lineHeight: 21, color: "#5A5A5A", fontFamily: "Inter_400Regular" },
+    cardNavRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: 20,
+      paddingHorizontal: 4,
+    },
+    cardNavBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: "#F5F5F5",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    cardNavBtnDisabled: { opacity: 0.35 },
+    cardNavDots: { flexDirection: "row", gap: 6, alignItems: "center" },
+    cardNavDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: "#D0D0D0",
+    },
+    cardNavDotActive: {
+      backgroundColor: "#1A1A1A",
+      width: 16,
+      borderRadius: 3,
+    },
   });

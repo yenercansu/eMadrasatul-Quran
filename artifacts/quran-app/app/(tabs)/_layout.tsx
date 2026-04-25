@@ -2,14 +2,12 @@ import { BlurView } from "expo-blur";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
-import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
 import {
   Platform,
   StyleSheet,
   View,
-  Text,
   TouchableOpacity,
   useColorScheme,
 } from "react-native";
@@ -36,12 +34,12 @@ function NativeTabLayout() {
 }
 
 const TAB_DEFS = [
-  { name: "index", label: "Home", icon: "home" as const },
-  { name: "quran", label: "Quran", icon: "book-open" as const },
-  { name: "library", label: "Quiz", icon: "bookmark" as const },
+  { name: "index", icon: "home" as const },
+  { name: "quran", icon: "book-open" as const },
+  { name: "library", icon: "bookmark" as const },
 ];
 
-function CustomTabBar(props: any) {
+function FloatingTabBar(props: any) {
   const { state, navigation } = props;
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -54,18 +52,18 @@ function CustomTabBar(props: any) {
   );
 
   return (
-    <View style={[tabStyles.outerWrapper, { paddingBottom: insets.bottom }]}>
-      {isIOS && (
-        <BlurView
-          intensity={80}
-          tint={isDark ? "dark" : "light"}
-          style={StyleSheet.absoluteFill}
-        />
-      )}
-      {!isIOS && (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.card, borderTopWidth: 1, borderTopColor: colors.border }]} />
-      )}
+    <View style={[tabStyles.floatWrapper, { bottom: insets.bottom + 12 }]}>
       <View style={tabStyles.bar}>
+        {isIOS && (
+          <BlurView
+            intensity={90}
+            tint={isDark ? "dark" : "light"}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
+        {!isIOS && (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: "#F5F5F5" }]} />
+        )}
         {visibleRoutes.map((route: any) => {
           const tabDef = TAB_DEFS.find(t => t.name === route.name);
           if (!tabDef) return null;
@@ -94,12 +92,9 @@ function CustomTabBar(props: any) {
                 <Feather
                   name={tabDef.icon}
                   size={20}
-                  color={isFocused ? "#FFFFFF" : colors.mutedForeground}
+                  color={isFocused ? "#FFFFFF" : "#9A9A9A"}
                 />
               </View>
-              <Text style={[tabStyles.label, isFocused && tabStyles.labelActive]}>
-                {tabDef.label}
-              </Text>
             </TouchableOpacity>
           );
         })}
@@ -109,52 +104,50 @@ function CustomTabBar(props: any) {
 }
 
 const tabStyles = StyleSheet.create({
-  outerWrapper: {
+  floatWrapper: {
     position: "absolute",
-    bottom: 0,
     left: 0,
     right: 0,
-    overflow: "hidden",
+    alignItems: "center",
+    pointerEvents: "box-none",
   },
   bar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-around",
-    paddingTop: 8,
-    paddingBottom: 6,
-    paddingHorizontal: 16,
+    justifyContent: "center",
+    borderRadius: 40,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 4,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: "#E8E8E8",
   },
   tabItem: {
-    flex: 1,
     alignItems: "center",
-    gap: 4,
+    justifyContent: "center",
   },
   iconPill: {
     width: 52,
-    height: 34,
-    borderRadius: 17,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
   iconPillActive: {
     backgroundColor: "#1A1A1A",
   },
-  label: {
-    fontSize: 11,
-    color: "#9A9A9A",
-    fontFamily: "Inter_400Regular",
-    letterSpacing: 0.2,
-  },
-  labelActive: {
-    color: "#1A1A1A",
-    fontFamily: "Inter_600SemiBold",
-  },
 });
 
 function ClassicTabLayout() {
   return (
     <Tabs
-      tabBar={(props) => <CustomTabBar {...props} />}
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
       <Tabs.Screen name="index" />

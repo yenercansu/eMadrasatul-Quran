@@ -20,7 +20,7 @@ import { useQuran, type SavedWord, type SavedAyah } from "@/contexts/QuranContex
 import { SURAH_DATA } from "@/constants/surahData";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-type FilterMode = "ayah" | "words" | "by-surah" | "highlighted";
+type FilterMode = "ayah" | "words" | "by-surah";
 
 function AyahCard({
   ayah,
@@ -320,7 +320,6 @@ export default function LibraryScreen() {
   }, [savedWords]);
 
   const filteredWords = useMemo(() => {
-    if (filterMode === "highlighted") return savedWords.filter(w => w.highlighted);
     if (filterMode === "by-surah" && selectedSurahNum !== null) {
       return savedWords.filter(w => w.surahNumber === selectedSurahNum);
     }
@@ -337,7 +336,6 @@ export default function LibraryScreen() {
     { key: "ayah", label: "Saved Ayah" },
     { key: "words", label: "Words" },
     { key: "by-surah", label: "By Surah" },
-    { key: "highlighted", label: "Starred" },
   ];
 
   return (
@@ -429,15 +427,9 @@ export default function LibraryScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={s.empty}>
-              <Feather name="star" size={40} color="#D0D0D0" />
-              <Text style={s.emptyTitle}>
-                {filterMode === "highlighted" ? "No starred words" : "No words saved yet"}
-              </Text>
-              <Text style={s.emptySubtitle}>
-                {filterMode === "highlighted"
-                  ? "Star a word in your vocabulary to highlight it"
-                  : "Long-press any word while reading to save it here"}
-              </Text>
+              <Feather name="book-open" size={40} color="#D0D0D0" />
+              <Text style={s.emptyTitle}>No words saved yet</Text>
+              <Text style={s.emptySubtitle}>Long-press any word while reading to save it here</Text>
             </View>
           }
         />
@@ -467,7 +459,7 @@ export default function LibraryScreen() {
         </TouchableOpacity>
       )}
 
-      {(filterMode === "words" || filterMode === "highlighted" || filterMode === "by-surah") && savedWords.length > 0 && !showDrillDown && !showSurahList && (
+      {(filterMode === "words" || filterMode === "by-surah") && savedWords.length > 0 && !showDrillDown && !showSurahList && (
         <TouchableOpacity
           style={s.quizCta}
           onPress={() => router.push("/quiz")}

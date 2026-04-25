@@ -315,10 +315,18 @@ export default function HomeScreen() {
           </View>
         </ImageBackground>
 
-        <View style={s.onlineBar}>
-          <View style={s.onlineDot} />
-          <Text style={s.onlineText}>{onlineUsers.toLocaleString()} people reading right now</Text>
-        </View>
+        <TouchableOpacity style={s.onlineCard} activeOpacity={0.85}>
+          <View style={s.onlineCardLeft}>
+            <View style={s.onlineIconCircle}>
+              <Ionicons name="people" size={18} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text style={s.onlineCardTitle}>{onlineUsers.toLocaleString()} reading right now</Text>
+              <Text style={s.onlineCardSub}>Live — Join the community</Text>
+            </View>
+          </View>
+          <View style={s.onlineLiveDot} />
+        </TouchableOpacity>
 
         <TouchableOpacity style={s.goalCard} onPress={() => setGoalModalVisible(true)} activeOpacity={0.85}>
           {!goal ? (
@@ -347,6 +355,26 @@ export default function HomeScreen() {
               </View>
               <View style={s.progressTrack}>
                 <View style={[s.progressBar, { width: `${goalProgress * 100}%` as any }]} />
+              </View>
+
+              <View style={s.progressDecoRow}>
+                {[
+                  { icon: "moon" as const, label: "Fajr" },
+                  { icon: "sun" as const, label: "Dhuhr" },
+                  { icon: "sunset" as const, label: "Asr" },
+                  { icon: "star" as const, label: "Isha" },
+                ].map(({ icon, label }, i) => {
+                  const threshold = (i + 1) / 4;
+                  const done = goalProgress >= threshold;
+                  return (
+                    <View key={label} style={s.progressDecoItem}>
+                      <View style={[s.progressDecoIcon, done && s.progressDecoIconDone]}>
+                        <Feather name={icon} size={12} color={done ? "#FFFFFF" : "#C0C0C0"} />
+                      </View>
+                      <Text style={[s.progressDecoLabel, done && s.progressDecoLabelDone]}>{label}</Text>
+                    </View>
+                  );
+                })}
               </View>
 
               {groupedGoalAyahs.length > 0 && (
@@ -558,16 +586,22 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     resumeSurah: { fontSize: 16, color: "#FFFFFF", fontWeight: "700", fontFamily: "Inter_700Bold" },
     resumeAyah: { fontSize: 12, color: "rgba(255,255,255,0.65)", fontFamily: "Inter_400Regular", marginTop: 2 },
     resumeIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
-    onlineBar: {
+    onlineCard: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      backgroundColor: "#1A1A1A",
+      justifyContent: "space-between",
+      marginHorizontal: 16,
+      marginTop: 14,
+      marginBottom: 2,
+      backgroundColor: "#4F46E5",
+      borderRadius: 16,
+      padding: 14,
     },
-    onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#4ADE80" },
-    onlineText: { fontSize: 13, color: "#FFFFFF", fontFamily: "Inter_600SemiBold", letterSpacing: 0.2 },
+    onlineCardLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+    onlineIconCircle: { width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
+    onlineCardTitle: { fontSize: 15, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+    onlineCardSub: { fontSize: 12, color: "rgba(255,255,255,0.65)", fontFamily: "Inter_400Regular", marginTop: 2 },
+    onlineLiveDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#86EFAC" },
     goalCard: {
       margin: 16,
       marginBottom: 8,
@@ -585,8 +619,18 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     goalProgressHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 },
     goalProgressTitle: { fontSize: 15, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
     goalProgressSub: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
-    progressTrack: { height: 5, backgroundColor: "#F0F0F0", borderRadius: 3, overflow: "hidden", marginBottom: 4 },
+    progressTrack: { height: 5, backgroundColor: "#F0F0F0", borderRadius: 3, overflow: "hidden", marginBottom: 10 },
     progressBar: { height: "100%", borderRadius: 3, backgroundColor: "#1A1A1A" },
+    progressDecoRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+    progressDecoItem: { alignItems: "center", gap: 4 },
+    progressDecoIcon: {
+      width: 28, height: 28, borderRadius: 8,
+      backgroundColor: "#F0F0F0",
+      alignItems: "center", justifyContent: "center",
+    },
+    progressDecoIconDone: { backgroundColor: "#1A1A1A" },
+    progressDecoLabel: { fontSize: 10, color: "#B0B0B0", fontFamily: "Inter_400Regular" },
+    progressDecoLabelDone: { color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
     accomplishmentSection: { marginTop: 14, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12 },
     accomplishmentLabel: {
       fontSize: 10,

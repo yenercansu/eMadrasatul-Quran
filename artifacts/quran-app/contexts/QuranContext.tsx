@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SURAH_DATA } from "@/constants/surahData";
 
@@ -108,27 +108,16 @@ interface QuranContextType {
   quranPosition: number;
   advanceQuranPosition: (n: number) => void;
   getTodayGoalAyahs: () => GoalAyah[];
+  surahPositions: Record<number, number>;
+  saveSurahPosition: (surahNum: number, ayahIndex: number) => void;
 }
 
 const TOTAL_AYAHS = 6236;
 
-const CUMULATIVE_AYAHS: number[] = (() => {
-  const cum: number[] = [];
-  let total = 0;
-  for (const s of SURAH_DATA) {
-    cum.push(total);
-    total += s.ayahCount;
-  }
-  return cum;
-})();
-
 export function getAyahAtLinearIndex(index: number): { surahNumber: number; surahName: string; ayahNumber: number } {
   let pos = ((index % TOTAL_AYAHS) + TOTAL_AYAHS) % TOTAL_AYAHS;
-  for (let i = 0; i < SURAH_DATA.length; i++) {
-    const s = SURAH_DATA[i];
-    if (pos < s.ayahCount) {
-      return { surahNumber: s.number, surahName: s.englishName, ayahNumber: pos + 1 };
-    }
+  for (const s of SURAH_DATA) {
+    if (pos < s.ayahCount) return { surahNumber: s.number, surahName: s.englishName, ayahNumber: pos + 1 };
     pos -= s.ayahCount;
   }
   return { surahNumber: 1, surahName: "Al-Faatiha", ayahNumber: 1 };
@@ -163,13 +152,8 @@ const SEED_WORDS: SavedWord[] = [
   { id: "seed5", arabic: "الْمُسْتَقِيمَ", translation: "The straight (one)", surahNumber: 1, ayahNumber: 6, addedAt: Date.now() - 1000, highlighted: false },
 ];
 
-function getTodayStr(): string {
-  return new Date().toISOString().split("T")[0];
-}
-
-function isFriday(): boolean {
-  return new Date().getDay() === 5;
-}
+function getTodayStr(): string { return new Date().toISOString().split("T")[0]; }
+function isFriday(): boolean { return new Date().getDay() === 5; }
 
 const QuranContext = createContext<QuranContextType | undefined>(undefined);
 
@@ -186,6 +170,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
   const [onlineUsers] = useState(() => Math.floor(12000 + Math.random() * 4000));
   const [quranPosition, setQuranPosition] = useState(0);
+  const [surahPositions, setSurahPositions] = useState<Record<number, number>>({});
 
   useEffect(() => { loadData(); }, []);
 
@@ -195,21 +180,14 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         "quran_settings", "quran_saved_words", "quran_recent_progress",
         "quran_last_listened", "quran_goal", "quran_daily_entries",
         "quran_account", "quran_saved_surahs", "quran_highlighted_words",
-        "quran_saved_ayahs", "quran_position",
+        "quran_saved_ayahs", "quran_position", "quran_surah_positions",
       ];
       const results = await AsyncStorage.multiGet(keys);
       const map = Object.fromEntries(results.map(([k, v]) => [k, v]));
-
       if (map.quran_settings) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(map.quran_settings) });
       if (map.quran_account) setAccountSettings({ ...DEFAULT_ACCOUNT, ...JSON.parse(map.quran_account) });
-
-      if (map.quran_saved_words) {
-        setSavedWords(JSON.parse(map.quran_saved_words));
-      } else {
-        setSavedWords(SEED_WORDS);
-        await AsyncStorage.setItem("quran_saved_words", JSON.stringify(SEED_WORDS));
-      }
-
+      if (map.quran_saved_words) { setSavedWords(JSON.parse(map.quran_saved_words)); }
+      else { setSavedWords(SEED_WORDS); await AsyncStorage.setItem("quran_saved_words", JSON.stringify(SEED_WORDS)); }
       if (map.quran_saved_ayahs) setSavedAyahs(JSON.parse(map.quran_saved_ayahs));
       if (map.quran_saved_surahs) setSavedSurahs(JSON.parse(map.quran_saved_surahs));
       if (map.quran_highlighted_words) setHighlightedWords(JSON.parse(map.quran_highlighted_words));
@@ -218,6 +196,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       if (map.quran_goal) setGoalState(JSON.parse(map.quran_goal));
       if (map.quran_daily_entries) setDailyEntries(JSON.parse(map.quran_daily_entries));
       if (map.quran_position) setQuranPosition(JSON.parse(map.quran_position));
+      if (map.quran_surah_positions) setSurahPositions(JSON.parse(map.quran_surah_positions));
     } catch {}
   }
 
@@ -226,13 +205,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       const next = { ...prev, ...partial };
       if (partial.tajweedColorCoding === true) next.showTransliteration = false;
       if (partial.showTransliteration === true) next.tajweedColorCoding = false;
-      if (partial.mushafMode === true) {
-        next.showTranslation = false;
-        next.showTransliteration = false;
-        next.showTafsir = false;
-        next.tajweedColorCoding = false;
-        next.colorCoding = false;
-      }
+      if (partial.mushafMode === true) { next.showTranslation = false; next.showTransliteration = false; next.showTafsir = false; next.tajweedColorCoding = false; next.colorCoding = false; }
       if (partial.colorCoding === true) next.tajweedColorCoding = false;
       if (partial.tajweedColorCoding === true) next.colorCoding = false;
       AsyncStorage.setItem("quran_settings", JSON.stringify(next));
@@ -241,143 +214,87 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateAccountSettings = useCallback((partial: Partial<AccountSettings>) => {
-    setAccountSettings((prev) => {
-      const next = { ...prev, ...partial };
-      AsyncStorage.setItem("quran_account", JSON.stringify(next));
-      return next;
-    });
+    setAccountSettings((prev) => { const next = { ...prev, ...partial }; AsyncStorage.setItem("quran_account", JSON.stringify(next)); return next; });
   }, []);
 
   const saveWord = useCallback((word: Omit<SavedWord, "id" | "addedAt">) => {
     setSavedWords((prev) => {
       const exists = prev.find(w => w.arabic === word.arabic && w.surahNumber === word.surahNumber);
       if (exists) return prev;
-      const newWord: SavedWord = { ...word, id: Date.now().toString() + Math.random().toString(36).substr(2, 9), addedAt: Date.now() };
-      const next = [newWord, ...prev];
-      AsyncStorage.setItem("quran_saved_words", JSON.stringify(next));
-      return next;
+      const next = [{ ...word, id: Date.now().toString() + Math.random().toString(36).substr(2, 9), addedAt: Date.now() }, ...prev];
+      AsyncStorage.setItem("quran_saved_words", JSON.stringify(next)); return next;
     });
   }, []);
 
   const removeWord = useCallback((id: string) => {
-    setSavedWords((prev) => {
-      const next = prev.filter(w => w.id !== id);
-      AsyncStorage.setItem("quran_saved_words", JSON.stringify(next));
-      return next;
-    });
+    setSavedWords((prev) => { const next = prev.filter(w => w.id !== id); AsyncStorage.setItem("quran_saved_words", JSON.stringify(next)); return next; });
   }, []);
 
   const toggleHighlight = useCallback((id: string) => {
-    setSavedWords((prev) => {
-      const next = prev.map(w => w.id === id ? { ...w, highlighted: !w.highlighted } : w);
-      AsyncStorage.setItem("quran_saved_words", JSON.stringify(next));
-      return next;
-    });
+    setSavedWords((prev) => { const next = prev.map(w => w.id === id ? { ...w, highlighted: !w.highlighted } : w); AsyncStorage.setItem("quran_saved_words", JSON.stringify(next)); return next; });
   }, []);
 
   const saveAyah = useCallback((ayah: Omit<SavedAyah, "id" | "addedAt">) => {
     setSavedAyahs((prev) => {
       const exists = prev.find(a => a.surahNumber === ayah.surahNumber && a.ayahNumber === ayah.ayahNumber);
       if (exists) return prev;
-      const newAyah: SavedAyah = { ...ayah, id: Date.now().toString() + Math.random().toString(36).substr(2, 9), addedAt: Date.now() };
-      const next = [newAyah, ...prev];
-      AsyncStorage.setItem("quran_saved_ayahs", JSON.stringify(next));
-      return next;
+      const next = [{ ...ayah, id: Date.now().toString() + Math.random().toString(36).substr(2, 9), addedAt: Date.now() }, ...prev];
+      AsyncStorage.setItem("quran_saved_ayahs", JSON.stringify(next)); return next;
     });
   }, []);
 
   const removeAyah = useCallback((id: string) => {
-    setSavedAyahs((prev) => {
-      const next = prev.filter(a => a.id !== id);
-      AsyncStorage.setItem("quran_saved_ayahs", JSON.stringify(next));
-      return next;
-    });
+    setSavedAyahs((prev) => { const next = prev.filter(a => a.id !== id); AsyncStorage.setItem("quran_saved_ayahs", JSON.stringify(next)); return next; });
   }, []);
 
-  const isAyahSaved = useCallback((surahNumber: number, ayahNumber: number) => {
-    return savedAyahs.some(a => a.surahNumber === surahNumber && a.ayahNumber === ayahNumber);
-  }, [savedAyahs]);
-
-  const saveSurah = useCallback((num: number) => {
-    setSavedSurahs((prev) => {
-      if (prev.includes(num)) return prev;
-      const next = [num, ...prev];
-      AsyncStorage.setItem("quran_saved_surahs", JSON.stringify(next));
-      return next;
-    });
-  }, []);
-
-  const removeSavedSurah = useCallback((num: number) => {
-    setSavedSurahs((prev) => {
-      const next = prev.filter(n => n !== num);
-      AsyncStorage.setItem("quran_saved_surahs", JSON.stringify(next));
-      return next;
-    });
-  }, []);
-
+  const isAyahSaved = useCallback((surahNumber: number, ayahNumber: number) => savedAyahs.some(a => a.surahNumber === surahNumber && a.ayahNumber === ayahNumber), [savedAyahs]);
+  const saveSurah = useCallback((num: number) => { setSavedSurahs((prev) => { if (prev.includes(num)) return prev; const next = [num, ...prev]; AsyncStorage.setItem("quran_saved_surahs", JSON.stringify(next)); return next; }); }, []);
+  const removeSavedSurah = useCallback((num: number) => { setSavedSurahs((prev) => { const next = prev.filter(n => n !== num); AsyncStorage.setItem("quran_saved_surahs", JSON.stringify(next)); return next; }); }, []);
   const isSurahSaved = useCallback((num: number) => savedSurahs.includes(num), [savedSurahs]);
 
   const highlightWord = useCallback((arabic: string, surahNumber: number, ayahNumber: number) => {
     setHighlightedWords((prev) => {
-      const exists = prev.find(w => w.arabic === arabic && w.surahNumber === surahNumber && w.ayahNumber === ayahNumber);
-      if (exists) return prev;
+      if (prev.find(w => w.arabic === arabic && w.surahNumber === surahNumber && w.ayahNumber === ayahNumber)) return prev;
       const next = [{ arabic, surahNumber, ayahNumber, addedAt: Date.now() }, ...prev];
-      AsyncStorage.setItem("quran_highlighted_words", JSON.stringify(next));
-      return next;
+      AsyncStorage.setItem("quran_highlighted_words", JSON.stringify(next)); return next;
     });
   }, []);
 
   const unhighlightWord = useCallback((arabic: string, surahNumber: number, ayahNumber: number) => {
-    setHighlightedWords((prev) => {
-      const next = prev.filter(w => !(w.arabic === arabic && w.surahNumber === surahNumber && w.ayahNumber === ayahNumber));
-      AsyncStorage.setItem("quran_highlighted_words", JSON.stringify(next));
-      return next;
-    });
+    setHighlightedWords((prev) => { const next = prev.filter(w => !(w.arabic === arabic && w.surahNumber === surahNumber && w.ayahNumber === ayahNumber)); AsyncStorage.setItem("quran_highlighted_words", JSON.stringify(next)); return next; });
   }, []);
 
-  const isWordHighlighted = useCallback((arabic: string, surahNumber: number, ayahNumber: number) => {
-    return highlightedWords.some(w => w.arabic === arabic && w.surahNumber === surahNumber && w.ayahNumber === ayahNumber);
-  }, [highlightedWords]);
+  const isWordHighlighted = useCallback((arabic: string, surahNumber: number, ayahNumber: number) => highlightedWords.some(w => w.arabic === arabic && w.surahNumber === surahNumber && w.ayahNumber === ayahNumber), [highlightedWords]);
 
   const saveProgress = useCallback((progress: Omit<Progress, "timestamp">) => {
     const full: Progress = { ...progress, timestamp: Date.now() };
     setLastListened(full);
-    setRecentProgress((prev) => {
-      const filtered = prev.filter(p => p.surahNumber !== progress.surahNumber);
-      const next = [full, ...filtered].slice(0, 10);
-      AsyncStorage.setItem("quran_recent_progress", JSON.stringify(next));
-      return next;
-    });
+    setRecentProgress((prev) => { const filtered = prev.filter(p => p.surahNumber !== progress.surahNumber); const next = [full, ...filtered].slice(0, 10); AsyncStorage.setItem("quran_recent_progress", JSON.stringify(next)); return next; });
     AsyncStorage.setItem("quran_last_listened", JSON.stringify(full));
   }, []);
 
   const setGoal = useCallback((newGoal: Goal | null) => {
     setGoalState(newGoal);
-    if (newGoal) {
-      AsyncStorage.setItem("quran_goal", JSON.stringify(newGoal));
-    } else {
-      AsyncStorage.removeItem("quran_goal");
-    }
+    if (newGoal) { AsyncStorage.setItem("quran_goal", JSON.stringify(newGoal)); }
+    else { AsyncStorage.removeItem("quran_goal"); }
   }, []);
 
   const advanceQuranPosition = useCallback((n: number) => {
-    setQuranPosition((prev) => {
-      const next = (prev + n) % TOTAL_AYAHS;
-      AsyncStorage.setItem("quran_position", JSON.stringify(next));
-      return next;
-    });
+    setQuranPosition((prev) => { const next = (prev + n) % TOTAL_AYAHS; AsyncStorage.setItem("quran_position", JSON.stringify(next)); return next; });
   }, []);
 
   const getTodayGoalAyahs = useCallback((): GoalAyah[] => {
     if (!goal) return [];
-    const ayahs: GoalAyah[] = [];
-    for (let i = 0; i < goal.ayahsPerDay; i++) {
-      const pos = (quranPosition + i) % TOTAL_AYAHS;
-      const entry = getAyahAtLinearIndex(pos);
-      ayahs.push(entry);
-    }
-    return ayahs;
+    return Array.from({ length: goal.ayahsPerDay }, (_, i) => getAyahAtLinearIndex((quranPosition + i) % TOTAL_AYAHS));
   }, [goal, quranPosition]);
+
+  const saveSurahPosition = useCallback((surahNum: number, ayahIndex: number) => {
+    setSurahPositions((prev) => {
+      const next = { ...prev, [surahNum]: ayahIndex };
+      AsyncStorage.setItem("quran_surah_positions", JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   const recordAyahRead = useCallback((surahNumber: number) => {
     const today = getTodayStr();
@@ -385,16 +302,9 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     setDailyEntries((prev) => {
       const idx = prev.findIndex(e => e.date === today);
       let next: DailyEntry[];
-      if (idx >= 0) {
-        next = prev.map((e, i) => i === idx
-          ? { ...e, ayahsRead: e.ayahsRead + 1, kahfCompleted: e.kahfCompleted || isKahf }
-          : e
-        );
-      } else {
-        next = [{ date: today, ayahsRead: 1, kahfCompleted: isKahf }, ...prev].slice(0, 365);
-      }
-      AsyncStorage.setItem("quran_daily_entries", JSON.stringify(next));
-      return next;
+      if (idx >= 0) { next = prev.map((e, i) => i === idx ? { ...e, ayahsRead: e.ayahsRead + 1, kahfCompleted: e.kahfCompleted || isKahf } : e); }
+      else { next = [{ date: today, ayahsRead: 1, kahfCompleted: isKahf }, ...prev].slice(0, 365); }
+      AsyncStorage.setItem("quran_daily_entries", JSON.stringify(next)); return next;
     });
   }, []);
 
@@ -413,6 +323,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       dailyEntries, recordAyahRead, todayEntry,
       onlineUsers,
       quranPosition, advanceQuranPosition, getTodayGoalAyahs,
+      surahPositions, saveSurahPosition,
     }}>
       {children}
     </QuranContext.Provider>
