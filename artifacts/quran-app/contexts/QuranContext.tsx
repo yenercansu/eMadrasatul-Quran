@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Appearance } from "react-native";
 import { SURAH_DATA } from "@/constants/surahData";
 
 export interface SavedWord {
@@ -142,10 +143,19 @@ const DEFAULT_ACCOUNT: AccountSettings = {
   name: "",
   email: "",
   fontSize: 28,
-  theme: "auto",
+  theme: "light",
   dailyNotifications: false,
   notificationTime: "08:00",
 };
+
+function applyTheme(theme: AccountSettings["theme"]) {
+  try {
+    if (typeof Appearance.setColorScheme !== "function") return;
+    if (theme === "light") Appearance.setColorScheme("light");
+    else if (theme === "dark") Appearance.setColorScheme("dark");
+    else Appearance.setColorScheme(null);
+  } catch {}
+}
 
 const SEED_WORDS: SavedWord[] = [
   { id: "seed1", arabic: "الرَّحْمَٰنِ", translation: "The Most Gracious", surahNumber: 1, ayahNumber: 1, addedAt: Date.now() - 5000, highlighted: false },
@@ -190,7 +200,14 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       const results = await AsyncStorage.multiGet(keys);
       const map = Object.fromEntries(results.map(([k, v]) => [k, v]));
       if (map.quran_settings) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(map.quran_settings) });
-      if (map.quran_account) setAccountSettings({ ...DEFAULT_ACCOUNT, ...JSON.parse(map.quran_account) });
+      if (map.quran_account) {
+        const loaded = { ...DEFAULT_ACCOUNT, ...JSON.parse(map.quran_account) };
+        if (loaded.theme === "auto") loaded.theme = "light";
+        setAccountSettings(loaded);
+        applyTheme(loaded.theme);
+      } else {
+        applyTheme(DEFAULT_ACCOUNT.theme);
+      }
       if (map.quran_saved_words) { setSavedWords(JSON.parse(map.quran_saved_words)); }
       else { setSavedWords(SEED_WORDS); await AsyncStorage.setItem("quran_saved_words", JSON.stringify(SEED_WORDS)); }
       if (map.quran_saved_ayahs) setSavedAyahs(JSON.parse(map.quran_saved_ayahs));
@@ -220,7 +237,12 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateAccountSettings = useCallback((partial: Partial<AccountSettings>) => {
-    setAccountSettings((prev) => { const next = { ...prev, ...partial }; AsyncStorage.setItem("quran_account", JSON.stringify(next)); return next; });
+    setAccountSettings((prev) => {
+      const next = { ...prev, ...partial };
+      AsyncStorage.setItem("quran_account", JSON.stringify(next));
+      if (partial.theme !== undefined) applyTheme(next.theme);
+      return next;
+    });
   }, []);
 
   const saveWord = useCallback((word: Omit<SavedWord, "id" | "addedAt">) => {

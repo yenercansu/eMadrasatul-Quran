@@ -51,6 +51,10 @@ function FloatingTabBar(props: any) {
   const EDGE_GAP = Math.max(insets.bottom + 12, 24);
   const BLUR_HEIGHT = EDGE_GAP + 80;
 
+  const gradientFade = isDark
+    ? ["rgba(14,14,14,0)", "rgba(14,14,14,0.88)", "rgba(14,14,14,1)"] as const
+    : ["rgba(248,244,239,0)", "rgba(248,244,239,0.88)", "rgba(248,244,239,1)"] as const;
+
   const visibleRoutes = state.routes.filter((r: any) =>
     TAB_DEFS.find(t => t.name === r.name)
   );
@@ -58,12 +62,12 @@ function FloatingTabBar(props: any) {
   return (
     <>
       <LinearGradient
-        colors={["rgba(250,250,250,0)", "rgba(250,250,250,0.85)", "rgba(250,250,250,1)"]}
+        colors={gradientFade}
         style={[styles.blurStrip, { height: BLUR_HEIGHT }]}
         pointerEvents="none"
       />
       <View style={[styles.floatWrapper, { bottom: EDGE_GAP }]} pointerEvents="box-none">
-        <View style={[styles.bar, { marginHorizontal: EDGE_GAP }]}>
+        <View style={[styles.bar, { marginHorizontal: EDGE_GAP, borderColor: colors.border }]}>
           {isIOS && (
             <BlurView
               intensity={90}
@@ -72,7 +76,7 @@ function FloatingTabBar(props: any) {
             />
           )}
           {!isIOS && (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: "#F2F2F2" }]} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.card }]} />
           )}
           {visibleRoutes.map((route: any) => {
             const tabDef = TAB_DEFS.find(t => t.name === route.name);
@@ -98,11 +102,14 @@ function FloatingTabBar(props: any) {
                 onPress={onPress}
                 activeOpacity={0.8}
               >
-                <View style={[styles.iconPill, isFocused && styles.iconPillActive]}>
+                <View style={[
+                  styles.iconPill,
+                  isFocused && { backgroundColor: colors.primary },
+                ]}>
                   <Feather
                     name={tabDef.icon}
                     size={22}
-                    color={isFocused ? "#FFFFFF" : "#9A9A9A"}
+                    color={isFocused ? colors.primaryForeground : colors.mutedForeground}
                   />
                 </View>
               </TouchableOpacity>
@@ -140,7 +147,6 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 12,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
   },
   tabItem: {
     flex: 1,
@@ -153,9 +159,6 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-  },
-  iconPillActive: {
-    backgroundColor: "#1A1A1A",
   },
 });
 
