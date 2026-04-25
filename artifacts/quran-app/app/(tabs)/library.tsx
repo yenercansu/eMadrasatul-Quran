@@ -384,6 +384,23 @@ export default function LibraryScreen() {
         )}
       </View>
 
+      <TouchableOpacity
+        style={s.memQuizCard}
+        onPress={() => router.push("/memorization-quiz")}
+        activeOpacity={0.85}
+      >
+        <View style={s.memQuizLeft}>
+          <View style={s.memQuizIcon}>
+            <Ionicons name="bulb" size={20} color="#FFFFFF" />
+          </View>
+          <View>
+            <Text style={s.memQuizTitle}>Memorization Quiz</Text>
+            <Text style={s.memQuizSub}>Follow-up ayah · Fill in the blank</Text>
+          </View>
+        </View>
+        <Feather name="chevron-right" size={18} color="rgba(255,255,255,0.7)" />
+      </TouchableOpacity>
+
       {filterMode === "ayah" ? (
         <AyahCardDeck ayahs={savedAyahs} onRemove={removeAyah} />
       ) : showSurahList ? (
@@ -557,4 +574,17 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       elevation: 6,
     },
     quizCtaText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+    memQuizCard: {
+      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+      backgroundColor: "#1A1A1A", borderRadius: 18, paddingHorizontal: 16, paddingVertical: 14,
+      marginHorizontal: 16, marginTop: 12, marginBottom: 4,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.13, shadowRadius: 12, elevation: 5,
+    },
+    memQuizLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+    memQuizIcon: {
+      width: 40, height: 40, borderRadius: 12,
+      backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center",
+    },
+    memQuizTitle: { fontSize: 15, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+    memQuizSub: { fontSize: 12, color: "rgba(255,255,255,0.55)", fontFamily: "Inter_400Regular", marginTop: 2 },
   });

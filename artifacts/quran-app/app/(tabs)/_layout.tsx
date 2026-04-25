@@ -1,4 +1,5 @@
 import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
@@ -47,95 +48,109 @@ function FloatingTabBar(props: any) {
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
 
+  const EDGE_GAP = Math.max(insets.bottom + 12, 24);
+  const BLUR_HEIGHT = EDGE_GAP + 80;
+
   const visibleRoutes = state.routes.filter((r: any) =>
     TAB_DEFS.find(t => t.name === r.name)
   );
 
   return (
-    <View style={[tabStyles.floatWrapper, { bottom: insets.bottom + 12 }]}>
-      <View style={tabStyles.bar}>
-        {isIOS && (
-          <BlurView
-            intensity={90}
-            tint={isDark ? "dark" : "light"}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
-        {!isIOS && (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: "#F5F5F5" }]} />
-        )}
-        {visibleRoutes.map((route: any) => {
-          const tabDef = TAB_DEFS.find(t => t.name === route.name);
-          if (!tabDef) return null;
-          const routeIndex = state.routes.findIndex((r: any) => r.name === route.name);
-          const isFocused = state.index === routeIndex;
+    <>
+      <LinearGradient
+        colors={["rgba(250,250,250,0)", "rgba(250,250,250,0.85)", "rgba(250,250,250,1)"]}
+        style={[styles.blurStrip, { height: BLUR_HEIGHT }]}
+        pointerEvents="none"
+      />
+      <View style={[styles.floatWrapper, { bottom: EDGE_GAP }]} pointerEvents="box-none">
+        <View style={[styles.bar, { marginHorizontal: EDGE_GAP }]}>
+          {isIOS && (
+            <BlurView
+              intensity={90}
+              tint={isDark ? "dark" : "light"}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          {!isIOS && (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: "#F2F2F2" }]} />
+          )}
+          {visibleRoutes.map((route: any) => {
+            const tabDef = TAB_DEFS.find(t => t.name === route.name);
+            if (!tabDef) return null;
+            const routeIndex = state.routes.findIndex((r: any) => r.name === route.name);
+            const isFocused = state.index === routeIndex;
 
-          const onPress = () => {
-            const event = navigation.emit({
-              type: "tabPress",
-              target: route.key,
-              canPreventDefault: true,
-            });
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
-          };
+            const onPress = () => {
+              const event = navigation.emit({
+                type: "tabPress",
+                target: route.key,
+                canPreventDefault: true,
+              });
+              if (!isFocused && !event.defaultPrevented) {
+                navigation.navigate(route.name);
+              }
+            };
 
-          return (
-            <TouchableOpacity
-              key={route.key}
-              style={tabStyles.tabItem}
-              onPress={onPress}
-              activeOpacity={0.8}
-            >
-              <View style={[tabStyles.iconPill, isFocused && tabStyles.iconPillActive]}>
-                <Feather
-                  name={tabDef.icon}
-                  size={20}
-                  color={isFocused ? "#FFFFFF" : "#9A9A9A"}
-                />
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+            return (
+              <TouchableOpacity
+                key={route.key}
+                style={styles.tabItem}
+                onPress={onPress}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.iconPill, isFocused && styles.iconPillActive]}>
+                  <Feather
+                    name={tabDef.icon}
+                    size={22}
+                    color={isFocused ? "#FFFFFF" : "#9A9A9A"}
+                  />
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
-    </View>
+    </>
   );
 }
 
-const tabStyles = StyleSheet.create({
+const styles = StyleSheet.create({
+  blurStrip: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
   floatWrapper: {
     position: "absolute",
     left: 0,
     right: 0,
-    alignItems: "center",
-    pointerEvents: "box-none",
   },
   bar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-around",
     borderRadius: 40,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
     gap: 4,
     overflow: "hidden",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    elevation: 12,
     borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderColor: "#E0E0E0",
   },
   tabItem: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
   iconPill: {
-    width: 52,
-    height: 36,
-    borderRadius: 18,
+    width: 60,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
   },

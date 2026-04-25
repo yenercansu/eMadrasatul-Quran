@@ -11,6 +11,7 @@ import {
   Modal,
   TouchableWithoutFeedback,
   ImageBackground,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
@@ -315,7 +316,7 @@ export default function HomeScreen() {
           </View>
         </ImageBackground>
 
-        <TouchableOpacity style={s.onlineCard} activeOpacity={0.85}>
+        <TouchableOpacity style={s.onlineCard} activeOpacity={0.85} onPress={() => Linking.openURL("https://www.youtube.com/@QuranWeekly/streams")}>
           <View style={s.onlineCardLeft}>
             <View style={s.onlineIconCircle}>
               <Ionicons name="people" size={18} color="#FFFFFF" />
@@ -412,7 +413,7 @@ export default function HomeScreen() {
 
         <TouchableOpacity
           style={s.quizCtaCard}
-          onPress={() => router.push("/(tabs)/library")}
+          onPress={() => router.push("/memorization-quiz")}
           activeOpacity={0.85}
         >
           <View style={s.quizCtaLeft}>
@@ -539,13 +540,14 @@ export default function HomeScreen() {
 const styles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    hero: { minHeight: 220 },
-    heroImage: { opacity: 0.8 },
+    hero: { minHeight: 300 },
+    heroImage: { opacity: 0.85 },
     heroOverlay: {
       flex: 1,
-      backgroundColor: "rgba(0,0,0,0.55)",
+      backgroundColor: "rgba(0,0,0,0.48)",
       paddingHorizontal: 16,
-      paddingBottom: 20,
+      paddingBottom: 28,
+      justifyContent: "space-between",
     },
     heroTopRow: {
       flexDirection: "row",
