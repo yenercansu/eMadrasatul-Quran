@@ -53,13 +53,13 @@ export function ReaderFloatingBar({
   const colors = useColors();
   const s = styles(colors);
   const insets = useSafeAreaInsets();
-  const EDGE_GAP = Math.max(insets.bottom + 12, 20);
-  const TAB_BAR_HEIGHT = 54;
+  const SIDE_GAP = 16;
+  const BOTTOM_GAP = insets.bottom + 12;
   const wrapperStyle = {
     position: "absolute" as const,
-    bottom: EDGE_GAP + TAB_BAR_HEIGHT + EDGE_GAP,
-    left: EDGE_GAP,
-    right: EDGE_GAP,
+    bottom: BOTTOM_GAP,
+    left: SIDE_GAP,
+    right: SIDE_GAP,
     gap: 8,
   };
   const [activePopup, setActivePopup] = useState<Popup>(null);
