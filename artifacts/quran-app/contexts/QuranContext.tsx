@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SURAH_DATA } from "@/constants/surahData";
 
 export interface SavedWord {
   id: string;
@@ -45,6 +46,12 @@ export interface DailyEntry {
 export interface Goal {
   ayahsPerDay: number;
   startDate: string;
+}
+
+export interface GoalAyah {
+  surahNumber: number;
+  surahName: string;
+  ayahNumber: number;
 }
 
 export interface AccountSettings {
@@ -98,6 +105,33 @@ interface QuranContextType {
   recordAyahRead: (surahNumber: number) => void;
   todayEntry: DailyEntry | null;
   onlineUsers: number;
+  quranPosition: number;
+  advanceQuranPosition: (n: number) => void;
+  getTodayGoalAyahs: () => GoalAyah[];
+}
+
+const TOTAL_AYAHS = 6236;
+
+const CUMULATIVE_AYAHS: number[] = (() => {
+  const cum: number[] = [];
+  let total = 0;
+  for (const s of SURAH_DATA) {
+    cum.push(total);
+    total += s.ayahCount;
+  }
+  return cum;
+})();
+
+export function getAyahAtLinearIndex(index: number): { surahNumber: number; surahName: string; ayahNumber: number } {
+  let pos = ((index % TOTAL_AYAHS) + TOTAL_AYAHS) % TOTAL_AYAHS;
+  for (let i = 0; i < SURAH_DATA.length; i++) {
+    const s = SURAH_DATA[i];
+    if (pos < s.ayahCount) {
+      return { surahNumber: s.number, surahName: s.englishName, ayahNumber: pos + 1 };
+    }
+    pos -= s.ayahCount;
+  }
+  return { surahNumber: 1, surahName: "Al-Faatiha", ayahNumber: 1 };
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -151,6 +185,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const [goal, setGoalState] = useState<Goal | null>(null);
   const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
   const [onlineUsers] = useState(() => Math.floor(12000 + Math.random() * 4000));
+  const [quranPosition, setQuranPosition] = useState(0);
 
   useEffect(() => { loadData(); }, []);
 
@@ -160,7 +195,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         "quran_settings", "quran_saved_words", "quran_recent_progress",
         "quran_last_listened", "quran_goal", "quran_daily_entries",
         "quran_account", "quran_saved_surahs", "quran_highlighted_words",
-        "quran_saved_ayahs",
+        "quran_saved_ayahs", "quran_position",
       ];
       const results = await AsyncStorage.multiGet(keys);
       const map = Object.fromEntries(results.map(([k, v]) => [k, v]));
@@ -182,6 +217,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       if (map.quran_last_listened) setLastListened(JSON.parse(map.quran_last_listened));
       if (map.quran_goal) setGoalState(JSON.parse(map.quran_goal));
       if (map.quran_daily_entries) setDailyEntries(JSON.parse(map.quran_daily_entries));
+      if (map.quran_position) setQuranPosition(JSON.parse(map.quran_position));
     } catch {}
   }
 
@@ -216,11 +252,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     setSavedWords((prev) => {
       const exists = prev.find(w => w.arabic === word.arabic && w.surahNumber === word.surahNumber);
       if (exists) return prev;
-      const newWord: SavedWord = {
-        ...word,
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        addedAt: Date.now(),
-      };
+      const newWord: SavedWord = { ...word, id: Date.now().toString() + Math.random().toString(36).substr(2, 9), addedAt: Date.now() };
       const next = [newWord, ...prev];
       AsyncStorage.setItem("quran_saved_words", JSON.stringify(next));
       return next;
@@ -247,11 +279,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     setSavedAyahs((prev) => {
       const exists = prev.find(a => a.surahNumber === ayah.surahNumber && a.ayahNumber === ayah.ayahNumber);
       if (exists) return prev;
-      const newAyah: SavedAyah = {
-        ...ayah,
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        addedAt: Date.now(),
-      };
+      const newAyah: SavedAyah = { ...ayah, id: Date.now().toString() + Math.random().toString(36).substr(2, 9), addedAt: Date.now() };
       const next = [newAyah, ...prev];
       AsyncStorage.setItem("quran_saved_ayahs", JSON.stringify(next));
       return next;
@@ -332,6 +360,25 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const advanceQuranPosition = useCallback((n: number) => {
+    setQuranPosition((prev) => {
+      const next = (prev + n) % TOTAL_AYAHS;
+      AsyncStorage.setItem("quran_position", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const getTodayGoalAyahs = useCallback((): GoalAyah[] => {
+    if (!goal) return [];
+    const ayahs: GoalAyah[] = [];
+    for (let i = 0; i < goal.ayahsPerDay; i++) {
+      const pos = (quranPosition + i) % TOTAL_AYAHS;
+      const entry = getAyahAtLinearIndex(pos);
+      ayahs.push(entry);
+    }
+    return ayahs;
+  }, [goal, quranPosition]);
+
   const recordAyahRead = useCallback((surahNumber: number) => {
     const today = getTodayStr();
     const isKahf = surahNumber === 18 && isFriday();
@@ -365,6 +412,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       goal, setGoal,
       dailyEntries, recordAyahRead, todayEntry,
       onlineUsers,
+      quranPosition, advanceQuranPosition, getTodayGoalAyahs,
     }}>
       {children}
     </QuranContext.Provider>

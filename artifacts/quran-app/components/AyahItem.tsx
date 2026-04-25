@@ -41,6 +41,12 @@ interface Props {
 
 const REPEAT_OPTIONS = [1, 3, 5, 10];
 
+const WORD_COLORS = [
+  "#E8507A", "#F2994A", "#27AE60", "#2F80ED",
+  "#9B51E0", "#EB5757", "#F2C94C", "#219653",
+  "#BB6BD9", "#2D9CDB",
+];
+
 export function AyahItem({
   arabic,
   translation,
@@ -99,9 +105,7 @@ export function AyahItem({
   const arabicWords = arabic.text.split(" ").filter(Boolean);
 
   const renderRightActions = (progress: Animated.AnimatedInterpolation<number>) => {
-    const trans = progress.interpolate({
-      inputRange: [0, 1], outputRange: [80, 0],
-    });
+    const trans = progress.interpolate({ inputRange: [0, 1], outputRange: [80, 0] });
     return (
       <Animated.View style={[s.rightAction, { transform: [{ translateX: trans }] }]}>
         <TouchableOpacity style={s.saveActionInner} onPress={handleSave} activeOpacity={0.85}>
@@ -112,10 +116,10 @@ export function AyahItem({
     );
   };
 
-  const renderLeftActions = (progress: Animated.AnimatedInterpolation<number>) => {
+  const renderLeftActions = () => {
     return (
       <View style={s.leftActions}>
-        <Text style={s.repeatLabel}>Repeat this ayah:</Text>
+        <Text style={s.repeatLabel}>Repeat:</Text>
         <View style={s.repeatRow}>
           {REPEAT_OPTIONS.map((count) => {
             const active = ayahRepeat === count;
@@ -126,9 +130,7 @@ export function AyahItem({
                 onPress={() => handleRepeat(count)}
                 activeOpacity={0.8}
               >
-                <Text style={[s.repeatChipText, active && s.repeatChipTextActive]}>
-                  {count}x
-                </Text>
+                <Text style={[s.repeatChipText, active && s.repeatChipTextActive]}>{count}x</Text>
               </TouchableOpacity>
             );
           })}
@@ -149,22 +151,13 @@ export function AyahItem({
       friction={2}
     >
       <View style={[s.container, isActive && s.activeContainer, savePulse && s.savedPulse]}>
+        <View style={s.swipeHintLeft} />
+        <View style={s.swipeHintRight} />
+
         <View style={s.header}>
           <View style={s.ayahBadge}>
             <Text style={s.ayahNumber}>{arabic.numberInSurah}</Text>
           </View>
-
-          <TouchableOpacity
-            style={s.headerPill}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setSelectRangeVisible(true);
-            }}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="repeat" size={13} color={colors.primary} />
-            <Text style={s.headerPillText}>Range</Text>
-          </TouchableOpacity>
 
           {ayahRepeat && ayahRepeat > 1 ? (
             <View style={s.repeatBadge}>
@@ -182,9 +175,6 @@ export function AyahItem({
                 <Ionicons name="play" size={16} color={colors.mutedForeground} />
               )}
             </TouchableOpacity>
-            <TouchableOpacity style={s.actionBtn} activeOpacity={0.7} onPress={handleSave}>
-              <Feather name="bookmark" size={15} color={colors.mutedForeground} />
-            </TouchableOpacity>
             <TouchableOpacity style={s.actionBtn} activeOpacity={0.7}>
               <Feather name="share-2" size={15} color={colors.mutedForeground} />
             </TouchableOpacity>
@@ -196,6 +186,7 @@ export function AyahItem({
             <View style={s.arabicWordsWrap}>
               {arabicWords.map((word, idx) => {
                 const highlighted = isWordHighlighted(word, surahNumber, arabic.numberInSurah);
+                const wordColor = settings.colorCoding ? WORD_COLORS[idx % WORD_COLORS.length] : colors.foreground;
                 return (
                   <TouchableOpacity
                     key={`${idx}-${word}`}
@@ -206,7 +197,7 @@ export function AyahItem({
                     delayLongPress={400}
                     activeOpacity={0.7}
                   >
-                    <Text style={[s.arabicWord, highlighted && s.highlightedWord]}>
+                    <Text style={[s.arabicWord, { color: wordColor }, highlighted && s.highlightedWord]}>
                       {word}
                     </Text>
                   </TouchableOpacity>
@@ -260,6 +251,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
       backgroundColor: colors.card,
+      position: "relative",
     },
     activeContainer: {
       backgroundColor: colors.secondary,
@@ -268,6 +260,26 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     savedPulse: {
       backgroundColor: colors.secondary,
+    },
+    swipeHintLeft: {
+      position: "absolute",
+      left: 0,
+      top: 12,
+      bottom: 12,
+      width: 2,
+      borderRadius: 1,
+      backgroundColor: "#B3D5F5",
+      opacity: 0.7,
+    },
+    swipeHintRight: {
+      position: "absolute",
+      right: 0,
+      top: 12,
+      bottom: 12,
+      width: 2,
+      borderRadius: 1,
+      backgroundColor: "#B3D5F5",
+      opacity: 0.7,
     },
     header: {
       flexDirection: "row",
@@ -289,23 +301,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontSize: 12,
       color: colors.primary,
       fontWeight: "700",
-      fontFamily: "Inter_700Bold",
-    },
-    headerPill: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 5,
-      backgroundColor: colors.secondary,
-      borderWidth: 1.5,
-      borderColor: colors.border,
-      borderRadius: 20,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-    },
-    headerPillText: {
-      fontSize: 12,
-      fontWeight: "700",
-      color: colors.mutedForeground,
       fontFamily: "Inter_700Bold",
     },
     repeatBadge: {
@@ -336,13 +331,11 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     arabicWord: {
       fontSize: 28,
       lineHeight: 44,
-      color: colors.foreground,
       fontFamily: Platform.OS === "ios" ? "System" : undefined,
       writingDirection: "rtl",
     },
     highlightedWord: {
       backgroundColor: "#1A1A1A22",
-      color: "#1A1A1A",
       borderRadius: 4,
       paddingHorizontal: 2,
     },
@@ -438,15 +431,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderWidth: 1.5,
       borderColor: colors.border,
     },
-    repeatChipActive: {
-      backgroundColor: "#1A1A1A",
-      borderColor: "#1A1A1A",
-    },
-    repeatChipText: {
-      fontSize: 13,
-      fontWeight: "700",
-      color: "#6B6B6B",
-      fontFamily: "Inter_700Bold",
-    },
+    repeatChipActive: { backgroundColor: "#1A1A1A", borderColor: "#1A1A1A" },
+    repeatChipText: { fontSize: 13, fontWeight: "700", color: "#6B6B6B", fontFamily: "Inter_700Bold" },
     repeatChipTextActive: { color: "#FFFFFF" },
   });

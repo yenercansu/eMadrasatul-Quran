@@ -594,9 +594,11 @@ export default function SurahScreen() {
         mushafMode={settings.mushafMode}
         selectedTafsirs={settings.selectedTafsirs ?? ["en.maarifulquran"]}
         tafsirEditions={TAFSIR_EDITIONS}
+        colorCoding={settings.colorCoding}
         onToggleTranslation={() => updateSettings({ showTranslation: !settings.showTranslation })}
         onToggleTransliteration={() => updateSettings({ showTransliteration: !settings.showTransliteration })}
         onToggleTafsir={() => updateSettings({ showTafsir: !settings.showTafsir })}
+        onToggleColorCoding={() => updateSettings({ colorCoding: !settings.colorCoding })}
         onToggleTafsirEdition={(id) => {
           const current = settings.selectedTafsirs ?? ["en.maarifulquran"];
           if (current.includes(id)) {
