@@ -283,6 +283,14 @@ export default function SurahScreen() {
   }, [settings.repeatCount]);
 
   const listRef = useRef<FlatList<ApiAyah>>(null);
+  const mushafScrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    setTimeout(() => {
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+      mushafScrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, 80);
+  }, [currentPage]);
 
   useEffect(() => {
     loadData();
@@ -465,13 +473,13 @@ export default function SurahScreen() {
 
       <View style={s.modeNavBar}>
         <TouchableOpacity
-          style={[s.pageCornerBtn, s.pageCornerBtnLeft, isFirstPage && s.pageCornerBtnDisabled]}
-          onPress={goToPrevPage}
-          disabled={isFirstPage}
+          style={[s.pageCornerBtn, s.pageCornerBtnLeft, isLastPage && s.pageCornerBtnDisabled]}
+          onPress={goToNextPage}
+          disabled={isLastPage}
           activeOpacity={0.75}
         >
-          <Feather name="chevron-left" size={16} color={isFirstPage ? "#C0C0C0" : "#1A1A1A"} />
-          <Text style={[s.pageCornerText, isFirstPage && s.pageCornerTextDisabled]}>Prev</Text>
+          <Feather name="chevron-left" size={16} color={isLastPage ? "#C0C0C0" : "#1A1A1A"} />
+          <Text style={[s.pageCornerText, isLastPage && s.pageCornerTextDisabled]}>Next</Text>
         </TouchableOpacity>
 
         <View style={s.modeSwitcher}>
@@ -492,13 +500,13 @@ export default function SurahScreen() {
         </View>
 
         <TouchableOpacity
-          style={[s.pageCornerBtn, s.pageCornerBtnRight, isLastPage && s.pageCornerBtnDisabled]}
-          onPress={goToNextPage}
-          disabled={isLastPage}
+          style={[s.pageCornerBtn, s.pageCornerBtnRight, isFirstPage && s.pageCornerBtnDisabled]}
+          onPress={goToPrevPage}
+          disabled={isFirstPage}
           activeOpacity={0.75}
         >
-          <Text style={[s.pageCornerText, isLastPage && s.pageCornerTextDisabled]}>Next</Text>
-          <Feather name="chevron-right" size={16} color={isLastPage ? "#C0C0C0" : "#1A1A1A"} />
+          <Text style={[s.pageCornerText, isFirstPage && s.pageCornerTextDisabled]}>Prev</Text>
+          <Feather name="chevron-right" size={16} color={isFirstPage ? "#C0C0C0" : "#1A1A1A"} />
         </TouchableOpacity>
       </View>
 
@@ -526,8 +534,9 @@ export default function SurahScreen() {
         <ActivityIndicator color={colors.primary} style={{ flex: 1 }} size="large" />
       ) : settings.mushafMode ? (
         <ScrollView
+          ref={mushafScrollRef}
           style={{ flex: 1, backgroundColor: MUSHAF_BG }}
-          contentContainerStyle={{ paddingBottom: 220 }}
+          contentContainerStyle={{ paddingBottom: 80 }}
           showsVerticalScrollIndicator={false}
         >
           <MushafPage ayahs={pageAyahs} surahName={arabic?.englishName ?? ""} colors={colors} />
@@ -571,7 +580,7 @@ export default function SurahScreen() {
               />
             );
           }}
-          contentContainerStyle={{ paddingBottom: 220 }}
+          contentContainerStyle={{ paddingBottom: 170 }}
           showsVerticalScrollIndicator={false}
           initialNumToRender={10}
           maxToRenderPerBatch={10}
@@ -583,9 +592,20 @@ export default function SurahScreen() {
         showTransliteration={settings.showTransliteration}
         showTafsir={settings.showTafsir}
         mushafMode={settings.mushafMode}
+        selectedTafsirs={settings.selectedTafsirs ?? ["en.maarifulquran"]}
+        tafsirEditions={TAFSIR_EDITIONS}
         onToggleTranslation={() => updateSettings({ showTranslation: !settings.showTranslation })}
         onToggleTransliteration={() => updateSettings({ showTransliteration: !settings.showTransliteration })}
         onToggleTafsir={() => updateSettings({ showTafsir: !settings.showTafsir })}
+        onToggleTafsirEdition={(id) => {
+          const current = settings.selectedTafsirs ?? ["en.maarifulquran"];
+          if (current.includes(id)) {
+            const next = current.filter(t => t !== id);
+            updateSettings({ selectedTafsirs: next.length > 0 ? next : current });
+          } else {
+            updateSettings({ selectedTafsirs: [...current, id] });
+          }
+        }}
         onPlayRange={() => setRangeVisible(true)}
       />
 

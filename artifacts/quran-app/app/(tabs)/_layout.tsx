@@ -23,10 +23,6 @@ function NativeTabLayout() {
         <Icon sf={{ default: "bookmark", selected: "bookmark.fill" }} />
         <Label>Quiz</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="settings">
-        <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
-        <Label>Settings</Label>
-      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
@@ -91,9 +87,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
-          tabBarIcon: ({ color }) =>
-            isIOS ? <SymbolView name="gearshape" tintColor={color} size={24} /> : <Feather name="settings" size={22} color={color} />,
+          href: null,
         }}
       />
     </Tabs>

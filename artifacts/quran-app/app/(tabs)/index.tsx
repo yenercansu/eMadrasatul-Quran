@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useQuran, type Goal } from "@/contexts/QuranContext";
@@ -152,14 +151,20 @@ export default function HomeScreen() {
           />
         }
       >
-        <LinearGradient
-          colors={[colors.primary, "#2D7D4F"]}
-          style={[s.hero, { paddingTop: topPad + 16 }]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <Text style={s.greeting}>السلام عليكم</Text>
-          <Text style={s.heroTitle}>Al-Quran Al-Kareem</Text>
+        <View style={[s.hero, { paddingTop: topPad + 12 }]}>
+          <View style={s.heroTopRow}>
+            <View>
+              <Text style={s.greeting}>السلام عليكم</Text>
+              <Text style={s.heroTitle}>Al-Quran Al-Kareem</Text>
+            </View>
+            <TouchableOpacity
+              style={s.settingsBtn}
+              onPress={() => router.push("/(tabs)/settings")}
+              activeOpacity={0.75}
+            >
+              <Feather name="settings" size={20} color="rgba(255,255,255,0.85)" />
+            </TouchableOpacity>
+          </View>
 
           {lastListened && (
             <TouchableOpacity
@@ -173,11 +178,11 @@ export default function HomeScreen() {
                 <Text style={s.resumeAyah}>Ayah {lastListened.ayahNumberInSurah}</Text>
               </View>
               <View style={s.resumeIcon}>
-                <Ionicons name="play" size={24} color={colors.primaryForeground} />
+                <Ionicons name="play" size={20} color="#FFFFFF" />
               </View>
             </TouchableOpacity>
           )}
-        </LinearGradient>
+        </View>
 
         <View style={s.onlineBar}>
           <View style={s.onlineDot} />
@@ -188,34 +193,34 @@ export default function HomeScreen() {
           {!goal ? (
             <View style={s.goalSetRow}>
               <View style={s.goalIconCircle}>
-                <Ionicons name="flag" size={20} color={colors.primaryForeground} />
+                <Ionicons name="flag" size={18} color="#FFFFFF" />
               </View>
               <View style={s.goalSetInfo}>
                 <Text style={s.goalSetTitle}>Set a Daily Goal</Text>
                 <Text style={s.goalSetSub}>Stay consistent — track your daily reading</Text>
               </View>
-              <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+              <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
             </View>
           ) : (
             <View style={s.goalProgress}>
               <View style={s.goalProgressHeader}>
                 <View>
-                  <Text style={s.goalProgressTitle}>Your Accomplishment</Text>
+                  <Text style={s.goalProgressTitle}>Today's Progress</Text>
                   <Text style={s.goalProgressSub}>
-                    {todayAyahs} / {goal.ayahsPerDay} ayahs today{goalMet ? " — Goal met! 🎉" : ""}
+                    {todayAyahs} / {goal.ayahsPerDay} ayahs{goalMet ? " — Goal met!" : ""}
                   </Text>
                 </View>
                 <TouchableOpacity onPress={() => setGoalModalVisible(true)} activeOpacity={0.7}>
-                  <Feather name="edit-2" size={16} color={colors.mutedForeground} />
+                  <Feather name="edit-2" size={15} color={colors.mutedForeground} />
                 </TouchableOpacity>
               </View>
               <View style={s.progressTrack}>
-                <View style={[s.progressBar, { width: `${goalProgress * 100}%` as any, backgroundColor: goalMet ? "#4CAF50" : colors.primary }]} />
+                <View style={[s.progressBar, { width: `${goalProgress * 100}%` as any }]} />
               </View>
               {isFriday && (
                 <View style={s.kahfBadge}>
-                  <Ionicons name={todayEntry?.kahfCompleted ? "checkmark-circle" : "book-outline"} size={14} color={todayEntry?.kahfCompleted ? "#4CAF50" : colors.accent} />
-                  <Text style={[s.kahfText, todayEntry?.kahfCompleted && { color: "#4CAF50" }]}>
+                  <Ionicons name={todayEntry?.kahfCompleted ? "checkmark-circle" : "book-outline"} size={14} color={todayEntry?.kahfCompleted ? "#1A1A1A" : colors.mutedForeground} />
+                  <Text style={s.kahfText}>
                     {todayEntry?.kahfCompleted ? "Al-Kahf completed this Friday" : "Read Al-Kahf today (Friday Sunnah)"}
                   </Text>
                 </View>
@@ -226,21 +231,21 @@ export default function HomeScreen() {
 
         <TouchableOpacity
           style={s.quizCtaCard}
-          onPress={() => router.push("/quiz")}
+          onPress={() => router.push("/(tabs)/library")}
           activeOpacity={0.85}
         >
           <View style={s.quizCtaLeft}>
             <View style={s.quizCtaIcon}>
-              <Ionicons name="game-controller" size={20} color={colors.primaryForeground} />
+              <Ionicons name="game-controller" size={18} color="#FFFFFF" />
             </View>
             <View>
               <Text style={s.quizCtaTitle}>Test Yourself!</Text>
               <Text style={s.quizCtaSub}>
-                {savedWords.length === 0 ? "Save words while reading to start" : `${savedWords.length} words ready — tap to begin`}
+                {savedWords.length === 0 ? "Save words while reading to start" : `${savedWords.length} words ready`}
               </Text>
             </View>
           </View>
-          <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+          <Feather name="chevron-right" size={18} color="rgba(255,255,255,0.6)" />
         </TouchableOpacity>
 
         {recentProgress.length > 0 && (
@@ -263,7 +268,7 @@ export default function HomeScreen() {
                   <Text style={s.recentName}>{p.surahName}</Text>
                   <Text style={s.recentAyah}>Ayah {p.ayahNumberInSurah}</Text>
                   <View style={s.recentPlayIcon}>
-                    <Ionicons name="play" size={12} color={colors.primaryForeground} />
+                    <Ionicons name="play" size={10} color="#FFFFFF" />
                   </View>
                 </TouchableOpacity>
               ))}
@@ -282,7 +287,6 @@ export default function HomeScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.horizList}>
               {savedSurahs.map((num) => {
                 const meta = SURAH_DATA[num - 1];
-                const apiSurah = surahMap[num];
                 if (!meta) return null;
                 return (
                   <TouchableOpacity
@@ -298,7 +302,7 @@ export default function HomeScreen() {
                         activeOpacity={0.7}
                         hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                       >
-                        <Ionicons name="bookmark" size={16} color={colors.primary} />
+                        <Ionicons name="bookmark" size={14} color={colors.primary} />
                       </TouchableOpacity>
                     </View>
                     <Text style={s.savedCardName}>{meta.englishName}</Text>
@@ -359,24 +363,66 @@ export default function HomeScreen() {
 const styles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    hero: { paddingBottom: 20, paddingHorizontal: 16 },
-    greeting: { fontSize: 14, color: "rgba(255,255,255,0.75)", fontFamily: "Inter_400Regular", marginBottom: 2 },
-    heroTitle: { fontSize: 22, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold", marginBottom: 16 },
+    hero: {
+      backgroundColor: "#1A1A1A",
+      paddingBottom: 20,
+      paddingHorizontal: 16,
+    },
+    heroTopRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      marginBottom: 16,
+    },
+    greeting: {
+      fontSize: 14,
+      color: "rgba(255,255,255,0.6)",
+      fontFamily: "Inter_400Regular",
+      marginBottom: 3,
+    },
+    heroTitle: {
+      fontSize: 22,
+      fontWeight: "700",
+      color: "#FFFFFF",
+      fontFamily: "Inter_700Bold",
+    },
+    settingsBtn: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      backgroundColor: "rgba(255,255,255,0.12)",
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 2,
+    },
     resumeCard: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      backgroundColor: "rgba(255,255,255,0.15)",
+      backgroundColor: "rgba(255,255,255,0.1)",
       borderRadius: 14,
       padding: 14,
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.25)",
+      borderColor: "rgba(255,255,255,0.15)",
     },
     resumeLeft: { flex: 1 },
-    resumeLabel: { fontSize: 10, color: "rgba(255,255,255,0.7)", letterSpacing: 0.8, fontFamily: "Inter_600SemiBold", marginBottom: 3 },
-    resumeSurah: { fontSize: 17, color: "#FFFFFF", fontWeight: "700", fontFamily: "Inter_700Bold" },
-    resumeAyah: { fontSize: 12, color: "rgba(255,255,255,0.75)", fontFamily: "Inter_400Regular", marginTop: 2 },
-    resumeIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
+    resumeLabel: {
+      fontSize: 9,
+      color: "rgba(255,255,255,0.5)",
+      letterSpacing: 1,
+      fontFamily: "Inter_600SemiBold",
+      marginBottom: 3,
+    },
+    resumeSurah: { fontSize: 16, color: "#FFFFFF", fontWeight: "700", fontFamily: "Inter_700Bold" },
+    resumeAyah: { fontSize: 12, color: "rgba(255,255,255,0.6)", fontFamily: "Inter_400Regular", marginTop: 2 },
+    resumeIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: "rgba(255,255,255,0.15)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
     onlineBar: {
       flexDirection: "row",
       alignItems: "center",
@@ -387,19 +433,26 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
-    onlineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#4CAF50" },
+    onlineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#5A5A5A" },
     onlineText: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     goalCard: {
       margin: 16,
       marginBottom: 8,
       backgroundColor: colors.card,
-      borderRadius: 14,
+      borderRadius: 16,
       padding: 16,
       borderWidth: 1,
       borderColor: colors.border,
     },
     goalSetRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-    goalIconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+    goalIconCircle: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: "#1A1A1A",
+      alignItems: "center",
+      justifyContent: "center",
+    },
     goalSetInfo: { flex: 1 },
     goalSetTitle: { fontSize: 15, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
     goalSetSub: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
@@ -407,65 +460,137 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     goalProgressHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 },
     goalProgressTitle: { fontSize: 15, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
     goalProgressSub: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
-    progressTrack: { height: 6, backgroundColor: colors.muted, borderRadius: 3, overflow: "hidden" },
-    progressBar: { height: "100%", borderRadius: 3 },
+    progressTrack: { height: 5, backgroundColor: "#F0F0F0", borderRadius: 3, overflow: "hidden" },
+    progressBar: { height: "100%", borderRadius: 3, backgroundColor: "#1A1A1A" },
     kahfBadge: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10 },
-    kahfText: { fontSize: 12, color: colors.accent, fontFamily: "Inter_400Regular" },
+    kahfText: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     quizCtaCard: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       marginHorizontal: 16,
       marginBottom: 8,
-      backgroundColor: colors.card,
-      borderRadius: 14,
+      backgroundColor: "#1A1A1A",
+      borderRadius: 16,
       padding: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     quizCtaLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-    quizCtaIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
-    quizCtaTitle: { fontSize: 15, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
-    quizCtaSub: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
+    quizCtaIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      backgroundColor: "rgba(255,255,255,0.15)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    quizCtaTitle: { fontSize: 15, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+    quizCtaSub: { fontSize: 12, color: "rgba(255,255,255,0.55)", fontFamily: "Inter_400Regular", marginTop: 2 },
     section: { marginTop: 8 },
     sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12 },
     sectionTitle: { fontSize: 17, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
-    seeAll: { fontSize: 13, color: colors.primary, fontFamily: "Inter_600SemiBold" },
+    seeAll: { fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold" },
     horizList: { paddingHorizontal: 16, gap: 10 },
-    recentCard: { width: 120, backgroundColor: colors.card, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: colors.border },
-    recentArabic: { fontSize: 18, color: colors.primary, marginBottom: 4 },
+    recentCard: {
+      width: 120,
+      backgroundColor: colors.card,
+      borderRadius: 14,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    recentArabic: { fontSize: 18, color: colors.foreground, marginBottom: 4 },
     recentName: { fontSize: 13, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
     recentAyah: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
-    recentPlayIcon: { marginTop: 8, width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
-    savedCard: { width: 130, backgroundColor: colors.card, borderRadius: 14, padding: 12, borderWidth: 1, borderColor: colors.border },
+    recentPlayIcon: {
+      marginTop: 8,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: "#1A1A1A",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    savedCard: {
+      width: 130,
+      backgroundColor: colors.card,
+      borderRadius: 14,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
     savedCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-    savedCardArabic: { fontSize: 18, color: colors.primary },
+    savedCardArabic: { fontSize: 18, color: colors.foreground },
     savedCardName: { fontSize: 13, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
     savedCardCount: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
-    juzDivider: { backgroundColor: colors.muted, paddingHorizontal: 16, paddingVertical: 6 },
-    juzLabel: { fontSize: 11, fontWeight: "700", color: colors.accent, letterSpacing: 0.8, fontFamily: "Inter_700Bold" },
-    surahRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.card },
-    surahNumber: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center", marginRight: 12 },
-    surahNumberText: { fontSize: 12, fontWeight: "600", color: colors.primary, fontFamily: "Inter_600SemiBold" },
+    juzDivider: { backgroundColor: "#F0F0F0", paddingHorizontal: 16, paddingVertical: 6 },
+    juzLabel: { fontSize: 11, fontWeight: "700", color: "#9A9A9A", letterSpacing: 1, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+    surahRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      backgroundColor: colors.card,
+    },
+    surahNumber: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: "#F0F0F0",
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 12,
+    },
+    surahNumberText: { fontSize: 12, fontWeight: "600", color: "#6B6B6B", fontFamily: "Inter_600SemiBold" },
     surahInfo: { flex: 1 },
     surahName: { fontSize: 15, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
     surahMeta: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
-    surahArabic: { fontSize: 20, color: colors.primary },
+    surahArabic: { fontSize: 20, color: colors.foreground },
     modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
-    modalSheet: { backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 40 },
-    modalHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: 16 },
-    modalTitle: { fontSize: 20, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold", textAlign: "center", marginBottom: 6 },
-    modalSub: { fontSize: 14, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center", marginBottom: 24 },
-    goalGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "center", marginBottom: 24 },
-    goalOption: { width: 90, height: 80, borderRadius: 14, borderWidth: 2, borderColor: colors.border, backgroundColor: colors.card, alignItems: "center", justifyContent: "center" },
-    goalOptionActive: { borderColor: colors.primary, backgroundColor: colors.primary },
-    goalOptionNum: { fontSize: 24, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
-    goalOptionNumActive: { color: colors.primaryForeground },
-    goalOptionLabel: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
-    goalOptionLabelActive: { color: "rgba(255,255,255,0.8)" },
-    modalActions: { flexDirection: "row", gap: 12 },
-    clearBtn: { flex: 1, alignItems: "center", paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border },
-    clearBtnText: { fontSize: 15, color: colors.foreground, fontFamily: "Inter_400Regular" },
-    saveBtn: { flex: 1, alignItems: "center", paddingVertical: 14, borderRadius: 12, backgroundColor: colors.primary },
-    saveBtnText: { fontSize: 15, fontWeight: "700", color: colors.primaryForeground, fontFamily: "Inter_700Bold" },
+    modalSheet: {
+      backgroundColor: "#FAFAFA",
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      padding: 20,
+      paddingBottom: 40,
+    },
+    modalHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: "#E0E0E0", alignSelf: "center", marginBottom: 16 },
+    modalTitle: { fontSize: 18, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", textAlign: "center", marginBottom: 6 },
+    modalSub: { fontSize: 14, color: "#9A9A9A", fontFamily: "Inter_400Regular", textAlign: "center", marginBottom: 24 },
+    goalGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "center", marginBottom: 24 },
+    goalOption: {
+      width: 88,
+      height: 78,
+      borderRadius: 16,
+      borderWidth: 1.5,
+      borderColor: "#E0E0E0",
+      backgroundColor: "#FFFFFF",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    goalOptionActive: { borderColor: "#1A1A1A", backgroundColor: "#1A1A1A" },
+    goalOptionNum: { fontSize: 24, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+    goalOptionNumActive: { color: "#FFFFFF" },
+    goalOptionLabel: { fontSize: 11, color: "#9A9A9A", fontFamily: "Inter_400Regular" },
+    goalOptionLabelActive: { color: "rgba(255,255,255,0.7)" },
+    modalActions: { flexDirection: "row", gap: 10 },
+    clearBtn: {
+      flex: 1,
+      alignItems: "center",
+      paddingVertical: 14,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: "#E0E0E0",
+      backgroundColor: "#FFFFFF",
+    },
+    clearBtnText: { fontSize: 15, color: "#6B6B6B", fontFamily: "Inter_400Regular" },
+    saveBtn: {
+      flex: 1,
+      alignItems: "center",
+      paddingVertical: 14,
+      borderRadius: 14,
+      backgroundColor: "#1A1A1A",
+    },
+    saveBtnText: { fontSize: 15, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
   });

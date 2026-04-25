@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { useQuran } from "@/contexts/QuranContext";
 import { useAudio } from "@/contexts/AudioContext";
 import type { ApiAyah } from "@/services/quranApi";
 import { SelectRangeModal } from "@/components/SelectRangeModal";
+import { useState } from "react";
 
 export interface TafsirEntry {
   edition: string;
@@ -62,7 +63,6 @@ export function AyahItem({
   const swipeRef = useRef<Swipeable>(null);
   const [savePulse, setSavePulse] = useState(false);
   const [selectRangeVisible, setSelectRangeVisible] = useState(false);
-  const [showWordMeaning, setShowWordMeaning] = useState(false);
 
   const isCurrentlyPlaying =
     audioState.currentSurah === surahNumber &&
@@ -97,7 +97,6 @@ export function AyahItem({
   }, [arabic.numberInSurah, onRepeatSelect]);
 
   const arabicWords = arabic.text.split(" ").filter(Boolean);
-  const translitWords = transliteration?.text?.split(" ").filter(Boolean) ?? [];
 
   const renderRightActions = (progress: Animated.AnimatedInterpolation<number>) => {
     const trans = progress.interpolate({
@@ -167,18 +166,6 @@ export function AyahItem({
             <Text style={s.headerPillText}>Range</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[s.headerPill, showWordMeaning && s.headerPillActive]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setShowWordMeaning(v => !v);
-            }}
-            activeOpacity={0.8}
-          >
-            <Feather name="type" size={12} color={showWordMeaning ? "#FFFFFF" : colors.primary} />
-            <Text style={[s.headerPillText, showWordMeaning && s.headerPillTextActive]}>Meanings</Text>
-          </TouchableOpacity>
-
           {ayahRepeat && ayahRepeat > 1 ? (
             <View style={s.repeatBadge}>
               <Text style={s.repeatBadgeText}>{ayahRepeat}x</Text>
@@ -206,55 +193,26 @@ export function AyahItem({
 
         <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
           <View style={s.arabicContainer}>
-            {showWordMeaning ? (
-              <View style={s.wordMeaningWrap}>
-                {arabicWords.map((word, idx) => {
-                  const highlighted = isWordHighlighted(word, surahNumber, arabic.numberInSurah);
-                  const translit = translitWords[idx] ?? "";
-                  return (
-                    <TouchableOpacity
-                      key={`${idx}-${word}`}
-                      onLongPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        onWordLongPress?.(word, arabic.numberInSurah);
-                      }}
-                      delayLongPress={400}
-                      activeOpacity={0.7}
-                    >
-                      <View style={s.wordMeaningCard}>
-                        <Text style={[s.arabicWord, highlighted && s.highlightedWord]}>
-                          {word}
-                        </Text>
-                        {translit ? (
-                          <Text style={s.wordMeaningText}>{translit}</Text>
-                        ) : null}
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            ) : (
-              <View style={s.arabicWordsWrap}>
-                {arabicWords.map((word, idx) => {
-                  const highlighted = isWordHighlighted(word, surahNumber, arabic.numberInSurah);
-                  return (
-                    <TouchableOpacity
-                      key={`${idx}-${word}`}
-                      onLongPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        onWordLongPress?.(word, arabic.numberInSurah);
-                      }}
-                      delayLongPress={400}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[s.arabicWord, highlighted && s.highlightedWord]}>
-                        {word}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
+            <View style={s.arabicWordsWrap}>
+              {arabicWords.map((word, idx) => {
+                const highlighted = isWordHighlighted(word, surahNumber, arabic.numberInSurah);
+                return (
+                  <TouchableOpacity
+                    key={`${idx}-${word}`}
+                    onLongPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      onWordLongPress?.(word, arabic.numberInSurah);
+                    }}
+                    delayLongPress={400}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.arabicWord, highlighted && s.highlightedWord]}>
+                      {word}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
           {settings.showTransliteration && transliteration && (
@@ -339,36 +297,29 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       gap: 5,
       backgroundColor: colors.secondary,
       borderWidth: 1.5,
-      borderColor: colors.primary + "55",
+      borderColor: colors.border,
       borderRadius: 20,
       paddingHorizontal: 10,
       paddingVertical: 5,
     },
-    headerPillActive: {
-      backgroundColor: "#1A1A1A",
-      borderColor: "#1A1A1A",
-    },
     headerPillText: {
       fontSize: 12,
       fontWeight: "700",
-      color: colors.primary,
+      color: colors.mutedForeground,
       fontFamily: "Inter_700Bold",
-    },
-    headerPillTextActive: {
-      color: "#FFFFFF",
     },
     repeatBadge: {
       flexDirection: "row",
       alignItems: "center",
       gap: 3,
-      backgroundColor: colors.accent + "22",
+      backgroundColor: "#F0F0F0",
       borderRadius: 8,
       paddingHorizontal: 7,
       paddingVertical: 3,
     },
     repeatBadgeText: {
       fontSize: 11,
-      color: colors.accent,
+      color: "#6B6B6B",
       fontWeight: "700",
       fontFamily: "Inter_700Bold",
     },
@@ -382,25 +333,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       rowGap: 16,
       justifyContent: "flex-start",
     },
-    wordMeaningWrap: {
-      flexDirection: "row-reverse",
-      flexWrap: "wrap",
-      gap: 10,
-      rowGap: 16,
-      justifyContent: "flex-start",
-    },
-    wordMeaningCard: {
-      alignItems: "center",
-      gap: 4,
-    },
-    wordMeaningText: {
-      fontSize: 10,
-      color: colors.mutedForeground,
-      fontFamily: "Inter_400Regular",
-      fontStyle: "italic",
-      maxWidth: 80,
-      textAlign: "center",
-    },
     arabicWord: {
       fontSize: 28,
       lineHeight: 44,
@@ -409,8 +341,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       writingDirection: "rtl",
     },
     highlightedWord: {
-      backgroundColor: colors.accent + "55",
-      color: colors.accent,
+      backgroundColor: "#1A1A1A22",
+      color: "#1A1A1A",
       borderRadius: 4,
       paddingHorizontal: 2,
     },
@@ -462,7 +394,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     dot3: { opacity: 0.3 },
     rightAction: {
       width: 80,
-      backgroundColor: colors.primary,
+      backgroundColor: "#1A1A1A",
       justifyContent: "center",
       alignItems: "center",
     },
