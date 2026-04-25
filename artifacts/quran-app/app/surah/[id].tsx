@@ -256,6 +256,7 @@ const practiceStyles = (colors: ReturnType<typeof useColors>) =>
 
 const SWIPE_THRESHOLD = 65;
 const REPEAT_OPTIONS = [1, 3, 5, 10];
+const WORD_COLORS = ["#E8507A", "#F2994A", "#27AE60", "#2F80ED", "#9B51E0", "#EB5757"];
 
 interface CardSwipeStackProps {
   ayahs: ApiAyah[];
@@ -287,15 +288,6 @@ function CardSwipeStack({
   const cardRotate = pan.x.interpolate({ inputRange: [-160, 0, 160], outputRange: ["-5deg", "0deg", "5deg"], extrapolate: "clamp" });
   const rightOpacity = pan.x.interpolate({ inputRange: [10, SWIPE_THRESHOLD], outputRange: [0, 1], extrapolate: "clamp" });
   const leftOpacity = pan.x.interpolate({ inputRange: [-SWIPE_THRESHOLD, -10], outputRange: [1, 0], extrapolate: "clamp" });
-  const upOpacity = Animated.add(
-    pan.y.interpolate({ inputRange: [-SWIPE_THRESHOLD, -10], outputRange: [1, 0], extrapolate: "clamp" }),
-    pan.x.interpolate({ inputRange: [-10, 10], outputRange: [0, 0], extrapolate: "clamp" })
-  );
-  const downOpacity = pan.y.interpolate({ inputRange: [10, SWIPE_THRESHOLD], outputRange: [0, 1], extrapolate: "clamp" });
-
-  const peek1TranslateY = pan.y.interpolate({ inputRange: [-SWIPE_THRESHOLD, 0], outputRange: [0, 14], extrapolate: "clamp" });
-  const peek1Scale = pan.y.interpolate({ inputRange: [-SWIPE_THRESHOLD, 0], outputRange: [1, 0.96], extrapolate: "clamp" });
-  const peek1Opacity = pan.y.interpolate({ inputRange: [-SWIPE_THRESHOLD, 0], outputRange: [0.85, 0.62], extrapolate: "clamp" });
 
   const animateSave = () => {
     setSavedFlash(true);
@@ -307,15 +299,15 @@ function CardSwipeStack({
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !showRepeat,
-      onMoveShouldSetPanResponder: (_, { dx, dy }) => !showRepeat && (Math.abs(dx) > 6 || Math.abs(dy) > 6),
-      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
-      onPanResponderRelease: (_, { dx, dy }) => {
-        const adx = Math.abs(dx), ady = Math.abs(dy);
-        const isH = adx > ady;
-        if (isH && adx > SWIPE_THRESHOLD) {
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+        !showRepeat && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8,
+      onPanResponderMove: Animated.event([null, { dx: pan.x }], { useNativeDriver: false }),
+      onPanResponderRelease: (_, { dx }) => {
+        const adx = Math.abs(dx);
+        if (adx > SWIPE_THRESHOLD) {
           if (dx < 0) {
-            Animated.timing(pan, { toValue: { x: -SCREEN_WIDTH * 1.6, y: dy * 0.4 }, duration: 280, useNativeDriver: true }).start(() => {
+            Animated.timing(pan, { toValue: { x: -SCREEN_WIDTH * 1.6, y: 0 }, duration: 280, useNativeDriver: true }).start(() => {
               pan.setValue({ x: 0, y: 0 });
               const ayah = (ayahs as ApiAyah[])[currentIndex];
               if (ayah) { onSave(ayah); animateSave(); }
@@ -323,20 +315,6 @@ function CardSwipeStack({
           } else {
             Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
             setShowRepeat(true);
-          }
-        } else if (!isH && ady > SWIPE_THRESHOLD) {
-          if (dy < 0 && currentIndex < ayahs.length - 1) {
-            Animated.timing(pan, { toValue: { x: dx * 0.3, y: -680 }, duration: 260, useNativeDriver: true }).start(() => {
-              pan.setValue({ x: 0, y: 0 });
-              onIndexChange(currentIndex + 1);
-            });
-          } else if (dy > 0 && currentIndex > 0) {
-            Animated.timing(pan, { toValue: { x: dx * 0.3, y: 680 }, duration: 260, useNativeDriver: true }).start(() => {
-              pan.setValue({ x: 0, y: 0 });
-              onIndexChange(currentIndex - 1);
-            });
-          } else {
-            Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
           }
         } else {
           Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
@@ -378,17 +356,14 @@ function CardSwipeStack({
         </View>
       )}
       {nextAyah && (
-        <Animated.View style={[cs.peekCard, cs.peekCard1, {
-          transform: [{ scaleX: peek1Scale }, { translateY: peek1TranslateY }],
-          opacity: peek1Opacity,
-        }]}>
+        <Animated.View style={[cs.peekCard, cs.peekCard1, { opacity: 0.62 }]}>
           <View style={cs.peekInner} />
         </Animated.View>
       )}
 
       <Animated.View
         style={[cs.mainCard, {
-          transform: [{ translateX: pan.x }, { translateY: pan.y }, { rotate: cardRotate }],
+          transform: [{ translateX: pan.x }, { rotate: cardRotate }],
         }]}
         {...panResponder.panHandlers}
       >
@@ -402,15 +377,6 @@ function CardSwipeStack({
           <Ionicons name="repeat" size={28} color="#FFFFFF" />
           <Text style={cs.hintText}>REPEAT</Text>
         </Animated.View>
-        <Animated.View style={[cs.hintOverlay, cs.hintUp, { opacity: upOpacity }]} pointerEvents="none">
-          <Ionicons name="arrow-up" size={26} color="#FFFFFF" />
-          <Text style={cs.hintText}>NEXT</Text>
-        </Animated.View>
-        <Animated.View style={[cs.hintOverlay, cs.hintDown, { opacity: downOpacity }]} pointerEvents="none">
-          <Ionicons name="arrow-down" size={26} color="#FFFFFF" />
-          <Text style={cs.hintText}>PREV</Text>
-        </Animated.View>
-
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={cs.cardContent}
@@ -431,7 +397,17 @@ function CardSwipeStack({
             <Text style={cs.basmala}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
           )}
 
-          <Text style={cs.arabicText}>{currentAyah.text}</Text>
+          {settings.colorCoding ? (
+            <Text style={cs.arabicText}>
+              {currentAyah.text.split(" ").map((word, i, arr) => (
+                <Text key={i} style={{ color: WORD_COLORS[i % WORD_COLORS.length] }}>
+                  {word}{i < arr.length - 1 ? " " : ""}
+                </Text>
+              ))}
+            </Text>
+          ) : (
+            <Text style={cs.arabicText}>{currentAyah.text}</Text>
+          )}
 
           {settings.showTransliteration && transliterationAyah && (
             <Text style={cs.transliteration}>{transliterationAyah.text}</Text>
@@ -462,12 +438,6 @@ function CardSwipeStack({
                 <Text style={cs.swipeDirArrow}>→</Text>
               </View>
               <Text style={cs.swipeDirLabel}>Repeat</Text>
-            </View>
-            <View style={cs.swipeHintItem}>
-              <View style={[cs.swipeDirIcon, { backgroundColor: "#EDE9FE" }]}>
-                <Text style={cs.swipeDirArrow}>↑↓</Text>
-              </View>
-              <Text style={cs.swipeDirLabel}>Nav</Text>
             </View>
           </View>
 
@@ -716,6 +686,20 @@ export default function SurahScreen() {
     loadData();
     return () => setOnNextAyah(null);
   }, [surahNum]);
+
+  useEffect(() => {
+    if (!settings.showTafsir || !arabic) return;
+    const selectedTafsirs = settings.selectedTafsirs ?? ["en.maarifulquran"];
+    const toFetch = selectedTafsirs.filter(ed => !tafsirDataMap[ed]);
+    if (toFetch.length === 0) return;
+    Promise.all(toFetch.map(ed => fetchTafsir(surahNum, ed).catch(() => null))).then(results => {
+      setTafsirDataMap(prev => {
+        const next = { ...prev };
+        toFetch.forEach((ed, i) => { if (results[i]) next[ed] = results[i]!; });
+        return next;
+      });
+    });
+  }, [settings.showTafsir, settings.selectedTafsirs, arabic]);
 
   async function loadData() {
     setLoading(true);
