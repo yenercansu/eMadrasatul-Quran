@@ -185,7 +185,7 @@ export default function QuranScreen() {
               />
             );
           }}
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={{ paddingBottom: 120, paddingTop: 10 }}
           showsVerticalScrollIndicator={false}
           scrollEnabled={!!filtered.length}
           ListEmptyComponent={

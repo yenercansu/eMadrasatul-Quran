@@ -11,6 +11,8 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Dimensions,
+  Animated,
+  PanResponder,
 } from "react-native";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -251,6 +253,417 @@ const practiceStyles = (colors: ReturnType<typeof useColors>) =>
     nextBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.primary, paddingHorizontal: 28, paddingVertical: 13, borderRadius: 12, width: "100%", justifyContent: "center" },
     nextBtnText: { fontSize: 15, fontWeight: "700", color: colors.primaryForeground, fontFamily: "Inter_700Bold" },
   });
+
+const SWIPE_THRESHOLD = 65;
+const REPEAT_OPTIONS = [2, 3, 5, 10];
+
+interface CardSwipeStackProps {
+  ayahs: ApiAyah[];
+  currentIndex: number;
+  onIndexChange: (idx: number) => void;
+  onSave: (ayah: ApiAyah) => void;
+  onRepeatSelect: (ayahNum: number, count: number) => void;
+  translation: SurahDetail | null;
+  transliteration: SurahDetail | null;
+  tafsirDataMap: Record<string, SurahDetail>;
+  settings: ReturnType<typeof useQuran>["settings"];
+  surahNum: number;
+  arabicName: string;
+  playAyah: (surahNum: number, ayahNum: number, totalAyahs: number, repeat: number) => void;
+  repeatCount: number;
+}
+
+function CardSwipeStack({
+  ayahs, currentIndex, onIndexChange, onSave, onRepeatSelect,
+  translation, transliteration, tafsirDataMap, settings, surahNum, arabicName,
+  playAyah, repeatCount,
+}: CardSwipeStackProps) {
+  const colors = useColors();
+  const pan = useRef(new Animated.ValueXY()).current;
+  const [showRepeat, setShowRepeat] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
+  const flashAnim = useRef(new Animated.Value(0)).current;
+
+  const cardRotate = pan.x.interpolate({ inputRange: [-160, 0, 160], outputRange: ["-5deg", "0deg", "5deg"], extrapolate: "clamp" });
+  const rightOpacity = pan.x.interpolate({ inputRange: [10, SWIPE_THRESHOLD], outputRange: [0, 1], extrapolate: "clamp" });
+  const leftOpacity = pan.x.interpolate({ inputRange: [-SWIPE_THRESHOLD, -10], outputRange: [1, 0], extrapolate: "clamp" });
+  const upOpacity = Animated.add(
+    pan.y.interpolate({ inputRange: [-SWIPE_THRESHOLD, -10], outputRange: [1, 0], extrapolate: "clamp" }),
+    pan.x.interpolate({ inputRange: [-10, 10], outputRange: [0, 0], extrapolate: "clamp" })
+  );
+  const downOpacity = pan.y.interpolate({ inputRange: [10, SWIPE_THRESHOLD], outputRange: [0, 1], extrapolate: "clamp" });
+
+  const peek1TranslateY = pan.y.interpolate({ inputRange: [-SWIPE_THRESHOLD, 0], outputRange: [0, 14], extrapolate: "clamp" });
+  const peek1Scale = pan.y.interpolate({ inputRange: [-SWIPE_THRESHOLD, 0], outputRange: [1, 0.96], extrapolate: "clamp" });
+  const peek1Opacity = pan.y.interpolate({ inputRange: [-SWIPE_THRESHOLD, 0], outputRange: [0.85, 0.62], extrapolate: "clamp" });
+
+  const animateSave = () => {
+    setSavedFlash(true);
+    Animated.sequence([
+      Animated.timing(flashAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
+      Animated.timing(flashAnim, { toValue: 0, duration: 220, useNativeDriver: true }),
+    ]).start(() => setSavedFlash(false));
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => !showRepeat,
+      onMoveShouldSetPanResponder: (_, { dx, dy }) => !showRepeat && (Math.abs(dx) > 6 || Math.abs(dy) > 6),
+      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
+      onPanResponderRelease: (_, { dx, dy }) => {
+        const adx = Math.abs(dx), ady = Math.abs(dy);
+        const isH = adx > ady;
+        if (isH && adx > SWIPE_THRESHOLD) {
+          if (dx > 0) {
+            Animated.timing(pan, { toValue: { x: SCREEN_WIDTH * 1.6, y: dy * 0.4 }, duration: 280, useNativeDriver: true }).start(() => {
+              pan.setValue({ x: 0, y: 0 });
+              const ayah = (ayahs as ApiAyah[])[currentIndex];
+              if (ayah) { onSave(ayah); animateSave(); }
+            });
+          } else {
+            Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
+            setShowRepeat(true);
+          }
+        } else if (!isH && ady > SWIPE_THRESHOLD) {
+          if (dy < 0 && currentIndex < ayahs.length - 1) {
+            Animated.timing(pan, { toValue: { x: dx * 0.3, y: -680 }, duration: 260, useNativeDriver: true }).start(() => {
+              pan.setValue({ x: 0, y: 0 });
+              onIndexChange(currentIndex + 1);
+            });
+          } else if (dy > 0 && currentIndex > 0) {
+            Animated.timing(pan, { toValue: { x: dx * 0.3, y: 680 }, duration: 260, useNativeDriver: true }).start(() => {
+              pan.setValue({ x: 0, y: 0 });
+              onIndexChange(currentIndex - 1);
+            });
+          } else {
+            Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
+          }
+        } else {
+          Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
+        }
+      },
+    })
+  ).current;
+
+  const currentAyah = ayahs[currentIndex] as ApiAyah | undefined;
+  const nextAyah = currentIndex + 1 < ayahs.length ? ayahs[currentIndex + 1] : null;
+  const nextNextAyah = currentIndex + 2 < ayahs.length ? ayahs[currentIndex + 2] : null;
+
+  if (!currentAyah) return null;
+
+  const showBasmala = currentAyah.numberInSurah === 1 && surahNum !== 1 && surahNum !== 9;
+  const translationAyah = translation?.ayahs[currentAyah.numberInSurah - 1];
+  const transliterationAyah = transliteration?.ayahs[currentAyah.numberInSurah - 1];
+  const tafsirs: TafsirEntry[] = [];
+  if (settings.showTafsir) {
+    for (const ed of (settings.selectedTafsirs ?? ["en.maarifulquran"])) {
+      const td = tafsirDataMap[ed];
+      if (td) {
+        const ta = td.ayahs[currentAyah.numberInSurah - 1];
+        const edObj = TAFSIR_EDITIONS.find(e => e.id === ed);
+        if (ta && edObj) tafsirs.push({ edition: ed, name: edObj.name, ayah: ta });
+      }
+    }
+  }
+
+  const flashBg = flashAnim.interpolate({ inputRange: [0, 1], outputRange: ["rgba(34,197,94,0)", "rgba(34,197,94,0.22)"] });
+
+  const cs = cardSwipeStyles;
+
+  return (
+    <View style={cs.container}>
+      {nextNextAyah && (
+        <View style={[cs.peekCard, cs.peekCard2]}>
+          <View style={cs.peekInner} />
+        </View>
+      )}
+      {nextAyah && (
+        <Animated.View style={[cs.peekCard, cs.peekCard1, {
+          transform: [{ scaleX: peek1Scale }, { translateY: peek1TranslateY }],
+          opacity: peek1Opacity,
+        }]}>
+          <View style={cs.peekInner} />
+        </Animated.View>
+      )}
+
+      <Animated.View
+        style={[cs.mainCard, {
+          transform: [{ translateX: pan.x }, { translateY: pan.y }, { rotate: cardRotate }],
+        }]}
+        {...panResponder.panHandlers}
+      >
+        <Animated.View style={[StyleSheet.absoluteFill, { borderRadius: 24, backgroundColor: flashBg }]} pointerEvents="none" />
+
+        <Animated.View style={[cs.hintOverlay, cs.hintRight, { opacity: rightOpacity }]} pointerEvents="none">
+          <Ionicons name="bookmark" size={28} color="#FFFFFF" />
+          <Text style={cs.hintText}>SAVE</Text>
+        </Animated.View>
+        <Animated.View style={[cs.hintOverlay, cs.hintLeft, { opacity: leftOpacity }]} pointerEvents="none">
+          <Ionicons name="repeat" size={28} color="#FFFFFF" />
+          <Text style={cs.hintText}>REPEAT</Text>
+        </Animated.View>
+        <Animated.View style={[cs.hintOverlay, cs.hintUp, { opacity: upOpacity }]} pointerEvents="none">
+          <Ionicons name="arrow-up" size={26} color="#FFFFFF" />
+          <Text style={cs.hintText}>NEXT</Text>
+        </Animated.View>
+        <Animated.View style={[cs.hintOverlay, cs.hintDown, { opacity: downOpacity }]} pointerEvents="none">
+          <Ionicons name="arrow-down" size={26} color="#FFFFFF" />
+          <Text style={cs.hintText}>PREV</Text>
+        </Animated.View>
+
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={cs.cardContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={cs.cardHeader}>
+            <View style={cs.cardBadge}>
+              <Text style={cs.cardBadgeNum}>{surahNum}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={cs.cardSurahName}>{arabicName}</Text>
+              <Text style={cs.cardAyahLabel}>Ayah {currentAyah.numberInSurah}</Text>
+            </View>
+            <Text style={cs.cardCounter}>{currentAyah.numberInSurah}/{ayahs.length}</Text>
+          </View>
+
+          {showBasmala && (
+            <Text style={cs.basmala}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
+          )}
+
+          <Text style={cs.arabicText}>{currentAyah.text}</Text>
+
+          {settings.showTransliteration && transliterationAyah && (
+            <Text style={cs.transliteration}>{transliterationAyah.text}</Text>
+          )}
+          {settings.showTranslation && translationAyah && (
+            <View style={cs.translationBox}>
+              <Text style={cs.translation}>{translationAyah.text}</Text>
+            </View>
+          )}
+          {tafsirs.map(t => (
+            <View key={t.edition} style={cs.tafsirBox}>
+              <Text style={cs.tafsirName}>{t.name}</Text>
+              <Text style={cs.tafsirText}>{t.ayah.text}</Text>
+            </View>
+          ))}
+        </ScrollView>
+
+        <View style={cs.cardFooter}>
+          <View style={cs.swipeHints}>
+            <View style={cs.swipeHintItem}>
+              <View style={[cs.swipeDirIcon, { backgroundColor: "#DCFCE7" }]}>
+                <Text style={cs.swipeDirArrow}>→</Text>
+              </View>
+              <Text style={cs.swipeDirLabel}>Save</Text>
+            </View>
+            <View style={cs.swipeHintItem}>
+              <View style={[cs.swipeDirIcon, { backgroundColor: "#FEF3C7" }]}>
+                <Text style={cs.swipeDirArrow}>←</Text>
+              </View>
+              <Text style={cs.swipeDirLabel}>Repeat</Text>
+            </View>
+            <View style={cs.swipeHintItem}>
+              <View style={[cs.swipeDirIcon, { backgroundColor: "#EDE9FE" }]}>
+                <Text style={cs.swipeDirArrow}>↑↓</Text>
+              </View>
+              <Text style={cs.swipeDirLabel}>Nav</Text>
+            </View>
+          </View>
+
+          <View style={cs.navRow}>
+            <TouchableOpacity
+              style={[cs.navBtn, currentIndex === 0 && cs.navBtnDisabled]}
+              disabled={currentIndex === 0}
+              onPress={() => onIndexChange(currentIndex - 1)}
+              activeOpacity={0.7}
+            >
+              <Feather name="chevron-left" size={20} color={currentIndex === 0 ? "#C0C0C0" : "#1A1A1A"} />
+            </TouchableOpacity>
+            <View style={cs.navDots}>
+              {Array.from({ length: Math.min(ayahs.length, 5) }).map((_, i) => {
+                const spread = Math.floor((currentIndex / Math.max(ayahs.length - 1, 1)) * 4);
+                return <View key={i} style={[cs.navDot, i === spread && cs.navDotActive]} />;
+              })}
+            </View>
+            <TouchableOpacity
+              style={[cs.navBtn, currentIndex === ayahs.length - 1 && cs.navBtnDisabled]}
+              disabled={currentIndex === ayahs.length - 1}
+              onPress={() => onIndexChange(currentIndex + 1)}
+              activeOpacity={0.7}
+            >
+              <Feather name="chevron-right" size={20} color={currentIndex === ayahs.length - 1 ? "#C0C0C0" : "#1A1A1A"} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Animated.View>
+
+      <Modal visible={showRepeat} transparent animationType="slide" onRequestClose={() => setShowRepeat(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowRepeat(false)}>
+          <View style={cs.repeatBackdrop} />
+        </TouchableWithoutFeedback>
+        <View style={cs.repeatSheet}>
+          <Text style={cs.repeatTitle}>Repeat Ayah</Text>
+          <Text style={cs.repeatSub}>How many times?</Text>
+          <View style={cs.repeatGrid}>
+            {REPEAT_OPTIONS.map(count => (
+              <TouchableOpacity
+                key={count}
+                style={cs.repeatOption}
+                onPress={() => {
+                  setShowRepeat(false);
+                  onRepeatSelect(currentAyah.numberInSurah, count);
+                  playAyah(surahNum, currentAyah.numberInSurah, ayahs.length, count);
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={cs.repeatOptionNum}>{count}×</Text>
+                <Text style={cs.repeatOptionLabel}>{count === 2 ? "twice" : count === 3 ? "3 times" : count === 5 ? "5 times" : "10 times"}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity style={cs.repeatCancel} onPress={() => setShowRepeat(false)} activeOpacity={0.8}>
+            <Text style={cs.repeatCancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const cardSwipeStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 190,
+    backgroundColor: "#EEEEF0",
+    overflow: "visible",
+  },
+  peekCard: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    top: 12,
+    bottom: 190,
+    borderRadius: 24,
+    backgroundColor: "#FAFAFA",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+  },
+  peekCard1: {
+    zIndex: 2,
+    transform: [{ scaleX: 0.96 }, { translateY: 16 }],
+    opacity: 0.75,
+  },
+  peekCard2: {
+    zIndex: 1,
+    transform: [{ scaleX: 0.90 }, { translateY: 30 }],
+    opacity: 0.45,
+  },
+  peekInner: { flex: 1 },
+  mainCard: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    top: 12,
+    bottom: 190,
+    zIndex: 10,
+    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.13,
+    shadowRadius: 20,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: "#E8E8E8",
+    overflow: "hidden",
+  },
+  hintOverlay: {
+    position: "absolute",
+    zIndex: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+  hintRight: { right: 16, top: "40%" as any, backgroundColor: "rgba(34,197,94,0.85)" },
+  hintLeft: { left: 16, top: "40%" as any, backgroundColor: "rgba(245,158,11,0.85)" },
+  hintUp: { top: 20, left: "38%" as any, backgroundColor: "rgba(99,102,241,0.85)" },
+  hintDown: { bottom: 100, left: "38%" as any, backgroundColor: "rgba(99,102,241,0.85)" },
+  hintText: { fontSize: 12, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+  cardContent: { padding: 22, paddingBottom: 12, flexGrow: 1 },
+  cardHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 18 },
+  cardBadge: {
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: "#1A1A1A", alignItems: "center", justifyContent: "center",
+  },
+  cardBadgeNum: { fontSize: 14, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+  cardSurahName: { fontSize: 15, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  cardAyahLabel: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 1 },
+  cardCounter: { fontSize: 12, color: "#B0B0B0", fontFamily: "Inter_400Regular" },
+  basmala: {
+    fontSize: 22, lineHeight: 44, color: "#1A1A1A", textAlign: "center", writingDirection: "rtl",
+    fontFamily: Platform.OS === "ios" ? "System" : undefined, marginBottom: 12,
+  },
+  arabicText: {
+    fontSize: 28, lineHeight: 54, color: "#1A1A1A",
+    textAlign: "right", writingDirection: "rtl",
+    fontFamily: Platform.OS === "ios" ? "System" : undefined,
+    marginBottom: 16,
+  },
+  transliteration: { fontSize: 14, color: "#7A7A7A", fontFamily: "Inter_400Regular", fontStyle: "italic", marginBottom: 10, lineHeight: 22 },
+  translationBox: { backgroundColor: "#F7F7F7", borderRadius: 14, padding: 14, marginBottom: 10 },
+  translation: { fontSize: 15, color: "#4A4A4A", fontFamily: "Inter_400Regular", lineHeight: 24 },
+  tafsirBox: { backgroundColor: "#FFF8EE", borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: "#EDD9A3" },
+  tafsirName: { fontSize: 11, fontWeight: "700", color: "#8B6914", fontFamily: "Inter_700Bold", marginBottom: 4 },
+  tafsirText: { fontSize: 13, color: "#5A4020", fontFamily: "Inter_400Regular", lineHeight: 22 },
+  cardFooter: {
+    borderTopWidth: 1, borderTopColor: "#F0F0F0", paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10,
+  },
+  swipeHints: {
+    flexDirection: "row", justifyContent: "center", gap: 20, marginBottom: 10,
+  },
+  swipeHintItem: { alignItems: "center", gap: 3 },
+  swipeDirIcon: {
+    width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center",
+  },
+  swipeDirArrow: { fontSize: 14, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  swipeDirLabel: { fontSize: 10, color: "#9A9A9A", fontFamily: "Inter_400Regular" },
+  navRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  navBtn: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: "#F5F5F5", alignItems: "center", justifyContent: "center",
+  },
+  navBtnDisabled: { opacity: 0.35 },
+  navDots: { flexDirection: "row", gap: 6 },
+  navDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#D0D0D0" },
+  navDotActive: { backgroundColor: "#1A1A1A", width: 18 },
+  repeatBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)" },
+  repeatSheet: {
+    backgroundColor: "#FFFFFF", borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    padding: 24, paddingBottom: 36,
+  },
+  repeatTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", marginBottom: 4 },
+  repeatSub: { fontSize: 14, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginBottom: 20 },
+  repeatGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 16 },
+  repeatOption: {
+    flex: 1, minWidth: "40%", backgroundColor: "#F5F5F5", borderRadius: 16, padding: 16, alignItems: "center",
+    borderWidth: 1.5, borderColor: "#E8E8E8",
+  },
+  repeatOptionNum: { fontSize: 26, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  repeatOptionLabel: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 2 },
+  repeatCancel: { alignItems: "center", paddingVertical: 12 },
+  repeatCancelText: { fontSize: 15, color: "#9A9A9A", fontFamily: "Inter_400Regular" },
+});
 
 export default function SurahScreen() {
   const colors = useColors();
@@ -570,6 +983,29 @@ export default function SurahScreen() {
           <MushafPage ayahs={pageAyahs} surahName={arabic?.englishName ?? ""} colors={colors} />
         </ScrollView>
       ) : (
+        arabic ? (
+          <CardSwipeStack
+            ayahs={arabic.ayahs}
+            currentIndex={currentAyahIndex}
+            onIndexChange={(newIdx) => {
+              setCurrentAyahIndex(newIdx);
+              saveSurahPosition(surahNum, newIdx);
+            }}
+            onSave={handleSaveAyah}
+            onRepeatSelect={handleRepeatSelect}
+            translation={translation}
+            transliteration={transliteration}
+            tafsirDataMap={tafsirDataMap}
+            settings={settings}
+            surahNum={surahNum}
+            arabicName={arabic.englishName}
+            playAyah={playAyah}
+            repeatCount={settings.repeatCount}
+          />
+        ) : null
+      )}
+
+      {false && arabic && (
         <FlatList
           ref={cardListRef}
           data={arabic?.ayahs ?? []}

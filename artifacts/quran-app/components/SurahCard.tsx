@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import type { ApiSurah } from "@/services/quranApi";
 
@@ -17,40 +17,40 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave }: Props) 
   const s = styles(colors);
 
   return (
-    <TouchableOpacity onPress={onPress} style={s.card} activeOpacity={0.7}>
-      <View style={s.numberBadge}>
-        <Text style={s.numberText}>{surah.number}</Text>
-      </View>
-      <View style={s.info}>
-        <Text style={s.englishName}>{surah.englishName}</Text>
-        <Text style={s.translation}>
-          {surah.englishNameTranslation} • {surah.numberOfAyahs} ayahs •{" "}
-          {surah.revelationType}
-        </Text>
-      </View>
-      <View style={s.right}>
-        <Text style={s.arabicName}>{surah.name}</Text>
-        <View style={s.badges}>
-          {isRecent && (
-            <View style={s.recentBadge}>
-              <Feather name="clock" size={10} color={colors.accent} />
-            </View>
-          )}
-          {onSave && (
-            <TouchableOpacity
-              onPress={(e) => { e.stopPropagation(); onSave(); }}
-              style={s.saveBtn}
-              activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons
-                name={isSaved ? "bookmark" : "bookmark-outline"}
-                size={18}
-                color={isSaved ? colors.primary : colors.mutedForeground}
-              />
-            </TouchableOpacity>
-          )}
+    <TouchableOpacity onPress={onPress} style={s.card} activeOpacity={0.75}>
+      <View style={s.topRow}>
+        <View style={s.numberBadge}>
+          <Text style={s.numberText}>{surah.number}</Text>
         </View>
+        <View style={s.meta}>
+          <Text style={s.type}>{surah.revelationType}</Text>
+        </View>
+        {onSave && (
+          <TouchableOpacity
+            onPress={(e) => { e.stopPropagation(); onSave(); }}
+            style={s.saveBtn}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons
+              name={isSaved ? "bookmark" : "bookmark-outline"}
+              size={18}
+              color={isSaved ? colors.primary : colors.mutedForeground}
+            />
+          </TouchableOpacity>
+        )}
+        {isRecent && (
+          <View style={s.recentDot} />
+        )}
+      </View>
+
+      <View style={s.body}>
+        <View style={s.names}>
+          <Text style={s.englishName}>{surah.englishName}</Text>
+          <Text style={s.translation}>{surah.englishNameTranslation}</Text>
+          <Text style={s.ayahCount}>{surah.numberOfAyahs} ayahs</Text>
+        </View>
+        <Text style={s.arabicName}>{surah.name}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -59,49 +59,79 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave }: Props) 
 const styles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     card: {
+      marginHorizontal: 16,
+      marginBottom: 10,
+      backgroundColor: colors.card,
+      borderRadius: 20,
+      padding: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    topRow: {
       flexDirection: "row",
       alignItems: "center",
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-      backgroundColor: colors.card,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      marginBottom: 12,
+      gap: 8,
     },
     numberBadge: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: colors.secondary,
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      backgroundColor: colors.primary,
       alignItems: "center",
       justifyContent: "center",
-      marginRight: 12,
     },
     numberText: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: colors.primary,
-      fontFamily: "Inter_600SemiBold",
+      fontSize: 13,
+      fontWeight: "700",
+      color: "#FFFFFF",
+      fontFamily: "Inter_700Bold",
     },
-    info: { flex: 1 },
-    englishName: {
-      fontSize: 16,
+    meta: { flex: 1 },
+    type: {
+      fontSize: 11,
       fontWeight: "600",
-      color: colors.foreground,
+      color: colors.mutedForeground,
       fontFamily: "Inter_600SemiBold",
+      letterSpacing: 0.5,
+      textTransform: "uppercase",
+    },
+    saveBtn: { padding: 2 },
+    recentDot: {
+      width: 8, height: 8, borderRadius: 4, backgroundColor: "#4F46E5",
+    },
+    body: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      justifyContent: "space-between",
+    },
+    names: { flex: 1, gap: 2 },
+    englishName: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.foreground,
+      fontFamily: "Inter_700Bold",
     },
     translation: {
-      fontSize: 12,
+      fontSize: 13,
       color: colors.mutedForeground,
-      marginTop: 2,
       fontFamily: "Inter_400Regular",
     },
-    right: { alignItems: "flex-end", gap: 4 },
+    ayahCount: {
+      fontSize: 12,
+      color: colors.mutedForeground,
+      fontFamily: "Inter_400Regular",
+      marginTop: 4,
+    },
     arabicName: {
-      fontSize: 20,
+      fontSize: 28,
       color: colors.primary,
       fontFamily: "System",
+      marginLeft: 12,
     },
-    badges: { flexDirection: "row", alignItems: "center", gap: 6 },
-    recentBadge: {},
-    saveBtn: { padding: 2 },
   });

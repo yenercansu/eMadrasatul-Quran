@@ -155,7 +155,7 @@ function AyahCardDeck({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: 
           <Feather name="bookmark" size={32} color="#D0D0D0" />
         </View>
         <Text style={s.emptyTitle}>No saved ayahs</Text>
-        <Text style={s.emptySubtitle}>Swipe left on any ayah while reading to save it here</Text>
+        <Text style={s.emptySubtitle}>Swipe right on any ayah while reading to save it here</Text>
       </View>
     );
   }
