@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   TouchableWithoutFeedback,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
 import { RECITERS } from "@/contexts/AudioContext";
@@ -24,45 +25,93 @@ interface Props {
   onClose: () => void;
 }
 
-function SettingRow({
+function TileButton({
+  icon,
   label,
   sublabel,
-  value,
-  onToggle,
-  colors,
+  active,
+  onPress,
   disabled,
 }: {
+  icon: React.ReactNode;
   label: string;
   sublabel?: string;
-  value: boolean;
-  onToggle: () => void;
-  colors: ReturnType<typeof useColors>;
+  active?: boolean;
+  onPress: () => void;
   disabled?: boolean;
 }) {
-  const s = styles(colors);
   return (
-    <View style={[s.row, disabled && s.rowDisabled]}>
-      <View style={{ flex: 1 }}>
-        <Text style={[s.rowLabel, disabled && s.rowLabelDisabled]}>{label}</Text>
-        {sublabel && <Text style={s.rowSublabel}>{sublabel}</Text>}
+    <TouchableOpacity
+      style={[tileStyle.tile, active && tileStyle.tileActive, disabled && tileStyle.tileDisabled]}
+      onPress={onPress}
+      activeOpacity={0.75}
+      disabled={disabled}
+    >
+      <View style={[tileStyle.iconWrap, active && tileStyle.iconWrapActive]}>
+        {icon}
       </View>
-      <Switch
-        value={value}
-        onValueChange={onToggle}
-        trackColor={{ false: colors.muted, true: colors.primary }}
-        thumbColor={colors.primaryForeground}
-        disabled={disabled}
-      />
-    </View>
+      <Text style={[tileStyle.label, active && tileStyle.labelActive]} numberOfLines={1}>{label}</Text>
+      {sublabel ? <Text style={tileStyle.sublabel} numberOfLines={1}>{sublabel}</Text> : null}
+    </TouchableOpacity>
   );
 }
+
+const tileStyle = StyleSheet.create({
+  tile: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F5F5F5",
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    gap: 6,
+    minHeight: 80,
+  },
+  tileActive: {
+    backgroundColor: "#1A1A1A",
+  },
+  tileDisabled: {
+    opacity: 0.4,
+  },
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#E8E8E8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconWrapActive: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#3A3A3A",
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+  },
+  labelActive: {
+    color: "#FFFFFF",
+  },
+  sublabel: {
+    fontSize: 10,
+    color: "#9A9A9A",
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+});
 
 export function SettingsSheet({ visible, onClose }: Props) {
   const colors = useColors();
   const s = styles(colors);
-  const { settings, updateSettings } = useQuran();
+  const { settings, updateSettings, accountSettings, updateAccountSettings } = useQuran();
 
-  const repeatOptions = [1, 2, 3, 5, 7, 10];
+  const toggle = (fn: () => void) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    fn();
+  };
 
   const toggleTafsirEdition = (id: string) => {
     const current = settings.selectedTafsirs ?? ["en.maarifulquran"];
@@ -74,6 +123,15 @@ export function SettingsSheet({ visible, onClose }: Props) {
     }
   };
 
+  const THEMES: { key: "auto" | "light" | "dark" | "sepia"; color: string; label: string }[] = [
+    { key: "light", color: "#FFFFFF", label: "Light" },
+    { key: "sepia", color: "#F5EDD6", label: "Sepia" },
+    { key: "dark", color: "#1A1A1A", label: "Dark" },
+    { key: "auto", color: "linear", label: "Auto" },
+  ];
+
+  const fontSize = accountSettings.fontSize ?? 28;
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
@@ -82,131 +140,139 @@ export function SettingsSheet({ visible, onClose }: Props) {
             <View style={s.sheet}>
               <View style={s.handle} />
               <View style={s.sheetHeader}>
-                <Text style={s.title}>Reading Settings</Text>
+                <Text style={s.title}>Reader Settings</Text>
                 <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-                  <Feather name="x" size={20} color={colors.mutedForeground} />
+                  <Feather name="x" size={20} color="#9A9A9A" />
                 </TouchableOpacity>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={s.sectionLabel}>READING MODE</Text>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
 
-                <SettingRow
-                  label="Mushaf Style"
-                  sublabel="Page layout · disables all overlays"
-                  value={settings.mushafMode}
-                  onToggle={() => updateSettings({ mushafMode: !settings.mushafMode })}
-                  colors={colors}
-                />
+                <Text style={s.sectionLabel}>Theme</Text>
+                <View style={s.themeRow}>
+                  {THEMES.map(t => (
+                    <TouchableOpacity
+                      key={t.key}
+                      style={[
+                        s.themeCircle,
+                        t.key === "light" && { backgroundColor: "#FFFFFF", borderColor: "#E0E0E0" },
+                        t.key === "sepia" && { backgroundColor: "#F5EDD6", borderColor: "#DDD0B0" },
+                        t.key === "dark" && { backgroundColor: "#1A1A1A", borderColor: "#333" },
+                        t.key === "auto" && s.themeCircleAuto,
+                        accountSettings.theme === t.key && s.themeCircleSelected,
+                      ]}
+                      onPress={() => { toggle(() => updateAccountSettings({ theme: t.key })); }}
+                      activeOpacity={0.8}
+                    >
+                      {accountSettings.theme === t.key && (
+                        <View style={s.themeCheckmark}>
+                          <Ionicons name="checkmark" size={14} color={t.key === "dark" ? "#FFF" : "#1A1A1A"} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                  <View style={s.themeLabels}>
+                    {THEMES.map(t => (
+                      <Text key={t.key} style={[s.themeLabel, accountSettings.theme === t.key && s.themeLabelActive]}>
+                        {t.label}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
 
-                <Text style={s.sectionLabel}>DISPLAY</Text>
+                <Text style={s.sectionLabel}>Arabic Font Size</Text>
+                <View style={s.fontSizeRow}>
+                  <TouchableOpacity
+                    style={s.fontSizeBtn}
+                    onPress={() => { toggle(() => updateAccountSettings({ fontSize: Math.max(20, fontSize - 2) })); }}
+                  >
+                    <Feather name="minus" size={18} color="#3A3A3A" />
+                  </TouchableOpacity>
+                  <View style={s.fontSizePreview}>
+                    <Text style={[s.fontSizeArabic, { fontSize }]}>بِسْمِ</Text>
+                    <Text style={s.fontSizeValue}>{fontSize}px</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={s.fontSizeBtn}
+                    onPress={() => { toggle(() => updateAccountSettings({ fontSize: Math.min(48, fontSize + 2) })); }}
+                  >
+                    <Feather name="plus" size={18} color="#3A3A3A" />
+                  </TouchableOpacity>
+                </View>
 
-                <SettingRow
-                  label="Translation"
-                  value={settings.showTranslation}
-                  onToggle={() => updateSettings({ showTranslation: !settings.showTranslation })}
-                  colors={colors}
-                  disabled={settings.mushafMode}
-                />
-                <SettingRow
-                  label="Transliteration"
-                  sublabel={settings.tajweedColorCoding ? "Disabled while Tajweed is on" : undefined}
-                  value={settings.showTransliteration}
-                  onToggle={() => updateSettings({ showTransliteration: !settings.showTransliteration })}
-                  colors={colors}
-                  disabled={settings.mushafMode || settings.tajweedColorCoding}
-                />
-
-                <Text style={s.sectionLabel}>TAFSIR</Text>
-
-                <SettingRow
-                  label="Show Tafsir"
-                  sublabel="Commentary beneath each verse"
-                  value={settings.showTafsir}
-                  onToggle={() => updateSettings({ showTafsir: !settings.showTafsir })}
-                  colors={colors}
-                  disabled={settings.mushafMode}
-                />
+                <Text style={s.sectionLabel}>Display</Text>
+                <View style={s.tileGrid}>
+                  <TileButton
+                    icon={<Feather name="book-open" size={18} color={settings.showTranslation && !settings.mushafMode ? "#1A1A1A" : "#9A9A9A"} />}
+                    label="Translation"
+                    active={settings.showTranslation && !settings.mushafMode}
+                    onPress={() => toggle(() => updateSettings({ showTranslation: !settings.showTranslation }))}
+                    disabled={settings.mushafMode}
+                  />
+                  <TileButton
+                    icon={<Feather name="type" size={18} color={settings.showTransliteration && !settings.mushafMode ? "#1A1A1A" : "#9A9A9A"} />}
+                    label="Romanization"
+                    active={settings.showTransliteration && !settings.mushafMode}
+                    onPress={() => toggle(() => updateSettings({ showTransliteration: !settings.showTransliteration }))}
+                    disabled={settings.mushafMode}
+                  />
+                  <TileButton
+                    icon={<Feather name="align-left" size={18} color={settings.showTafsir && !settings.mushafMode ? "#1A1A1A" : "#9A9A9A"} />}
+                    label="Tafsir"
+                    active={settings.showTafsir && !settings.mushafMode}
+                    onPress={() => toggle(() => updateSettings({ showTafsir: !settings.showTafsir }))}
+                    disabled={settings.mushafMode}
+                  />
+                  <TileButton
+                    icon={<Feather name="layers" size={18} color={settings.tajweedColorCoding && !settings.mushafMode ? "#1A1A1A" : "#9A9A9A"} />}
+                    label="Tajweed"
+                    active={settings.tajweedColorCoding && !settings.mushafMode}
+                    onPress={() => toggle(() => updateSettings({ tajweedColorCoding: !settings.tajweedColorCoding }))}
+                    disabled={settings.mushafMode}
+                  />
+                </View>
 
                 {settings.showTafsir && !settings.mushafMode && (
-                  <View style={s.tafsirSelector}>
-                    <Text style={s.tafsirSelectorLabel}>Select tafsirs to show:</Text>
+                  <>
+                    <Text style={s.sectionLabel}>Tafsir Sources</Text>
                     {TAFSIR_EDITIONS.map((edition) => {
                       const selected = (settings.selectedTafsirs ?? ["en.maarifulquran"]).includes(edition.id);
                       return (
                         <TouchableOpacity
                           key={edition.id}
-                          style={[s.tafsirEditionRow, selected && s.tafsirEditionRowSelected]}
+                          style={[s.tafsirRow, selected && s.tafsirRowSelected]}
                           onPress={() => toggleTafsirEdition(edition.id)}
                           activeOpacity={0.8}
                         >
-                          <View style={[s.tafsirCheckbox, selected && s.tafsirCheckboxSelected]}>
+                          <View style={[s.tafsirCheck, selected && s.tafsirCheckSelected]}>
                             {selected && <Ionicons name="checkmark" size={13} color="#FFFFFF" />}
                           </View>
-                          <View style={s.tafsirEditionInfo}>
-                            <Text style={[s.tafsirEditionName, selected && s.tafsirEditionNameSelected]}>
-                              {edition.name}
-                            </Text>
-                            <Text style={s.tafsirEditionAuthor}>{edition.author}</Text>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[s.tafsirName, selected && s.tafsirNameSelected]}>{edition.name}</Text>
+                            <Text style={s.tafsirAuthor}>{edition.author}</Text>
                           </View>
                         </TouchableOpacity>
                       );
                     })}
-                    <Text style={s.tafsirHint}>If multiple are selected, all will appear under each verse</Text>
-                  </View>
+                  </>
                 )}
 
-                <Text style={s.sectionLabel}>COLOR CODING</Text>
-
-                <SettingRow
-                  label="Translation Color Coding"
-                  value={settings.colorCoding}
-                  onToggle={() => updateSettings({ colorCoding: !settings.colorCoding })}
-                  colors={colors}
-                  disabled={settings.mushafMode}
-                />
-                <SettingRow
-                  label="Tajweed Color Coding"
-                  sublabel={settings.showTransliteration ? "Turns off transliteration" : undefined}
-                  value={settings.tajweedColorCoding}
-                  onToggle={() => updateSettings({ tajweedColorCoding: !settings.tajweedColorCoding })}
-                  colors={colors}
-                  disabled={settings.mushafMode}
-                />
-
-                <Text style={s.sectionLabel}>AUDIO</Text>
-
-                <Text style={s.subLabel}>Reciter</Text>
+                <Text style={s.sectionLabel}>Reciter</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.recitersRow}>
                   {RECITERS.map((r) => (
                     <TouchableOpacity
                       key={r.id}
                       style={[s.reciterChip, settings.selectedReciter === r.id && s.reciterChipActive]}
-                      onPress={() => updateSettings({ selectedReciter: r.id })}
+                      onPress={() => { toggle(() => updateSettings({ selectedReciter: r.id })); }}
                       activeOpacity={0.8}
                     >
-                      <Text style={[s.reciterChipText, settings.selectedReciter === r.id && s.reciterChipTextActive]}>
+                      <Text style={[s.reciterText, settings.selectedReciter === r.id && s.reciterTextActive]}>
                         {r.name}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
 
-                <Text style={s.subLabel}>Repeat Count</Text>
-                <View style={s.repeatRow}>
-                  {repeatOptions.map((n) => (
-                    <TouchableOpacity
-                      key={n}
-                      style={[s.repeatChip, settings.repeatCount === n && s.repeatChipActive]}
-                      onPress={() => updateSettings({ repeatCount: n })}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={[s.repeatChipText, settings.repeatCount === n && s.repeatChipTextActive]}>
-                        {n}x
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
               </ScrollView>
             </View>
           </TouchableWithoutFeedback>
@@ -218,61 +284,158 @@ export function SettingsSheet({ visible, onClose }: Props) {
 
 const styles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
-    sheet: { backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: "92%" },
-    handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: 16 },
-    sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-    title: { fontSize: 18, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
-    closeBtn: { padding: 4 },
-    sectionLabel: { fontSize: 11, fontWeight: "700", color: colors.accent, letterSpacing: 1, marginTop: 16, marginBottom: 4, fontFamily: "Inter_700Bold" },
-    row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
-    rowDisabled: { opacity: 0.4 },
-    rowLabel: { fontSize: 15, color: colors.foreground, fontFamily: "Inter_400Regular" },
-    rowLabelDisabled: { color: colors.mutedForeground },
-    rowSublabel: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
-    tafsirSelector: {
-      backgroundColor: colors.secondary,
-      borderRadius: 12,
-      padding: 12,
-      marginVertical: 8,
-      gap: 8,
+    overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.35)", justifyContent: "flex-end" },
+    sheet: {
+      backgroundColor: "#FAFAFA",
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingHorizontal: 20,
+      paddingTop: 12,
+      paddingBottom: 40,
+      maxHeight: "90%",
     },
-    tafsirSelectorLabel: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
-    tafsirEditionRow: {
+    handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: "#E0E0E0", alignSelf: "center", marginBottom: 16 },
+    sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+    title: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+    closeBtn: { padding: 4 },
+    scrollContent: { gap: 4, paddingBottom: 20 },
+    sectionLabel: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: "#9A9A9A",
+      letterSpacing: 1.2,
+      textTransform: "uppercase",
+      fontFamily: "Inter_700Bold",
+      marginTop: 20,
+      marginBottom: 10,
+    },
+    themeRow: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      gap: 16,
+      marginBottom: 8,
+    },
+    themeCircle: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      borderWidth: 2,
+      borderColor: "#E0E0E0",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    themeCircleAuto: {
+      backgroundColor: "#D0D0D0",
+      borderColor: "#C0C0C0",
+    },
+    themeCircleSelected: {
+      borderColor: "#1A1A1A",
+      borderWidth: 2.5,
+    },
+    themeCheckmark: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: "rgba(255,255,255,0.9)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    themeLabels: {
+      flex: 1,
+      flexDirection: "row",
+      gap: 16,
+      alignItems: "center",
+    },
+    themeLabel: {
+      fontSize: 10,
+      color: "#B0B0B0",
+      fontFamily: "Inter_400Regular",
+      width: 44,
+      textAlign: "center",
+    },
+    themeLabelActive: {
+      color: "#1A1A1A",
+      fontFamily: "Inter_600SemiBold",
+    },
+    fontSizeRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 10,
-      padding: 10,
-      borderRadius: 10,
-      backgroundColor: colors.card,
-      borderWidth: 1.5,
-      borderColor: colors.border,
+      backgroundColor: "#F0F0F0",
+      borderRadius: 16,
+      padding: 12,
+      gap: 16,
     },
-    tafsirEditionRowSelected: { borderColor: colors.primary, backgroundColor: colors.secondary },
-    tafsirCheckbox: {
+    fontSizeBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: "#FFFFFF",
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: "#000",
+      shadowOpacity: 0.06,
+      shadowOffset: { width: 0, height: 2 },
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    fontSizePreview: {
+      flex: 1,
+      alignItems: "center",
+      gap: 4,
+    },
+    fontSizeArabic: {
+      color: "#1A1A1A",
+      lineHeight: 56,
+    },
+    fontSizeValue: {
+      fontSize: 12,
+      color: "#9A9A9A",
+      fontFamily: "Inter_400Regular",
+    },
+    tileGrid: {
+      flexDirection: "row",
+      gap: 10,
+      flexWrap: "wrap",
+    },
+    tafsirRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      padding: 12,
+      borderRadius: 12,
+      backgroundColor: "#F0F0F0",
+      marginBottom: 8,
+      borderWidth: 1.5,
+      borderColor: "transparent",
+    },
+    tafsirRowSelected: {
+      borderColor: "#1A1A1A",
+      backgroundColor: "#F5F5F5",
+    },
+    tafsirCheck: {
       width: 22,
       height: 22,
       borderRadius: 6,
       borderWidth: 2,
-      borderColor: colors.border,
+      borderColor: "#D0D0D0",
       alignItems: "center",
       justifyContent: "center",
     },
-    tafsirCheckboxSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-    tafsirEditionInfo: { flex: 1 },
-    tafsirEditionName: { fontSize: 14, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
-    tafsirEditionNameSelected: { color: colors.primary },
-    tafsirEditionAuthor: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 1 },
-    tafsirHint: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontStyle: "italic", textAlign: "center", marginTop: 4 },
-    subLabel: { fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_500Medium", marginTop: 12, marginBottom: 8 },
-    recitersRow: { marginBottom: 8 },
-    reciterChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: colors.border, marginRight: 8, backgroundColor: colors.card },
-    reciterChipActive: { borderColor: colors.primary, backgroundColor: colors.secondary },
-    reciterChipText: { fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
-    reciterChipTextActive: { color: colors.primary, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
-    repeatRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-    repeatChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
-    repeatChipActive: { borderColor: colors.primary, backgroundColor: colors.primary },
-    repeatChipText: { fontSize: 14, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
-    repeatChipTextActive: { color: colors.primaryForeground, fontFamily: "Inter_600SemiBold" },
+    tafsirCheckSelected: { backgroundColor: "#1A1A1A", borderColor: "#1A1A1A" },
+    tafsirName: { fontSize: 14, fontWeight: "600", color: "#3A3A3A", fontFamily: "Inter_600SemiBold" },
+    tafsirNameSelected: { color: "#1A1A1A" },
+    tafsirAuthor: { fontSize: 11, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 1 },
+    recitersRow: { marginBottom: 4 },
+    reciterChip: {
+      paddingHorizontal: 16,
+      paddingVertical: 9,
+      borderRadius: 20,
+      backgroundColor: "#F0F0F0",
+      marginRight: 8,
+      borderWidth: 1.5,
+      borderColor: "transparent",
+    },
+    reciterChipActive: { borderColor: "#1A1A1A", backgroundColor: "#1A1A1A" },
+    reciterText: { fontSize: 13, color: "#6B6B6B", fontFamily: "Inter_400Regular" },
+    reciterTextActive: { color: "#FFFFFF", fontFamily: "Inter_600SemiBold" },
   });

@@ -21,6 +21,7 @@ import { useAudio } from "@/contexts/AudioContext";
 import { AyahItem } from "@/components/AyahItem";
 import { AudioPlayerBar } from "@/components/AudioPlayerBar";
 import { SettingsSheet, TAFSIR_EDITIONS } from "@/components/SettingsSheet";
+import { ReaderFloatingBar } from "@/components/ReaderFloatingBar";
 import { WordModal } from "@/components/WordModal";
 import { RangeSelectorModal } from "@/components/RangeSelectorModal";
 import { fetchSurahWithTranslations, fetchTafsir, type SurahDetail, type ApiAyah } from "@/services/quranApi";
@@ -28,6 +29,7 @@ import { type TafsirEntry } from "@/components/AyahItem";
 import { SURAH_DATA } from "@/constants/surahData";
 
 const AYAHS_PER_PAGE = 10;
+const MUSHAF_BG = "#F5EDD6";
 
 function MushafPage({
   ayahs,
@@ -43,7 +45,7 @@ function MushafPage({
     <View style={s.page}>
       <View style={s.pageInner}>
         <Text style={s.mushafText} textBreakStrategy="highQuality">
-          {ayahs.map((ayah, i) => (
+          {ayahs.map((ayah) => (
             <Text key={ayah.numberInSurah}>
               <Text style={s.mushafAyahText}>{ayah.text}</Text>
               <Text style={s.ayahMarker}> ۝{ayah.numberInSurah} </Text>
@@ -59,41 +61,41 @@ const mushafStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     page: {
       margin: 16,
-      backgroundColor: "#FDFAF5",
-      borderRadius: 8,
+      backgroundColor: MUSHAF_BG,
+      borderRadius: 10,
       borderWidth: 1,
-      borderColor: colors.border,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 3,
-      minHeight: 400,
+      borderColor: "#D4B896",
+      shadowColor: "#8B6914",
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.15,
+      shadowRadius: 10,
+      elevation: 5,
+      minHeight: 420,
     },
     pageInner: {
       padding: 24,
       paddingVertical: 32,
-      borderWidth: 3,
-      borderColor: colors.accent + "40",
-      borderRadius: 6,
-      margin: 8,
+      borderWidth: 2,
+      borderColor: "#C9A96E" + "60",
+      borderRadius: 8,
+      margin: 10,
     },
     mushafText: {
-      fontSize: 22,
-      lineHeight: 48,
+      fontSize: 24,
+      lineHeight: 52,
       textAlign: "justify",
       color: "#2C1810",
       fontFamily: Platform.OS === "ios" ? "System" : undefined,
       writingDirection: "rtl",
     },
     mushafAyahText: {
-      fontSize: 22,
-      lineHeight: 48,
+      fontSize: 24,
+      lineHeight: 52,
       color: "#2C1810",
     },
     ayahMarker: {
       fontSize: 18,
-      color: colors.accent,
+      color: "#8B6914",
       fontFamily: Platform.OS === "ios" ? "System" : undefined,
     },
   });
@@ -116,19 +118,11 @@ function PracticeModal({
     return highlightedWords.filter(w => w.surahNumber === surahNumber);
   }, [highlightedWords, surahNumber]);
 
-  const surahSavedWordsForPractice = useMemo(() => {
-    return savedWords.filter(w =>
-      surahHighlightedWords.some(h => h.arabic === w.arabic && h.surahNumber === w.surahNumber)
-    );
-  }, [savedWords, surahHighlightedWords]);
-
   const practiceList = useMemo(() => {
-    const result: { arabic: string; translation: string; ayahNumber: number }[] = [];
-    for (const hw of surahHighlightedWords) {
+    return surahHighlightedWords.map(hw => {
       const saved = savedWords.find(sw => sw.arabic === hw.arabic && sw.surahNumber === hw.surahNumber);
-      result.push({ arabic: hw.arabic, translation: saved?.translation ?? "", ayahNumber: hw.ayahNumber });
-    }
-    return result;
+      return { arabic: hw.arabic, translation: saved?.translation ?? "", ayahNumber: hw.ayahNumber };
+    });
   }, [surahHighlightedWords, savedWords]);
 
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -138,19 +132,11 @@ function PracticeModal({
   const current = practiceList[currentIdx];
 
   const handleNext = () => {
-    if (currentIdx + 1 >= practiceList.length) {
-      setDone(true);
-    } else {
-      setCurrentIdx(c => c + 1);
-      setRevealed(false);
-    }
+    if (currentIdx + 1 >= practiceList.length) setDone(true);
+    else { setCurrentIdx(c => c + 1); setRevealed(false); }
   };
 
-  const handleRestart = () => {
-    setCurrentIdx(0);
-    setRevealed(false);
-    setDone(false);
-  };
+  const handleRestart = () => { setCurrentIdx(0); setRevealed(false); setDone(false); };
 
   if (!visible) return null;
 
@@ -169,9 +155,7 @@ function PracticeModal({
           <View style={s.emptyState}>
             <Ionicons name="star-outline" size={48} color={colors.mutedForeground} />
             <Text style={s.emptyTitle}>No highlighted words</Text>
-            <Text style={s.emptySub}>
-              Long-press any Arabic word and tap "Highlight" to add it to your practice session
-            </Text>
+            <Text style={s.emptySub}>Long-press any Arabic word and tap "Highlight" to add it to your practice session</Text>
             <TouchableOpacity style={s.closeEmptyBtn} onPress={onClose} activeOpacity={0.85}>
               <Text style={s.closeEmptyBtnText}>Got it</Text>
             </TouchableOpacity>
@@ -197,11 +181,9 @@ function PracticeModal({
             <View style={s.progressTrack}>
               <View style={[s.progressBar, { width: `${((currentIdx + 1) / practiceList.length) * 100}%` as any }]} />
             </View>
-
             <View style={s.flashcard}>
               <Text style={s.flashcardLocation}>Surah {surahNumber} • Ayah {current.ayahNumber}</Text>
               <Text style={s.flashcardArabic}>{current.arabic}</Text>
-
               {!revealed ? (
                 <TouchableOpacity style={s.revealBtn} onPress={() => setRevealed(true)} activeOpacity={0.85}>
                   <Feather name="eye" size={16} color={colors.primaryForeground} />
@@ -209,15 +191,11 @@ function PracticeModal({
                 </TouchableOpacity>
               ) : (
                 <View style={s.meaningContainer}>
-                  {current.translation ? (
-                    <Text style={s.flashcardMeaning}>{current.translation}</Text>
-                  ) : (
-                    <Text style={s.flashcardMeaningHint}>No translation saved for this word</Text>
-                  )}
+                  {current.translation
+                    ? <Text style={s.flashcardMeaning}>{current.translation}</Text>
+                    : <Text style={s.flashcardMeaningHint}>No translation saved for this word</Text>}
                   <TouchableOpacity style={s.nextBtn} onPress={handleNext} activeOpacity={0.85}>
-                    <Text style={s.nextBtnText}>
-                      {currentIdx + 1 >= practiceList.length ? "Finish" : "Next Word"}
-                    </Text>
+                    <Text style={s.nextBtnText}>{currentIdx + 1 >= practiceList.length ? "Finish" : "Next Word"}</Text>
                     <Feather name="arrow-right" size={16} color={colors.primaryForeground} />
                   </TouchableOpacity>
                 </View>
@@ -234,13 +212,8 @@ const practiceStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     header: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 8,
-      paddingVertical: 12,
-      backgroundColor: colors.card,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingVertical: 12,
+      backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border,
     },
     closeBtn: { padding: 8, width: 38 },
     headerTitle: { flex: 1, textAlign: "center", fontSize: 16, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
@@ -262,15 +235,8 @@ const practiceStyles = (colors: ReturnType<typeof useColors>) =>
     progressTrack: { height: 4, backgroundColor: colors.muted, borderRadius: 2, overflow: "hidden" },
     progressBar: { height: "100%", backgroundColor: colors.primary, borderRadius: 2 },
     flashcard: {
-      backgroundColor: colors.card,
-      borderRadius: 20,
-      padding: 32,
-      alignItems: "center",
-      borderWidth: 1,
-      borderColor: colors.border,
-      gap: 16,
-      minHeight: 280,
-      justifyContent: "center",
+      backgroundColor: colors.card, borderRadius: 20, padding: 32, alignItems: "center",
+      borderWidth: 1, borderColor: colors.border, gap: 16, minHeight: 280, justifyContent: "center",
     },
     flashcardLocation: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     flashcardArabic: { fontSize: 44, color: colors.foreground, fontFamily: "System", textAlign: "center", lineHeight: 64 },
@@ -305,11 +271,14 @@ export default function SurahScreen() {
   });
   const [ayahRepeatOverrides, setAyahRepeatOverrides] = useState<Record<number, number>>({});
 
-  const { settings, saveProgress, recordAyahRead, highlightedWords, saveWord } = useQuran();
+  const {
+    settings, updateSettings,
+    saveProgress, recordAyahRead, highlightedWords,
+    saveWord, saveAyah,
+  } = useQuran();
   const { audioState, playAyah, playRange, setOnNextAyah } = useAudio();
 
   useEffect(() => {
-    // When global repeat count changes, clear all per-ayah overrides
     setAyahRepeatOverrides({});
   }, [settings.repeatCount]);
 
@@ -354,18 +323,15 @@ export default function SurahScreen() {
           surahName: SURAH_DATA[surahN - 1]?.englishName ?? main.arabic.englishName,
         });
         if (surahN === surahNum) {
-          const idx = ayahN - 1;
-          setTimeout(() => {
-            listRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.3 });
-          }, 100);
+          const pageForAyah = Math.ceil(ayahN / AYAHS_PER_PAGE);
+          setCurrentPage(pageForAyah);
         }
       });
 
       if (ayahParam) {
-        const idx = parseInt(ayahParam, 10) - 1;
-        setTimeout(() => {
-          listRef.current?.scrollToIndex({ index: Math.max(0, idx), animated: true });
-        }, 500);
+        const idx = parseInt(ayahParam, 10);
+        const pageForAyah = Math.ceil(idx / AYAHS_PER_PAGE);
+        setCurrentPage(pageForAyah);
       }
     } finally {
       setLoading(false);
@@ -391,7 +357,15 @@ export default function SurahScreen() {
         highlighted: false,
       });
     });
-  }, [surahNum, saveWord]);
+    saveAyah({
+      surahNumber: surahNum,
+      surahName: arabic?.englishName ?? "",
+      ayahNumber: ayah.numberInSurah,
+      arabicText: ayah.text,
+      translationText: translation?.ayahs[ayah.numberInSurah - 1]?.text ?? "",
+    });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [surahNum, saveWord, saveAyah, arabic, translation]);
 
   const handleRepeatSelect = useCallback((ayahNum: number, count: number) => {
     setAyahRepeatOverrides(prev => ({ ...prev, [ayahNum]: count }));
@@ -438,6 +412,23 @@ export default function SurahScreen() {
     return arabic.ayahs.slice(start, start + AYAHS_PER_PAGE);
   }, [arabic, currentPage]);
 
+  const goToPrevPage = () => {
+    if (currentPage > 1) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setCurrentPage(p => p - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setCurrentPage(p => p + 1);
+    }
+  };
+
+  const isFirstPage = currentPage === 1;
+  const isLastPage = currentPage === totalPages;
+
   return (
     <View style={s.container}>
       <View style={[s.header, { paddingTop: topPad + 8 }]}>
@@ -448,7 +439,7 @@ export default function SurahScreen() {
           {arabic && (
             <>
               <Text style={s.headerTitle}>{arabic.englishName}</Text>
-              <Text style={s.headerSub}>{arabic.numberOfAyahs} ayahs • {arabic.revelationType}</Text>
+              <Text style={s.headerSub}>{arabic.numberOfAyahs} ayahs · {arabic.revelationType}</Text>
             </>
           )}
         </View>
@@ -463,9 +454,6 @@ export default function SurahScreen() {
               </View>
             </TouchableOpacity>
           )}
-          <TouchableOpacity onPress={() => setRangeVisible(true)} style={s.headerBtn} activeOpacity={0.7}>
-            <Ionicons name="list" size={22} color={colors.primary} />
-          </TouchableOpacity>
           <TouchableOpacity onPress={handlePlayAll} style={s.headerBtn} activeOpacity={0.7}>
             <Ionicons name="play-circle" size={26} color={colors.primary} />
           </TouchableOpacity>
@@ -475,7 +463,46 @@ export default function SurahScreen() {
         </View>
       </View>
 
-      {arabic && (
+      <View style={s.modeNavBar}>
+        <TouchableOpacity
+          style={[s.pageCornerBtn, s.pageCornerBtnLeft, isFirstPage && s.pageCornerBtnDisabled]}
+          onPress={goToPrevPage}
+          disabled={isFirstPage}
+          activeOpacity={0.75}
+        >
+          <Feather name="chevron-left" size={16} color={isFirstPage ? "#C0C0C0" : "#1A1A1A"} />
+          <Text style={[s.pageCornerText, isFirstPage && s.pageCornerTextDisabled]}>Prev</Text>
+        </TouchableOpacity>
+
+        <View style={s.modeSwitcher}>
+          <TouchableOpacity
+            style={[s.modeBtn, !settings.mushafMode && s.modeBtnActive]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); updateSettings({ mushafMode: false }); }}
+            activeOpacity={0.8}
+          >
+            <Text style={[s.modeBtnText, !settings.mushafMode && s.modeBtnTextActive]}>Normal</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.modeBtn, settings.mushafMode && s.modeBtnActive]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); updateSettings({ mushafMode: true }); }}
+            activeOpacity={0.8}
+          >
+            <Text style={[s.modeBtnText, settings.mushafMode && s.modeBtnTextActive]}>Mushaf</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          style={[s.pageCornerBtn, s.pageCornerBtnRight, isLastPage && s.pageCornerBtnDisabled]}
+          onPress={goToNextPage}
+          disabled={isLastPage}
+          activeOpacity={0.75}
+        >
+          <Text style={[s.pageCornerText, isLastPage && s.pageCornerTextDisabled]}>Next</Text>
+          <Feather name="chevron-right" size={16} color={isLastPage ? "#C0C0C0" : "#1A1A1A"} />
+        </TouchableOpacity>
+      </View>
+
+      {!loading && arabic && isFirstPage && (
         <View style={s.surahInfo}>
           <Text style={s.surahArabicName}>{arabic.name}</Text>
           {basmala && (
@@ -484,79 +511,83 @@ export default function SurahScreen() {
         </View>
       )}
 
+      {!loading && totalPages > 1 && (
+        <View style={s.pageIndicatorBar}>
+          <Text style={s.pageIndicatorText}>
+            Page {currentPage} of {totalPages}
+          </Text>
+          <Text style={s.pageIndicatorRange}>
+            Ayahs {(currentPage - 1) * AYAHS_PER_PAGE + 1}–{Math.min(currentPage * AYAHS_PER_PAGE, arabic?.ayahs.length ?? 0)}
+          </Text>
+        </View>
+      )}
+
       {loading ? (
         <ActivityIndicator color={colors.primary} style={{ flex: 1 }} size="large" />
       ) : settings.mushafMode ? (
         <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 180 }}
+          style={{ flex: 1, backgroundColor: MUSHAF_BG }}
+          contentContainerStyle={{ paddingBottom: 220 }}
           showsVerticalScrollIndicator={false}
         >
           <MushafPage ayahs={pageAyahs} surahName={arabic?.englishName ?? ""} colors={colors} />
-
-          <View style={s.pageNav}>
-            <TouchableOpacity
-              style={[s.pageNavBtn, currentPage === 1 && s.pageNavBtnDisabled]}
-              onPress={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              activeOpacity={0.8}
-            >
-              <Feather name="chevron-left" size={18} color={currentPage === 1 ? colors.mutedForeground : colors.primary} />
-              <Text style={[s.pageNavText, currentPage === 1 && s.pageNavTextDisabled]}>Previous</Text>
-            </TouchableOpacity>
-
-            <View style={s.pageIndicator}>
-              <Text style={s.pageIndicatorText}>Page {currentPage} / {totalPages}</Text>
-              <Text style={s.pageAyahRange}>
-                Ayahs {(currentPage - 1) * AYAHS_PER_PAGE + 1}–{Math.min(currentPage * AYAHS_PER_PAGE, arabic?.ayahs.length ?? 0)}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={[s.pageNavBtn, currentPage === totalPages && s.pageNavBtnDisabled]}
-              onPress={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              activeOpacity={0.8}
-            >
-              <Text style={[s.pageNavText, currentPage === totalPages && s.pageNavTextDisabled]}>Next</Text>
-              <Feather name="chevron-right" size={18} color={currentPage === totalPages ? colors.mutedForeground : colors.primary} />
-            </TouchableOpacity>
-          </View>
         </ScrollView>
       ) : (
         <FlatList
           ref={listRef}
-          data={arabic?.ayahs ?? []}
+          data={pageAyahs}
           keyExtractor={(item) => String(item.numberInSurah)}
-          renderItem={({ item }) => (
-            <AyahItem
-              arabic={item}
-              translation={translation?.ayahs[item.numberInSurah - 1]}
-              transliteration={transliteration?.ayahs[item.numberInSurah - 1]}
-              tafsirs={Object.entries(tafsirDataMap).map(([edId, surahDetail]): TafsirEntry => ({
-                  edition: edId,
-                  name: TAFSIR_EDITIONS.find(t => t.id === edId)?.name ?? edId,
-                  ayah: surahDetail.ayahs[item.numberInSurah - 1],
-                }))}
-              surahNumber={surahNum}
-              surahName={arabic?.englishName ?? ""}
-              totalAyahs={arabic?.ayahs.length ?? 0}
-              isActive={activeAyah === item.numberInSurah || audioState.currentAyah === item.numberInSurah}
-              onPress={() => handleAyahPress(item.numberInSurah)}
-              onWordLongPress={(word, ayahNum) => handleWordLongPress(word, ayahNum)}
-              onSaveAyah={handleSaveAyah}
-              onRepeatSelect={handleRepeatSelect}
-              ayahRepeat={ayahRepeatOverrides[item.numberInSurah] ?? null}
-            />
-          )}
-          contentContainerStyle={{ paddingBottom: 180 }}
+          renderItem={({ item }) => {
+            const translationAyah = translation?.ayahs[item.numberInSurah - 1];
+            const transliterationAyah = transliteration?.ayahs[item.numberInSurah - 1];
+            const tafsirs: TafsirEntry[] = [];
+            if (settings.showTafsir) {
+              for (const ed of (settings.selectedTafsirs ?? ["en.maarifulquran"])) {
+                const tafsirData = tafsirDataMap[ed];
+                if (tafsirData) {
+                  const tafsirAyah = tafsirData.ayahs[item.numberInSurah - 1];
+                  const edition = TAFSIR_EDITIONS.find(e => e.id === ed);
+                  if (tafsirAyah && edition) {
+                    tafsirs.push({ edition: ed, name: edition.name, ayah: tafsirAyah });
+                  }
+                }
+              }
+            }
+            return (
+              <AyahItem
+                arabic={item}
+                translation={translationAyah}
+                transliteration={transliterationAyah}
+                tafsirs={tafsirs}
+                surahNumber={surahNum}
+                surahName={arabic?.englishName ?? ""}
+                totalAyahs={arabic?.ayahs.length ?? 0}
+                isActive={activeAyah === item.numberInSurah}
+                onPress={() => handleAyahPress(item.numberInSurah)}
+                onWordLongPress={handleWordLongPress}
+                onSaveAyah={handleSaveAyah}
+                onRepeatSelect={handleRepeatSelect}
+                ayahRepeat={ayahRepeatOverrides[item.numberInSurah] ?? null}
+              />
+            );
+          }}
+          contentContainerStyle={{ paddingBottom: 220 }}
           showsVerticalScrollIndicator={false}
-          onScrollToIndexFailed={() => {}}
           initialNumToRender={10}
           maxToRenderPerBatch={10}
-          windowSize={5}
         />
       )}
+
+      <ReaderFloatingBar
+        showTranslation={settings.showTranslation}
+        showTransliteration={settings.showTransliteration}
+        showTafsir={settings.showTafsir}
+        mushafMode={settings.mushafMode}
+        onToggleTranslation={() => updateSettings({ showTranslation: !settings.showTranslation })}
+        onToggleTransliteration={() => updateSettings({ showTransliteration: !settings.showTransliteration })}
+        onToggleTafsir={() => updateSettings({ showTafsir: !settings.showTafsir })}
+        onPlayRange={() => setRangeVisible(true)}
+      />
 
       <AudioPlayerBar />
 
@@ -605,30 +636,65 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: 12,
-      paddingBottom: 12,
+      paddingBottom: 10,
       backgroundColor: colors.card,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
     backBtn: { padding: 8 },
     headerCenter: { flex: 1, alignItems: "center" },
-    headerTitle: { fontSize: 18, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
+    headerTitle: { fontSize: 17, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
     headerSub: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     headerActions: { flexDirection: "row", alignItems: "center" },
     headerBtn: { padding: 8 },
     practiceIconBadge: { position: "relative" },
     practiceCount: {
-      position: "absolute",
-      top: -4,
-      right: -4,
-      backgroundColor: colors.primary,
-      borderRadius: 8,
-      width: 16,
-      height: 16,
-      alignItems: "center",
-      justifyContent: "center",
+      position: "absolute", top: -4, right: -4, backgroundColor: colors.primary,
+      borderRadius: 8, width: 16, height: 16, alignItems: "center", justifyContent: "center",
     },
     practiceCountText: { fontSize: 9, fontWeight: "700", color: colors.primaryForeground },
+    modeNavBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      backgroundColor: colors.card,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    pageCornerBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+      borderRadius: 12,
+      backgroundColor: "#F5F5F5",
+      minWidth: 70,
+    },
+    pageCornerBtnLeft: { justifyContent: "flex-start" },
+    pageCornerBtnRight: { justifyContent: "flex-end" },
+    pageCornerBtnDisabled: { backgroundColor: "#F9F9F9" },
+    pageCornerText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+    pageCornerTextDisabled: { color: "#C0C0C0" },
+    modeSwitcher: {
+      flexDirection: "row",
+      backgroundColor: "#F0F0F0",
+      borderRadius: 12,
+      padding: 3,
+      gap: 2,
+    },
+    modeBtn: {
+      paddingHorizontal: 16,
+      paddingVertical: 7,
+      borderRadius: 10,
+    },
+    modeBtnActive: {
+      backgroundColor: "#1A1A1A",
+    },
+    modeBtnText: { fontSize: 13, fontWeight: "700", color: "#9A9A9A", fontFamily: "Inter_700Bold" },
+    modeBtnTextActive: { color: "#FFFFFF" },
     surahInfo: {
       alignItems: "center",
       paddingVertical: 20,
@@ -639,26 +705,14 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     surahArabicName: { fontSize: 28, color: colors.primary, fontFamily: "System", marginBottom: 8 },
     basmala: { fontSize: 20, color: colors.foreground, fontFamily: "System", textAlign: "center", lineHeight: 40 },
-    pageNav: {
+    pageIndicatorBar: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      paddingVertical: 20,
+      justifyContent: "center",
+      gap: 12,
+      paddingVertical: 6,
+      backgroundColor: colors.muted,
     },
-    pageNavBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 4,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 10,
-      backgroundColor: colors.secondary,
-    },
-    pageNavBtnDisabled: { backgroundColor: colors.muted },
-    pageNavText: { fontSize: 14, fontWeight: "600", color: colors.primary, fontFamily: "Inter_600SemiBold" },
-    pageNavTextDisabled: { color: colors.mutedForeground },
-    pageIndicator: { alignItems: "center" },
-    pageIndicatorText: { fontSize: 14, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
-    pageAyahRange: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
+    pageIndicatorText: { fontSize: 12, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
+    pageIndicatorRange: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
   });

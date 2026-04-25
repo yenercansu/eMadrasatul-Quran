@@ -20,8 +20,8 @@ function NativeTabLayout() {
         <Label>Quran</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="library">
-        <Icon sf={{ default: "star", selected: "star.fill" }} />
-        <Label>Library</Label>
+        <Icon sf={{ default: "bookmark", selected: "bookmark.fill" }} />
+        <Label>Quiz</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
@@ -83,9 +83,9 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="library"
         options={{
-          title: "Library",
+          title: "Quiz",
           tabBarIcon: ({ color }) =>
-            isIOS ? <SymbolView name="star" tintColor={color} size={24} /> : <Ionicons name="star-outline" size={22} color={color} />,
+            isIOS ? <SymbolView name="bookmark" tintColor={color} size={24} /> : <Ionicons name="bookmark-outline" size={22} color={color} />,
         }}
       />
       <Tabs.Screen

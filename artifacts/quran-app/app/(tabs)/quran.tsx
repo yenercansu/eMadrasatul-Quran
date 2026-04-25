@@ -20,6 +20,8 @@ import { SurahCard } from "@/components/SurahCard";
 import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
 import { useQuran } from "@/contexts/QuranContext";
 
+type FilterType = "all" | "meccan" | "medinan" | "alphabetic";
+
 function SwipeableSurahCard({
   surah,
   isRecent,
@@ -87,7 +89,7 @@ export default function QuranScreen() {
   const [surahs, setSurahs] = useState<ApiSurah[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "meccan" | "medinan">("all");
+  const [filterType, setFilterType] = useState<FilterType>("all");
   const { recentProgress, saveSurah, removeSavedSurah, isSurahSaved } = useQuran();
 
   useEffect(() => {
@@ -97,29 +99,39 @@ export default function QuranScreen() {
   const recentNumbers = useMemo(() => new Set(recentProgress.map(p => p.surahNumber)), [recentProgress]);
 
   const filtered = useMemo(() => {
-    return surahs.filter((s) => {
+    let list = surahs.filter((s) => {
       const q = search.toLowerCase();
       const matchSearch =
         s.englishName.toLowerCase().includes(q) ||
         s.englishNameTranslation.toLowerCase().includes(q) ||
         String(s.number).includes(q);
       const matchType =
-        filterType === "all" ||
+        filterType === "all" || filterType === "alphabetic" ||
         (filterType === "meccan" && s.revelationType === "Meccan") ||
         (filterType === "medinan" && s.revelationType === "Medinan");
       return matchSearch && matchType;
     });
+    if (filterType === "alphabetic") {
+      list = [...list].sort((a, b) => a.englishName.localeCompare(b.englishName));
+    }
+    return list;
   }, [surahs, search, filterType]);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  const FILTERS: { key: FilterType; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "meccan", label: "Meccan" },
+    { key: "medinan", label: "Medinan" },
+    { key: "alphabetic", label: "Alphabetic" },
+  ];
 
   return (
     <View style={s.container}>
       <View style={[s.header, { paddingTop: topPad + 12 }]}>
         <Text style={s.title}>Al-Quran</Text>
         <Text style={s.subtitle}>
-          114 Surahs — tap <Feather name="bookmark" size={12} color={colors.mutedForeground} /> to save
-          {" · "}swipe ← to save/unsave
+          114 Surahs — swipe ← to save/unsave
         </Text>
         <View style={s.searchRow}>
           <View style={s.searchBar}>
@@ -139,15 +151,15 @@ export default function QuranScreen() {
           </View>
         </View>
         <View style={s.filterRow}>
-          {(["all", "meccan", "medinan"] as const).map((f) => (
+          {FILTERS.map(({ key, label }) => (
             <TouchableOpacity
-              key={f}
-              style={[s.filterChip, filterType === f && s.filterChipActive]}
-              onPress={() => setFilterType(f)}
+              key={key}
+              style={[s.filterChip, filterType === key && s.filterChipActive]}
+              onPress={() => setFilterType(key)}
               activeOpacity={0.8}
             >
-              <Text style={[s.filterText, filterType === f && s.filterTextActive]}>
-                {f === "all" ? "All" : f === "meccan" ? "Meccan" : "Medinan"}
+              <Text style={[s.filterText, filterType === key && s.filterTextActive]}>
+                {label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -173,7 +185,7 @@ export default function QuranScreen() {
               />
             );
           }}
-          contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 120 : 120 }}
+          contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
           scrollEnabled={!!filtered.length}
           ListEmptyComponent={
@@ -211,18 +223,18 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       gap: 8,
     },
     searchInput: { flex: 1, fontSize: 15, color: colors.foreground, fontFamily: "Inter_400Regular" },
-    filterRow: { flexDirection: "row", gap: 8 },
+    filterRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
     filterChip: {
-      paddingHorizontal: 14,
-      paddingVertical: 6,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
       borderRadius: 20,
-      borderWidth: 1,
+      borderWidth: 1.5,
       borderColor: colors.border,
       backgroundColor: colors.card,
     },
-    filterChipActive: { borderColor: colors.primary, backgroundColor: colors.secondary },
-    filterText: { fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
-    filterTextActive: { color: colors.primary, fontFamily: "Inter_600SemiBold" },
+    filterChipActive: { borderColor: "#1A1A1A", backgroundColor: "#1A1A1A" },
+    filterText: { fontSize: 14, fontWeight: "600", color: "#6B6B6B", fontFamily: "Inter_600SemiBold" },
+    filterTextActive: { color: "#FFFFFF", fontFamily: "Inter_600SemiBold" },
     swipeAction: {
       width: 90,
       justifyContent: "center",

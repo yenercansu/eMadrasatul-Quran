@@ -11,6 +11,16 @@ export interface SavedWord {
   highlighted: boolean;
 }
 
+export interface SavedAyah {
+  id: string;
+  surahNumber: number;
+  surahName: string;
+  ayahNumber: number;
+  arabicText: string;
+  translationText: string;
+  addedAt: number;
+}
+
 export interface HighlightedWord {
   arabic: string;
   surahNumber: number;
@@ -41,7 +51,7 @@ export interface AccountSettings {
   name: string;
   email: string;
   fontSize: number;
-  theme: "auto" | "light" | "dark";
+  theme: "auto" | "light" | "dark" | "sepia";
   dailyNotifications: boolean;
   notificationTime: string;
 }
@@ -67,6 +77,10 @@ interface QuranContextType {
   saveWord: (word: Omit<SavedWord, "id" | "addedAt">) => void;
   removeWord: (id: string) => void;
   toggleHighlight: (id: string) => void;
+  savedAyahs: SavedAyah[];
+  saveAyah: (ayah: Omit<SavedAyah, "id" | "addedAt">) => void;
+  removeAyah: (id: string) => void;
+  isAyahSaved: (surahNumber: number, ayahNumber: number) => boolean;
   savedSurahs: number[];
   saveSurah: (num: number) => void;
   removeSavedSurah: (num: number) => void;
@@ -129,6 +143,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [accountSettings, setAccountSettings] = useState<AccountSettings>(DEFAULT_ACCOUNT);
   const [savedWords, setSavedWords] = useState<SavedWord[]>(SEED_WORDS);
+  const [savedAyahs, setSavedAyahs] = useState<SavedAyah[]>([]);
   const [savedSurahs, setSavedSurahs] = useState<number[]>([]);
   const [highlightedWords, setHighlightedWords] = useState<HighlightedWord[]>([]);
   const [recentProgress, setRecentProgress] = useState<Progress[]>([]);
@@ -145,6 +160,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         "quran_settings", "quran_saved_words", "quran_recent_progress",
         "quran_last_listened", "quran_goal", "quran_daily_entries",
         "quran_account", "quran_saved_surahs", "quran_highlighted_words",
+        "quran_saved_ayahs",
       ];
       const results = await AsyncStorage.multiGet(keys);
       const map = Object.fromEntries(results.map(([k, v]) => [k, v]));
@@ -159,6 +175,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         await AsyncStorage.setItem("quran_saved_words", JSON.stringify(SEED_WORDS));
       }
 
+      if (map.quran_saved_ayahs) setSavedAyahs(JSON.parse(map.quran_saved_ayahs));
       if (map.quran_saved_surahs) setSavedSurahs(JSON.parse(map.quran_saved_surahs));
       if (map.quran_highlighted_words) setHighlightedWords(JSON.parse(map.quran_highlighted_words));
       if (map.quran_recent_progress) setRecentProgress(JSON.parse(map.quran_recent_progress));
@@ -171,12 +188,8 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const updateSettings = useCallback((partial: Partial<Settings>) => {
     setSettings((prev) => {
       const next = { ...prev, ...partial };
-
-      // Tajweed color coding ↔ Transliteration are mutually exclusive
       if (partial.tajweedColorCoding === true) next.showTransliteration = false;
       if (partial.showTransliteration === true) next.tajweedColorCoding = false;
-
-      // Mushaf mode disables all text overlays
       if (partial.mushafMode === true) {
         next.showTranslation = false;
         next.showTransliteration = false;
@@ -184,11 +197,8 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         next.tajweedColorCoding = false;
         next.colorCoding = false;
       }
-
-      // Translation/Tajweed color coding are also mutually exclusive
       if (partial.colorCoding === true) next.tajweedColorCoding = false;
       if (partial.tajweedColorCoding === true) next.colorCoding = false;
-
       AsyncStorage.setItem("quran_settings", JSON.stringify(next));
       return next;
     });
@@ -232,6 +242,33 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
   }, []);
+
+  const saveAyah = useCallback((ayah: Omit<SavedAyah, "id" | "addedAt">) => {
+    setSavedAyahs((prev) => {
+      const exists = prev.find(a => a.surahNumber === ayah.surahNumber && a.ayahNumber === ayah.ayahNumber);
+      if (exists) return prev;
+      const newAyah: SavedAyah = {
+        ...ayah,
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        addedAt: Date.now(),
+      };
+      const next = [newAyah, ...prev];
+      AsyncStorage.setItem("quran_saved_ayahs", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const removeAyah = useCallback((id: string) => {
+    setSavedAyahs((prev) => {
+      const next = prev.filter(a => a.id !== id);
+      AsyncStorage.setItem("quran_saved_ayahs", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const isAyahSaved = useCallback((surahNumber: number, ayahNumber: number) => {
+    return savedAyahs.some(a => a.surahNumber === surahNumber && a.ayahNumber === ayahNumber);
+  }, [savedAyahs]);
 
   const saveSurah = useCallback((num: number) => {
     setSavedSurahs((prev) => {
@@ -321,6 +358,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       settings, updateSettings,
       accountSettings, updateAccountSettings,
       savedWords, saveWord, removeWord, toggleHighlight,
+      savedAyahs, saveAyah, removeAyah, isAyahSaved,
       savedSurahs, saveSurah, removeSavedSurah, isSurahSaved,
       highlightedWords, highlightWord, unhighlightWord, isWordHighlighted,
       recentProgress, saveProgress, lastListened,
