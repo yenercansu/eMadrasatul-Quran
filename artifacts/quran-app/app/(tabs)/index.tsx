@@ -413,7 +413,7 @@ export default function HomeScreen() {
 
         <TouchableOpacity
           style={s.quizCtaCard}
-          onPress={() => router.push("/memorization-quiz")}
+          onPress={() => router.push("/(tabs)/library")}
           activeOpacity={0.85}
         >
           <View style={s.quizCtaLeft}>
