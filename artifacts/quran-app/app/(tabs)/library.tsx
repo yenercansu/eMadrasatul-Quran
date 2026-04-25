@@ -177,9 +177,9 @@ function AyahCardDeck({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: 
                 top: offsetY,
                 left: idx * 8,
                 right: idx * 8,
-                zIndex: 10 - idx,
                 transform: [{ scale }],
                 opacity,
+                zIndex: 10 - idx,
               },
             ]}
           >
@@ -189,7 +189,7 @@ function AyahCardDeck({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: 
       })}
       <View style={s.counter}>
         <Text style={s.counterText}>{ayahs.length} saved</Text>
-        <Text style={s.counterHint}>← swipe to remove</Text>
+        <Text style={s.counterHint}>Swipe to remove</Text>
       </View>
     </View>
   );
@@ -296,9 +296,8 @@ const wordCardStyles = (colors: ReturnType<typeof useColors>) =>
     actionBtn: { padding: 6 },
   });
 
-export default function LibraryScreen() {
+function WordsQuizView({ onBack }: { onBack: () => void }) {
   const colors = useColors();
-  const s = styles(colors);
   const insets = useSafeAreaInsets();
   const { savedWords, removeWord, toggleHighlight, savedAyahs, removeAyah } = useQuran();
   const [filterMode, setFilterMode] = useState<FilterMode>("ayah");
@@ -338,6 +337,8 @@ export default function LibraryScreen() {
     { key: "by-surah", label: "By Surah" },
   ];
 
+  const s = wordsViewStyles;
+
   return (
     <View style={s.container}>
       <View style={[s.header, { paddingTop: topPad + 12 }]}>
@@ -352,10 +353,13 @@ export default function LibraryScreen() {
             </View>
           </View>
         ) : (
-          <View style={s.titleRow}>
-            <View>
+          <View style={s.topRow}>
+            <TouchableOpacity onPress={onBack} style={s.backBtn} activeOpacity={0.7}>
+              <Feather name="arrow-left" size={20} color="#1A1A1A" />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
               <Text style={s.title}>
-                {filterMode === "ayah" ? "Saved Ayah" : "Vocabulary"}
+                {filterMode === "ayah" ? "Saved Ayahs" : "Vocabulary"}
               </Text>
               <Text style={s.subtitle}>
                 {filterMode === "ayah"
@@ -383,23 +387,6 @@ export default function LibraryScreen() {
           </View>
         )}
       </View>
-
-      <TouchableOpacity
-        style={s.memQuizCard}
-        onPress={() => router.push("/memorization-quiz")}
-        activeOpacity={0.85}
-      >
-        <View style={s.memQuizLeft}>
-          <View style={s.memQuizIcon}>
-            <Ionicons name="bulb" size={20} color="#FFFFFF" />
-          </View>
-          <View>
-            <Text style={s.memQuizTitle}>Memorization Quiz</Text>
-            <Text style={s.memQuizSub}>Follow-up ayah · Fill in the blank</Text>
-          </View>
-        </View>
-        <Feather name="chevron-right" size={18} color="rgba(255,255,255,0.7)" />
-      </TouchableOpacity>
 
       {filterMode === "ayah" ? (
         <AyahCardDeck ayahs={savedAyahs} onRemove={removeAyah} />
@@ -430,6 +417,23 @@ export default function LibraryScreen() {
               <Feather name="book" size={40} color="#D0D0D0" />
               <Text style={s.emptyTitle}>No words saved yet</Text>
               <Text style={s.emptySubtitle}>Save words while reading to organize them by surah</Text>
+            </View>
+          }
+        />
+      ) : showDrillDown ? (
+        <FlatList
+          data={filteredWords}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <WordCard word={item} onRemove={removeWord} onToggleHighlight={toggleHighlight} />
+          )}
+          contentContainerStyle={{ padding: 16, paddingBottom: 160, gap: 10 }}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={s.empty}>
+              <Feather name="book-open" size={40} color="#D0D0D0" />
+              <Text style={s.emptyTitle}>No words saved yet</Text>
+              <Text style={s.emptySubtitle}>Long-press any word while reading to save it here</Text>
             </View>
           }
         />
@@ -475,116 +479,246 @@ export default function LibraryScreen() {
           <Text style={s.deleteAllText}>Delete all {filteredWords.length} words from {selectedSurahName}</Text>
         </TouchableOpacity>
       )}
-
-      {(filterMode === "words" || filterMode === "by-surah") && savedWords.length > 0 && !showDrillDown && !showSurahList && (
-        <TouchableOpacity
-          style={s.quizCta}
-          onPress={() => router.push("/quiz")}
-          activeOpacity={0.85}
-        >
-          <Text style={s.quizCtaText}>Start Vocabulary Quiz</Text>
-          <Feather name="arrow-right" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
 
-const styles = (colors: ReturnType<typeof useColors>) =>
-  StyleSheet.create({
-    container: { flex: 1, backgroundColor: "#F7F7F7" },
-    header: {
-      backgroundColor: "#FFFFFF",
-      paddingHorizontal: 16,
-      paddingBottom: 14,
-      borderBottomWidth: 1,
-      borderBottomColor: "#F0F0F0",
-    },
-    drillHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 },
-    backBtn: { padding: 4 },
-    titleRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 4 },
-    title: { fontSize: 28, fontWeight: "800", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-    subtitle: { fontSize: 13, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 2, marginBottom: 12 },
-    filterRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-    filterChip: {
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderRadius: 20,
-      backgroundColor: "#F0F0F0",
-      borderWidth: 1.5,
-      borderColor: "transparent",
-    },
-    filterChipActive: { backgroundColor: "#1A1A1A", borderColor: "#1A1A1A" },
-    filterText: { fontSize: 14, fontWeight: "600", color: "#6B6B6B", fontFamily: "Inter_600SemiBold" },
-    filterTextActive: { color: "#FFFFFF", fontFamily: "Inter_600SemiBold" },
-    surahRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      backgroundColor: "#FFFFFF",
-      borderBottomWidth: 1,
-      borderBottomColor: "#F5F5F5",
-      gap: 12,
-    },
-    surahBadge: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: "#F5F5F5",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    surahBadgeNum: { fontSize: 14, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-    surahInfo: { flex: 1 },
-    surahName: { fontSize: 16, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-    surahMeta: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 2 },
-    empty: { alignItems: "center", paddingVertical: 60, paddingHorizontal: 24, gap: 10 },
-    emptyTitle: { fontSize: 18, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-    emptySubtitle: { fontSize: 14, color: "#9A9A9A", fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
-    deleteAllBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      margin: 16,
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: "#FFCDD2",
-      backgroundColor: "#FFF5F5",
-    },
-    deleteAllText: { fontSize: 14, color: "#D9534F", fontFamily: "Inter_400Regular", flex: 1 },
-    quizCta: {
-      position: "absolute",
-      bottom: Platform.OS === "ios" ? 100 : 84,
-      left: 16,
-      right: 16,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 10,
-      backgroundColor: "#1A1A1A",
-      paddingVertical: 16,
-      borderRadius: 16,
-      shadowColor: "#000",
-      shadowOpacity: 0.15,
-      shadowOffset: { width: 0, height: 4 },
-      shadowRadius: 12,
-      elevation: 6,
-    },
-    quizCtaText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
-    memQuizCard: {
-      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-      backgroundColor: "#1A1A1A", borderRadius: 18, paddingHorizontal: 16, paddingVertical: 14,
-      marginHorizontal: 16, marginTop: 12, marginBottom: 4,
-      shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.13, shadowRadius: 12, elevation: 5,
-    },
-    memQuizLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-    memQuizIcon: {
-      width: 40, height: 40, borderRadius: 12,
-      backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center",
-    },
-    memQuizTitle: { fontSize: 15, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
-    memQuizSub: { fontSize: 12, color: "rgba(255,255,255,0.55)", fontFamily: "Inter_400Regular", marginTop: 2 },
-  });
+const wordsViewStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F7F7F7" },
+  header: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  topRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 12 },
+  drillHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 },
+  backBtn: { padding: 4, marginTop: 4 },
+  title: { fontSize: 28, fontWeight: "800", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  subtitle: { fontSize: 13, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 2 },
+  filterRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "#F0F0F0",
+    borderWidth: 1.5,
+    borderColor: "transparent",
+  },
+  filterChipActive: { backgroundColor: "#1A1A1A", borderColor: "#1A1A1A" },
+  filterText: { fontSize: 14, fontWeight: "600", color: "#6B6B6B", fontFamily: "Inter_600SemiBold" },
+  filterTextActive: { color: "#FFFFFF", fontFamily: "Inter_600SemiBold" },
+  surahRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F5F5F5",
+    gap: 12,
+  },
+  surahBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#F5F5F5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  surahBadgeNum: { fontSize: 14, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  surahInfo: { flex: 1 },
+  surahName: { fontSize: 16, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  surahMeta: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 2 },
+  empty: { alignItems: "center", paddingVertical: 60, paddingHorizontal: 24, gap: 10 },
+  emptyTitle: { fontSize: 18, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  emptySubtitle: { fontSize: 14, color: "#9A9A9A", fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
+  deleteAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    margin: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FFCDD2",
+    backgroundColor: "#FFF5F5",
+  },
+  deleteAllText: { fontSize: 14, color: "#D9534F", fontFamily: "Inter_400Regular", flex: 1 },
+});
+
+export default function LibraryScreen() {
+  const insets = useSafeAreaInsets();
+  const [view, setView] = useState<"select" | "words">("select");
+  const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  if (view === "words") {
+    return <WordsQuizView onBack={() => setView("select")} />;
+  }
+
+  const CARD_SIZE = SCREEN_WIDTH - 32;
+
+  return (
+    <View style={[selStyles.container, { paddingTop: topPad + 16 }]}>
+      <Text style={selStyles.pageTitle}>Select Quiz</Text>
+
+      <View style={selStyles.cardsRow}>
+        <TouchableOpacity
+          style={[selStyles.card, selStyles.cardDark, { height: CARD_SIZE * 0.85 }]}
+          onPress={() => router.push("/memorization-quiz")}
+          activeOpacity={0.88}
+        >
+          <View style={selStyles.iconWrapDark}>
+            <Ionicons name="bulb" size={32} color="#FFFFFF" />
+          </View>
+          <View style={{ flex: 1, justifyContent: "center" }}>
+            <Text style={selStyles.cardTitleDark}>Memorization{"\n"}Quiz</Text>
+            <Text style={selStyles.cardDescDark}>Challenge your memory of the ayahs you have learned.</Text>
+          </View>
+          <View style={selStyles.selectBtnDark}>
+            <Text style={selStyles.selectBtnTextDark}>Select This Quiz</Text>
+            <Feather name="arrow-right" size={16} color="rgba(255,255,255,0.8)" />
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[selStyles.card, selStyles.cardLight, { height: CARD_SIZE * 0.85 }]}
+          onPress={() => setView("words")}
+          activeOpacity={0.88}
+        >
+          <View style={selStyles.iconWrapLight}>
+            <Ionicons name="book" size={32} color="#1A1A1A" />
+          </View>
+          <View style={{ flex: 1, justifyContent: "center" }}>
+            <Text style={selStyles.cardTitleLight}>Words{"\n"}Quiz</Text>
+            <Text style={selStyles.cardDescLight}>Challenge your vocabulary of the words you have saved.</Text>
+          </View>
+          <View style={selStyles.selectBtnLight}>
+            <Text style={selStyles.selectBtnTextLight}>Select This Quiz</Text>
+            <Feather name="arrow-right" size={16} color="#6B6B6B" />
+          </View>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const selStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F4F4F6",
+    paddingHorizontal: 16,
+    paddingBottom: 100,
+  },
+  pageTitle: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+    marginBottom: 20,
+  },
+  cardsRow: {
+    flex: 1,
+    gap: 16,
+  },
+  card: {
+    borderRadius: 28,
+    padding: 24,
+    justifyContent: "space-between",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 6,
+  },
+  cardDark: {
+    backgroundColor: "#1A1A1A",
+  },
+  cardLight: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#EBEBEB",
+  },
+  iconWrapDark: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  iconWrapLight: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: "#F0F0F0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  cardTitleDark: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    fontFamily: "Inter_700Bold",
+    lineHeight: 32,
+    marginBottom: 8,
+  },
+  cardTitleLight: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+    lineHeight: 32,
+    marginBottom: 8,
+  },
+  cardDescDark: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.6)",
+    fontFamily: "Inter_400Regular",
+    lineHeight: 20,
+  },
+  cardDescLight: {
+    fontSize: 14,
+    color: "#9A9A9A",
+    fontFamily: "Inter_400Regular",
+    lineHeight: 20,
+  },
+  selectBtnDark: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignSelf: "stretch",
+  },
+  selectBtnLight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#F0F0F0",
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignSelf: "stretch",
+  },
+  selectBtnTextDark: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.85)",
+    fontFamily: "Inter_700Bold",
+  },
+  selectBtnTextLight: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#3A3A3A",
+    fontFamily: "Inter_700Bold",
+  },
+});
