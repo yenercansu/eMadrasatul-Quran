@@ -314,8 +314,8 @@ function CardSwipeStack({
         const adx = Math.abs(dx), ady = Math.abs(dy);
         const isH = adx > ady;
         if (isH && adx > SWIPE_THRESHOLD) {
-          if (dx > 0) {
-            Animated.timing(pan, { toValue: { x: SCREEN_WIDTH * 1.6, y: dy * 0.4 }, duration: 280, useNativeDriver: true }).start(() => {
+          if (dx < 0) {
+            Animated.timing(pan, { toValue: { x: -SCREEN_WIDTH * 1.6, y: dy * 0.4 }, duration: 280, useNativeDriver: true }).start(() => {
               pan.setValue({ x: 0, y: 0 });
               const ayah = (ayahs as ApiAyah[])[currentIndex];
               if (ayah) { onSave(ayah); animateSave(); }
@@ -453,13 +453,13 @@ function CardSwipeStack({
           <View style={cs.swipeHints}>
             <View style={cs.swipeHintItem}>
               <View style={[cs.swipeDirIcon, { backgroundColor: "#DCFCE7" }]}>
-                <Text style={cs.swipeDirArrow}>→</Text>
+                <Text style={cs.swipeDirArrow}>←</Text>
               </View>
               <Text style={cs.swipeDirLabel}>Save</Text>
             </View>
             <View style={cs.swipeHintItem}>
               <View style={[cs.swipeDirIcon, { backgroundColor: "#FEF3C7" }]}>
-                <Text style={cs.swipeDirArrow}>←</Text>
+                <Text style={cs.swipeDirArrow}>→</Text>
               </View>
               <Text style={cs.swipeDirLabel}>Repeat</Text>
             </View>
