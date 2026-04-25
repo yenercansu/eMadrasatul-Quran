@@ -150,7 +150,7 @@ function NoWordsScreen({ colors, topPad }: { colors: ReturnType<typeof useColors
         <View style={s.howToCard}>
           {[
             { num: "1", icon: "book-open" as const, text: "Open any Surah from the Quran tab" },
-            { num: "2", icon: "hand" as const, text: "Long-press on any Arabic word" },
+            { num: "2", icon: "mouse-pointer" as const, text: "Long-press on any Arabic word" },
             { num: "3", icon: "bookmark" as const, text: "Tap \"Add to Library\" in the popup" },
             { num: "4", icon: "zap" as const, text: "Come back here to test yourself!" },
           ].map(step => (
