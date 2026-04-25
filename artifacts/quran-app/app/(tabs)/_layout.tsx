@@ -168,7 +168,6 @@ function ClassicTabLayout() {
       <Tabs.Screen name="index" />
       <Tabs.Screen name="quran" />
       <Tabs.Screen name="library" />
-      <Tabs.Screen name="settings" options={{ href: null }} />
     </Tabs>
   );
 }

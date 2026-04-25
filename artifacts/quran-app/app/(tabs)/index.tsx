@@ -261,7 +261,7 @@ export default function HomeScreen() {
     return groups;
   }, [surahs]);
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
 
   return (
     <>
@@ -290,7 +290,7 @@ export default function HomeScreen() {
               </View>
               <TouchableOpacity
                 style={s.settingsBtn}
-                onPress={() => router.push("/(tabs)/settings")}
+                onPress={() => router.push("/settings")}
                 activeOpacity={0.75}
               >
                 <Feather name="settings" size={20} color="rgba(255,255,255,0.9)" />
