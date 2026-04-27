@@ -12,7 +12,7 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
-import { useQuran } from "@/contexts/QuranContext";
+import { useQuran, type SavedAyah } from "@/contexts/QuranContext";
 
 const DEFAULT_SURAHS: { number: number; name: string; englishName: string; ayahs: string[]; translations: string[] }[] = [
   {
@@ -88,6 +88,28 @@ const DEFAULT_SURAHS: { number: number; name: string; englishName: string; ayahs
     ],
   },
 ];
+
+type QuizSurahFormat = typeof DEFAULT_SURAHS[0];
+
+function savedAyahsToSurahFormat(ayahs: SavedAyah[]): QuizSurahFormat[] {
+  const map = new Map<number, QuizSurahFormat>();
+  const sorted = [...ayahs].sort((a, b) => a.surahNumber - b.surahNumber || a.ayahNumber - b.ayahNumber);
+  for (const a of sorted) {
+    if (!map.has(a.surahNumber)) {
+      map.set(a.surahNumber, {
+        number: a.surahNumber,
+        name: a.surahName,
+        englishName: a.surahName,
+        ayahs: [],
+        translations: [],
+      });
+    }
+    const entry = map.get(a.surahNumber)!;
+    entry.ayahs.push(a.arabicText);
+    entry.translations.push(a.translationText);
+  }
+  return Array.from(map.values());
+}
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -590,7 +612,7 @@ type QuizMode = null | "follow-up" | "fill-blank" | "tafsir-match";
 export default function MemorizationQuizScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
-  const { recentProgress, surahPositions, checkedSurahs } = useQuran();
+  const { recentProgress, surahPositions, checkedSurahs, savedAyahs, removeAyah } = useQuran();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const [mode, setMode] = useState<QuizMode>(null);
@@ -599,9 +621,11 @@ export default function MemorizationQuizScreen() {
   const [finalScore, setFinalScore] = useState(0);
 
   const getAvailableSurahs = useCallback(() => {
-    const checked = DEFAULT_SURAHS.filter(s => checkedSurahs.includes(s.number));
-    return checked.length > 0 ? checked : [...DEFAULT_SURAHS];
-  }, [checkedSurahs]);
+    if (savedAyahs.length > 0) {
+      return savedAyahsToSurahFormat(savedAyahs);
+    }
+    return [...DEFAULT_SURAHS];
+  }, [savedAyahs]);
 
   const startQuiz = useCallback((selectedMode: "follow-up" | "fill-blank" | "tafsir-match") => {
     const surahs = getAvailableSurahs();
@@ -688,9 +712,26 @@ export default function MemorizationQuizScreen() {
             <Feather name="chevron-right" size={20} color="#9A9A9A" />
           </TouchableOpacity>
 
-          <View style={s.infoBox}>
-            <Ionicons name="information-circle-outline" size={18} color="#9A9A9A" />
-            <Text style={s.infoText}>Questions come from Al-Fatiha, Al-Ikhlaas, Al-Falaq, and An-Naas — surahs every Muslim should know by heart.</Text>
+          <View style={s.savedSection}>
+            <Text style={s.savedSectionTitle}>Saved Ayahs for Quiz</Text>
+            {savedAyahs.length === 0 ? (
+              <View style={s.infoBox}>
+                <Ionicons name="information-circle-outline" size={18} color="#9A9A9A" />
+                <Text style={s.infoText}>No saved ayahs yet. While reading, swipe right on an ayah to add it to both quizzes. Until then, default surahs are used.</Text>
+              </View>
+            ) : (
+              savedAyahs.map(ayah => (
+                <View key={ayah.id} style={s.savedAyahRow}>
+                  <View style={s.savedAyahInfo}>
+                    <Text style={s.savedAyahArabic} numberOfLines={2}>{ayah.arabicText}</Text>
+                    <Text style={s.savedAyahMeta}>{ayah.surahName} · Ayah {ayah.ayahNumber}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => removeAyah(ayah.id)} style={s.savedRemoveBtn} activeOpacity={0.7}>
+                    <Feather name="trash-2" size={16} color="#CC3333" />
+                  </TouchableOpacity>
+                </View>
+              ))
+            )}
           </View>
         </ScrollView>
       )}
@@ -760,4 +801,15 @@ const pageStyles = StyleSheet.create({
     flexDirection: "row", gap: 10, backgroundColor: "#F5F5F5", borderRadius: 14, padding: 14, alignItems: "flex-start",
   },
   infoText: { flex: 1, fontSize: 13, color: "#6B6B6B", fontFamily: "Inter_400Regular", lineHeight: 20 },
+  savedSection: { marginTop: 4, gap: 8 },
+  savedSectionTitle: { fontSize: 12, fontWeight: "700", color: "#9A9A9A", fontFamily: "Inter_700Bold", letterSpacing: 0.8, textTransform: "uppercase" },
+  savedAyahRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: "#FAFAFA", borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: "#EEEEEE",
+  },
+  savedAyahInfo: { flex: 1 },
+  savedAyahArabic: { fontSize: 15, color: "#1A1A1A", fontFamily: Platform.OS === "ios" ? "System" : undefined, textAlign: "right", lineHeight: 22 },
+  savedAyahMeta: { fontSize: 11, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 4 },
+  savedRemoveBtn: { padding: 6 },
 });

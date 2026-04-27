@@ -47,6 +47,8 @@ export interface DailyEntry {
 export interface Goal {
   ayahsPerDay: number;
   startDate: string;
+  startSurahNumber?: number;
+  startAyahNumber?: number;
 }
 
 export interface GoalAyah {
@@ -318,7 +320,20 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
 
   const getTodayGoalAyahs = useCallback((): GoalAyah[] => {
     if (!goal) return [];
-    return Array.from({ length: goal.ayahsPerDay }, (_, i) => getAyahAtLinearIndex((quranPosition + i) % TOTAL_AYAHS));
+    let startPos = quranPosition;
+    if (goal.startSurahNumber != null && goal.startAyahNumber != null) {
+      let pos = 0;
+      for (const s of SURAH_DATA) {
+        if (s.number === goal.startSurahNumber) {
+          startPos = pos + (goal.startAyahNumber - 1);
+          break;
+        }
+        pos += s.ayahCount;
+      }
+    }
+    return Array.from({ length: goal.ayahsPerDay }, (_, i) =>
+      getAyahAtLinearIndex((startPos + i) % TOTAL_AYAHS)
+    );
   }, [goal, quranPosition]);
 
   const saveSurahPosition = useCallback((surahNum: number, ayahIndex: number) => {

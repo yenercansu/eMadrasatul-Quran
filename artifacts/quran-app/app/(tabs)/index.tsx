@@ -3,6 +3,7 @@ import {
   View,
   Text,
   ScrollView,
+  FlatList,
   TouchableOpacity,
   StyleSheet,
   Platform,
@@ -24,6 +25,8 @@ import { SURAH_DATA } from "@/constants/surahData";
 const TOTAL_AYAHS = 6236;
 const QURAN_COVER = require("@/assets/images/quran-cover.jpg");
 
+type GoalStep = "count" | "surah" | "ayah";
+
 function GoalModal({
   visible,
   currentGoal,
@@ -35,84 +38,198 @@ function GoalModal({
   onSave: (goal: Goal | null) => void;
   onClose: () => void;
 }) {
+  const [step, setStep] = useState<GoalStep>("count");
   const [ayahsPerDay, setAyahsPerDay] = useState(currentGoal?.ayahsPerDay ?? 10);
+  const [selectedSurah, setSelectedSurah] = useState<typeof SURAH_DATA[0] | null>(null);
+  const [selectedAyah, setSelectedAyah] = useState<number>(1);
   const options = [1, 5, 10, 20, 50, 100];
 
   const daysToComplete = Math.ceil(TOTAL_AYAHS / ayahsPerDay);
   const monthsToComplete = (daysToComplete / 30).toFixed(1);
+
+  useEffect(() => {
+    if (visible) {
+      setStep("count");
+      setAyahsPerDay(currentGoal?.ayahsPerDay ?? 10);
+      setSelectedSurah(null);
+      setSelectedAyah(1);
+    }
+  }, [visible]);
+
+  const handleSaveGoal = () => {
+    onSave({
+      ayahsPerDay,
+      startDate: new Date().toISOString().split("T")[0],
+      startSurahNumber: selectedSurah?.number,
+      startAyahNumber: selectedSurah ? selectedAyah : undefined,
+    });
+    onClose();
+  };
+
+  const ayahsInSelectedSurah = selectedSurah
+    ? Array.from({ length: selectedSurah.ayahCount }, (_, i) => i + 1)
+    : [];
+
+  const renderStepCount = () => (
+    <>
+      <View style={gStyles.handle} />
+      <Text style={gStyles.title}>Daily Reading Goal</Text>
+      <Text style={gStyles.sub}>Choose how many ayahs you want to read each day</Text>
+
+      <Text style={gStyles.sectionLabel}>AYAHS PER DAY</Text>
+      <View style={gStyles.grid}>
+        {options.map(n => {
+          const active = ayahsPerDay === n;
+          const days = Math.ceil(TOTAL_AYAHS / n);
+          const months = (days / 30).toFixed(1);
+          return (
+            <TouchableOpacity
+              key={n}
+              style={[gStyles.tile, active && gStyles.tileActive]}
+              onPress={() => setAyahsPerDay(n)}
+              activeOpacity={0.8}
+            >
+              <Text style={[gStyles.tileNum, active && gStyles.tileNumActive]}>{n}</Text>
+              <Text style={[gStyles.tileUnit, active && gStyles.tileUnitActive]}>
+                {n === 1 ? "ayah/day" : "ayahs/day"}
+              </Text>
+              <Text style={[gStyles.tileProjection, active && gStyles.tileProjectionActive]}>
+                ~{months}mo
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <View style={gStyles.projectionCard}>
+        <View style={gStyles.projectionIcon}>
+          <Ionicons name="book-outline" size={16} color="#1A1A1A" />
+        </View>
+        <View style={gStyles.projectionInfo}>
+          <Text style={gStyles.projectionMain}>
+            At <Text style={gStyles.projectionBold}>{ayahsPerDay} ayahs/day</Text>
+          </Text>
+          <Text style={gStyles.projectionSub}>
+            You'll complete the entire Quran in{" "}
+            <Text style={gStyles.projectionBold}>{monthsToComplete} months</Text> ({daysToComplete} days)
+          </Text>
+        </View>
+      </View>
+
+      <View style={gStyles.actions}>
+        {currentGoal && (
+          <TouchableOpacity
+            style={gStyles.clearBtn}
+            onPress={() => { onSave(null); onClose(); }}
+            activeOpacity={0.8}
+          >
+            <Text style={gStyles.clearBtnText}>Clear Goal</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          style={gStyles.saveBtn}
+          onPress={() => setStep("surah")}
+          activeOpacity={0.85}
+        >
+          <Text style={gStyles.saveBtnText}>Continue →</Text>
+        </TouchableOpacity>
+      </View>
+    </>
+  );
+
+  const renderStepSurah = () => (
+    <>
+      <View style={gStyles.handle} />
+      <View style={gStyles.stepHeader}>
+        <TouchableOpacity onPress={() => setStep("count")} style={gStyles.backBtn} activeOpacity={0.7}>
+          <Feather name="arrow-left" size={20} color="#1A1A1A" />
+        </TouchableOpacity>
+        <View style={gStyles.stepHeaderCenter}>
+          <Text style={gStyles.title}>Select Starting Surah</Text>
+          <Text style={gStyles.sub}>Where should your daily reading begin?</Text>
+        </View>
+      </View>
+      <FlatList
+        data={SURAH_DATA}
+        keyExtractor={item => String(item.number)}
+        style={gStyles.pickerList}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={[gStyles.pickerRow, selectedSurah?.number === item.number && gStyles.pickerRowActive]}
+            onPress={() => { setSelectedSurah(item); setSelectedAyah(1); setStep("ayah"); }}
+            activeOpacity={0.8}
+          >
+            <View style={[gStyles.pickerNum, selectedSurah?.number === item.number && gStyles.pickerNumActive]}>
+              <Text style={[gStyles.pickerNumText, selectedSurah?.number === item.number && gStyles.pickerNumTextActive]}>
+                {item.number}
+              </Text>
+            </View>
+            <View style={gStyles.pickerInfo}>
+              <Text style={gStyles.pickerArabic}>{item.name}</Text>
+              <Text style={gStyles.pickerEnglish}>{item.englishName} · {item.ayahCount} ayahs</Text>
+            </View>
+            {selectedSurah?.number === item.number && (
+              <Feather name="check" size={18} color="#1A1A1A" />
+            )}
+          </TouchableOpacity>
+        )}
+      />
+    </>
+  );
+
+  const renderStepAyah = () => (
+    <>
+      <View style={gStyles.handle} />
+      <View style={gStyles.stepHeader}>
+        <TouchableOpacity onPress={() => setStep("surah")} style={gStyles.backBtn} activeOpacity={0.7}>
+          <Feather name="arrow-left" size={20} color="#1A1A1A" />
+        </TouchableOpacity>
+        <View style={gStyles.stepHeaderCenter}>
+          <Text style={gStyles.title}>Select Starting Ayah</Text>
+          <Text style={gStyles.sub}>{selectedSurah?.englishName} · Choose your first ayah</Text>
+        </View>
+      </View>
+      <FlatList
+        data={ayahsInSelectedSurah}
+        keyExtractor={item => String(item)}
+        style={gStyles.pickerList}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={[gStyles.pickerRow, selectedAyah === item && gStyles.pickerRowActive]}
+            onPress={() => setSelectedAyah(item)}
+            activeOpacity={0.8}
+          >
+            <View style={[gStyles.pickerNum, selectedAyah === item && gStyles.pickerNumActive]}>
+              <Text style={[gStyles.pickerNumText, selectedAyah === item && gStyles.pickerNumTextActive]}>
+                {item}
+              </Text>
+            </View>
+            <Text style={gStyles.pickerAyahLabel}>Ayah {item}</Text>
+            {selectedAyah === item && (
+              <Feather name="check" size={18} color="#1A1A1A" />
+            )}
+          </TouchableOpacity>
+        )}
+      />
+      <View style={[gStyles.actions, { paddingHorizontal: 0, paddingTop: 12 }]}>
+        <TouchableOpacity style={gStyles.saveBtn} onPress={handleSaveGoal} activeOpacity={0.85}>
+          <Text style={gStyles.saveBtnText}>Save Goal</Text>
+        </TouchableOpacity>
+      </View>
+    </>
+  );
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={gStyles.overlay}>
           <TouchableWithoutFeedback>
-            <View style={gStyles.sheet}>
-              <View style={gStyles.handle} />
-
-              <Text style={gStyles.title}>Daily Reading Goal</Text>
-              <Text style={gStyles.sub}>Choose how many ayahs you want to read each day</Text>
-
-              <Text style={gStyles.sectionLabel}>AYAHS PER DAY</Text>
-              <View style={gStyles.grid}>
-                {options.map(n => {
-                  const active = ayahsPerDay === n;
-                  const days = Math.ceil(TOTAL_AYAHS / n);
-                  const months = (days / 30).toFixed(1);
-                  return (
-                    <TouchableOpacity
-                      key={n}
-                      style={[gStyles.tile, active && gStyles.tileActive]}
-                      onPress={() => setAyahsPerDay(n)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={[gStyles.tileNum, active && gStyles.tileNumActive]}>{n}</Text>
-                      <Text style={[gStyles.tileUnit, active && gStyles.tileUnitActive]}>
-                        {n === 1 ? "ayah/day" : "ayahs/day"}
-                      </Text>
-                      <Text style={[gStyles.tileProjection, active && gStyles.tileProjectionActive]}>
-                        ~{months}mo
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              <View style={gStyles.projectionCard}>
-                <View style={gStyles.projectionIcon}>
-                  <Ionicons name="book-outline" size={16} color="#1A1A1A" />
-                </View>
-                <View style={gStyles.projectionInfo}>
-                  <Text style={gStyles.projectionMain}>
-                    At <Text style={gStyles.projectionBold}>{ayahsPerDay} ayahs/day</Text>
-                  </Text>
-                  <Text style={gStyles.projectionSub}>
-                    You'll complete the entire Quran in{" "}
-                    <Text style={gStyles.projectionBold}>{monthsToComplete} months</Text> ({daysToComplete} days)
-                  </Text>
-                </View>
-              </View>
-
-              <View style={gStyles.actions}>
-                {currentGoal && (
-                  <TouchableOpacity
-                    style={gStyles.clearBtn}
-                    onPress={() => { onSave(null); onClose(); }}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={gStyles.clearBtnText}>Clear Goal</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity
-                  style={gStyles.saveBtn}
-                  onPress={() => {
-                    onSave({ ayahsPerDay, startDate: new Date().toISOString().split("T")[0] });
-                    onClose();
-                  }}
-                  activeOpacity={0.85}
-                >
-                  <Text style={gStyles.saveBtnText}>Save Goal</Text>
-                </TouchableOpacity>
-              </View>
+            <View style={[gStyles.sheet, step !== "count" && gStyles.sheetTall]}>
+              {step === "count" && renderStepCount()}
+              {step === "surah" && renderStepSurah()}
+              {step === "ayah" && renderStepAyah()}
             </View>
           </TouchableWithoutFeedback>
         </View>
@@ -181,6 +298,36 @@ const gStyles = StyleSheet.create({
   projectionMain: { fontSize: 13, color: "#6B6B6B", fontFamily: "Inter_400Regular" },
   projectionSub: { fontSize: 13, color: "#1A1A1A", fontFamily: "Inter_400Regular", marginTop: 2 },
   projectionBold: { fontFamily: "Inter_700Bold", color: "#1A1A1A" },
+  sheetTall: { height: "82%", paddingBottom: 24 },
+  stepHeader: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 4 },
+  backBtn: { padding: 4, marginTop: 2 },
+  stepHeaderCenter: { flex: 1 },
+  pickerList: { flex: 1, marginHorizontal: -20, paddingHorizontal: 20 },
+  pickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  pickerRowActive: { backgroundColor: "#F8F8F8", borderRadius: 12, borderBottomColor: "transparent" },
+  pickerNum: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#F0F0F0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pickerNumActive: { backgroundColor: "#1A1A1A" },
+  pickerNumText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  pickerNumTextActive: { color: "#FFFFFF" },
+  pickerInfo: { flex: 1 },
+  pickerArabic: { fontSize: 15, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  pickerEnglish: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 1 },
+  pickerAyahLabel: { flex: 1, fontSize: 15, color: "#1A1A1A", fontFamily: "Inter_400Regular" },
   actions: { flexDirection: "row", gap: 10 },
   clearBtn: {
     flex: 1,
