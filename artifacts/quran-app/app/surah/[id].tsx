@@ -370,12 +370,12 @@ function CardSwipeStack({
         <Animated.View style={[StyleSheet.absoluteFill, { borderRadius: 24, backgroundColor: flashBg }]} pointerEvents="none" />
 
         <Animated.View style={[cs.hintOverlay, cs.hintRight, { opacity: rightOpacity }]} pointerEvents="none">
-          <Ionicons name="bookmark" size={28} color="#FFFFFF" />
-          <Text style={cs.hintText}>SAVE</Text>
-        </Animated.View>
-        <Animated.View style={[cs.hintOverlay, cs.hintLeft, { opacity: leftOpacity }]} pointerEvents="none">
           <Ionicons name="repeat" size={28} color="#FFFFFF" />
           <Text style={cs.hintText}>REPEAT</Text>
+        </Animated.View>
+        <Animated.View style={[cs.hintOverlay, cs.hintLeft, { opacity: leftOpacity }]} pointerEvents="none">
+          <Ionicons name="bookmark" size={28} color="#FFFFFF" />
+          <Text style={cs.hintText}>SAVE</Text>
         </Animated.View>
         <ScrollView
           style={{ flex: 1 }}
@@ -565,10 +565,8 @@ const cardSwipeStyles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 14,
   },
-  hintRight: { right: 16, top: "40%" as any, backgroundColor: "rgba(34,197,94,0.85)" },
-  hintLeft: { left: 16, top: "40%" as any, backgroundColor: "rgba(245,158,11,0.85)" },
-  hintUp: { top: 20, left: "38%" as any, backgroundColor: "rgba(99,102,241,0.85)" },
-  hintDown: { bottom: 100, left: "38%" as any, backgroundColor: "rgba(99,102,241,0.85)" },
+  hintRight: { right: 16, top: "40%" as any, backgroundColor: "rgba(245,158,11,0.85)" },
+  hintLeft: { left: 16, top: "40%" as any, backgroundColor: "rgba(34,197,94,0.85)" },
   hintText: { fontSize: 12, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
   cardContent: { padding: 22, paddingBottom: 12, flexGrow: 1 },
   cardHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 18 },
