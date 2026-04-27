@@ -196,18 +196,74 @@ const gStyles = StyleSheet.create({
   saveBtnText: { fontSize: 15, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
 });
 
+function CalendarView({ dailyEntries }: { dailyEntries: { date: string; ayahsRead: number }[] }) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const today = now.getDate();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthName = now.toLocaleString("default", { month: "long" });
+  const completedDates = new Set(
+    dailyEntries.filter(e => e.ayahsRead > 0).map(e => {
+      const d = new Date(e.date);
+      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    })
+  );
+  const dayNames = ["S", "M", "T", "W", "T", "F", "S"];
+  const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  return (
+    <View style={calStyles.cal}>
+      <Text style={calStyles.monthName}>{monthName}</Text>
+      <View style={calStyles.dayNamesRow}>
+        {dayNames.map((d, i) => <Text key={i} style={calStyles.dayName}>{d}</Text>)}
+      </View>
+      <View style={calStyles.grid}>
+        {cells.map((day, i) => {
+          if (!day) return <View key={i} style={calStyles.cell} />;
+          const key = `${year}-${month}-${day}`;
+          const done = completedDates.has(key);
+          const isToday = day === today;
+          return (
+            <View key={i} style={[calStyles.cell, done && calStyles.cellDone, isToday && calStyles.cellToday]}>
+              <Text style={[calStyles.dayNum, done && calStyles.dayNumDone, isToday && !done && calStyles.dayNumToday]}>{day}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const calStyles = StyleSheet.create({
+  cal: { marginTop: 12 },
+  monthName: { fontSize: 12, fontWeight: "700", color: "#AAAAAA", fontFamily: "Inter_700Bold", marginBottom: 10, letterSpacing: 0.5 },
+  dayNamesRow: { flexDirection: "row", marginBottom: 6 },
+  dayName: { flex: 1, textAlign: "center", fontSize: 11, color: "#AAAAAA", fontFamily: "Inter_400Regular" },
+  grid: { flexDirection: "row", flexWrap: "wrap" },
+  cell: { width: `${100 / 7}%` as any, aspectRatio: 1, alignItems: "center", justifyContent: "center" },
+  cellDone: { backgroundColor: "#22C55E", borderRadius: 20 },
+  cellToday: { borderWidth: 1.5, borderColor: "#1A1A1A", borderRadius: 20 },
+  dayNum: { fontSize: 13, color: "#1A1A1A", fontFamily: "Inter_400Regular" },
+  dayNumDone: { color: "#FFFFFF", fontWeight: "700", fontFamily: "Inter_700Bold" },
+  dayNumToday: { fontWeight: "700", fontFamily: "Inter_700Bold" },
+});
+
 export default function HomeScreen() {
   const colors = useColors();
   const s = styles(colors);
   const insets = useSafeAreaInsets();
   const {
-    recentProgress, lastListened, goal, setGoal, todayEntry, onlineUsers, savedWords,
+    recentProgress, lastListened, goal, setGoal, todayEntry, dailyEntries, onlineUsers, savedWords,
     savedSurahs, removeSavedSurah, quranPosition, getTodayGoalAyahs,
   } = useQuran();
   const [surahs, setSurahs] = useState<ApiSurah[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [goalModalVisible, setGoalModalVisible] = useState(false);
+  const [calendarVisible, setCalendarVisible] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -329,9 +385,10 @@ export default function HomeScreen() {
           <View style={s.onlineLiveDot} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={s.goalCard} onPress={() => setGoalModalVisible(true)} activeOpacity={0.85}>
+        {/* Today's Progress Card */}
+        <View style={s.goalCard}>
           {!goal ? (
-            <View style={s.goalSetRow}>
+            <TouchableOpacity style={s.goalSetRow} onPress={() => setGoalModalVisible(true)} activeOpacity={0.85}>
               <View style={s.goalIconCircle}>
                 <Ionicons name="flag" size={18} color="#FFFFFF" />
               </View>
@@ -340,63 +397,80 @@ export default function HomeScreen() {
                 <Text style={s.goalSetSub}>Stay consistent — track your daily reading</Text>
               </View>
               <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-            </View>
-          ) : (
-            <View>
-              <View style={s.goalProgressHeader}>
-                <View>
-                  <Text style={s.goalProgressTitle}>Today's Progress</Text>
-                  <Text style={s.goalProgressSub}>
-                    {todayAyahs} / {goal.ayahsPerDay} ayahs{goalMet ? " — Goal met!" : ""}
-                  </Text>
-                </View>
-                <TouchableOpacity onPress={() => setGoalModalVisible(true)} activeOpacity={0.7}>
-                  <Feather name="edit-2" size={15} color={colors.mutedForeground} />
-                </TouchableOpacity>
-              </View>
-              <View style={s.progressTrack}>
-                <View style={[s.progressBar, { width: `${goalProgress * 100}%` as any }]} />
-              </View>
-
-              <View style={s.progressDecoRow}>
-                {[
-                  { icon: "moon" as const, label: "Fajr" },
-                  { icon: "sun" as const, label: "Dhuhr" },
-                  { icon: "sunset" as const, label: "Asr" },
-                  { icon: "star" as const, label: "Isha" },
-                ].map(({ icon, label }, i) => {
-                  const threshold = (i + 1) / 4;
-                  const done = goalProgress >= threshold;
-                  return (
-                    <View key={label} style={s.progressDecoItem}>
-                      <View style={[s.progressDecoIcon, done && s.progressDecoIconDone]}>
-                        <Feather name={icon} size={12} color={done ? "#FFFFFF" : "#C0C0C0"} />
-                      </View>
-                      {false && <Text style={[s.progressDecoLabel, done && s.progressDecoLabelDone]}>{label}</Text>}
-                    </View>
-                  );
-                })}
-              </View>
-
-              {groupedGoalAyahs.length > 0 && (
-                <View style={s.accomplishmentSection}>
-                  <Text style={s.accomplishmentLabel}>TODAY'S AYAHS</Text>
-                  {groupedGoalAyahs.map((group, i) => (
-                    <TouchableOpacity
-                      key={i}
-                      style={s.accomplishmentRow}
-                      onPress={() => router.push(`/surah/${group.surahNumber}?ayah=${group.ayahs[0]}`)}
-                      activeOpacity={0.8}
-                    >
-                      <View style={s.accomplishmentDot} />
-                      <Text style={s.accomplishmentText}>
-                        {group.surahName} — Ayah {group.ayahs[0]}
-                        {group.ayahs.length > 1 ? `–${group.ayahs[group.ayahs.length - 1]}` : ""}
-                      </Text>
-                      <Feather name="chevron-right" size={13} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          ) : calendarVisible ? (
+            /* Calendar view */
+            <TouchableWithoutFeedback onPress={() => setCalendarVisible(false)}>
+              <View>
+                <View style={s.progressCardHeader}>
+                  <Text style={s.progressTitle}>Today's Progress</Text>
+                  <View style={s.progressHeaderRight}>
+                    <TouchableOpacity onPress={() => setCalendarVisible(false)} style={s.calIconBtn} activeOpacity={0.7}>
+                      <Feather name="calendar" size={16} color="#1A1A1A" />
                     </TouchableOpacity>
-                  ))}
+                    <TouchableOpacity onPress={() => setGoalModalVisible(true)} activeOpacity={0.7}>
+                      <Feather name="settings" size={15} color="#AAAAAA" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
+                <CalendarView dailyEntries={dailyEntries} />
+              </View>
+            </TouchableWithoutFeedback>
+          ) : (
+            /* Progress view */
+            <View>
+              <View style={s.progressCardHeader}>
+                <View style={s.progressTitleRow}>
+                  <Text style={s.progressTitle}>Today's Progress</Text>
+                  <Text style={s.progressCount}>{todayAyahs}/{goal.ayahsPerDay}</Text>
+                </View>
+                <View style={s.progressHeaderRight}>
+                  <TouchableOpacity onPress={() => setCalendarVisible(true)} style={s.calIconBtn} activeOpacity={0.7}>
+                    <Feather name="calendar" size={16} color="#1A1A1A" />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setGoalModalVisible(true)} activeOpacity={0.7}>
+                    <Feather name="settings" size={15} color="#AAAAAA" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Dash progress indicator */}
+              <View style={s.dashRow}>
+                {Array.from({ length: goal.ayahsPerDay }).map((_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      s.dash,
+                      i < todayAyahs && s.dashFilled,
+                    ]}
+                  />
+                ))}
+              </View>
+
+              {goalMet ? (
+                <View style={s.doneRow}>
+                  <Text style={s.doneText}>Allahumma Barik! Done for today</Text>
+                </View>
+              ) : (
+                groupedGoalAyahs.length > 0 && (
+                  <View style={s.remainingSection}>
+                    <Text style={s.remainingLabel}>
+                      Today's Remaining Ayahs
+                      <Text style={s.remainingCount}> showing {Math.min(groupedGoalAyahs.length, 2)}/{groupedGoalAyahs.length}</Text>
+                    </Text>
+                    {groupedGoalAyahs.slice(0, 2).map((group, i) => (
+                      <TouchableOpacity
+                        key={i}
+                        style={s.remainingRow}
+                        onPress={() => router.push(`/surah/${group.surahNumber}?ayah=${group.ayahs[0]}`)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={s.remainingName}>{group.surahName}</Text>
+                        <Feather name="chevron-right" size={14} color="#AAAAAA" />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )
               )}
 
               {isFriday && (
@@ -409,7 +483,7 @@ export default function HomeScreen() {
               )}
             </View>
           )}
-        </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
           style={s.quizCtaCard}
@@ -650,6 +724,22 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     accomplishmentDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#1A1A1A" },
     accomplishmentText: { flex: 1, fontSize: 13, color: colors.foreground, fontFamily: "Inter_400Regular" },
+    progressCardHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+    progressTitleRow: { flexDirection: "row", alignItems: "baseline", gap: 8 },
+    progressTitle: { fontSize: 15, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
+    progressCount: { fontSize: 22, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+    progressHeaderRight: { flexDirection: "row", alignItems: "center", gap: 14 },
+    calIconBtn: { padding: 2 },
+    dashRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginBottom: 14 },
+    dash: { height: 6, flex: 1, minWidth: 12, maxWidth: 22, borderRadius: 3, backgroundColor: "#E8E8E8" },
+    dashFilled: { backgroundColor: "#1A1A1A" },
+    doneRow: { backgroundColor: "#F0FFF4", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginTop: 4 },
+    doneText: { fontSize: 14, fontWeight: "600", color: "#166534", fontFamily: "Inter_600SemiBold", textAlign: "center" },
+    remainingSection: { marginTop: 4 },
+    remainingLabel: { fontSize: 11, fontWeight: "700", color: "#AAAAAA", fontFamily: "Inter_700Bold", marginBottom: 8, letterSpacing: 0.3 },
+    remainingCount: { fontSize: 11, color: "#CCCCCC", fontFamily: "Inter_400Regular" },
+    remainingRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
+    remainingName: { fontSize: 14, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
     kahfBadge: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12 },
     kahfText: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     quizCtaCard: {

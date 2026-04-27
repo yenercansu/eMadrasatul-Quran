@@ -24,10 +24,19 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Description**: Full-featured Quran mobile app inspired by Quran.com
 
 **Features:**
+- Surah reader: scrollable vertical FlatList of SwipeableAyahCards (swipe right=repeat options, swipe left=save)
+- Player bar: ■ | 1x speed | ⏭ | ▶/⏸ | ⏮ | Edit button
+- Content toggle bar: Meaning / Roman / Tafsir / Colors / Tajweed
+- Tap anywhere hides menus, shows FloatingTopNav + FloatingBottomNav
+- Edit sheet with Word-by-Word, Memorisation Mode, Repeat Section, Play Range, Download, Reciters, Speed
+- Meaning panel (translation source selector), Tafsir modal (collapsible sections)
+- Mushaf mode: scrollable page-based Arabic with optional translation overlay
+- Normal/Mushaf mode toggle in header
+- Home progress card: dash-based count indicator, calendar view, "Allahumma Barik! Done for today" state
 - Audio playback with 6 reciters via Islamic Network CDN API
-- Play/pause/next/prev controls with repeat per ayah (swipe left on AyahItem → set repeat count)
+- Play/pause/next/prev controls with repeat per ayah
 - Progress tracking with AsyncStorage — resumes from last position
-- Translation (en.asad), transliteration, Tafsir toggles via floating bottom bar in reader
+- Translation, transliteration, Tafsir (on-demand load) toggles
 - Mushaf mode (parchment background #F5EDD6) toggled from top mode selector bar
 - Word-level interaction: long-press any word → save to vocabulary library
 - Per-ayah "Meanings" toggle: shows transliteration word-by-word under Arabic words
