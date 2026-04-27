@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,9 +6,6 @@ import {
   StyleSheet,
   ScrollView,
   Platform,
-  Animated,
-  PanResponder,
-  LayoutRectangle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
@@ -207,71 +204,25 @@ function buildFillBlankQuestions(count: number, surahs: typeof DEFAULT_SURAHS): 
   return questions;
 }
 
-function DraggableChip({
+function TapChip({
   word,
-  onDragEnd,
-  blankLayout,
   onTap,
   isSelected,
+  isDisabled,
 }: {
   word: string;
-  onDragEnd: (word: string, dropped: boolean) => void;
-  blankLayout: LayoutRectangle | null;
   onTap: (word: string) => void;
   isSelected: boolean;
+  isDisabled: boolean;
 }) {
-  const pan = useRef(new Animated.ValueXY()).current;
-  const chipRef = useRef<View>(null);
-  const [chipLayout, setChipLayout] = useState<LayoutRectangle | null>(null);
-  const isDragging = useRef(false);
-  const scale = useRef(new Animated.Value(1)).current;
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, { dx, dy }) => Math.abs(dx) > 4 || Math.abs(dy) > 4,
-      onPanResponderGrant: () => {
-        isDragging.current = false;
-        Animated.spring(scale, { toValue: 1.08, useNativeDriver: true, speed: 40 }).start();
-      },
-      onPanResponderMove: (_, { dx, dy }) => {
-        isDragging.current = true;
-        pan.setValue({ x: dx, y: dy });
-      },
-      onPanResponderRelease: (_, { dx, dy, moveX, moveY }) => {
-        Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 40 }).start();
-        if (!isDragging.current) {
-          pan.setValue({ x: 0, y: 0 });
-          onTap(word);
-          return;
-        }
-        let dropped = false;
-        if (blankLayout && chipLayout) {
-          const finalX = chipLayout.x + chipLayout.width / 2 + dx;
-          const finalY = chipLayout.y + chipLayout.height / 2 + dy;
-          const inX = finalX >= blankLayout.x && finalX <= blankLayout.x + blankLayout.width;
-          const inY = finalY >= blankLayout.y && finalY <= blankLayout.y + blankLayout.height;
-          dropped = inX && inY;
-        }
-        Animated.spring(pan, { toValue: { x: 0, y: 0 }, useNativeDriver: true, speed: 30 }).start();
-        onDragEnd(word, dropped);
-      },
-    })
-  ).current;
-
   return (
-    <Animated.View
-      ref={chipRef}
-      onLayout={e => setChipLayout(e.nativeEvent.layout)}
-      style={[
-        chipStyle.chip,
-        isSelected && chipStyle.chipSelected,
-        { transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale }] },
-      ]}
-      {...panResponder.panHandlers}
+    <TouchableOpacity
+      onPress={() => { if (!isDisabled) onTap(word); }}
+      activeOpacity={0.75}
+      style={[chipStyle.chip, isSelected && chipStyle.chipSelected, isDisabled && chipStyle.chipDisabled]}
     >
       <Text style={[chipStyle.chipText, isSelected && chipStyle.chipTextSelected]}>{word}</Text>
-    </Animated.View>
+    </TouchableOpacity>
   );
 }
 
@@ -289,6 +240,9 @@ const chipStyle = StyleSheet.create({
   chipSelected: {
     backgroundColor: "#1A1A1A",
     borderColor: "#1A1A1A",
+  },
+  chipDisabled: {
+    opacity: 0.4,
   },
   chipText: {
     fontSize: 16,
@@ -409,22 +363,20 @@ function FillBlankQuizScreen({ questions, onFinish }: { questions: FillBlankQues
   const [score, setScore] = useState(0);
   const [filledWord, setFilledWord] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
-  const [selectedChip, setSelectedChip] = useState<string | null>(null);
-  const blankRef = useRef<View>(null);
-  const [blankLayout, setBlankLayout] = useState<LayoutRectangle | null>(null);
 
   const q = questions[qIdx];
   const total = questions.length;
 
-  const handleSelect = useCallback((word: string, isCorrect: boolean) => {
+  const handleTap = useCallback((word: string) => {
     if (filledWord) return;
+    const isCorrect = word === q.blankWord;
     setFilledWord(word);
     setFeedback(isCorrect ? "correct" : "wrong");
     if (isCorrect) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
       setScore(s => s + 1);
     } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); } catch {}
     }
     setTimeout(() => {
       if (qIdx + 1 >= total) {
@@ -433,25 +385,11 @@ function FillBlankQuizScreen({ questions, onFinish }: { questions: FillBlankQues
         setQIdx(i => i + 1);
         setFilledWord(null);
         setFeedback(null);
-        setSelectedChip(null);
       }
     }, 900);
-  }, [filledWord, qIdx, total, score, onFinish]);
+  }, [filledWord, qIdx, total, score, onFinish, q]);
 
-  const handleDragEnd = useCallback((word: string, dropped: boolean) => {
-    if (dropped) handleSelect(word, word === q.blankWord);
-  }, [handleSelect, q]);
-
-  const handleTap = useCallback((word: string) => {
-    if (filledWord) return;
-    if (selectedChip === word) {
-      handleSelect(word, word === q.blankWord);
-    } else {
-      setSelectedChip(word);
-    }
-  }, [selectedChip, filledWord, handleSelect, q]);
-
-  useEffect(() => { setSelectedChip(null); }, [qIdx]);
+  useEffect(() => { setFilledWord(null); setFeedback(null); }, [qIdx]);
 
   const s = fillStyle;
   return (
@@ -464,27 +402,15 @@ function FillBlankQuizScreen({ questions, onFinish }: { questions: FillBlankQues
       </View>
 
       <Text style={s.surahLabel}>{q.surahName}</Text>
-      <Text style={s.instruction}>Drag or tap the missing word into place</Text>
+      <Text style={s.instruction}>Tap the correct missing word</Text>
 
-      <View
-        ref={blankRef}
-        onLayout={e => {
-          blankRef.current?.measureInWindow((x, y, width, height) => {
-            setBlankLayout({ x, y, width, height });
-          });
-        }}
-        style={[
-          s.blankSlot,
-          feedback === "correct" && s.blankSlotCorrect,
-          feedback === "wrong" && s.blankSlotWrong,
-        ]}
-      >
+      <View style={[s.blankSlot, feedback === "correct" && s.blankSlotCorrect, feedback === "wrong" && s.blankSlotWrong]}>
         {filledWord ? (
           <Text style={[s.blankFilled, feedback === "correct" && s.blankFilledCorrect, feedback === "wrong" && s.blankFilledWrong]}>
             {filledWord}
           </Text>
         ) : (
-          <Text style={s.blankPlaceholder}>drop word here →</Text>
+          <Text style={s.blankPlaceholder}>___</Text>
         )}
       </View>
 
@@ -504,19 +430,14 @@ function FillBlankQuizScreen({ questions, onFinish }: { questions: FillBlankQues
         </Text>
       </View>
 
-      <Text style={s.dragHint}>
-        {selectedChip ? `"${selectedChip}" selected — tap again to fill, or tap another` : "Drag a word below or tap to select"}
-      </Text>
-
       <View style={s.chipsGrid}>
         {q.options.map((word, i) => (
-          <DraggableChip
+          <TapChip
             key={`${qIdx}-${i}-${word}`}
             word={word}
-            blankLayout={blankLayout}
-            onDragEnd={handleDragEnd}
             onTap={handleTap}
-            isSelected={selectedChip === word}
+            isSelected={filledWord === word}
+            isDisabled={!!filledWord}
           />
         ))}
       </View>
@@ -751,7 +672,7 @@ export default function MemorizationQuizScreen() {
             </View>
             <View style={s.modeInfo}>
               <Text style={s.modeName}>Fill in the Blank</Text>
-              <Text style={s.modeDesc}>An ayah with a missing word — drag or tap the correct word to complete it.</Text>
+              <Text style={s.modeDesc}>An ayah with a missing word — tap the correct word to complete it.</Text>
             </View>
             <Feather name="chevron-right" size={20} color="#9A9A9A" />
           </TouchableOpacity>

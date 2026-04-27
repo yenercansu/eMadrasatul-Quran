@@ -45,6 +45,16 @@ function AyahCard({
     );
   };
 
+  const renderLeftActions = (progress: Animated.AnimatedInterpolation<number>) => {
+    const trans = progress.interpolate({ inputRange: [0, 1], outputRange: [-80, 0] });
+    return (
+      <Animated.View style={[s.swipeActionLeft, { transform: [{ translateX: trans }] }]}>
+        <Feather name="book-open" size={20} color="#FFFFFF" />
+        <Text style={s.swipeActionText}>Go to</Text>
+      </Animated.View>
+    );
+  };
+
   const card = (
     <View style={s.card}>
       <View style={s.cardMeta}>
@@ -69,18 +79,27 @@ function AyahCard({
     </View>
   );
 
-  if (!isTop) return card;
-
   return (
     <Swipeable
       ref={swipeRef}
-      renderRightActions={renderRightActions}
+      renderRightActions={isTop ? renderRightActions : undefined}
+      renderLeftActions={renderLeftActions}
       rightThreshold={60}
+      leftThreshold={60}
       overshootRight={false}
+      overshootLeft={false}
       friction={2}
-      onSwipeableOpen={() => {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        onRemove(ayah.id);
+      onSwipeableOpen={(direction) => {
+        if (direction === "left") {
+          // User swiped LEFT → reveals right "Remove" action
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          onRemove(ayah.id);
+        } else {
+          // User swiped RIGHT → reveals left "Go to" action
+          try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
+          swipeRef.current?.close();
+          router.push(`/surah/${ayah.surahNumber}?ayah=${ayah.ayahNumber}`);
+        }
       }}
     >
       {card}
@@ -141,6 +160,15 @@ const cardStyles = (colors: ReturnType<typeof useColors>) =>
       marginLeft: 8,
       gap: 4,
     },
+    swipeActionLeft: {
+      width: 80,
+      backgroundColor: "#1A1A1A",
+      borderRadius: 20,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 8,
+      gap: 4,
+    },
     swipeActionText: { fontSize: 11, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
   });
 
@@ -189,7 +217,7 @@ function AyahCardDeck({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: 
       })}
       <View style={s.counter}>
         <Text style={s.counterText}>{ayahs.length} saved</Text>
-        <Text style={s.counterHint}>Swipe to remove</Text>
+        <Text style={s.counterHint}>← swipe left to remove · swipe right to open →</Text>
       </View>
     </View>
   );

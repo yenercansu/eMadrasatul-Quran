@@ -1078,6 +1078,28 @@ export default function SurahScreen() {
   const listRef = useRef<FlatList<ApiAyah>>(null);
   const mushafScrollRef = useRef<ScrollView>(null);
 
+  // Horizontal swipe detector for Mushaf page navigation (via stable ref callbacks)
+  const mushafGoNextRef = useRef<() => void>(() => {});
+  const mushafGoPrevRef = useRef<() => void>(() => {});
+  const mushafPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, { dx, dy }) => Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 12,
+      onMoveShouldSetPanResponderCapture: (_, { dx, dy }) => Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 20,
+      onPanResponderGrant: () => {},
+      onPanResponderMove: () => {},
+      onPanResponderRelease: (_, { dx, vx }) => {
+        if (dx < -50 || vx < -0.4) {
+          try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+          mushafGoNextRef.current();
+        } else if (dx > 50 || vx > 0.4) {
+          try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+          mushafGoPrevRef.current();
+        }
+      },
+    })
+  ).current;
+
   const {
     settings, updateSettings,
     accountSettings,
@@ -1252,6 +1274,10 @@ export default function SurahScreen() {
     }
   };
 
+  // Keep mushaf swipe refs up-to-date every render so PanResponder always has fresh callbacks
+  mushafGoNextRef.current = goToNextSurah;
+  mushafGoPrevRef.current = goToPrevSurah;
+
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const basmala = surahNum !== 1 && surahNum !== 9;
   const currentAyahForRange = audioState.currentSurah === surahNum && audioState.currentAyah ? audioState.currentAyah : parseInt(ayahParam ?? "1", 10) || 1;
@@ -1317,7 +1343,7 @@ export default function SurahScreen() {
       ) : settings.mushafMode ? (
         // Split view: TOP fixed Mushaf panel, BOTTOM scrollable translations.
         // If translations are off, the Mushaf takes the full panel and scrolls.
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1 }} {...mushafPanResponder.panHandlers}>
           <View style={settings.showTranslation ? { flex: 0.55, backgroundColor: MUSHAF_BG } : { flex: 1, backgroundColor: MUSHAF_BG }}>
             <TouchableOpacity activeOpacity={1} style={{ flex: 1 }} onPress={safeToggleMenu}>
               <ScrollView
