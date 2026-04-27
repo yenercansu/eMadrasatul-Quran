@@ -1224,7 +1224,7 @@ export default function SurahScreen() {
       setOnNextAyah((surahN, ayahN) => {
         const totalAyahs = SURAH_DATA[surahN - 1]?.ayahCount ?? main.arabic.ayahs.length;
         playAyah(surahN, ayahN, totalAyahs, settings.repeatCount);
-        recordAyahRead(surahN);
+        recordAyahRead(surahN, ayahN);
         saveProgress({
           surahNumber: surahN, ayahNumber: ayahN,
           ayahNumberInSurah: ayahN,
@@ -1271,7 +1271,7 @@ export default function SurahScreen() {
     setAyahRepeatCounts(prev => ({ ...prev, [ayah.numberInSurah]: count }));
     if (!arabic) return;
     playAyah(surahNum, ayah.numberInSurah, arabic.ayahs.length, count);
-    recordAyahRead(surahNum);
+    recordAyahRead(surahNum, ayah.numberInSurah);
     saveProgress({
       surahNumber: surahNum, ayahNumber: ayah.numberInSurah,
       ayahNumberInSurah: ayah.numberInSurah, surahName: arabic.englishName,
@@ -1282,7 +1282,7 @@ export default function SurahScreen() {
   const handlePlayAll = useCallback(() => {
     if (!arabic) return;
     playAyah(surahNum, 1, arabic.ayahs.length, 1);
-    recordAyahRead(surahNum);
+    recordAyahRead(surahNum, 1);
     saveProgress({ surahNumber: surahNum, ayahNumber: 1, ayahNumberInSurah: 1, surahName: arabic.englishName });
   }, [arabic, surahNum]);
 
@@ -1586,7 +1586,7 @@ export default function SurahScreen() {
             endWordIdx,
             totalWords,
           });
-          recordAyahRead(surahNum);
+          recordAyahRead(surahNum, ayahN);
           saveProgress({
             surahNumber: surahNum,
             ayahNumber: ayahN,
@@ -1624,7 +1624,7 @@ export default function SurahScreen() {
             { startSurah: surahNum, startAyah: startA, endSurah: surahNum, endAyah: endA },
             repeatCount,
           );
-          recordAyahRead(surahNum);
+          recordAyahRead(surahNum, startA);
           saveProgress({
             surahNumber: surahNum,
             ayahNumber: startA,

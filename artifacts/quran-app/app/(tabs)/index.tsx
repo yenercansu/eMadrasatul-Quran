@@ -42,7 +42,8 @@ function GoalModal({
   const [ayahsPerDay, setAyahsPerDay] = useState(currentGoal?.ayahsPerDay ?? 10);
   const [selectedSurah, setSelectedSurah] = useState<typeof SURAH_DATA[0] | null>(null);
   const [selectedAyah, setSelectedAyah] = useState<number>(1);
-  const options = [1, 5, 10, 20, 50, 100];
+  const MAX_AYAHS = Math.floor(TOTAL_AYAHS / 3);
+  const options = [5, 10, 20, 50, 100, 200, 300, 500, MAX_AYAHS];
 
   const daysToComplete = Math.ceil(TOTAL_AYAHS / ayahsPerDay);
   const monthsToComplete = (daysToComplete / 30).toFixed(1);
@@ -81,7 +82,7 @@ function GoalModal({
         {options.map(n => {
           const active = ayahsPerDay === n;
           const days = Math.ceil(TOTAL_AYAHS / n);
-          const months = (days / 30).toFixed(1);
+          const proj = days < 30 ? `~${days}d` : `~${(days / 30).toFixed(0)}mo`;
           return (
             <TouchableOpacity
               key={n}
@@ -89,12 +90,12 @@ function GoalModal({
               onPress={() => setAyahsPerDay(n)}
               activeOpacity={0.8}
             >
-              <Text style={[gStyles.tileNum, active && gStyles.tileNumActive]}>{n}</Text>
+              <Text style={[gStyles.tileNum, active && gStyles.tileNumActive]}>{n >= 1000 ? `${(n / 1000).toFixed(1)}k` : n}</Text>
               <Text style={[gStyles.tileUnit, active && gStyles.tileUnitActive]}>
-                {n === 1 ? "ayah/day" : "ayahs/day"}
+                ayahs/day
               </Text>
               <Text style={[gStyles.tileProjection, active && gStyles.tileProjectionActive]}>
-                ~{months}mo
+                {proj}
               </Text>
             </TouchableOpacity>
           );
@@ -110,8 +111,10 @@ function GoalModal({
             At <Text style={gStyles.projectionBold}>{ayahsPerDay} ayahs/day</Text>
           </Text>
           <Text style={gStyles.projectionSub}>
-            You'll complete the entire Quran in{" "}
-            <Text style={gStyles.projectionBold}>{monthsToComplete} months</Text> ({daysToComplete} days)
+            Finish the Quran in{" "}
+            <Text style={gStyles.projectionBold}>
+              {daysToComplete < 30 ? `${daysToComplete} days` : `${(daysToComplete / 30).toFixed(0)} months`}
+            </Text>
           </Text>
         </View>
       </View>
@@ -227,9 +230,11 @@ function GoalModal({
         <View style={gStyles.overlay}>
           <TouchableWithoutFeedback>
             <View style={[gStyles.sheet, step !== "count" && gStyles.sheetTall]}>
-              {step === "count" && renderStepCount()}
-              {step === "surah" && renderStepSurah()}
-              {step === "ayah" && renderStepAyah()}
+              {step === "count" ? (
+                <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                  {renderStepCount()}
+                </ScrollView>
+              ) : step === "surah" ? renderStepSurah() : renderStepAyah()}
             </View>
           </TouchableWithoutFeedback>
         </View>
@@ -246,6 +251,7 @@ const gStyles = StyleSheet.create({
     borderTopRightRadius: 28,
     padding: 20,
     paddingBottom: 48,
+    maxHeight: "85%",
   },
   handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: "#E0E0E0", alignSelf: "center", marginBottom: 16 },
   title: { fontSize: 20, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", textAlign: "center" },
@@ -404,7 +410,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const {
     recentProgress, lastListened, goal, setGoal, todayEntry, dailyEntries, onlineUsers, savedWords,
-    savedSurahs, removeSavedSurah, quranPosition, getTodayGoalAyahs,
+    savedSurahs, removeSavedSurah, quranPosition, getTodayGoalAyahs, getTodayGoalProgress,
   } = useQuran();
   const [surahs, setSurahs] = useState<ApiSurah[]>([]);
   const [loading, setLoading] = useState(true);
@@ -426,8 +432,8 @@ export default function HomeScreen() {
   useEffect(() => { load(); }, []);
 
   const todayAyahs = todayEntry?.ayahsRead ?? 0;
-  const goalProgress = goal ? Math.min(todayAyahs / goal.ayahsPerDay, 1) : 0;
-  const goalMet = goal ? todayAyahs >= goal.ayahsPerDay : false;
+  const todayGoalProgress = goal ? getTodayGoalProgress() : 0;
+  const goalMet = goal ? todayGoalProgress >= goal.ayahsPerDay : false;
   const isFriday = new Date().getDay() === 5;
 
   const goalAyahs = useMemo(() => {
@@ -550,7 +556,7 @@ export default function HomeScreen() {
               <View style={s.progressCardHeader}>
                 <View style={s.progressTitleCol}>
                   <Text style={s.progressTitle}>Today's Progress</Text>
-                  <Text style={s.progressCount}>{todayAyahs}/{goal.ayahsPerDay}</Text>
+                  <Text style={s.progressCount}>{todayGoalProgress}/{goal.ayahsPerDay}</Text>
                 </View>
                 <View style={s.progressHeaderRight}>
                   <TouchableOpacity
@@ -572,17 +578,27 @@ export default function HomeScreen() {
                 <CalendarView dailyEntries={dailyEntries} goal={goal.ayahsPerDay} />
               ) : (
                 <>
-                  <View style={s.dashRow}>
-                    {Array.from({ length: goal.ayahsPerDay }).map((_, i) => (
-                      <View
-                        key={i}
-                        style={[
-                          s.dash,
-                          i < todayAyahs && (goalMet ? s.dashFilledGreen : s.dashFilled),
-                        ]}
-                      />
-                    ))}
-                  </View>
+                  {(() => {
+                    const DASH_CAP = 60;
+                    const displayCount = Math.min(goal.ayahsPerDay, DASH_CAP);
+                    const filledCount = Math.min(
+                      Math.round(todayGoalProgress / goal.ayahsPerDay * displayCount),
+                      displayCount
+                    );
+                    return (
+                      <View style={s.dashRow}>
+                        {Array.from({ length: displayCount }).map((_, i) => (
+                          <View
+                            key={i}
+                            style={[
+                              s.dash,
+                              i < filledCount && (goalMet ? s.dashFilledGreen : s.dashFilled),
+                            ]}
+                          />
+                        ))}
+                      </View>
+                    );
+                  })()}
 
                   {goalMet ? (
                     <Text style={s.doneText}>Allahumma Barik! Done for today</Text>
@@ -871,7 +887,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     kebabBtn: { width: 24, height: 30, alignItems: "center", justifyContent: "center", gap: 3 },
     kebabDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: "#9A9A9A" },
     dashRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 14 },
-    dash: { height: 5, flex: 1, minWidth: 12, maxWidth: 26, borderRadius: 3, backgroundColor: "#E8E8E8" },
+    dash: { height: 5, width: 12, borderRadius: 3, backgroundColor: "#E8E8E8" },
     dashFilled: { backgroundColor: "#1A1A1A" },
     dashFilledGreen: { backgroundColor: "#22C55E" },
     doneText: { fontSize: 14, fontWeight: "600", color: "#166534", fontFamily: "Inter_600SemiBold", textAlign: "center", backgroundColor: "#F0FFF4", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginTop: 4 },

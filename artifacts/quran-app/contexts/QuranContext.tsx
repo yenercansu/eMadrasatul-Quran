@@ -42,6 +42,7 @@ export interface DailyEntry {
   date: string;
   ayahsRead: number;
   kahfCompleted: boolean;
+  readAyahKeys?: string[];
 }
 
 export interface Goal {
@@ -108,12 +109,13 @@ interface QuranContextType {
   goal: Goal | null;
   setGoal: (goal: Goal | null) => void;
   dailyEntries: DailyEntry[];
-  recordAyahRead: (surahNumber: number) => void;
+  recordAyahRead: (surahNumber: number, ayahNumber?: number) => void;
   todayEntry: DailyEntry | null;
   onlineUsers: number;
   quranPosition: number;
   advanceQuranPosition: (n: number) => void;
   getTodayGoalAyahs: () => GoalAyah[];
+  getTodayGoalProgress: () => number;
   surahPositions: Record<number, number>;
   saveSurahPosition: (surahNum: number, ayahIndex: number) => void;
   checkedSurahs: number[];
@@ -336,6 +338,28 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     );
   }, [goal, quranPosition]);
 
+  const getTodayGoalProgress = useCallback((): number => {
+    if (!goal) return 0;
+    const todayStr = getTodayStr();
+    const entry = dailyEntries.find(e => e.date === todayStr);
+    if (!entry) return 0;
+    if (goal.startSurahNumber == null || goal.startAyahNumber == null) {
+      return entry.ayahsRead;
+    }
+    const goalAyahsList = (() => {
+      let startPos = quranPosition;
+      let pos = 0;
+      for (const s of SURAH_DATA) {
+        if (s.number === goal.startSurahNumber) { startPos = pos + (goal.startAyahNumber! - 1); break; }
+        pos += s.ayahCount;
+      }
+      return Array.from({ length: goal.ayahsPerDay }, (_, i) => getAyahAtLinearIndex((startPos + i) % TOTAL_AYAHS));
+    })();
+    const goalKeys = new Set(goalAyahsList.map(a => `${a.surahNumber}:${a.ayahNumber}`));
+    const readKeys = entry.readAyahKeys ?? [];
+    return readKeys.filter(k => goalKeys.has(k)).length;
+  }, [goal, dailyEntries, quranPosition]);
+
   const saveSurahPosition = useCallback((surahNum: number, ayahIndex: number) => {
     setSurahPositions((prev) => {
       const next = { ...prev, [surahNum]: ayahIndex };
@@ -368,15 +392,29 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
 
   const isSurahChecked = useCallback((surahNum: number) => checkedSurahs.includes(surahNum), [checkedSurahs]);
 
-  const recordAyahRead = useCallback((surahNumber: number) => {
+  const recordAyahRead = useCallback((surahNumber: number, ayahNumber?: number) => {
     const today = getTodayStr();
     const isKahf = surahNumber === 18 && isFriday();
+    const key = ayahNumber != null ? `${surahNumber}:${ayahNumber}` : null;
     setDailyEntries((prev) => {
       const idx = prev.findIndex(e => e.date === today);
       let next: DailyEntry[];
-      if (idx >= 0) { next = prev.map((e, i) => i === idx ? { ...e, ayahsRead: e.ayahsRead + 1, kahfCompleted: e.kahfCompleted || isKahf } : e); }
-      else { next = [{ date: today, ayahsRead: 1, kahfCompleted: isKahf }, ...prev].slice(0, 365); }
-      AsyncStorage.setItem("quran_daily_entries", JSON.stringify(next)); return next;
+      if (idx >= 0) {
+        const entry = prev[idx];
+        const existingKeys = entry.readAyahKeys ?? [];
+        const alreadyRead = key != null && existingKeys.includes(key);
+        if (alreadyRead) return prev;
+        next = prev.map((e, i) => i === idx ? {
+          ...e,
+          ayahsRead: e.ayahsRead + 1,
+          kahfCompleted: e.kahfCompleted || isKahf,
+          readAyahKeys: key ? [...existingKeys, key] : existingKeys,
+        } : e);
+      } else {
+        next = [{ date: today, ayahsRead: 1, kahfCompleted: isKahf, readAyahKeys: key ? [key] : [] }, ...prev].slice(0, 365);
+      }
+      AsyncStorage.setItem("quran_daily_entries", JSON.stringify(next));
+      return next;
     });
   }, []);
 
@@ -394,7 +432,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       goal, setGoal,
       dailyEntries, recordAyahRead, todayEntry,
       onlineUsers,
-      quranPosition, advanceQuranPosition, getTodayGoalAyahs,
+      quranPosition, advanceQuranPosition, getTodayGoalAyahs, getTodayGoalProgress,
       surahPositions, saveSurahPosition,
       checkedSurahs, toggleCheckedSurah, isSurahChecked,
     }}>

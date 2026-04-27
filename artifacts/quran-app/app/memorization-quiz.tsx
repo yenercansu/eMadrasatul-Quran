@@ -619,6 +619,7 @@ export default function MemorizationQuizScreen() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [phase, setPhase] = useState<"menu" | "quiz" | "score">("menu");
   const [finalScore, setFinalScore] = useState(0);
+  const [savedAyahsExpanded, setSavedAyahsExpanded] = useState(false);
 
   const getAvailableSurahs = useCallback(() => {
     if (savedAyahs.length > 0) {
@@ -713,24 +714,35 @@ export default function MemorizationQuizScreen() {
           </TouchableOpacity>
 
           <View style={s.savedSection}>
-            <Text style={s.savedSectionTitle}>Saved Ayahs for Quiz</Text>
-            {savedAyahs.length === 0 ? (
-              <View style={s.infoBox}>
-                <Ionicons name="information-circle-outline" size={18} color="#9A9A9A" />
-                <Text style={s.infoText}>No saved ayahs yet. While reading, swipe right on an ayah to add it to both quizzes. Until then, default surahs are used.</Text>
-              </View>
-            ) : (
-              savedAyahs.map(ayah => (
-                <View key={ayah.id} style={s.savedAyahRow}>
-                  <View style={s.savedAyahInfo}>
-                    <Text style={s.savedAyahArabic} numberOfLines={2}>{ayah.arabicText}</Text>
-                    <Text style={s.savedAyahMeta}>{ayah.surahName} · Ayah {ayah.ayahNumber}</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => removeAyah(ayah.id)} style={s.savedRemoveBtn} activeOpacity={0.7}>
-                    <Feather name="trash-2" size={16} color="#CC3333" />
-                  </TouchableOpacity>
+            <TouchableOpacity
+              style={s.savedSectionHeader}
+              onPress={() => setSavedAyahsExpanded(v => !v)}
+              activeOpacity={0.7}
+            >
+              <Text style={s.savedSectionTitle}>
+                Saved Ayahs for Quiz{savedAyahs.length > 0 ? ` (${savedAyahs.length})` : ""}
+              </Text>
+              <Feather name={savedAyahsExpanded ? "chevron-up" : "chevron-down"} size={18} color="#9A9A9A" />
+            </TouchableOpacity>
+            {savedAyahsExpanded && (
+              savedAyahs.length === 0 ? (
+                <View style={s.infoBox}>
+                  <Ionicons name="information-circle-outline" size={18} color="#9A9A9A" />
+                  <Text style={s.infoText}>No saved ayahs yet. While reading, swipe right on an ayah to add it to both quizzes. Until then, default surahs are used.</Text>
                 </View>
-              ))
+              ) : (
+                savedAyahs.map(ayah => (
+                  <View key={ayah.id} style={s.savedAyahRow}>
+                    <View style={s.savedAyahInfo}>
+                      <Text style={s.savedAyahArabic} numberOfLines={2}>{ayah.arabicText}</Text>
+                      <Text style={s.savedAyahMeta}>{ayah.surahName} · Ayah {ayah.ayahNumber}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => removeAyah(ayah.id)} style={s.savedRemoveBtn} activeOpacity={0.7}>
+                      <Feather name="trash-2" size={16} color="#CC3333" />
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )
             )}
           </View>
         </ScrollView>
@@ -802,6 +814,7 @@ const pageStyles = StyleSheet.create({
   },
   infoText: { flex: 1, fontSize: 13, color: "#6B6B6B", fontFamily: "Inter_400Regular", lineHeight: 20 },
   savedSection: { marginTop: 4, gap: 8 },
+  savedSectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 },
   savedSectionTitle: { fontSize: 12, fontWeight: "700", color: "#9A9A9A", fontFamily: "Inter_700Bold", letterSpacing: 0.8, textTransform: "uppercase" },
   savedAyahRow: {
     flexDirection: "row", alignItems: "center", gap: 12,
