@@ -13,6 +13,7 @@ import {
   Dimensions,
   Animated,
   PanResponder,
+  Pressable,
   Switch,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -68,24 +69,28 @@ interface AyahCardProps {
   isRangeSelected: boolean;
   translations: { editionId: string; name: string; text: string }[];
   transliterationText: string | null;
-  tafsirs: { editionId: string; name: string; text: string }[];
   showTransliteration: boolean;
-  showTafsir: boolean;
   colorCoding: boolean;
   showBasmala: boolean;
+  arabicFontSize: number;
+  romanFontSize: number;
   onSave: (ayah: ApiAyah) => void;
   onSetRepeat: (ayah: ApiAyah, count: number) => void;
   onPress: () => void;
 }
 
+const TAP_THRESHOLD = 8; // px movement allowed for tap
+
 function SwipeableAyahCard({
   ayah, surahNum, isPlaying, isOnRepeat, repeatCount, isRangeSelected,
-  translations, transliterationText, tafsirs,
-  showTransliteration, showTafsir,
-  colorCoding, showBasmala, onSave, onSetRepeat, onPress,
+  translations, transliterationText,
+  showTransliteration,
+  colorCoding, showBasmala, arabicFontSize, romanFontSize,
+  onSave, onSetRepeat, onPress,
 }: AyahCardProps) {
   const pan = useRef(new Animated.Value(0)).current;
   const swipeOpenRef = useRef(false);
+  const gestureStarted = useRef(false);
   const [, force] = useState(0);
 
   const close = useCallback(() => {
@@ -96,8 +101,14 @@ function SwipeableAyahCard({
 
   const panResponder = useRef(
     PanResponder.create({
+      // Don't claim on touch start — let Pressable handle taps & FlatList handle vertical scroll
+      onStartShouldSetPanResponder: () => false,
+      // Only claim when finger moves horizontally past threshold
       onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-        Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10,
+        Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 10,
+      onPanResponderGrant: () => {
+        gestureStarted.current = true;
+      },
       onPanResponderMove: (_, { dx }) => {
         if (swipeOpenRef.current) {
           pan.setValue(Math.min(REPEAT_SWIPE_OPEN, REPEAT_SWIPE_OPEN + Math.max(-REPEAT_SWIPE_OPEN, dx)));
@@ -107,6 +118,7 @@ function SwipeableAyahCard({
         }
       },
       onPanResponderRelease: (_, { dx, vx }) => {
+        gestureStarted.current = false;
         if (swipeOpenRef.current) {
           if (dx < -20) {
             close();
@@ -129,8 +141,22 @@ function SwipeableAyahCard({
           Animated.spring(pan, { toValue: 0, useNativeDriver: true }).start();
         }
       },
+      onPanResponderTerminate: () => {
+        gestureStarted.current = false;
+        Animated.spring(pan, { toValue: swipeOpenRef.current ? REPEAT_SWIPE_OPEN : 0, useNativeDriver: true }).start();
+      },
     })
   ).current;
+
+  // Press handler — only fires when no swipe gesture occurred
+  const handlePress = useCallback(() => {
+    if (gestureStarted.current) return;
+    if (swipeOpenRef.current) {
+      close();
+      return;
+    }
+    onPress();
+  }, [close, onPress]);
 
   const cardBg = isPlaying || isOnRepeat || isRangeSelected ? "#DCFCE7" : "#FFFFFF";
 
@@ -154,10 +180,14 @@ function SwipeableAyahCard({
       </View>
 
       <Animated.View
-        style={[cs.card, { backgroundColor: cardBg, transform: [{ translateX: pan }] }]}
+        style={[{ transform: [{ translateX: pan }] }]}
         {...panResponder.panHandlers}
       >
-        <TouchableOpacity activeOpacity={1} onPress={onPress} style={{ flex: 1 }}>
+        <Pressable
+          onPress={handlePress}
+          android_disableSound
+          style={({ pressed }) => [cs.card, { backgroundColor: cardBg, opacity: pressed ? 0.95 : 1 }]}
+        >
           {/* Top-right ayah badge */}
           <View style={cs.topRow}>
             {isOnRepeat && (
@@ -180,7 +210,7 @@ function SwipeableAyahCard({
           <ColorWords
             text={ayah.text}
             colorCoding={colorCoding}
-            style={cs.arabic}
+            style={[cs.arabic, { fontSize: arabicFontSize, lineHeight: arabicFontSize * 2 }]}
             rtl
           />
 
@@ -188,24 +218,17 @@ function SwipeableAyahCard({
             <ColorWords
               text={transliterationText}
               colorCoding={colorCoding}
-              style={cs.translit}
+              style={[cs.translit, { fontSize: romanFontSize, lineHeight: romanFontSize * 1.6 }]}
             />
           )}
 
           {translations.map((t) => (
             <View key={t.editionId} style={cs.transBlock}>
-              <Text style={cs.transText}>"{t.text}"</Text>
+              <Text style={[cs.transText, { fontSize: romanFontSize, lineHeight: romanFontSize * 1.6 }]}>"{t.text}"</Text>
               <Text style={cs.transSource}>{t.name}</Text>
             </View>
           ))}
-
-          {showTafsir && tafsirs.map(t => (
-            <View key={t.editionId} style={cs.tafBox}>
-              <Text style={cs.tafName}>{t.name}</Text>
-              <Text style={cs.tafText} numberOfLines={4}>{t.text}</Text>
-            </View>
-          ))}
-        </TouchableOpacity>
+        </Pressable>
       </Animated.View>
 
       {swipeOpenRef.current && (
@@ -503,7 +526,7 @@ const cb = StyleSheet.create({
   tajweedUnderline: { width: 12, height: 1.5, marginTop: 1 },
 });
 
-// ─── Floating top nav (3 separate pills + hint) ──────────────────────────────
+// ─── Floating top nav (← Next | [Title + hint] | Back →) ────────────────────
 function FloatingTopNav({
   surahName, onPrev, onNext, onLongPress, topInset,
 }: {
@@ -512,36 +535,45 @@ function FloatingTopNav({
 }) {
   return (
     <View style={[fn.wrap, { top: topInset + 8 }]}>
-      <View style={fn.row}>
-        <TouchableOpacity style={fn.pillBtn} onPress={onPrev} activeOpacity={0.75}>
-          <Feather name="arrow-left" size={14} color="#1A1A1A" />
-          <Text style={fn.pillBtnText}>Next</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onLongPress={onLongPress} activeOpacity={0.85} style={fn.titlePill}>
-          <Text style={fn.titleText}>{surahName}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={fn.pillBtn} onPress={onNext} activeOpacity={0.75}>
-          <Text style={fn.pillBtnText}>Back</Text>
-          <Feather name="arrow-right" size={14} color="#1A1A1A" />
-        </TouchableOpacity>
-      </View>
-      <View style={fn.hintPill}>
-        <Text style={fn.hintText}>Long press to edit Ayah range</Text>
-      </View>
+      <TouchableOpacity style={fn.pillBtn} onPress={onPrev} activeOpacity={0.75}>
+        <Feather name="arrow-left" size={14} color="#1A1A1A" />
+        <Text style={fn.pillBtnText}>Next</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onLongPress={onLongPress}
+        delayLongPress={350}
+        activeOpacity={0.85}
+        style={fn.titlePill}
+      >
+        <Text style={fn.titleText} numberOfLines={1}>{surahName}</Text>
+        <Text style={fn.hintText} numberOfLines={1}>Long press to edit Ayah range</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={fn.pillBtn} onPress={onNext} activeOpacity={0.75}>
+        <Text style={fn.pillBtnText}>Back</Text>
+        <Feather name="arrow-right" size={14} color="#1A1A1A" />
+      </TouchableOpacity>
     </View>
   );
 }
 
 const fn = StyleSheet.create({
-  wrap: { position: "absolute", left: 0, right: 0, zIndex: 100, alignItems: "center", gap: 6 },
-  row: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 8 },
+  wrap: {
+    position: "absolute",
+    left: 8,
+    right: 8,
+    zIndex: 100,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 6,
+  },
   pillBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.95)",
+    backgroundColor: "rgba(255,255,255,0.96)",
     borderRadius: 20,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 9,
     gap: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -551,30 +583,26 @@ const fn = StyleSheet.create({
   },
   pillBtnText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
   titlePill: {
+    flex: 1,
     backgroundColor: "#DCFCE7",
-    borderRadius: 20,
-    paddingHorizontal: 18,
+    borderRadius: 18,
+    paddingHorizontal: 16,
     paddingVertical: 8,
+    alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 4,
   },
-  titleText: { fontSize: 13, fontWeight: "700", color: "#166534", fontFamily: "Inter_700Bold" },
-  hintPill: {
-    backgroundColor: "#DCFCE7",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-  },
-  hintText: { fontSize: 11, color: "#166534", fontFamily: "Inter_400Regular" },
+  titleText: { fontSize: 14, fontWeight: "700", color: "#166534", fontFamily: "Inter_700Bold" },
+  hintText: { fontSize: 10, color: "#166534", fontFamily: "Inter_400Regular", marginTop: 1, opacity: 0.85 },
 });
 
-// ─── Bottom floating arrows (when menu hidden) ────────────────────────────────
-function FloatingBottomNav({ onPrev, onNext, bottomInset }: { onPrev: () => void; onNext: () => void; bottomInset: number }) {
+// ─── Inline page-end nav (only at end of page) ────────────────────────────────
+function PageEndNav({ onPrev, onNext }: { onPrev: () => void; onNext: () => void }) {
   return (
-    <View style={[fbn.wrap, { bottom: bottomInset + 14 }]}>
+    <View style={fbn.wrap}>
       <TouchableOpacity style={fbn.btn} onPress={onPrev} activeOpacity={0.75}>
         <Feather name="arrow-left" size={20} color="#1A1A1A" />
       </TouchableOpacity>
@@ -586,8 +614,15 @@ function FloatingBottomNav({ onPrev, onNext, bottomInset }: { onPrev: () => void
 }
 
 const fbn = StyleSheet.create({
-  wrap: { position: "absolute", left: 0, right: 0, zIndex: 100, flexDirection: "row", justifyContent: "center", gap: 36 },
-  btn: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.96)", alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4 },
+  wrap: { flexDirection: "row", justifyContent: "center", gap: 36, paddingVertical: 24 },
+  btn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center", justifyContent: "center",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
+    borderWidth: 1, borderColor: "#F0F0F0",
+  },
 });
 
 // ─── Edit Sheet ───────────────────────────────────────────────────────────────
@@ -919,6 +954,7 @@ export default function SurahScreen() {
 
   const {
     settings, updateSettings,
+    accountSettings,
     saveProgress, recordAyahRead,
     saveAyah,
     surahPositions, saveSurahPosition,
@@ -1138,22 +1174,15 @@ export default function SurahScreen() {
         </View>
       )}
 
-      {/* ── Floating nav (menu hidden) ────────────────────────── */}
+      {/* ── Floating top nav (menu hidden) ───────────────────── */}
       {!menuVisible && (
-        <>
-          <FloatingTopNav
-            surahName={arabic?.englishName ?? ""}
-            topInset={insets.top}
-            onPrev={goToPrevSurah}
-            onNext={goToNextSurah}
-            onLongPress={() => setRangeVisible(true)}
-          />
-          <FloatingBottomNav
-            bottomInset={insets.bottom}
-            onPrev={goToPrevSurah}
-            onNext={goToNextSurah}
-          />
-        </>
+        <FloatingTopNav
+          surahName={arabic?.englishName ?? ""}
+          topInset={insets.top}
+          onPrev={goToPrevSurah}
+          onNext={goToNextSurah}
+          onLongPress={() => setRangeVisible(true)}
+        />
       )}
 
       {/* ── Content ──────────────────────────────────────────── */}
@@ -1197,10 +1226,17 @@ export default function SurahScreen() {
             data={pageAyahs}
             keyExtractor={(item) => String(item.numberInSurah)}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingTop: 4, paddingBottom: 60 }}
+            contentContainerStyle={{ paddingTop: 4, paddingBottom: 24 }}
             style={{ flex: 1, backgroundColor: "#FFFFFF" }}
             ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: "#F0F0F0" }} />}
             onScrollBeginDrag={() => { if (menuVisible) setMenuVisible(false); }}
+            ListFooterComponent={
+              !menuVisible ? (
+                <PageEndNav onPrev={goToPrevSurah} onNext={goToNextSurah} />
+              ) : (
+                <View style={{ height: 12 }} />
+              )
+            }
             renderItem={({ item }) => {
               const isPlaying = audioState.currentSurah === surahNum && audioState.currentAyah === item.numberInSurah;
               const repeatVal = ayahRepeatCounts[item.numberInSurah];
@@ -1223,16 +1259,6 @@ export default function SurahScreen() {
                 })
                 .filter((x): x is { editionId: string; name: string; text: string } => !!x);
 
-              const tafsirsForAyah = (settings.selectedTafsirs ?? ["en.maarifulquran"])
-                .map(ed => {
-                  const td = tafsirDataMap[ed];
-                  const ta = td?.ayahs[item.numberInSurah - 1];
-                  const opt = TAFSIR_EDITIONS.find(o => o.id === ed);
-                  if (!ta || !opt) return null;
-                  return { editionId: ed, name: opt.name, text: ta.text };
-                })
-                .filter((x): x is { editionId: string; name: string; text: string } => !!x);
-
               return (
                 <SwipeableAyahCard
                   ayah={item}
@@ -1243,11 +1269,11 @@ export default function SurahScreen() {
                   isRangeSelected={isRangeSelected && !isPlaying}
                   translations={settings.showTranslation ? translations : []}
                   transliterationText={transliteration?.ayahs[item.numberInSurah - 1]?.text ?? null}
-                  tafsirs={tafsirsForAyah}
                   showTransliteration={settings.showTransliteration}
-                  showTafsir={settings.showTafsir}
                   colorCoding={settings.colorCoding}
                   showBasmala={showB}
+                  arabicFontSize={accountSettings.fontSize ?? 28}
+                  romanFontSize={accountSettings.romanFontSize ?? 14}
                   onSave={handleSaveAyah}
                   onSetRepeat={handleSetRepeat}
                   onPress={() => setMenuVisible(v => !v)}

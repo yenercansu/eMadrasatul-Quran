@@ -59,6 +59,7 @@ export interface AccountSettings {
   name: string;
   email: string;
   fontSize: number;
+  romanFontSize: number;
   theme: "auto" | "light" | "dark" | "sepia";
   dailyNotifications: boolean;
   notificationTime: string;
@@ -143,6 +144,7 @@ const DEFAULT_ACCOUNT: AccountSettings = {
   name: "",
   email: "",
   fontSize: 28,
+  romanFontSize: 14,
   theme: "light",
   dailyNotifications: false,
   notificationTime: "08:00",
