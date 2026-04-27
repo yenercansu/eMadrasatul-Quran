@@ -196,7 +196,7 @@ const gStyles = StyleSheet.create({
   saveBtnText: { fontSize: 15, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
 });
 
-function CalendarView({ dailyEntries }: { dailyEntries: { date: string; ayahsRead: number }[] }) {
+function CalendarView({ dailyEntries, goal }: { dailyEntries: { date: string; ayahsRead: number }[]; goal: number }) {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
@@ -205,7 +205,7 @@ function CalendarView({ dailyEntries }: { dailyEntries: { date: string; ayahsRea
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const monthName = now.toLocaleString("default", { month: "long" });
   const completedDates = new Set(
-    dailyEntries.filter(e => e.ayahsRead > 0).map(e => {
+    dailyEntries.filter(e => e.ayahsRead >= goal).map(e => {
       const d = new Date(e.date);
       return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
     })
@@ -398,88 +398,78 @@ export default function HomeScreen() {
               </View>
               <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
             </TouchableOpacity>
-          ) : calendarVisible ? (
-            /* Calendar view */
-            <TouchableWithoutFeedback onPress={() => setCalendarVisible(false)}>
-              <View>
-                <View style={s.progressCardHeader}>
-                  <Text style={s.progressTitle}>Today's Progress</Text>
-                  <View style={s.progressHeaderRight}>
-                    <TouchableOpacity onPress={() => setCalendarVisible(false)} style={s.calIconBtn} activeOpacity={0.7}>
-                      <Feather name="calendar" size={16} color="#1A1A1A" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setGoalModalVisible(true)} activeOpacity={0.7}>
-                      <Feather name="settings" size={15} color="#AAAAAA" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                <CalendarView dailyEntries={dailyEntries} />
-              </View>
-            </TouchableWithoutFeedback>
           ) : (
-            /* Progress view */
             <View>
               <View style={s.progressCardHeader}>
-                <View style={s.progressTitleRow}>
+                <View style={s.progressTitleCol}>
                   <Text style={s.progressTitle}>Today's Progress</Text>
                   <Text style={s.progressCount}>{todayAyahs}/{goal.ayahsPerDay}</Text>
                 </View>
                 <View style={s.progressHeaderRight}>
-                  <TouchableOpacity onPress={() => setCalendarVisible(true)} style={s.calIconBtn} activeOpacity={0.7}>
-                    <Feather name="calendar" size={16} color="#1A1A1A" />
+                  <TouchableOpacity
+                    onPress={() => setCalendarVisible(v => !v)}
+                    style={[s.calIconBtn, calendarVisible && s.calIconBtnActive]}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="calendar" size={16} color={calendarVisible ? "#FFFFFF" : "#1A1A1A"} />
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setGoalModalVisible(true)} activeOpacity={0.7}>
-                    <Feather name="settings" size={15} color="#AAAAAA" />
+                  <TouchableOpacity onPress={() => setGoalModalVisible(true)} activeOpacity={0.7} style={s.kebabBtn}>
+                    <View style={s.kebabDot} />
+                    <View style={s.kebabDot} />
+                    <View style={s.kebabDot} />
                   </TouchableOpacity>
                 </View>
               </View>
 
-              {/* Dash progress indicator */}
-              <View style={s.dashRow}>
-                {Array.from({ length: goal.ayahsPerDay }).map((_, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      s.dash,
-                      i < todayAyahs && s.dashFilled,
-                    ]}
-                  />
-                ))}
-              </View>
-
-              {goalMet ? (
-                <View style={s.doneRow}>
-                  <Text style={s.doneText}>Allahumma Barik! Done for today</Text>
-                </View>
+              {calendarVisible ? (
+                <CalendarView dailyEntries={dailyEntries} goal={goal.ayahsPerDay} />
               ) : (
-                groupedGoalAyahs.length > 0 && (
-                  <View style={s.remainingSection}>
-                    <Text style={s.remainingLabel}>
-                      Today's Remaining Ayahs
-                      <Text style={s.remainingCount}> showing {Math.min(groupedGoalAyahs.length, 2)}/{groupedGoalAyahs.length}</Text>
-                    </Text>
-                    {groupedGoalAyahs.slice(0, 2).map((group, i) => (
-                      <TouchableOpacity
+                <>
+                  <View style={s.dashRow}>
+                    {Array.from({ length: goal.ayahsPerDay }).map((_, i) => (
+                      <View
                         key={i}
-                        style={s.remainingRow}
-                        onPress={() => router.push(`/surah/${group.surahNumber}?ayah=${group.ayahs[0]}`)}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={s.remainingName}>{group.surahName}</Text>
-                        <Feather name="chevron-right" size={14} color="#AAAAAA" />
-                      </TouchableOpacity>
+                        style={[
+                          s.dash,
+                          i < todayAyahs && (goalMet ? s.dashFilledGreen : s.dashFilled),
+                        ]}
+                      />
                     ))}
                   </View>
-                )
-              )}
 
-              {isFriday && (
-                <View style={s.kahfBadge}>
-                  <Ionicons name={todayEntry?.kahfCompleted ? "checkmark-circle" : "book-outline"} size={14} color={todayEntry?.kahfCompleted ? "#1A1A1A" : colors.mutedForeground} />
-                  <Text style={s.kahfText}>
-                    {todayEntry?.kahfCompleted ? "Al-Kahf completed this Friday" : "Read Al-Kahf today (Friday Sunnah)"}
-                  </Text>
-                </View>
+                  {goalMet ? (
+                    <Text style={s.doneText}>Allahumma Barik! Done for today</Text>
+                  ) : (
+                    groupedGoalAyahs.length > 0 && (
+                      <View style={s.remainingSection}>
+                        <View style={s.remainingHeader}>
+                          <Text style={s.remainingLabel}>Today's Remaining Ayahs</Text>
+                          <Text style={s.remainingCount}>showing {Math.min(groupedGoalAyahs.length, 2)}/{groupedGoalAyahs.length}</Text>
+                        </View>
+                        {groupedGoalAyahs.slice(0, 2).map((group, i) => (
+                          <TouchableOpacity
+                            key={i}
+                            style={[s.remainingRow, i === Math.min(groupedGoalAyahs.length, 2) - 1 && { borderBottomWidth: 0 }]}
+                            onPress={() => router.push(`/surah/${group.surahNumber}?ayah=${group.ayahs[0]}`)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={s.remainingName}>{group.surahName}</Text>
+                            <Feather name="chevron-right" size={16} color="#AAAAAA" />
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )
+                  )}
+
+                  {isFriday && (
+                    <View style={s.kahfBadge}>
+                      <Ionicons name={todayEntry?.kahfCompleted ? "checkmark-circle" : "book-outline"} size={14} color={todayEntry?.kahfCompleted ? "#1A1A1A" : colors.mutedForeground} />
+                      <Text style={s.kahfText}>
+                        {todayEntry?.kahfCompleted ? "Al-Kahf completed this Friday" : "Read Al-Kahf today (Friday Sunnah)"}
+                      </Text>
+                    </View>
+                  )}
+                </>
               )}
             </View>
           )}
@@ -724,21 +714,25 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     accomplishmentDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#1A1A1A" },
     accomplishmentText: { flex: 1, fontSize: 13, color: colors.foreground, fontFamily: "Inter_400Regular" },
-    progressCardHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
-    progressTitleRow: { flexDirection: "row", alignItems: "baseline", gap: 8 },
-    progressTitle: { fontSize: 15, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
-    progressCount: { fontSize: 22, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-    progressHeaderRight: { flexDirection: "row", alignItems: "center", gap: 14 },
-    calIconBtn: { padding: 2 },
-    dashRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginBottom: 14 },
-    dash: { height: 6, flex: 1, minWidth: 12, maxWidth: 22, borderRadius: 3, backgroundColor: "#E8E8E8" },
+    progressCardHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 },
+    progressTitleCol: { flexDirection: "column", gap: 2 },
+    progressTitle: { fontSize: 14, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
+    progressCount: { fontSize: 13, color: "#9A9A9A", fontFamily: "Inter_400Regular" },
+    progressHeaderRight: { flexDirection: "row", alignItems: "center", gap: 10 },
+    calIconBtn: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
+    calIconBtnActive: { backgroundColor: "#1A1A1A" },
+    kebabBtn: { width: 24, height: 30, alignItems: "center", justifyContent: "center", gap: 3 },
+    kebabDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: "#9A9A9A" },
+    dashRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 14 },
+    dash: { height: 5, flex: 1, minWidth: 12, maxWidth: 26, borderRadius: 3, backgroundColor: "#E8E8E8" },
     dashFilled: { backgroundColor: "#1A1A1A" },
-    doneRow: { backgroundColor: "#F0FFF4", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginTop: 4 },
-    doneText: { fontSize: 14, fontWeight: "600", color: "#166534", fontFamily: "Inter_600SemiBold", textAlign: "center" },
+    dashFilledGreen: { backgroundColor: "#22C55E" },
+    doneText: { fontSize: 14, fontWeight: "600", color: "#166534", fontFamily: "Inter_600SemiBold", textAlign: "center", backgroundColor: "#F0FFF4", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginTop: 4 },
     remainingSection: { marginTop: 4 },
-    remainingLabel: { fontSize: 11, fontWeight: "700", color: "#AAAAAA", fontFamily: "Inter_700Bold", marginBottom: 8, letterSpacing: 0.3 },
+    remainingHeader: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 },
+    remainingLabel: { fontSize: 11, fontWeight: "700", color: "#AAAAAA", fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
     remainingCount: { fontSize: 11, color: "#CCCCCC", fontFamily: "Inter_400Regular" },
-    remainingRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
+    remainingRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
     remainingName: { fontSize: 14, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
     kahfBadge: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12 },
     kahfText: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },

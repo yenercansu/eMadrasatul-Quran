@@ -24,23 +24,31 @@ import { useQuran } from "@/contexts/QuranContext";
 import { useAudio, RECITERS, PLAYBACK_RATES } from "@/contexts/AudioContext";
 import { SettingsSheet, TAFSIR_EDITIONS } from "@/components/SettingsSheet";
 import { RangeSelectorModal } from "@/components/RangeSelectorModal";
-import { fetchSurahWithTranslations, fetchTafsir, type SurahDetail, type ApiAyah } from "@/services/quranApi";
+import { fetchSurahWithTranslations, fetchTafsir, fetchTranslation, type SurahDetail, type ApiAyah } from "@/services/quranApi";
 import { SURAH_DATA } from "@/constants/surahData";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const AYAHS_PER_PAGE = 10;
 const MUSHAF_BG = "#F5EDD6";
 const WORD_COLORS = ["#E8507A", "#F2994A", "#27AE60", "#2F80ED", "#9B51E0", "#EB5757"];
-const REPEAT_SWIPE_OPEN = 110;
+const REPEAT_SWIPE_OPEN = 96;
 
-// ─── Arabic text with optional color coding ──────────────────────────────────
-function ArabicText({ text, colorCoding, style }: { text: string; colorCoding: boolean; style?: object }) {
-  if (!colorCoding) {
-    return <Text style={style}>{text}</Text>;
-  }
-  const words = text.split(" ");
+const TRANSLATION_OPTIONS = [
+  { id: "en.sahih", name: "Sahih International" },
+  { id: "en.asad", name: "Muhammad Asad" },
+  { id: "en.itani", name: "The Clear Quran" },
+  { id: "en.hilali", name: "Muhsin Khan & Taqi-ud-Din al-Hilali" },
+  { id: "en.pickthall", name: "Pickthall" },
+];
+
+// ─── Color-coded text (same word index → same color) ─────────────────────────
+function ColorWords({ text, colorCoding, style, rtl }: {
+  text: string; colorCoding: boolean; style?: any; rtl?: boolean;
+}) {
+  if (!colorCoding) return <Text style={style}>{text}</Text>;
+  const words = text.split(/\s+/);
   return (
-    <Text style={style}>
+    <Text style={[style, rtl && { writingDirection: "rtl" }]}>
       {words.map((w, i) => (
         <Text key={i} style={{ color: WORD_COLORS[i % WORD_COLORS.length] }}>
           {w}{i < words.length - 1 ? " " : ""}
@@ -50,64 +58,58 @@ function ArabicText({ text, colorCoding, style }: { text: string; colorCoding: b
   );
 }
 
-// ─── Swipeable ayah card ───────────────────────────────────────────────────
+// ─── Swipeable ayah card ─────────────────────────────────────────────────────
 interface AyahCardProps {
   ayah: ApiAyah;
   surahNum: number;
   isPlaying: boolean;
-  isRepeating: boolean;
+  isOnRepeat: boolean;
   repeatCount: number;
-  translation: SurahDetail | null;
-  transliteration: SurahDetail | null;
-  tafsirDataMap: Record<string, SurahDetail>;
-  showTranslation: boolean;
+  isRangeSelected: boolean;
+  translations: { editionId: string; name: string; text: string }[];
+  transliterationText: string | null;
+  tafsirs: { editionId: string; name: string; text: string }[];
   showTransliteration: boolean;
   showTafsir: boolean;
-  selectedTafsirs: string[];
   colorCoding: boolean;
   showBasmala: boolean;
   onSave: (ayah: ApiAyah) => void;
-  onRepeat: (ayah: ApiAyah, count: number) => void;
+  onSetRepeat: (ayah: ApiAyah, count: number) => void;
   onPress: () => void;
-  onWordLongPress?: (word: string, ayahNum: number) => void;
 }
 
 function SwipeableAyahCard({
-  ayah, surahNum, isPlaying, isRepeating, repeatCount,
-  translation, transliteration, tafsirDataMap,
-  showTranslation, showTransliteration, showTafsir, selectedTafsirs,
-  colorCoding, showBasmala, onSave, onRepeat, onPress, onWordLongPress,
+  ayah, surahNum, isPlaying, isOnRepeat, repeatCount, isRangeSelected,
+  translations, transliterationText, tafsirs,
+  showTransliteration, showTafsir,
+  colorCoding, showBasmala, onSave, onSetRepeat, onPress,
 }: AyahCardProps) {
   const pan = useRef(new Animated.Value(0)).current;
-  const [swipeOpen, setSwipeOpen] = useState(false);
   const swipeOpenRef = useRef(false);
+  const [, force] = useState(0);
 
-  const closeSwipe = useCallback(() => {
+  const close = useCallback(() => {
     Animated.spring(pan, { toValue: 0, useNativeDriver: true, tension: 80, friction: 10 }).start();
     swipeOpenRef.current = false;
-    setSwipeOpen(false);
+    force(v => v + 1);
   }, [pan]);
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-        Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8,
-      onPanResponderGrant: () => {},
+        Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10,
       onPanResponderMove: (_, { dx }) => {
         if (swipeOpenRef.current) {
-          pan.setValue(Math.min(REPEAT_SWIPE_OPEN + Math.max(0, dx - REPEAT_SWIPE_OPEN), REPEAT_SWIPE_OPEN));
+          pan.setValue(Math.min(REPEAT_SWIPE_OPEN, REPEAT_SWIPE_OPEN + Math.max(-REPEAT_SWIPE_OPEN, dx)));
         } else {
           if (dx > 0) pan.setValue(Math.min(dx, REPEAT_SWIPE_OPEN + 20));
-          else pan.setValue(Math.max(dx, -90));
+          else pan.setValue(Math.max(dx, -100));
         }
       },
       onPanResponderRelease: (_, { dx, vx }) => {
         if (swipeOpenRef.current) {
           if (dx < -20) {
-            Animated.spring(pan, { toValue: 0, useNativeDriver: true }).start();
-            swipeOpenRef.current = false;
-            setSwipeOpen(false);
+            close();
           } else {
             Animated.spring(pan, { toValue: REPEAT_SWIPE_OPEN, useNativeDriver: true }).start();
           }
@@ -116,7 +118,7 @@ function SwipeableAyahCard({
         if (dx > 50 || vx > 0.5) {
           Animated.spring(pan, { toValue: REPEAT_SWIPE_OPEN, useNativeDriver: true, tension: 80 }).start();
           swipeOpenRef.current = true;
-          setSwipeOpen(true);
+          force(v => v + 1);
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         } else if (dx < -50 || vx < -0.5) {
           Animated.timing(pan, { toValue: -SCREEN_WIDTH * 1.2, duration: 260, useNativeDriver: true }).start(() => {
@@ -130,100 +132,84 @@ function SwipeableAyahCard({
     })
   ).current;
 
-  const translationAyah = translation?.ayahs[ayah.numberInSurah - 1];
-  const transliterationAyah = transliteration?.ayahs[ayah.numberInSurah - 1];
-  const tafsirs: { edition: string; name: string; text: string }[] = [];
-  if (showTafsir) {
-    for (const ed of selectedTafsirs) {
-      const td = tafsirDataMap[ed];
-      if (td) {
-        const ta = td.ayahs[ayah.numberInSurah - 1];
-        const edObj = TAFSIR_EDITIONS.find(e => e.id === ed);
-        if (ta && edObj) tafsirs.push({ edition: ed, name: edObj.name, text: ta.text });
-      }
-    }
-  }
-
-  const cardBg = isPlaying ? "#DCFCE7" : "#FFFFFF";
-  const borderColor = isPlaying ? "#86EFAC" : "#F0F0F0";
+  const cardBg = isPlaying || isOnRepeat || isRangeSelected ? "#DCFCE7" : "#FFFFFF";
 
   return (
-    <View style={cs.cardWrapper}>
-      {/* Swipe right reveals repeat options */}
+    <View style={cs.wrap}>
+      {/* Vertical white repeat buttons on the LEFT */}
       <View style={cs.swipeReveal}>
         {[2, 5, 10, 0].map((count) => (
           <TouchableOpacity
             key={count}
             style={cs.repeatBtn}
             onPress={() => {
-              closeSwipe();
-              onRepeat(ayah, count === 0 ? 999 : count);
+              close();
+              onSetRepeat(ayah, count === 0 ? 999 : count);
             }}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
-            <Text style={cs.repeatBtnText}>{count === 0 ? "∞" : `${count}×`}</Text>
+            <Text style={cs.repeatBtnText}>{count === 0 ? "∞" : `${count}X`}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
       <Animated.View
-        style={[cs.card, { backgroundColor: cardBg, borderColor, transform: [{ translateX: pan }] }]}
+        style={[cs.card, { backgroundColor: cardBg, transform: [{ translateX: pan }] }]}
         {...panResponder.panHandlers}
       >
-        <TouchableOpacity onPress={onPress} activeOpacity={1} style={{ flex: 1 }}>
-          {/* Ayah header */}
-          <View style={cs.ayahHeader}>
-            {isRepeating && (
-              <View style={cs.repeatBadge}>
-                <Text style={cs.repeatBadgeText}>{repeatCount === 999 ? "∞" : `${repeatCount}×`}</Text>
-                <Ionicons name="repeat" size={11} color="#166534" />
+        <TouchableOpacity activeOpacity={1} onPress={onPress} style={{ flex: 1 }}>
+          {/* Top-right ayah badge */}
+          <View style={cs.topRow}>
+            {isOnRepeat && (
+              <View style={cs.repeatIconBadge}>
+                {repeatCount === 999
+                  ? <Text style={cs.repeatIconText}>∞</Text>
+                  : <Text style={cs.repeatIconText}>{repeatCount}x</Text>}
+                <Ionicons name="repeat" size={13} color="#1A1A1A" style={{ marginLeft: 3 }} />
               </View>
             )}
-            <View style={[cs.ayahNumBadge, isPlaying && cs.ayahNumBadgePlaying]}>
-              <Text style={[cs.ayahNumText, isPlaying && cs.ayahNumTextPlaying]}>
-                {surahNum}:{ayah.numberInSurah}
-              </Text>
+            <View style={cs.numBadge}>
+              <Text style={cs.numText}>{surahNum}:{ayah.numberInSurah}</Text>
             </View>
           </View>
 
           {showBasmala && (
-            <Text style={[cs.basmala, isPlaying && { color: "#166534" }]}>
-              بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
-            </Text>
+            <Text style={cs.basmala}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
           )}
 
-          <ArabicText
+          <ColorWords
             text={ayah.text}
-            colorCoding={colorCoding && !isPlaying}
-            style={[cs.arabicText, isPlaying && !colorCoding && { color: "#166534" }]}
+            colorCoding={colorCoding}
+            style={cs.arabic}
+            rtl
           />
 
-          {showTransliteration && transliterationAyah && (
-            <Text style={[cs.transliteration, isPlaying && { color: "#14532D" }]}>
-              {transliterationAyah.text}
-            </Text>
+          {showTransliteration && transliterationText && (
+            <ColorWords
+              text={transliterationText}
+              colorCoding={colorCoding}
+              style={cs.translit}
+            />
           )}
 
-          {showTranslation && translationAyah && (
-            <View style={[cs.translationBox, isPlaying && { backgroundColor: "rgba(255,255,255,0.5)", borderColor: "#86EFAC" }]}>
-              <Text style={[cs.translation, isPlaying && { color: "#14532D" }]}>
-                "{translationAyah.text}"
-              </Text>
-              <Text style={cs.translationSource}>Sahih International</Text>
+          {translations.map((t) => (
+            <View key={t.editionId} style={cs.transBlock}>
+              <Text style={cs.transText}>"{t.text}"</Text>
+              <Text style={cs.transSource}>{t.name}</Text>
             </View>
-          )}
+          ))}
 
-          {tafsirs.map(t => (
-            <View key={t.edition} style={cs.tafsirBox}>
-              <Text style={cs.tafsirName}>{t.name}</Text>
-              <Text style={cs.tafsirText} numberOfLines={4}>{t.text}</Text>
+          {showTafsir && tafsirs.map(t => (
+            <View key={t.editionId} style={cs.tafBox}>
+              <Text style={cs.tafName}>{t.name}</Text>
+              <Text style={cs.tafText} numberOfLines={4}>{t.text}</Text>
             </View>
           ))}
         </TouchableOpacity>
       </Animated.View>
 
-      {swipeOpen && (
-        <TouchableWithoutFeedback onPress={closeSwipe}>
+      {swipeOpenRef.current && (
+        <TouchableWithoutFeedback onPress={close}>
           <View style={StyleSheet.absoluteFill} />
         </TouchableWithoutFeedback>
       )}
@@ -232,156 +218,133 @@ function SwipeableAyahCard({
 }
 
 const cs = StyleSheet.create({
-  cardWrapper: { marginHorizontal: 16, marginBottom: 10, position: "relative" },
+  wrap: { marginHorizontal: 0, marginBottom: 0, position: "relative" },
   swipeReveal: {
     position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: REPEAT_SWIPE_OPEN,
+    left: 12,
+    top: 8,
+    bottom: 8,
+    width: REPEAT_SWIPE_OPEN - 16,
     flexDirection: "column",
-    justifyContent: "center",
-    paddingLeft: 8,
-    gap: 6,
+    justifyContent: "space-around",
+    gap: 4,
     zIndex: 0,
   },
   repeatBtn: {
-    backgroundColor: "#1A1A1A",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    paddingVertical: 10,
     alignItems: "center",
-  },
-  repeatBtnText: { fontSize: 14, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
-  card: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 16,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
     elevation: 2,
+  },
+  repeatBtnText: { fontSize: 16, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  card: {
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 18,
     zIndex: 1,
   },
-  ayahHeader: {
+  topRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
     alignItems: "center",
-    marginBottom: 10,
     gap: 6,
+    marginBottom: 4,
   },
-  repeatBadge: {
+  repeatIconBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
-    backgroundColor: "#DCFCE7",
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: "#86EFAC",
+    backgroundColor: "transparent",
+    paddingHorizontal: 4,
   },
-  repeatBadgeText: { fontSize: 11, fontWeight: "700", color: "#166534", fontFamily: "Inter_700Bold" },
-  ayahNumBadge: {
+  repeatIconText: { fontSize: 13, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
+  numBadge: {
     backgroundColor: "#F0F0F0",
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  ayahNumBadgePlaying: { backgroundColor: "#166534" },
-  ayahNumText: { fontSize: 11, fontWeight: "700", color: "#6B6B6B", fontFamily: "Inter_700Bold" },
-  ayahNumTextPlaying: { color: "#FFFFFF" },
+  numText: { fontSize: 11, fontWeight: "700", color: "#6B6B6B", fontFamily: "Inter_700Bold" },
   basmala: {
-    fontSize: 20,
+    fontSize: 22,
     color: "#1A1A1A",
     textAlign: "center",
     fontFamily: Platform.OS === "ios" ? "System" : undefined,
-    lineHeight: 38,
-    marginBottom: 10,
+    lineHeight: 42,
+    marginBottom: 8,
   },
-  arabicText: {
-    fontSize: 26,
-    lineHeight: 50,
+  arabic: {
+    fontSize: 28,
+    lineHeight: 56,
     color: "#1A1A1A",
     textAlign: "right",
     writingDirection: "rtl",
     fontFamily: Platform.OS === "ios" ? "System" : undefined,
     marginBottom: 10,
   },
-  transliteration: {
-    fontSize: 13,
+  translit: {
+    fontSize: 14,
     color: "#7A7A7A",
     fontFamily: "Inter_400Regular",
     fontStyle: "italic",
-    marginBottom: 8,
-    lineHeight: 20,
+    marginBottom: 14,
+    lineHeight: 22,
   },
-  translationBox: {
-    backgroundColor: "#F7F7F7",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#EBEBEB",
-  },
-  translation: { fontSize: 14, color: "#4A4A4A", fontFamily: "Inter_400Regular", lineHeight: 22 },
-  translationSource: { fontSize: 11, color: "#AAAAAA", fontFamily: "Inter_400Regular", marginTop: 4, fontStyle: "italic" },
-  tafsirBox: {
+  transBlock: { marginBottom: 12 },
+  transText: { fontSize: 14, color: "#1A1A1A", fontFamily: "Inter_400Regular", lineHeight: 22 },
+  transSource: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 4, fontStyle: "italic" },
+  tafBox: {
     backgroundColor: "#FFF8EE",
     borderRadius: 10,
     padding: 10,
+    marginTop: 4,
     marginBottom: 6,
     borderWidth: 1,
     borderColor: "#EDD9A3",
   },
-  tafsirName: { fontSize: 10, fontWeight: "700", color: "#8B6914", fontFamily: "Inter_700Bold", marginBottom: 4 },
-  tafsirText: { fontSize: 12, color: "#5A4020", fontFamily: "Inter_400Regular", lineHeight: 18 },
+  tafName: { fontSize: 11, fontWeight: "700", color: "#8B6914", fontFamily: "Inter_700Bold", marginBottom: 4 },
+  tafText: { fontSize: 12, color: "#5A4020", fontFamily: "Inter_400Regular", lineHeight: 18 },
 });
 
 // ─── Player Bar ───────────────────────────────────────────────────────────────
 function PlayerBar({
-  isPlaying, isLoading, currentSurah, currentAyah, range,
-  playbackRate, repeatCount, currentRepeat,
+  isPlaying, isLoading, range, playbackRate,
   onPlay, onPause, onStop, onNext, onPrev, onSpeedPress, onEditPress,
-  surahNum,
 }: {
   isPlaying: boolean; isLoading: boolean;
-  currentSurah: number | null; currentAyah: number | null;
   range: { startSurah: number; startAyah: number; endSurah: number; endAyah: number } | null;
-  playbackRate: number; repeatCount: number; currentRepeat: number;
+  playbackRate: number;
   onPlay: () => void; onPause: () => void; onStop: () => void;
   onNext: () => void; onPrev: () => void;
   onSpeedPress: () => void; onEditPress: () => void;
-  surahNum: number;
 }) {
-  const hasRange = !!range;
-  const isActive = currentSurah === surahNum || hasRange;
-
   return (
-    <View style={pb.bar}>
-      {hasRange && range && (
-        <View style={pb.rangeRow}>
-          <Ionicons name="radio-button-on" size={9} color="#22C55E" />
+    <View>
+      {range && (
+        <View style={pb.rangePill}>
           <Text style={pb.rangeText}>
             range {range.startSurah}:{range.startAyah} – {range.endSurah}:{range.endAyah}
           </Text>
         </View>
       )}
-      <View style={pb.controls}>
+      <View style={pb.bar}>
         <TouchableOpacity style={pb.iconBtn} onPress={onStop} activeOpacity={0.7}>
-          <Ionicons name="stop" size={20} color="#FFFFFF" />
+          <Ionicons name="stop" size={18} color="#1A1A1A" />
         </TouchableOpacity>
         <TouchableOpacity style={pb.speedBtn} onPress={onSpeedPress} activeOpacity={0.8}>
           <Text style={pb.speedText}>{playbackRate === 1 ? "1x" : `${playbackRate}x`}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={pb.iconBtn} onPress={onNext} activeOpacity={0.7}>
-          <Ionicons name="play-skip-forward" size={20} color="#FFFFFF" />
+          <Ionicons name="play-forward" size={20} color="#1A1A1A" />
         </TouchableOpacity>
         <TouchableOpacity
-          style={[pb.iconBtn, pb.playBtn]}
+          style={pb.playBtn}
           onPress={isPlaying ? onPause : onPlay}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
           {isLoading ? (
             <ActivityIndicator size="small" color="#1A1A1A" />
@@ -390,8 +353,9 @@ function PlayerBar({
           )}
         </TouchableOpacity>
         <TouchableOpacity style={pb.iconBtn} onPress={onPrev} activeOpacity={0.7}>
-          <Ionicons name="play-skip-back" size={20} color="#FFFFFF" />
+          <Ionicons name="play-back" size={20} color="#1A1A1A" />
         </TouchableOpacity>
+        <View style={{ flex: 1 }} />
         <TouchableOpacity style={pb.editBtn} onPress={onEditPress} activeOpacity={0.85}>
           <Text style={pb.editBtnText}>Edit</Text>
         </TouchableOpacity>
@@ -401,100 +365,111 @@ function PlayerBar({
 }
 
 const pb = StyleSheet.create({
-  bar: {
-    backgroundColor: "#1A1A1A",
+  rangePill: {
+    backgroundColor: "#22C55E",
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 7,
   },
-  rangeRow: {
+  rangeText: { fontSize: 13, color: "#FFFFFF", fontFamily: "Inter_600SemiBold", fontWeight: "600" },
+  bar: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    marginBottom: 6,
-  },
-  rangeText: { fontSize: 11, color: "#22C55E", fontFamily: "Inter_400Regular", fontWeight: "600" },
-  controls: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#F0F0F0",
+    gap: 4,
   },
   iconBtn: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 20,
   },
   speedBtn: {
-    width: 36,
-    height: 36,
+    minWidth: 36,
+    height: 32,
+    paddingHorizontal: 10,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#333333",
-    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  speedText: { fontSize: 13, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+  speedText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
   playBtn: {
     backgroundColor: "#FFFFFF",
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 3,
   },
   editBtn: {
-    marginLeft: "auto" as any,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingHorizontal: 18,
+    backgroundColor: "#1A1A1A",
+    borderRadius: 14,
+    paddingHorizontal: 22,
     paddingVertical: 10,
   },
-  editBtnText: { fontSize: 14, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  editBtnText: { fontSize: 14, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
 });
 
 // ─── Content Toggle Bar ───────────────────────────────────────────────────────
 function ContentBar({
   showTranslation, showTransliteration, showTafsir, colorCoding, tajweedMode, mushafMode,
-  onToggleTranslation, onToggleTransliteration, onToggleTafsir, onToggleColors, onToggleTajweed,
-  onTafsirPress,
+  onPressMeaning, onToggleTransliteration, onPressTafsir, onToggleColors, onToggleTajweed,
 }: {
   showTranslation: boolean; showTransliteration: boolean; showTafsir: boolean;
   colorCoding: boolean; tajweedMode: boolean; mushafMode: boolean;
-  onToggleTranslation: () => void; onToggleTransliteration: () => void;
-  onToggleTafsir: () => void; onToggleColors: () => void; onToggleTajweed: () => void;
-  onTafsirPress: () => void;
+  onPressMeaning: () => void; onToggleTransliteration: () => void;
+  onPressTafsir: () => void; onToggleColors: () => void; onToggleTajweed: () => void;
 }) {
   const tabs = mushafMode
     ? [
-        { label: "Meaning", icon: "book-open" as const, active: showTranslation, onPress: onToggleTranslation },
-        { label: "Tafsir", icon: "align-left" as const, active: showTafsir, onPress: onTafsirPress },
-        { label: "Tajweed", icon: "underline" as const, active: tajweedMode, onPress: onToggleTajweed },
+        { key: "meaning", label: "Meaning", active: showTranslation, onPress: onPressMeaning, icon: "book-open" as const },
+        { key: "tafsir", label: "Tafsir", active: showTafsir, onPress: onPressTafsir, icon: "align-left" as const },
+        { key: "tajweed", label: "Tajweed", active: tajweedMode, onPress: onToggleTajweed, icon: "tajweed" as const },
       ]
     : [
-        { label: "Meaning", icon: "book-open" as const, active: showTranslation, onPress: onToggleTranslation },
-        { label: "Roman", icon: "type" as const, active: showTransliteration, onPress: onToggleTransliteration },
-        { label: "Tafsir", icon: "align-left" as const, active: showTafsir, onPress: onTafsirPress },
-        { label: "Colors", icon: "droplet" as const, active: colorCoding, onPress: onToggleColors },
-        { label: "Tajweed", icon: "underline" as const, active: tajweedMode, onPress: onToggleTajweed },
+        { key: "meaning", label: "Meaning", active: showTranslation, onPress: onPressMeaning, icon: "book-open" as const },
+        { key: "roman", label: "Roman", active: showTransliteration, onPress: onToggleTransliteration, icon: "type" as const },
+        { key: "tafsir", label: "Tafsir", active: showTafsir, onPress: onPressTafsir, icon: "align-left" as const },
+        { key: "colors", label: "Colors", active: colorCoding, onPress: onToggleColors, icon: "colors" as const },
+        { key: "tajweed", label: "Tajweed", active: tajweedMode, onPress: onToggleTajweed, icon: "tajweed" as const },
       ];
 
   return (
     <View style={cb.bar}>
       {tabs.map((tab) => (
         <TouchableOpacity
-          key={tab.label}
-          style={cb.tab}
+          key={tab.key}
+          style={[cb.tab, tab.active && cb.tabActive]}
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); tab.onPress(); }}
           activeOpacity={0.75}
         >
-          {tab.label === "Colors" ? (
-            <View style={cb.colorDots}>
-              {["#E8507A", "#27AE60", "#2F80ED"].map((c, i) => (
-                <View key={i} style={[cb.colorDot, { backgroundColor: c }, !tab.active && { opacity: 0.3 }]} />
-              ))}
+          {tab.icon === "colors" ? (
+            <View style={cb.dotsRow}>
+              <View style={[cb.dot, { backgroundColor: tab.active ? "#E8507A" : "#CCCCCC" }]} />
+              <View style={[cb.dot, { backgroundColor: tab.active ? "#27AE60" : "#CCCCCC" }]} />
+              <View style={[cb.dot, { backgroundColor: tab.active ? "#2F80ED" : "#CCCCCC" }]} />
+            </View>
+          ) : tab.icon === "tajweed" ? (
+            <View style={cb.tajweedIcon}>
+              <Text style={[cb.tajweedU, { color: tab.active ? "#1A1A1A" : "#AAAAAA" }]}>U</Text>
+              <View style={[cb.tajweedUnderline, { backgroundColor: tab.active ? "#1A1A1A" : "#AAAAAA" }]} />
             </View>
           ) : (
-            <Feather name={tab.icon} size={17} color={tab.active ? "#1A1A1A" : "#AAAAAA"} />
+            <Feather name={tab.icon as any} size={18} color={tab.active ? "#1A1A1A" : "#AAAAAA"} />
           )}
-          <Text style={[cb.tabLabel, tab.active && cb.tabLabelActive]}>{tab.label}</Text>
+          <Text style={[cb.label, tab.active && cb.labelActive]}>{tab.label}</Text>
         </TouchableOpacity>
       ))}
     </View>
@@ -504,26 +479,31 @@ function ContentBar({
 const cb = StyleSheet.create({
   bar: {
     flexDirection: "row",
-    backgroundColor: "#FAFAFA",
-    borderTopWidth: 1,
-    borderTopColor: "#EBEBEB",
-    paddingVertical: 8,
+    backgroundColor: "#FFFFFF",
+    paddingTop: 8,
+    paddingBottom: 6,
     paddingHorizontal: 4,
   },
   tab: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 4,
     gap: 4,
-    paddingVertical: 4,
+    borderRadius: 12,
   },
-  tabLabel: { fontSize: 10, fontWeight: "600", color: "#AAAAAA", fontFamily: "Inter_600SemiBold" },
-  tabLabelActive: { color: "#1A1A1A" },
-  colorDots: { flexDirection: "row", gap: 2, alignItems: "center" },
-  colorDot: { width: 6, height: 6, borderRadius: 3 },
+  tabActive: { backgroundColor: "#F2F2F2" },
+  label: { fontSize: 11, fontWeight: "600", color: "#AAAAAA", fontFamily: "Inter_600SemiBold" },
+  labelActive: { color: "#1A1A1A" },
+  dotsRow: { flexDirection: "row", gap: 2, marginBottom: 1, height: 18, alignItems: "center" },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  tajweedIcon: { alignItems: "center", height: 18, justifyContent: "center" },
+  tajweedU: { fontSize: 14, fontWeight: "700", fontFamily: "Inter_700Bold", lineHeight: 16 },
+  tajweedUnderline: { width: 12, height: 1.5, marginTop: 1 },
 });
 
-// ─── Floating top nav (shown when menus hidden) ───────────────────────────────
+// ─── Floating top nav (3 separate pills + hint) ──────────────────────────────
 function FloatingTopNav({
   surahName, onPrev, onNext, onLongPress, topInset,
 }: {
@@ -531,66 +511,83 @@ function FloatingTopNav({
   onLongPress: () => void; topInset: number;
 }) {
   return (
-    <View style={[fn.wrapper, { top: topInset + 8 }]}>
-      <View style={fn.pill}>
-        <TouchableOpacity style={fn.navBtn} onPress={onPrev} activeOpacity={0.75}>
-          <Feather name="chevron-left" size={16} color="#1A1A1A" />
-          <Text style={fn.navLabel}>Next</Text>
+    <View style={[fn.wrap, { top: topInset + 8 }]}>
+      <View style={fn.row}>
+        <TouchableOpacity style={fn.pillBtn} onPress={onPrev} activeOpacity={0.75}>
+          <Feather name="arrow-left" size={14} color="#1A1A1A" />
+          <Text style={fn.pillBtnText}>Next</Text>
         </TouchableOpacity>
-        <TouchableOpacity onLongPress={onLongPress} activeOpacity={0.9}>
-          <Text style={fn.surahName}>{surahName}</Text>
+        <TouchableOpacity onLongPress={onLongPress} activeOpacity={0.85} style={fn.titlePill}>
+          <Text style={fn.titleText}>{surahName}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={fn.navBtn} onPress={onNext} activeOpacity={0.75}>
-          <Text style={fn.navLabel}>Back</Text>
-          <Feather name="chevron-right" size={16} color="#1A1A1A" />
+        <TouchableOpacity style={fn.pillBtn} onPress={onNext} activeOpacity={0.75}>
+          <Text style={fn.pillBtnText}>Back</Text>
+          <Feather name="arrow-right" size={14} color="#1A1A1A" />
         </TouchableOpacity>
       </View>
-      <TouchableOpacity onLongPress={onLongPress} activeOpacity={0.85}>
-        <Text style={fn.hint}>Long press to edit Ayah range</Text>
-      </TouchableOpacity>
+      <View style={fn.hintPill}>
+        <Text style={fn.hintText}>Long press to edit Ayah range</Text>
+      </View>
     </View>
   );
 }
 
 const fn = StyleSheet.create({
-  wrapper: { position: "absolute", left: 0, right: 0, zIndex: 100, alignItems: "center", gap: 6 },
-  pill: {
+  wrap: { position: "absolute", left: 0, right: 0, zIndex: 100, alignItems: "center", gap: 6 },
+  row: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 8 },
+  pillBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.96)",
+    backgroundColor: "rgba(255,255,255,0.95)",
     borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 4,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    gap: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  navBtn: { flexDirection: "row", alignItems: "center", gap: 2, paddingHorizontal: 8, paddingVertical: 6 },
-  navLabel: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  surahName: { fontSize: 14, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", paddingHorizontal: 4 },
-  hint: { fontSize: 11, color: "rgba(0,0,0,0.5)", fontFamily: "Inter_400Regular", backgroundColor: "rgba(255,255,255,0.85)", paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+  pillBtnText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  titlePill: {
+    backgroundColor: "#DCFCE7",
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  titleText: { fontSize: 13, fontWeight: "700", color: "#166534", fontFamily: "Inter_700Bold" },
+  hintPill: {
+    backgroundColor: "#DCFCE7",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+  },
+  hintText: { fontSize: 11, color: "#166534", fontFamily: "Inter_400Regular" },
 });
 
-// ─── Bottom minimal nav (shown when menus hidden) ────────────────────────────
+// ─── Bottom floating arrows (when menu hidden) ────────────────────────────────
 function FloatingBottomNav({ onPrev, onNext, bottomInset }: { onPrev: () => void; onNext: () => void; bottomInset: number }) {
   return (
-    <View style={[fbn.wrapper, { bottom: bottomInset + 12 }]}>
+    <View style={[fbn.wrap, { bottom: bottomInset + 14 }]}>
       <TouchableOpacity style={fbn.btn} onPress={onPrev} activeOpacity={0.75}>
-        <Feather name="chevron-left" size={22} color="#1A1A1A" />
+        <Feather name="arrow-left" size={20} color="#1A1A1A" />
       </TouchableOpacity>
       <TouchableOpacity style={fbn.btn} onPress={onNext} activeOpacity={0.75}>
-        <Feather name="chevron-right" size={22} color="#1A1A1A" />
+        <Feather name="arrow-right" size={20} color="#1A1A1A" />
       </TouchableOpacity>
     </View>
   );
 }
 
 const fbn = StyleSheet.create({
-  wrapper: { position: "absolute", left: 0, right: 0, zIndex: 100, flexDirection: "row", justifyContent: "center", gap: 24 },
-  btn: { width: 48, height: 48, borderRadius: 24, backgroundColor: "rgba(255,255,255,0.96)", alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4 },
+  wrap: { position: "absolute", left: 0, right: 0, zIndex: 100, flexDirection: "row", justifyContent: "center", gap: 36 },
+  btn: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.96)", alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4 },
 });
 
 // ─── Edit Sheet ───────────────────────────────────────────────────────────────
@@ -601,80 +598,74 @@ function EditSheet({
   onPlayRange, onRepeatSection,
 }: {
   visible: boolean; onClose: () => void;
-  settings: { selectedReciter: string; repeatCount: number };
+  settings: { selectedReciter: string };
   updateSettings: (p: any) => void;
   playbackRate: number; onSpeedChange: (r: number) => void;
   onPlayRange: () => void; onRepeatSection: () => void;
 }) {
   const [wordByWord, setWordByWord] = useState(false);
   const [memMode, setMemMode] = useState(false);
-
-  if (!visible) return null;
+  const insets = useSafeAreaInsets();
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={es.backdrop} />
       </TouchableWithoutFeedback>
-      <View style={es.sheet}>
+      <View style={[es.sheet, { paddingBottom: insets.bottom + 20 }]}>
         <View style={es.handle} />
-        <Text style={es.title}>Editing</Text>
+        <View style={es.headerRow}>
+          <View style={{ width: 24 }} />
+          <Text style={es.title}>Editing</Text>
+          <TouchableOpacity onPress={onClose} activeOpacity={0.7}>
+            <Feather name="x" size={22} color="#1A1A1A" />
+          </TouchableOpacity>
+        </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Options */}
-          {[
-            {
-              icon: "refresh-cw" as const,
-              label: "Word-by-Word",
-              desc: "repeat each word several times",
-              value: wordByWord,
-              onToggle: () => setWordByWord(v => !v),
-            },
-            {
-              icon: "headphones" as const,
-              label: "Memorisation Mode",
-              desc: "Listen every Ayah with a pre-determined repetition frequency",
-              value: memMode,
-              onToggle: () => setMemMode(v => !v),
-            },
-          ].map((opt) => (
-            <View key={opt.label} style={es.optionRow}>
-              <View style={es.optionIcon}>
-                <Feather name={opt.icon} size={20} color="#1A1A1A" />
-              </View>
-              <View style={es.optionInfo}>
-                <Text style={es.optionLabel}>{opt.label}</Text>
-                <Text style={es.optionDesc}>{opt.desc}</Text>
-              </View>
-              <Switch
-                value={opt.value}
-                onValueChange={opt.onToggle}
-                trackColor={{ false: "#E0E0E0", true: "#1A1A1A" }}
-                thumbColor="#FFFFFF"
-              />
+          <View style={es.optionRow}>
+            <Feather name="refresh-cw" size={20} color="#1A1A1A" style={es.optionIcon} />
+            <View style={es.optionInfo}>
+              <Text style={es.optionLabel}>Word-by-Word</Text>
+              <Text style={es.optionDesc}>repeat each word several times</Text>
             </View>
-          ))}
+            <Switch
+              value={wordByWord}
+              onValueChange={setWordByWord}
+              trackColor={{ false: "#E0E0E0", true: "#1A1A1A" }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
 
-          {/* Buttons */}
+          <View style={es.optionRow}>
+            <Feather name="headphones" size={20} color="#1A1A1A" style={es.optionIcon} />
+            <View style={es.optionInfo}>
+              <Text style={es.optionLabel}>Memorisation Mode</Text>
+              <Text style={es.optionDesc}>Listen every Ayah with a pre-determined repetition frequence</Text>
+            </View>
+            <Switch
+              value={memMode}
+              onValueChange={setMemMode}
+              trackColor={{ false: "#E0E0E0", true: "#1A1A1A" }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+
           {[
             { icon: "scissors" as const, label: "Repeat Section", desc: "select an Ayah, edit to listen to a smaller part on repeat", onPress: () => { onClose(); onRepeatSection(); } },
             { icon: "book" as const, label: "Word dictionary", desc: "select a word, view root, meaning & add word to quiz", onPress: onClose },
             { icon: "play-circle" as const, label: "Play Within Range", desc: "select two ayahs, play only the selected range", onPress: () => { onClose(); onPlayRange(); } },
             { icon: "download" as const, label: "Download", desc: "download full Quran from the latest reciter to listen offline", onPress: onClose },
-          ].map((btn) => (
-            <TouchableOpacity key={btn.label} style={es.optionRow} onPress={btn.onPress} activeOpacity={0.8}>
-              <View style={es.optionIcon}>
-                <Feather name={btn.icon} size={20} color="#1A1A1A" />
-              </View>
+          ].map((b) => (
+            <TouchableOpacity key={b.label} style={es.optionRow} onPress={b.onPress} activeOpacity={0.7}>
+              <Feather name={b.icon} size={20} color="#1A1A1A" style={es.optionIcon} />
               <View style={es.optionInfo}>
-                <Text style={es.optionLabel}>{btn.label}</Text>
-                <Text style={es.optionDesc}>{btn.desc}</Text>
+                <Text style={es.optionLabel}>{b.label}</Text>
+                <Text style={es.optionDesc}>{b.desc}</Text>
               </View>
-              <Feather name="chevron-right" size={16} color="#CCCCCC" />
             </TouchableOpacity>
           ))}
 
-          {/* Recent Reciters */}
           <Text style={es.sectionLabel}>Recent Reciters</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={es.reciterList}>
             {RECITERS.map((r) => {
@@ -683,7 +674,7 @@ function EditSheet({
                 <TouchableOpacity
                   key={r.id}
                   style={[es.reciterChip, active && es.reciterChipActive]}
-                  onPress={() => { updateSettings({ selectedReciter: r.id }); onClose(); }}
+                  onPress={() => { updateSettings({ selectedReciter: r.id }); }}
                   activeOpacity={0.85}
                 >
                   <Text style={[es.reciterName, active && es.reciterNameActive]}>{r.name}</Text>
@@ -692,7 +683,6 @@ function EditSheet({
             })}
           </ScrollView>
 
-          {/* Speed */}
           <Text style={es.sectionLabel}>Playback Speed</Text>
           <View style={es.speedRow}>
             {PLAYBACK_RATES.map((rate) => (
@@ -716,25 +706,19 @@ function EditSheet({
 
 const es = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
-  sheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 20,
-    paddingBottom: 40,
-    maxHeight: "85%",
-  },
-  handle: { width: 40, height: 4, backgroundColor: "#DEDEDE", borderRadius: 2, alignSelf: "center", marginBottom: 16 },
-  title: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", textAlign: "center", marginBottom: 20 },
+  sheet: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, maxHeight: "85%" },
+  handle: { width: 40, height: 4, backgroundColor: "#DEDEDE", borderRadius: 2, alignSelf: "center", marginBottom: 12 },
+  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
+  title: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
   optionRow: {
     flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: "#F0F0F0",
   },
-  optionIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: "#F5F5F5", alignItems: "center", justifyContent: "center" },
+  optionIcon: { width: 28 },
   optionInfo: { flex: 1 },
   optionLabel: { fontSize: 15, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
   optionDesc: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 1 },
-  sectionLabel: { fontSize: 11, fontWeight: "700", color: "#AAAAAA", fontFamily: "Inter_700Bold", letterSpacing: 1, marginTop: 20, marginBottom: 10 },
+  sectionLabel: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 18, marginBottom: 10 },
   reciterList: { gap: 8, paddingRight: 16 },
   reciterChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: "#F0F0F0" },
   reciterChipActive: { backgroundColor: "#1A1A1A" },
@@ -748,35 +732,29 @@ const es = StyleSheet.create({
 });
 
 // ─── Meaning Panel ────────────────────────────────────────────────────────────
-const TRANSLATIONS = [
-  { id: "en.sahih", name: "Sahih International" },
-  { id: "en.fadel", name: "Fadel Soliman" },
-  { id: "en.clearquran", name: "The Clear Quran" },
-  { id: "en.hilali", name: "Muhsin Khan Taqi-ud-Din al-Hilali" },
-];
-
-function MeaningPanel({ visible, onClose, selected, onToggle }: {
+function MeaningPanel({ visible, onClose, selected, onToggle, onPlay }: {
   visible: boolean; onClose: () => void;
   selected: string[]; onToggle: (id: string) => void;
+  onPlay: () => void;
 }) {
-  if (!visible) return null;
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={mp.backdrop} />
       </TouchableWithoutFeedback>
-      <View style={mp.sheet}>
+      <View style={[mp.sheet, { paddingBottom: insets.bottom + 24 }]}>
         <View style={mp.handle} />
         <View style={mp.header}>
-          <TouchableOpacity onPress={onClose} activeOpacity={0.7}>
-            <Ionicons name="play" size={20} color="#1A1A1A" />
+          <TouchableOpacity onPress={onPlay} style={mp.iconBtn} activeOpacity={0.7}>
+            <Ionicons name="play" size={22} color="#1A1A1A" />
           </TouchableOpacity>
           <Text style={mp.title}>Meaning</Text>
-          <TouchableOpacity onPress={onClose} activeOpacity={0.7}>
-            <Feather name="x" size={20} color="#1A1A1A" />
+          <TouchableOpacity onPress={onClose} style={mp.iconBtn} activeOpacity={0.7}>
+            <Feather name="x" size={22} color="#1A1A1A" />
           </TouchableOpacity>
         </View>
-        {TRANSLATIONS.map((t) => {
+        {TRANSLATION_OPTIONS.map((t) => {
           const active = selected.includes(t.id);
           return (
             <TouchableOpacity
@@ -802,27 +780,33 @@ function MeaningPanel({ visible, onClose, selected, onToggle }: {
 
 const mp = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.35)" },
-  sheet: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, paddingBottom: 40 },
-  handle: { width: 40, height: 4, backgroundColor: "#DEDEDE", borderRadius: 2, alignSelf: "center", marginBottom: 16 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 },
+  sheet: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20 },
+  handle: { width: 40, height: 4, backgroundColor: "#DEDEDE", borderRadius: 2, alignSelf: "center", marginBottom: 12 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
+  iconBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   title: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
   rowLabel: { fontSize: 15, fontWeight: "500", color: "#1A1A1A", fontFamily: "Inter_400Regular" },
 });
 
 // ─── Tafsir Modal ─────────────────────────────────────────────────────────────
-function TafsirModal({ visible, onClose, tafsirDataMap, currentAyah, surahNum, onPlay }: {
+function TafsirModal({ visible, onClose, tafsirDataMap, currentAyah, onPlay }: {
   visible: boolean; onClose: () => void;
   tafsirDataMap: Record<string, SurahDetail>;
-  currentAyah: number; surahNum: number;
+  currentAyah: number;
   onPlay: () => void;
 }) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ [TAFSIR_EDITIONS[0]?.id ?? ""]: true });
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    if (visible && TAFSIR_EDITIONS[0]) {
+      setExpanded({ [TAFSIR_EDITIONS[0].id]: true });
+    }
+  }, [visible]);
+  const insets = useSafeAreaInsets();
 
-  if (!visible) return null;
   return (
-    <Modal visible={visible} transparent={false} animationType="slide" onRequestClose={onClose}>
-      <View style={tm.container}>
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={[tm.container, { paddingTop: insets.top }]}>
         <View style={tm.header}>
           <TouchableOpacity onPress={onPlay} style={tm.headerBtn} activeOpacity={0.75}>
             <Ionicons name="play" size={22} color="#1A1A1A" />
@@ -836,18 +820,18 @@ function TafsirModal({ visible, onClose, tafsirDataMap, currentAyah, surahNum, o
           {TAFSIR_EDITIONS.map((ed) => {
             const td = tafsirDataMap[ed.id];
             const ta = td?.ayahs[currentAyah - 1];
-            const isExpanded = expanded[ed.id];
+            const isExp = expanded[ed.id];
             return (
               <View key={ed.id} style={tm.section}>
                 <TouchableOpacity
                   style={tm.sectionHeader}
-                  onPress={() => setExpanded(prev => ({ ...prev, [ed.id]: !isExpanded }))}
-                  activeOpacity={0.8}
+                  onPress={() => setExpanded(prev => ({ ...prev, [ed.id]: !isExp }))}
+                  activeOpacity={0.75}
                 >
                   <Text style={tm.sectionName}>{ed.name}</Text>
-                  <Feather name={isExpanded ? "chevron-up" : "chevron-down"} size={18} color="#6B6B6B" />
+                  <Feather name={isExp ? "chevron-up" : "chevron-down"} size={18} color="#6B6B6B" />
                 </TouchableOpacity>
-                {isExpanded && (
+                {isExp && (
                   <Text style={tm.sectionText}>
                     {ta?.text ?? "Tafsir not available for this ayah."}
                   </Text>
@@ -866,18 +850,18 @@ function TafsirModal({ visible, onClose, tafsirDataMap, currentAyah, surahNum, o
 
 const tm = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFFFFF" },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16, paddingTop: Platform.OS === "ios" ? 54 : 16, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 12, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
   headerBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   title: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  section: { marginBottom: 16, borderWidth: 1, borderColor: "#EBEBEB", borderRadius: 14, overflow: "hidden" },
-  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16, backgroundColor: "#FAFAFA" },
+  section: { marginBottom: 12 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
   sectionName: { fontSize: 15, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  sectionText: { fontSize: 13, color: "#4A4A4A", fontFamily: "Inter_400Regular", lineHeight: 22, padding: 16, paddingTop: 0 },
-  footer: { alignItems: "center", paddingVertical: 12, borderTopWidth: 1, borderTopColor: "#F0F0F0" },
+  sectionText: { fontSize: 13, color: "#4A4A4A", fontFamily: "Inter_400Regular", lineHeight: 22, paddingVertical: 12 },
+  footer: { alignItems: "center", paddingVertical: 12 },
 });
 
 // ─── Mushaf Page ──────────────────────────────────────────────────────────────
-function MushafPage({ ayahs, surahName }: { ayahs: ApiAyah[]; surahName: string }) {
+function MushafPage({ ayahs }: { ayahs: ApiAyah[] }) {
   return (
     <View style={ms.page}>
       <View style={ms.pageInner}>
@@ -915,8 +899,8 @@ export default function SurahScreen() {
   const surahNum = parseInt(id, 10);
 
   const [arabic, setArabic] = useState<SurahDetail | null>(null);
-  const [translation, setTranslation] = useState<SurahDetail | null>(null);
   const [transliteration, setTransliteration] = useState<SurahDetail | null>(null);
+  const [translationsMap, setTranslationsMap] = useState<Record<string, SurahDetail>>({});
   const [tafsirDataMap, setTafsirDataMap] = useState<Record<string, SurahDetail>>({});
   const [loading, setLoading] = useState(true);
   const [menuVisible, setMenuVisible] = useState(true);
@@ -926,9 +910,8 @@ export default function SurahScreen() {
   const [rangeVisible, setRangeVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [currentAyahIndex, setCurrentAyahIndex] = useState(0);
   const [tajweedMode, setTajweedMode] = useState(false);
-  const [selectedTranslations, setSelectedTranslations] = useState(["en.sahih"]);
+  const [selectedTranslations, setSelectedTranslations] = useState<string[]>(["en.sahih", "en.asad"]);
   const [ayahRepeatCounts, setAyahRepeatCounts] = useState<Record<number, number>>({});
 
   const listRef = useRef<FlatList<ApiAyah>>(null);
@@ -937,13 +920,27 @@ export default function SurahScreen() {
   const {
     settings, updateSettings,
     saveProgress, recordAyahRead,
-    saveWord, saveAyah,
+    saveAyah,
     surahPositions, saveSurahPosition,
   } = useQuran();
 
   const { audioState, playAyah, playRange, pauseAudio, resumeAudio, stopAudio, setPlaybackRate, playNextAyah, playPrevAyah, setOnNextAyah } = useAudio();
 
-  // Tafsir on-demand loading
+  // Fetch translations on selection change
+  useEffect(() => {
+    if (!arabic) return;
+    const toFetch = selectedTranslations.filter(ed => !translationsMap[ed]);
+    if (toFetch.length === 0) return;
+    Promise.all(toFetch.map(ed => fetchTranslation(surahNum, ed).catch(() => null))).then(results => {
+      setTranslationsMap(prev => {
+        const next = { ...prev };
+        toFetch.forEach((ed, i) => { if (results[i]) next[ed] = results[i]!; });
+        return next;
+      });
+    });
+  }, [selectedTranslations, arabic, surahNum]);
+
+  // Tafsir on-demand
   useEffect(() => {
     if (!settings.showTafsir || !arabic) return;
     const selected = settings.selectedTafsirs ?? ["en.maarifulquran"];
@@ -967,26 +964,27 @@ export default function SurahScreen() {
     setTimeout(() => {
       listRef.current?.scrollToOffset({ offset: 0, animated: false });
       mushafScrollRef.current?.scrollTo({ y: 0, animated: false });
-    }, 80);
+    }, 60);
   }, [currentPage]);
 
   async function loadData() {
     setLoading(true);
     try {
-      const selected = settings.selectedTafsirs ?? ["en.maarifulquran"];
-      const [main, tafsirResults] = await Promise.all([
-        fetchSurahWithTranslations(surahNum),
-        settings.showTafsir
-          ? Promise.all(selected.map(ed => fetchTafsir(surahNum, ed).catch(() => null)))
-          : Promise.resolve([] as (SurahDetail | null)[]),
-      ]);
+      const main = await fetchSurahWithTranslations(surahNum, "en.sahih");
       setArabic(main.arabic);
-      setTranslation(main.translation);
       setTransliteration(main.transliteration);
-      if (settings.showTafsir) {
-        const map: Record<string, SurahDetail> = {};
-        selected.forEach((ed, i) => { if (tafsirResults[i]) map[ed] = tafsirResults[i]!; });
-        setTafsirDataMap(map);
+      setTranslationsMap({ "en.sahih": main.translation });
+
+      // Pre-fetch any other selected translations
+      const others = selectedTranslations.filter(ed => ed !== "en.sahih");
+      if (others.length > 0) {
+        Promise.all(others.map(ed => fetchTranslation(surahNum, ed).catch(() => null))).then(results => {
+          setTranslationsMap(prev => {
+            const next = { ...prev };
+            others.forEach((ed, i) => { if (results[i]) next[ed] = results[i]!; });
+            return next;
+          });
+        });
       }
 
       setOnNextAyah((surahN, ayahN) => {
@@ -1000,12 +998,11 @@ export default function SurahScreen() {
         });
         if (surahN === surahNum) {
           const idx = ayahN - 1;
-          setCurrentAyahIndex(idx);
           saveSurahPosition(surahN, idx);
           const page = Math.ceil(ayahN / AYAHS_PER_PAGE);
           setCurrentPage(page);
           setTimeout(() => {
-            listRef.current?.scrollToIndex({ index: idx % AYAHS_PER_PAGE, animated: true });
+            try { listRef.current?.scrollToIndex({ index: idx % AYAHS_PER_PAGE, animated: true }); } catch {}
           }, 100);
         }
       });
@@ -1017,9 +1014,8 @@ export default function SurahScreen() {
       if (initialIndex > 0) {
         const page = Math.ceil((initialIndex + 1) / AYAHS_PER_PAGE);
         setCurrentPage(page);
-        setCurrentAyahIndex(initialIndex);
         setTimeout(() => {
-          listRef.current?.scrollToIndex({ index: initialIndex % AYAHS_PER_PAGE, animated: false });
+          try { listRef.current?.scrollToIndex({ index: initialIndex % AYAHS_PER_PAGE, animated: false }); } catch {}
         }, 300);
       }
     } finally {
@@ -1028,15 +1024,16 @@ export default function SurahScreen() {
   }
 
   const handleSaveAyah = useCallback((ayah: ApiAyah) => {
+    const sahih = translationsMap["en.sahih"];
     saveAyah({
       surahNumber: surahNum, surahName: arabic?.englishName ?? "",
       ayahNumber: ayah.numberInSurah, arabicText: ayah.text,
-      translationText: translation?.ayahs[ayah.numberInSurah - 1]?.text ?? "",
+      translationText: sahih?.ayahs[ayah.numberInSurah - 1]?.text ?? "",
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [surahNum, saveAyah, arabic, translation]);
+  }, [surahNum, saveAyah, arabic, translationsMap]);
 
-  const handleRepeat = useCallback((ayah: ApiAyah, count: number) => {
+  const handleSetRepeat = useCallback((ayah: ApiAyah, count: number) => {
     setAyahRepeatCounts(prev => ({ ...prev, [ayah.numberInSurah]: count }));
     if (!arabic) return;
     playAyah(surahNum, ayah.numberInSurah, arabic.ayahs.length, count);
@@ -1050,20 +1047,18 @@ export default function SurahScreen() {
 
   const handlePlayAll = useCallback(() => {
     if (!arabic) return;
-    playAyah(surahNum, 1, arabic.ayahs.length, settings.repeatCount);
+    playAyah(surahNum, 1, arabic.ayahs.length, 1);
     recordAyahRead(surahNum);
     saveProgress({ surahNumber: surahNum, ayahNumber: 1, ayahNumberInSurah: 1, surahName: arabic.englishName });
-  }, [arabic, surahNum, settings.repeatCount]);
+  }, [arabic, surahNum]);
 
   const handleTafsirPress = useCallback(() => {
-    if (!settings.showTafsir) {
-      updateSettings({ showTafsir: true });
-    }
+    if (!settings.showTafsir) updateSettings({ showTafsir: true });
     setTafsirModalVisible(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [settings.showTafsir, updateSettings]);
 
-  const handleMeaningToggleTranslation = useCallback((id: string) => {
+  const handleMeaningTranslationToggle = useCallback((id: string) => {
     setSelectedTranslations(prev => {
       if (prev.includes(id)) return prev.length > 1 ? prev.filter(x => x !== id) : prev;
       return [...prev, id];
@@ -1078,24 +1073,32 @@ export default function SurahScreen() {
     return arabic.ayahs.slice(start, start + AYAHS_PER_PAGE);
   }, [arabic, currentPage]);
 
-  const goToPrevPage = () => {
-    if (currentPage < totalPages) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setCurrentPage(p => p + 1); }
+  const goToNextSurah = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (currentPage < totalPages) {
+      setCurrentPage(p => p + 1);
+    } else if (surahNum < 114) {
+      router.replace(`/surah/${surahNum + 1}`);
+    }
   };
-  const goToNextPage = () => {
-    if (currentPage > 1) { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setCurrentPage(p => p - 1); }
+  const goToPrevSurah = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (currentPage > 1) {
+      setCurrentPage(p => p - 1);
+    } else if (surahNum > 1) {
+      router.replace(`/surah/${surahNum - 1}`);
+    }
   };
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const basmala = surahNum !== 1 && surahNum !== 9;
   const currentAyahForRange = audioState.currentSurah === surahNum && audioState.currentAyah ? audioState.currentAyah : parseInt(ayahParam ?? "1", 10) || 1;
 
-  const displayedAyahNum = currentAyahIndex + 1;
-
   return (
     <View style={{ flex: 1, backgroundColor: "#EEEEF0" }}>
-      {/* Header */}
+      {/* ── Fixed Header ─────────────────────────────────────── */}
       {menuVisible && (
-        <View style={[scr.header, { paddingTop: topPad + 8 }]}>
+        <View style={[scr.header, { paddingTop: topPad + 6 }]}>
           <TouchableOpacity onPress={() => router.back()} style={scr.headerBtn} activeOpacity={0.7}>
             <Feather name="arrow-left" size={22} color="#1A1A1A" />
           </TouchableOpacity>
@@ -1107,72 +1110,53 @@ export default function SurahScreen() {
               </>
             )}
           </View>
-          <View style={scr.headerRight}>
-            <TouchableOpacity onPress={handlePlayAll} style={scr.headerBtn} activeOpacity={0.7}>
-              <Ionicons name="play-circle" size={24} color="#1A1A1A" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setSettingsVisible(true)} style={scr.headerBtn} activeOpacity={0.7}>
-              <Feather name="settings" size={20} color="#1A1A1A" />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity onPress={() => setSettingsVisible(true)} style={scr.headerBtn} activeOpacity={0.7}>
+            <Feather name="settings" size={20} color="#1A1A1A" />
+          </TouchableOpacity>
         </View>
       )}
 
-      {/* Mode tabs */}
+      {/* ── Mode Switcher (centered, only Normal/Mushaf) ─────── */}
       {menuVisible && (
-        <View style={scr.modeTabs}>
-          {settings.mushafMode ? (
-            <TouchableOpacity style={[scr.pageBtn, scr.pageBtnLeft]} onPress={goToPrevPage} disabled={currentPage >= totalPages} activeOpacity={0.8}>
-              <Feather name="chevron-left" size={15} color={currentPage >= totalPages ? "#CCCCCC" : "#1A1A1A"} />
-              <Text style={[scr.pageBtnText, currentPage >= totalPages && { color: "#CCCCCC" }]}>Next</Text>
-            </TouchableOpacity>
-          ) : <View style={{ minWidth: 70 }} />}
-
+        <View style={scr.modeBar}>
           <View style={scr.modeSwitcher}>
             <TouchableOpacity
               style={[scr.modeBtn, !settings.mushafMode && scr.modeBtnActive]}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); updateSettings({ mushafMode: false }); }}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
               <Text style={[scr.modeBtnText, !settings.mushafMode && scr.modeBtnTextActive]}>Normal</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[scr.modeBtn, settings.mushafMode && scr.modeBtnActive]}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); updateSettings({ mushafMode: true }); }}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
               <Text style={[scr.modeBtnText, settings.mushafMode && scr.modeBtnTextActive]}>Mushaf</Text>
             </TouchableOpacity>
           </View>
-
-          {settings.mushafMode ? (
-            <TouchableOpacity style={[scr.pageBtn, scr.pageBtnRight]} onPress={goToNextPage} disabled={currentPage <= 1} activeOpacity={0.8}>
-              <Text style={[scr.pageBtnText, currentPage <= 1 && { color: "#CCCCCC" }]}>Back</Text>
-              <Feather name="chevron-right" size={15} color={currentPage <= 1 ? "#CCCCCC" : "#1A1A1A"} />
-            </TouchableOpacity>
-          ) : <View style={{ minWidth: 70 }} />}
         </View>
       )}
 
-      {/* Floating nav (hidden menu mode) */}
+      {/* ── Floating nav (menu hidden) ────────────────────────── */}
       {!menuVisible && (
         <>
           <FloatingTopNav
             surahName={arabic?.englishName ?? ""}
             topInset={insets.top}
-            onPrev={goToPrevPage}
-            onNext={goToNextPage}
+            onPrev={goToPrevSurah}
+            onNext={goToNextSurah}
             onLongPress={() => setRangeVisible(true)}
           />
           <FloatingBottomNav
             bottomInset={insets.bottom}
-            onPrev={goToPrevPage}
-            onNext={goToNextPage}
+            onPrev={goToPrevSurah}
+            onNext={goToNextSurah}
           />
         </>
       )}
 
-      {/* Content */}
+      {/* ── Content ──────────────────────────────────────────── */}
       {loading ? (
         <ActivityIndicator color="#1A1A1A" style={{ flex: 1 }} size="large" />
       ) : settings.mushafMode ? (
@@ -1180,24 +1164,25 @@ export default function SurahScreen() {
           <ScrollView
             ref={mushafScrollRef}
             style={{ flex: 1, backgroundColor: MUSHAF_BG }}
-            contentContainerStyle={{ paddingBottom: 180 }}
+            contentContainerStyle={{ paddingBottom: 200 }}
             showsVerticalScrollIndicator={false}
           >
-            {arabic && isFirstMushafPage(currentPage) && basmala && (
+            {arabic && currentPage === 1 && basmala && (
               <View style={scr.mushafInfo}>
                 <Text style={scr.mushafArabicName}>{arabic.name}</Text>
                 <Text style={scr.mushafBasmala}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
               </View>
             )}
-            <MushafPage ayahs={pageAyahs} surahName={arabic?.englishName ?? ""} />
+            <MushafPage ayahs={pageAyahs} />
             {settings.showTranslation && (
               <View style={scr.mushafTranslations}>
                 {pageAyahs.map((ayah) => {
-                  const ta = translation?.ayahs[ayah.numberInSurah - 1];
+                  const sahih = translationsMap["en.sahih"];
+                  const ta = sahih?.ayahs[ayah.numberInSurah - 1];
                   return ta ? (
                     <Text key={ayah.numberInSurah} style={scr.mushafTranslation}>
-                      <Text style={scr.mushafTranslationNum}>{ayah.numberInSurah}:{" "}</Text>
-                      {ta.text}
+                      <Text style={scr.mushafTranslationNum}>{ayah.numberInSurah}: </Text>
+                      "{ta.text}"
                     </Text>
                   ) : null;
                 })}
@@ -1212,31 +1197,59 @@ export default function SurahScreen() {
             data={pageAyahs}
             keyExtractor={(item) => String(item.numberInSurah)}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingTop: 12, paddingBottom: 40 }}
-            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingTop: 4, paddingBottom: 60 }}
+            style={{ flex: 1, backgroundColor: "#FFFFFF" }}
+            ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: "#F0F0F0" }} />}
             onScrollBeginDrag={() => { if (menuVisible) setMenuVisible(false); }}
             renderItem={({ item }) => {
               const isPlaying = audioState.currentSurah === surahNum && audioState.currentAyah === item.numberInSurah;
-              const isRepeating = isPlaying && (audioState.repeatCount ?? 1) > 1;
+              const repeatVal = ayahRepeatCounts[item.numberInSurah];
+              const isOnRepeat = isPlaying && (audioState.repeatCount > 1 || (repeatVal && repeatVal > 1));
+              const repeatCount = repeatVal ?? audioState.repeatCount;
+              const isRangeSelected = !!audioState.range
+                && surahNum >= audioState.range.startSurah
+                && surahNum <= audioState.range.endSurah
+                && item.numberInSurah >= (surahNum === audioState.range.startSurah ? audioState.range.startAyah : 1)
+                && item.numberInSurah <= (surahNum === audioState.range.endSurah ? audioState.range.endAyah : 999);
               const showB = item.numberInSurah === 1 && basmala;
+
+              const translations = selectedTranslations
+                .map(ed => {
+                  const td = translationsMap[ed];
+                  const ta = td?.ayahs[item.numberInSurah - 1];
+                  const opt = TRANSLATION_OPTIONS.find(o => o.id === ed);
+                  if (!ta || !opt) return null;
+                  return { editionId: ed, name: opt.name, text: ta.text };
+                })
+                .filter((x): x is { editionId: string; name: string; text: string } => !!x);
+
+              const tafsirsForAyah = (settings.selectedTafsirs ?? ["en.maarifulquran"])
+                .map(ed => {
+                  const td = tafsirDataMap[ed];
+                  const ta = td?.ayahs[item.numberInSurah - 1];
+                  const opt = TAFSIR_EDITIONS.find(o => o.id === ed);
+                  if (!ta || !opt) return null;
+                  return { editionId: ed, name: opt.name, text: ta.text };
+                })
+                .filter((x): x is { editionId: string; name: string; text: string } => !!x);
+
               return (
                 <SwipeableAyahCard
                   ayah={item}
                   surahNum={surahNum}
                   isPlaying={isPlaying}
-                  isRepeating={isRepeating}
-                  repeatCount={ayahRepeatCounts[item.numberInSurah] ?? audioState.repeatCount}
-                  translation={translation}
-                  transliteration={transliteration}
-                  tafsirDataMap={tafsirDataMap}
-                  showTranslation={settings.showTranslation}
+                  isOnRepeat={!!isOnRepeat}
+                  repeatCount={repeatCount}
+                  isRangeSelected={isRangeSelected && !isPlaying}
+                  translations={settings.showTranslation ? translations : []}
+                  transliterationText={transliteration?.ayahs[item.numberInSurah - 1]?.text ?? null}
+                  tafsirs={tafsirsForAyah}
                   showTransliteration={settings.showTransliteration}
                   showTafsir={settings.showTafsir}
-                  selectedTafsirs={settings.selectedTafsirs ?? ["en.maarifulquran"]}
                   colorCoding={settings.colorCoding}
                   showBasmala={showB}
                   onSave={handleSaveAyah}
-                  onRepeat={handleRepeat}
+                  onSetRepeat={handleSetRepeat}
                   onPress={() => setMenuVisible(v => !v)}
                 />
               );
@@ -1245,19 +1258,14 @@ export default function SurahScreen() {
         ) : null
       )}
 
-      {/* Player bar + Content bar */}
+      {/* ── Player + Content bar ─────────────────────────────── */}
       {menuVisible && (
-        <View style={[scr.bottomPanel, { paddingBottom: insets.bottom }]}>
+        <View style={[scr.bottom, { paddingBottom: insets.bottom }]}>
           <PlayerBar
             isPlaying={audioState.isPlaying}
             isLoading={audioState.isLoading}
-            currentSurah={audioState.currentSurah}
-            currentAyah={audioState.currentAyah}
             range={audioState.range}
             playbackRate={audioState.playbackRate}
-            repeatCount={audioState.repeatCount}
-            currentRepeat={audioState.currentRepeat}
-            surahNum={surahNum}
             onPlay={resumeAudio}
             onPause={pauseAudio}
             onStop={stopAudio}
@@ -1272,26 +1280,21 @@ export default function SurahScreen() {
           />
           <ContentBar
             showTranslation={settings.showTranslation}
-            showTransliteration={settings.showTransliteration}
+            showTransliteration={settings.showTransliteration && !settings.mushafMode}
             showTafsir={settings.showTafsir}
             colorCoding={settings.colorCoding}
             tajweedMode={tajweedMode}
             mushafMode={settings.mushafMode}
-            onToggleTranslation={() => {
-              if (!settings.showTranslation) { setMeaningPanelVisible(true); }
-              else updateSettings({ showTranslation: false });
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }}
+            onPressMeaning={() => setMeaningPanelVisible(true)}
             onToggleTransliteration={() => updateSettings({ showTransliteration: !settings.showTransliteration })}
-            onToggleTafsir={handleTafsirPress}
+            onPressTafsir={handleTafsirPress}
             onToggleColors={() => updateSettings({ colorCoding: !settings.colorCoding })}
             onToggleTajweed={() => setTajweedMode(v => !v)}
-            onTafsirPress={handleTafsirPress}
           />
         </View>
       )}
 
-      {/* Modals */}
+      {/* ── Modals ───────────────────────────────────────────── */}
       <EditSheet
         visible={editSheetVisible}
         onClose={() => setEditSheetVisible(false)}
@@ -1305,9 +1308,10 @@ export default function SurahScreen() {
 
       <MeaningPanel
         visible={meaningPanelVisible}
-        onClose={() => { setMeaningPanelVisible(false); updateSettings({ showTranslation: true }); }}
+        onClose={() => setMeaningPanelVisible(false)}
         selected={selectedTranslations}
-        onToggle={handleMeaningToggleTranslation}
+        onToggle={handleMeaningTranslationToggle}
+        onPlay={() => { setMeaningPanelVisible(false); handlePlayAll(); }}
       />
 
       <TafsirModal
@@ -1315,7 +1319,6 @@ export default function SurahScreen() {
         onClose={() => setTafsirModalVisible(false)}
         tafsirDataMap={tafsirDataMap}
         currentAyah={currentAyahForRange}
-        surahNum={surahNum}
         onPlay={() => { setTafsirModalVisible(false); handlePlayAll(); }}
       />
 
@@ -1336,47 +1339,42 @@ export default function SurahScreen() {
   );
 }
 
-function isFirstMushafPage(page: number) { return page === 1; }
-
 const scr = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 8,
-    paddingBottom: 10,
+    paddingBottom: 8,
     backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
   },
-  headerBtn: { padding: 8 },
+  headerBtn: { padding: 8, width: 40, alignItems: "center" },
   headerCenter: { flex: 1, alignItems: "center" },
-  headerRight: { flexDirection: "row", alignItems: "center" },
   headerTitle: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
   headerSub: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular" },
-  modeTabs: {
-    flexDirection: "row",
+  modeBar: {
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
   },
-  pageBtn: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 12, backgroundColor: "#F5F5F5", minWidth: 70 },
-  pageBtnLeft: { justifyContent: "flex-start" },
-  pageBtnRight: { justifyContent: "flex-end" },
-  pageBtnText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  modeSwitcher: { flexDirection: "row", backgroundColor: "#F0F0F0", borderRadius: 12, padding: 3, gap: 2 },
-  modeBtn: { paddingHorizontal: 26, paddingVertical: 9, borderRadius: 10 },
-  modeBtnActive: { backgroundColor: "#1A1A1A" },
+  modeSwitcher: {
+    flexDirection: "row",
+    backgroundColor: "#F0F0F0",
+    borderRadius: 14,
+    padding: 3,
+    minWidth: 240,
+  },
+  modeBtn: { flex: 1, paddingVertical: 9, borderRadius: 11, alignItems: "center" },
+  modeBtnActive: { backgroundColor: "#FFFFFF", shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
   modeBtnText: { fontSize: 13, fontWeight: "700", color: "#9A9A9A", fontFamily: "Inter_700Bold" },
-  modeBtnTextActive: { color: "#FFFFFF" },
-  bottomPanel: { backgroundColor: "#FFFFFF" },
-  mushafInfo: { alignItems: "center", paddingVertical: 16, backgroundColor: "#F5EDD6" },
+  modeBtnTextActive: { color: "#1A1A1A" },
+  bottom: { backgroundColor: "#F0F0F0" },
+  mushafInfo: { alignItems: "center", paddingVertical: 16, backgroundColor: MUSHAF_BG },
   mushafArabicName: { fontSize: 28, color: "#2C1810", fontFamily: Platform.OS === "ios" ? "System" : undefined, marginBottom: 8 },
   mushafBasmala: { fontSize: 18, color: "#2C1810", fontFamily: Platform.OS === "ios" ? "System" : undefined, textAlign: "center" },
-  mushafTranslations: { padding: 16, gap: 8 },
+  mushafTranslations: { padding: 16, gap: 8, backgroundColor: "#FFFFFF" },
   mushafTranslation: { fontSize: 14, color: "#4A4A4A", fontFamily: "Inter_400Regular", lineHeight: 22 },
-  mushafTranslationNum: { fontWeight: "700", color: "#8B6914", fontFamily: "Inter_700Bold" },
+  mushafTranslationNum: { fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
 });

@@ -94,6 +94,15 @@ export async function fetchTafsir(
   return data.data;
 }
 
+export async function fetchTranslation(
+  surahNumber: number,
+  edition: string,
+): Promise<SurahDetail> {
+  const res = await fetch(`${BASE_URL}/surah/${surahNumber}/${edition}`);
+  const data = await res.json();
+  return data.data;
+}
+
 export async function fetchAyahText(surahNum: number, ayahNum: number): Promise<string> {
   try {
     const res = await fetch(`${BASE_URL}/ayah/${surahNum}:${ayahNum}/quran-uthmani`);
