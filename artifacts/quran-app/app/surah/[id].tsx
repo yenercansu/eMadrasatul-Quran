@@ -105,6 +105,8 @@ function SwipeableAyahCard({
   const swipeOpenRef = useRef(false);
   const gestureStarted = useRef(false);
   const [, force] = useState(0);
+  const [savedFlash, setSavedFlash] = useState(false);
+  const savedOpacity = useRef(new Animated.Value(0)).current;
 
   const close = useCallback(() => {
     Animated.spring(pan, { toValue: 0, useNativeDriver: true, tension: 80, friction: 10 }).start();
@@ -112,13 +114,24 @@ function SwipeableAyahCard({
     force(v => v + 1);
   }, [pan]);
 
+  const flashSaved = useCallback(() => {
+    setSavedFlash(true);
+    Animated.sequence([
+      Animated.timing(savedOpacity, { toValue: 1, duration: 140, useNativeDriver: true }),
+      Animated.delay(700),
+      Animated.timing(savedOpacity, { toValue: 0, duration: 220, useNativeDriver: true }),
+    ]).start(() => setSavedFlash(false));
+  }, [savedOpacity]);
+
   const panResponder = useRef(
     PanResponder.create({
       // Don't claim on touch start — let Pressable handle taps & FlatList handle vertical scroll
       onStartShouldSetPanResponder: () => false,
-      // Only claim when finger moves horizontally past threshold
+      // Only claim when finger moves horizontally past threshold (loosened: ratio 1.0, min 6px)
       onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-        Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 10,
+        Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 6,
+      onMoveShouldSetPanResponderCapture: (_, { dx, dy }) =>
+        Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10,
       onPanResponderGrant: () => {
         gestureStarted.current = true;
       },
@@ -127,11 +140,13 @@ function SwipeableAyahCard({
           pan.setValue(Math.min(REPEAT_SWIPE_OPEN, REPEAT_SWIPE_OPEN + Math.max(-REPEAT_SWIPE_OPEN, dx)));
         } else {
           if (dx > 0) pan.setValue(Math.min(dx, REPEAT_SWIPE_OPEN + 20));
-          else pan.setValue(Math.max(dx, -100));
+          else pan.setValue(Math.max(dx, -120));
         }
       },
       onPanResponderRelease: (_, { dx, vx }) => {
-        gestureStarted.current = false;
+        // Keep gestureStarted true briefly so the trailing onPress (from Pressable) is suppressed
+        const wasGesture = Math.abs(dx) > 4;
+        setTimeout(() => { gestureStarted.current = false; }, 150);
         if (swipeOpenRef.current) {
           if (dx < -20) {
             close();
@@ -140,22 +155,31 @@ function SwipeableAyahCard({
           }
           return;
         }
-        if (dx > 50 || vx > 0.5) {
+        // Loosened thresholds: 35px or velocity 0.3
+        if (dx > 35 || vx > 0.3) {
           Animated.spring(pan, { toValue: REPEAT_SWIPE_OPEN, useNativeDriver: true, tension: 80 }).start();
           swipeOpenRef.current = true;
           force(v => v + 1);
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        } else if (dx < -50 || vx < -0.5) {
-          Animated.timing(pan, { toValue: -SCREEN_WIDTH * 1.2, duration: 260, useNativeDriver: true }).start(() => {
+        } else if (dx < -35 || vx < -0.3) {
+          // SAVE: flash a SAVED pill then slide off
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          flashSaved();
+          Animated.sequence([
+            Animated.timing(pan, { toValue: -100, duration: 180, useNativeDriver: true }),
+            Animated.delay(450),
+            Animated.timing(pan, { toValue: -SCREEN_WIDTH * 1.2, duration: 260, useNativeDriver: true }),
+          ]).start(() => {
             pan.setValue(0);
             onSave(ayah);
           });
         } else {
           Animated.spring(pan, { toValue: 0, useNativeDriver: true }).start();
         }
+        void wasGesture;
       },
       onPanResponderTerminate: () => {
-        gestureStarted.current = false;
+        setTimeout(() => { gestureStarted.current = false; }, 150);
         Animated.spring(pan, { toValue: swipeOpenRef.current ? REPEAT_SWIPE_OPEN : 0, useNativeDriver: true }).start();
       },
     })
@@ -192,6 +216,13 @@ function SwipeableAyahCard({
         ))}
       </View>
 
+      {/* SAVED feedback pill — fades in/out during swipe-left */}
+      {savedFlash && (
+        <Animated.View pointerEvents="none" style={[cs.savedPill, { opacity: savedOpacity }]}>
+          <Ionicons name="bookmark" size={16} color="#FFFFFF" />
+          <Text style={cs.savedPillText}>SAVED</Text>
+        </Animated.View>
+      )}
       <Animated.View
         style={[{ transform: [{ translateX: pan }] }]}
         {...panResponder.panHandlers}
@@ -256,6 +287,26 @@ function SwipeableAyahCard({
 
 const cs = StyleSheet.create({
   wrap: { marginHorizontal: 0, marginBottom: 0, position: "relative" },
+  savedPill: {
+    position: "absolute",
+    top: "50%",
+    right: 16,
+    marginTop: -16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#16A34A",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    zIndex: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  savedPillText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800", fontFamily: "Inter_700Bold", letterSpacing: 0.6 },
   swipeReveal: {
     position: "absolute",
     left: 12,
@@ -975,12 +1026,22 @@ export default function SurahScreen() {
   const [tafsirDataMap, setTafsirDataMap] = useState<Record<string, SurahDetail>>({});
   const [loading, setLoading] = useState(true);
   const [menuVisible, setMenuVisible] = useState(true);
+  const [bottomBarHeight, setBottomBarHeight] = useState(160);
   const [editSheetVisible, setEditSheetVisible] = useState(false);
   const [meaningPanelVisible, setMeaningPanelVisible] = useState(false);
   const [tafsirModalVisible, setTafsirModalVisible] = useState(false);
   const [rangeVisible, setRangeVisible] = useState(false);
   const [repeatSectionVisible, setRepeatSectionVisible] = useState(false);
   const [repeatSectionInitialAyah, setRepeatSectionInitialAyah] = useState<number | null>(null);
+  const menuToggleLockRef = useRef(0);
+  const lastMenuToggleRef = useRef(0);
+  const safeToggleMenu = useCallback(() => {
+    const now = Date.now();
+    if (now < menuToggleLockRef.current) return; // suppressed by recent scroll
+    if (now - lastMenuToggleRef.current < 280) return; // debounce
+    lastMenuToggleRef.current = now;
+    setMenuVisible(v => !v);
+  }, []);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [tajweedMode, setTajweedMode] = useState(false);
@@ -1254,36 +1315,52 @@ export default function SurahScreen() {
       {loading ? (
         <ActivityIndicator color="#1A1A1A" style={{ flex: 1 }} size="large" />
       ) : settings.mushafMode ? (
-        <TouchableOpacity activeOpacity={1} style={{ flex: 1 }} onPress={() => setMenuVisible(v => !v)}>
-          <ScrollView
-            ref={mushafScrollRef}
-            style={{ flex: 1, backgroundColor: MUSHAF_BG }}
-            contentContainerStyle={{ paddingBottom: 200 }}
-            showsVerticalScrollIndicator={false}
-          >
-            {arabic && currentPage === 1 && basmala && (
-              <View style={scr.mushafInfo}>
-                <Text style={scr.mushafArabicName}>{arabic.name}</Text>
-                <Text style={scr.mushafBasmala}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
-              </View>
-            )}
-            <MushafPage ayahs={pageAyahs} />
-            {settings.showTranslation && (
-              <View style={scr.mushafTranslations}>
-                {pageAyahs.map((ayah) => {
-                  const sahih = translationsMap["en.sahih"];
-                  const ta = sahih?.ayahs[ayah.numberInSurah - 1];
-                  return ta ? (
-                    <Text key={ayah.numberInSurah} style={scr.mushafTranslation}>
-                      <Text style={scr.mushafTranslationNum}>{ayah.numberInSurah}: </Text>
-                      "{ta.text}"
-                    </Text>
-                  ) : null;
-                })}
-              </View>
-            )}
-          </ScrollView>
-        </TouchableOpacity>
+        // Split view: TOP fixed Mushaf panel, BOTTOM scrollable translations.
+        // If translations are off, the Mushaf takes the full panel and scrolls.
+        <View style={{ flex: 1 }}>
+          <View style={settings.showTranslation ? { flex: 0.55, backgroundColor: MUSHAF_BG } : { flex: 1, backgroundColor: MUSHAF_BG }}>
+            <TouchableOpacity activeOpacity={1} style={{ flex: 1 }} onPress={safeToggleMenu}>
+              <ScrollView
+                ref={mushafScrollRef}
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingTop: menuVisible ? 8 : (insets.top + 64), paddingBottom: 24 }}
+                showsVerticalScrollIndicator={false}
+              >
+                {arabic && currentPage === 1 && basmala && (
+                  <View style={scr.mushafInfo}>
+                    <Text style={scr.mushafArabicName}>{arabic.name}</Text>
+                    <Text style={scr.mushafBasmala}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
+                  </View>
+                )}
+                <MushafPage ayahs={pageAyahs} />
+              </ScrollView>
+            </TouchableOpacity>
+          </View>
+          {settings.showTranslation && (
+            <View style={scr.mushafSplitDivider} />
+          )}
+          {settings.showTranslation && (
+            <ScrollView
+              style={{ flex: 0.45, backgroundColor: "#FFFFFF" }}
+              contentContainerStyle={{ padding: 16, paddingBottom: menuVisible ? (bottomBarHeight + 16) : 40 }}
+              showsVerticalScrollIndicator={true}
+            >
+              <Text style={scr.mushafSplitHeader}>Translation</Text>
+              {pageAyahs.map((ayah) => {
+                const sahih = translationsMap["en.sahih"];
+                const ta = sahih?.ayahs[ayah.numberInSurah - 1];
+                return ta ? (
+                  <View key={ayah.numberInSurah} style={scr.mushafSplitRow}>
+                    <View style={scr.mushafSplitNumBadge}>
+                      <Text style={scr.mushafSplitNumText}>{ayah.numberInSurah}</Text>
+                    </View>
+                    <Text style={scr.mushafSplitText}>{ta.text}</Text>
+                  </View>
+                ) : null;
+              })}
+            </ScrollView>
+          )}
+        </View>
       ) : (
         arabic ? (
           <FlatList
@@ -1291,10 +1368,16 @@ export default function SurahScreen() {
             data={pageAyahs}
             keyExtractor={(item) => String(item.numberInSurah)}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingTop: 4, paddingBottom: 24 }}
+            contentContainerStyle={{
+              paddingTop: menuVisible ? 4 : (insets.top + 64),
+              paddingBottom: menuVisible ? (bottomBarHeight + 16) : 24,
+            }}
             style={{ flex: 1, backgroundColor: "#FFFFFF" }}
             ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: "#F0F0F0" }} />}
-            onScrollBeginDrag={() => { if (menuVisible) setMenuVisible(false); }}
+            onScrollBeginDrag={() => {
+              menuToggleLockRef.current = Date.now() + 600; // suppress accidental tap-toggle for 600ms
+              if (menuVisible) setMenuVisible(false);
+            }}
             ListFooterComponent={
               !menuVisible ? (
                 <PageEndNav onPrev={goToPrevSurah} onNext={goToNextSurah} />
@@ -1341,7 +1424,7 @@ export default function SurahScreen() {
                   romanFontSize={accountSettings.romanFontSize ?? 14}
                   onSave={handleSaveAyah}
                   onSetRepeat={handleSetRepeat}
-                  onPress={() => setMenuVisible(v => !v)}
+                  onPress={safeToggleMenu}
                   onWordLongPress={handleWordLongPress}
                 />
               );
@@ -1352,7 +1435,13 @@ export default function SurahScreen() {
 
       {/* ── Player + Content bar ─────────────────────────────── */}
       {menuVisible && (
-        <View style={[scr.bottom, { paddingBottom: insets.bottom }]}>
+        <View
+          style={[scr.bottom, { paddingBottom: insets.bottom }]}
+          onLayout={(e) => {
+            const h = Math.round(e.nativeEvent.layout.height);
+            if (h > 0 && Math.abs(h - bottomBarHeight) > 4) setBottomBarHeight(h);
+          }}
+        >
           <PlayerBar
             isPlaying={audioState.isPlaying}
             isLoading={audioState.isLoading}
@@ -1513,11 +1602,34 @@ const scr = StyleSheet.create({
   modeBtnActive: { backgroundColor: "#FFFFFF", shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
   modeBtnText: { fontSize: 13, fontWeight: "700", color: "#9A9A9A", fontFamily: "Inter_700Bold" },
   modeBtnTextActive: { color: "#1A1A1A" },
-  bottom: { backgroundColor: "#F0F0F0" },
+  bottom: {
+    position: "absolute",
+    left: 0, right: 0, bottom: 0,
+    backgroundColor: "#F0F0F0",
+    borderTopWidth: 1,
+    borderTopColor: "#E5E5E5",
+    zIndex: 50,
+  },
   mushafInfo: { alignItems: "center", paddingVertical: 16, backgroundColor: MUSHAF_BG },
   mushafArabicName: { fontSize: 28, color: "#2C1810", fontFamily: Platform.OS === "ios" ? "System" : undefined, marginBottom: 8 },
   mushafBasmala: { fontSize: 18, color: "#2C1810", fontFamily: Platform.OS === "ios" ? "System" : undefined, textAlign: "center" },
   mushafTranslations: { padding: 16, gap: 8, backgroundColor: "#FFFFFF" },
   mushafTranslation: { fontSize: 14, color: "#4A4A4A", fontFamily: "Inter_400Regular", lineHeight: 22 },
   mushafTranslationNum: { fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  mushafSplitDivider: { height: 1, backgroundColor: "#E5E5E5" },
+  mushafSplitHeader: {
+    fontSize: 12, fontWeight: "700", color: "#1A1A1A",
+    fontFamily: "Inter_700Bold", letterSpacing: 1.4,
+    marginBottom: 12, textTransform: "uppercase",
+  },
+  mushafSplitRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
+  mushafSplitNumBadge: {
+    width: 22, height: 22, borderRadius: 11, backgroundColor: "#F0F0F0",
+    alignItems: "center", justifyContent: "center", marginTop: 2,
+  },
+  mushafSplitNumText: { fontSize: 11, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  mushafSplitText: {
+    flex: 1, fontSize: 14, lineHeight: 22,
+    color: "#2C2C2C", fontFamily: "Inter_400Regular",
+  },
 });

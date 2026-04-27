@@ -75,6 +75,8 @@ interface Settings {
   mushafMode: boolean;
   repeatCount: number;
   selectedReciter: string;
+  /** Auto-pause audio after N minutes (null = off). */
+  autoPauseMinutes: number | null;
 }
 
 interface QuranContextType {
@@ -138,6 +140,7 @@ const DEFAULT_SETTINGS: Settings = {
   mushafMode: false,
   repeatCount: 1,
   selectedReciter: "ar.alafasy",
+  autoPauseMinutes: null,
 };
 
 const DEFAULT_ACCOUNT: AccountSettings = {

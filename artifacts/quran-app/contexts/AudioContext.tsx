@@ -228,6 +228,41 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // ───────── Auto-pause sleep timer ─────────
+  // Uses an absolute deadline (Date.now() + mins) so the countdown is NOT reset
+  // by ayah-to-ayah auto-advance (which momentarily flips isPlaying false→true).
+  const sleepDeadlineRef = useRef<number | null>(null);
+  const sleepIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (sleepIntervalRef.current) {
+      clearInterval(sleepIntervalRef.current);
+      sleepIntervalRef.current = null;
+    }
+    const mins = settings.autoPauseMinutes;
+    if (!mins || mins <= 0) {
+      sleepDeadlineRef.current = null;
+      return;
+    }
+    // (Re)start countdown whenever the user picks a new duration.
+    sleepDeadlineRef.current = Date.now() + mins * 60 * 1000;
+    sleepIntervalRef.current = setInterval(() => {
+      if (sleepDeadlineRef.current && Date.now() >= sleepDeadlineRef.current) {
+        pauseAudio().catch(() => {});
+        sleepDeadlineRef.current = null;
+        if (sleepIntervalRef.current) {
+          clearInterval(sleepIntervalRef.current);
+          sleepIntervalRef.current = null;
+        }
+      }
+    }, 5000);
+    return () => {
+      if (sleepIntervalRef.current) {
+        clearInterval(sleepIntervalRef.current);
+        sleepIntervalRef.current = null;
+      }
+    };
+  }, [settings.autoPauseMinutes, pauseAudio]);
+
   const resumeAudio = useCallback(async () => {
     if (soundRef.current) {
       await soundRef.current.playAsync();

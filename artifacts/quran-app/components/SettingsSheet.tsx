@@ -256,6 +256,35 @@ export function SettingsSheet({ visible, onClose }: Props) {
                     </View>
                     <Feather name="chevron-right" size={20} color="#9A9A9A" />
                   </TouchableOpacity>
+
+                  <Text style={s.sectionLabel}>Auto-pause Timer</Text>
+                  <View style={s.autoPauseRow}>
+                    {[
+                      { mins: null, label: "Off" },
+                      { mins: 5, label: "5m" },
+                      { mins: 15, label: "15m" },
+                      { mins: 30, label: "30m" },
+                      { mins: 60, label: "1h" },
+                    ].map((opt) => {
+                      const active = settings.autoPauseMinutes === opt.mins;
+                      return (
+                        <TouchableOpacity
+                          key={opt.label}
+                          style={[s.autoPauseChip, active && s.autoPauseChipActive]}
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            updateSettings({ autoPauseMinutes: opt.mins });
+                          }}
+                        >
+                          <Text style={[s.autoPauseChipText, active && s.autoPauseChipTextActive]}>
+                            {opt.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <Text style={s.autoPauseHint}>Audio will automatically pause after the selected duration.</Text>
                 </ScrollView>
               </View>
             </TouchableWithoutFeedback>
@@ -358,4 +387,18 @@ const styles = StyleSheet.create({
   },
   reciterName: { fontSize: 15, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
   reciterStyle: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 2 },
+  autoPauseRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  autoPauseChip: {
+    minWidth: 56,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: "#F0F0F0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  autoPauseChipActive: { backgroundColor: "#1A1A1A" },
+  autoPauseChipText: { fontSize: 13, fontWeight: "600", color: "#3A3A3A", fontFamily: "Inter_600SemiBold" },
+  autoPauseChipTextActive: { color: "#FFFFFF" },
+  autoPauseHint: { fontSize: 11, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 8, paddingHorizontal: 4 },
 });
