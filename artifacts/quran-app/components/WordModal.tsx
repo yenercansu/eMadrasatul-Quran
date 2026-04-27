@@ -6,8 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   TouchableWithoutFeedback,
+  Platform,
 } from "react-native";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
@@ -19,18 +20,40 @@ interface Props {
   surahNumber: number;
   ayahNumber: number;
   onClose: () => void;
+  onRepeat?: () => void;
+  onCut?: () => void;
 }
 
-export function WordModal({ visible, word, translation, surahNumber, ayahNumber, onClose }: Props) {
+// Tiny heuristic root-extractor — last resort when no API root is provided.
+// Strips Arabic diacritics, splits character clusters, returns up to 3 root letters.
+function deriveRoot(word: string): string {
+  const stripped = word.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED\u0610-\u061A]/g, "").trim();
+  // Common particles to strip from front
+  const cleaned = stripped.replace(/^(ال|و|ف|ل|ب|ك)/u, "");
+  const letters = [...cleaned].filter((c) => /[\u0621-\u064A]/u.test(c));
+  const root = letters.slice(0, 3);
+  return root.join(" ");
+}
+
+export function WordModal({
+  visible,
+  word,
+  translation,
+  surahNumber,
+  ayahNumber,
+  onClose,
+  onRepeat,
+  onCut,
+}: Props) {
   const colors = useColors();
   const s = styles(colors);
   const { saveWord, savedWords, highlightWord, unhighlightWord, isWordHighlighted } = useQuran();
 
   const alreadySaved = savedWords.some(
-    (w) => w.arabic === word && w.surahNumber === surahNumber
+    (w) => w.arabic === word && w.surahNumber === surahNumber,
   );
-
   const highlighted = isWordHighlighted(word, surahNumber, ayahNumber);
+  const root = deriveRoot(word);
 
   const handleSave = () => {
     if (!alreadySaved) {
@@ -48,12 +71,20 @@ export function WordModal({ visible, word, translation, surahNumber, ayahNumber,
 
   const handleHighlight = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (highlighted) {
-      unhighlightWord(word, surahNumber, ayahNumber);
-    } else {
-      highlightWord(word, surahNumber, ayahNumber);
-    }
+    if (highlighted) unhighlightWord(word, surahNumber, ayahNumber);
+    else highlightWord(word, surahNumber, ayahNumber);
+  };
+
+  const handleRepeat = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onClose();
+    onRepeat?.();
+  };
+
+  const handleCut = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onClose();
+    onCut?.();
   };
 
   return (
@@ -63,52 +94,63 @@ export function WordModal({ visible, word, translation, surahNumber, ayahNumber,
           <TouchableWithoutFeedback>
             <View style={s.card}>
               <TouchableOpacity style={s.closeTopBtn} onPress={onClose} activeOpacity={0.7}>
-                <Feather name="x" size={18} color={colors.mutedForeground} />
+                <Feather name="x" size={20} color="#9A9A9A" />
               </TouchableOpacity>
 
+              {/* Word + location */}
               <Text style={s.arabicWord}>{word}</Text>
-              <Text style={s.location}>Surah {surahNumber} • Ayah {ayahNumber}</Text>
-              {translation ? (
-                <Text style={s.translationText}>{translation}</Text>
-              ) : (
-                <Text style={s.translationHint}>Long-press any word to save & study it</Text>
-              )}
+              <Text style={s.location}>Surah {surahNumber} · Ayah {ayahNumber}</Text>
 
-              <View style={s.divider} />
-
-              <Text style={s.actionsLabel}>What would you like to do?</Text>
-
-              <View style={s.actions}>
-                <TouchableOpacity
-                  style={[s.actionBtn, highlighted ? s.actionBtnHighlightActive : s.actionBtnHighlight]}
-                  onPress={handleHighlight}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name={highlighted ? "star" : "star-outline"}
-                    size={18}
-                    color={highlighted ? "#FFFFFF" : colors.accent}
+              {/* Quick action icon row (matches screenshot) */}
+              <View style={s.iconRow}>
+                <TouchableOpacity style={s.iconBtn} onPress={handleRepeat} activeOpacity={0.7}>
+                  <Ionicons name="repeat" size={20} color="#1A1A1A" />
+                  <Text style={s.iconLabel}>Repeat</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.iconBtn} onPress={handleCut} activeOpacity={0.7}>
+                  <MaterialCommunityIcons name="content-cut" size={20} color="#1A1A1A" />
+                  <Text style={s.iconLabel}>Section</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.iconBtn} onPress={handleSave} activeOpacity={0.7}>
+                  <Feather
+                    name={alreadySaved ? "check-circle" : "download"}
+                    size={20}
+                    color={alreadySaved ? "#16A34A" : "#1A1A1A"}
                   />
-                  <Text style={[s.actionBtnText, highlighted ? s.actionBtnTextLight : s.actionBtnTextAccent]}>
-                    {highlighted ? "Remove Highlight" : "Highlight"}
+                  <Text style={[s.iconLabel, alreadySaved && { color: "#16A34A" }]}>
+                    {alreadySaved ? "Saved" : "Save"}
                   </Text>
                 </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[s.actionBtn, alreadySaved ? s.actionBtnSaved : s.actionBtnPrimary]}
-                  onPress={handleSave}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name={alreadySaved ? "checkmark-circle" : "bookmark-outline"}
-                    size={18}
-                    color={alreadySaved ? colors.mutedForeground : colors.primaryForeground}
+                <TouchableOpacity style={s.iconBtn} onPress={handleHighlight} activeOpacity={0.7}>
+                  <Feather
+                    name="edit-2"
+                    size={20}
+                    color={highlighted ? "#E8507A" : "#1A1A1A"}
                   />
-                  <Text style={[s.actionBtnText, alreadySaved ? s.actionBtnTextMuted : s.actionBtnTextLight]}>
-                    {alreadySaved ? "Already Saved" : "Add to Library"}
+                  <Text style={[s.iconLabel, highlighted && { color: "#E8507A" }]}>
+                    {highlighted ? "Marked" : "Mark"}
                   </Text>
                 </TouchableOpacity>
               </View>
+
+              <View style={s.divider} />
+
+              {/* Root */}
+              <View style={s.section}>
+                <Text style={s.sectionLabel}>Root</Text>
+                <Text style={s.rootText}>{root || "—"}</Text>
+              </View>
+
+              {/* Meaning */}
+              <View style={s.section}>
+                <Text style={s.sectionLabel}>Meaning</Text>
+                <Text style={s.meaningText}>
+                  {translation || "Translation not available for this word."}
+                </Text>
+              </View>
+
+              {/* Footer hint */}
+              <Text style={s.hint}>Long-press any word to study its root and meaning</Text>
             </View>
           </TouchableWithoutFeedback>
         </View>
@@ -124,14 +166,14 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       backgroundColor: "rgba(0,0,0,0.55)",
       justifyContent: "center",
       alignItems: "center",
-      padding: 24,
+      padding: 20,
     },
     card: {
-      backgroundColor: colors.card,
-      borderRadius: 20,
-      padding: 24,
+      backgroundColor: "#FFFFFF",
+      borderRadius: 24,
+      padding: 22,
+      paddingTop: 26,
       width: "100%",
-      alignItems: "center",
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 10 },
       shadowOpacity: 0.25,
@@ -140,84 +182,80 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     closeTopBtn: {
       position: "absolute",
-      top: 14,
-      right: 14,
+      top: 12,
+      right: 12,
       padding: 6,
+      zIndex: 10,
     },
     arabicWord: {
-      fontSize: 40,
-      color: colors.foreground,
-      fontFamily: "System",
-      marginBottom: 6,
+      fontSize: 42,
+      color: "#1A1A1A",
+      fontFamily: Platform.OS === "ios" ? "System" : undefined,
       textAlign: "center",
-      marginTop: 8,
+      marginTop: 4,
     },
     location: {
       fontSize: 12,
-      color: colors.mutedForeground,
-      fontFamily: "Inter_400Regular",
-      marginBottom: 8,
-    },
-    translationText: {
-      fontSize: 18,
-      color: colors.mutedForeground,
+      color: "#9A9A9A",
       fontFamily: "Inter_400Regular",
       textAlign: "center",
-      marginBottom: 4,
+      marginTop: 4,
+      marginBottom: 18,
     },
-    translationHint: {
-      fontSize: 13,
-      color: colors.mutedForeground,
-      fontFamily: "Inter_400Regular",
-      textAlign: "center",
-      fontStyle: "italic",
-      marginBottom: 4,
-    },
-    divider: {
-      width: "100%",
-      height: 1,
-      backgroundColor: colors.border,
-      marginVertical: 16,
-    },
-    actionsLabel: {
-      fontSize: 12,
-      color: colors.mutedForeground,
-      fontFamily: "Inter_400Regular",
-      marginBottom: 12,
-      letterSpacing: 0.5,
-    },
-    actions: { flexDirection: "row", gap: 10, width: "100%" },
-    actionBtn: {
-      flex: 1,
+    iconRow: {
       flexDirection: "row",
+      justifyContent: "space-around",
+      marginBottom: 4,
+    },
+    iconBtn: {
       alignItems: "center",
       justifyContent: "center",
-      gap: 7,
-      paddingVertical: 13,
-      borderRadius: 12,
+      gap: 6,
+      paddingVertical: 8,
+      paddingHorizontal: 8,
+      minWidth: 64,
     },
-    actionBtnHighlight: {
-      backgroundColor: colors.accent + "22",
-      borderWidth: 1.5,
-      borderColor: colors.accent,
-    },
-    actionBtnHighlightActive: {
-      backgroundColor: colors.accent,
-    },
-    actionBtnPrimary: {
-      backgroundColor: colors.primary,
-    },
-    actionBtnSaved: {
-      backgroundColor: colors.muted,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    actionBtnText: {
-      fontSize: 13,
-      fontWeight: "600",
+    iconLabel: {
+      fontSize: 11,
+      color: "#1A1A1A",
       fontFamily: "Inter_600SemiBold",
+      fontWeight: "600",
     },
-    actionBtnTextLight: { color: "#FFFFFF" },
-    actionBtnTextAccent: { color: colors.accent },
-    actionBtnTextMuted: { color: colors.mutedForeground },
+    divider: {
+      height: 1,
+      backgroundColor: "#F0F0F0",
+      marginVertical: 14,
+    },
+    section: {
+      marginBottom: 14,
+    },
+    sectionLabel: {
+      fontSize: 11,
+      color: "#9A9A9A",
+      fontFamily: "Inter_700Bold",
+      letterSpacing: 1.2,
+      textTransform: "uppercase",
+      marginBottom: 6,
+    },
+    rootText: {
+      fontSize: 26,
+      color: "#1A1A1A",
+      fontFamily: Platform.OS === "ios" ? "System" : undefined,
+      letterSpacing: 4,
+      textAlign: "right",
+    },
+    meaningText: {
+      fontSize: 14,
+      color: "#4A4A4A",
+      fontFamily: "Inter_400Regular",
+      lineHeight: 22,
+    },
+    hint: {
+      fontSize: 11,
+      color: "#B0B0B0",
+      fontFamily: "Inter_400Regular",
+      fontStyle: "italic",
+      textAlign: "center",
+      marginTop: 4,
+    },
   });

@@ -25,8 +25,14 @@ import { useQuran } from "@/contexts/QuranContext";
 import { useAudio, RECITERS, PLAYBACK_RATES } from "@/contexts/AudioContext";
 import { SettingsSheet, TAFSIR_EDITIONS } from "@/components/SettingsSheet";
 import { RangeSelectorModal } from "@/components/RangeSelectorModal";
+import { RepeatSectionSheet } from "@/components/RepeatSectionSheet";
+import { WordModal } from "@/components/WordModal";
+import { OnboardingHints } from "@/components/OnboardingHints";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchSurahWithTranslations, fetchTafsir, fetchTranslation, type SurahDetail, type ApiAyah } from "@/services/quranApi";
 import { SURAH_DATA } from "@/constants/surahData";
+
+const HINTS_STORAGE_KEY = "@squran/surah-hints-seen-v1";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const AYAHS_PER_PAGE = 10;
@@ -43,15 +49,21 @@ const TRANSLATION_OPTIONS = [
 ];
 
 // ─── Color-coded text (same word index → same color) ─────────────────────────
-function ColorWords({ text, colorCoding, style, rtl }: {
+function ColorWords({ text, colorCoding, style, rtl, onWordLongPress }: {
   text: string; colorCoding: boolean; style?: any; rtl?: boolean;
+  onWordLongPress?: (word: string) => void;
 }) {
-  if (!colorCoding) return <Text style={style}>{text}</Text>;
   const words = text.split(/\s+/);
+  // Render each word as nested <Text> with onLongPress so RTL flow is preserved.
   return (
     <Text style={[style, rtl && { writingDirection: "rtl" }]}>
       {words.map((w, i) => (
-        <Text key={i} style={{ color: WORD_COLORS[i % WORD_COLORS.length] }}>
+        <Text
+          key={i}
+          onLongPress={onWordLongPress ? () => onWordLongPress(w) : undefined}
+          style={colorCoding ? { color: WORD_COLORS[i % WORD_COLORS.length] } : undefined}
+          suppressHighlighting={!onWordLongPress}
+        >
           {w}{i < words.length - 1 ? " " : ""}
         </Text>
       ))}
@@ -77,6 +89,7 @@ interface AyahCardProps {
   onSave: (ayah: ApiAyah) => void;
   onSetRepeat: (ayah: ApiAyah, count: number) => void;
   onPress: () => void;
+  onWordLongPress?: (word: string, ayah: ApiAyah) => void;
 }
 
 const TAP_THRESHOLD = 8; // px movement allowed for tap
@@ -86,7 +99,7 @@ function SwipeableAyahCard({
   translations, transliterationText,
   showTransliteration,
   colorCoding, showBasmala, arabicFontSize, romanFontSize,
-  onSave, onSetRepeat, onPress,
+  onSave, onSetRepeat, onPress, onWordLongPress,
 }: AyahCardProps) {
   const pan = useRef(new Animated.Value(0)).current;
   const swipeOpenRef = useRef(false);
@@ -212,6 +225,7 @@ function SwipeableAyahCard({
             colorCoding={colorCoding}
             style={[cs.arabic, { fontSize: arabicFontSize, lineHeight: arabicFontSize * 2 }]}
             rtl
+            onWordLongPress={onWordLongPress ? (w) => onWordLongPress(w, ayah) : undefined}
           />
 
           {showTransliteration && transliterationText && (
@@ -336,22 +350,42 @@ const cs = StyleSheet.create({
 // ─── Player Bar ───────────────────────────────────────────────────────────────
 function PlayerBar({
   isPlaying, isLoading, range, playbackRate,
+  reciterName, currentRepeat, repeatCount, repeatingSelected,
   onPlay, onPause, onStop, onNext, onPrev, onSpeedPress, onEditPress,
 }: {
   isPlaying: boolean; isLoading: boolean;
   range: { startSurah: number; startAyah: number; endSurah: number; endAyah: number } | null;
   playbackRate: number;
+  reciterName?: string;
+  currentRepeat?: number;
+  repeatCount?: number;
+  repeatingSelected?: boolean;
   onPlay: () => void; onPause: () => void; onStop: () => void;
   onNext: () => void; onPrev: () => void;
   onSpeedPress: () => void; onEditPress: () => void;
 }) {
+  const showRepeatStatus = isPlaying && (repeatCount ?? 0) > 1;
+  const caption = showRepeatStatus
+    ? `Repeat ${(currentRepeat ?? 0) + 1}/${repeatCount} · ${reciterName ?? ""}`
+    : (reciterName ?? "");
   return (
     <View>
+      {repeatingSelected && (
+        <View style={pb.repeatingPill}>
+          <Ionicons name="infinite" size={14} color="#FFFFFF" />
+          <Text style={pb.repeatingText}>Repeating Selected</Text>
+        </View>
+      )}
       {range && (
         <View style={pb.rangePill}>
           <Text style={pb.rangeText}>
             range {range.startSurah}:{range.startAyah} – {range.endSurah}:{range.endAyah}
           </Text>
+        </View>
+      )}
+      {!!caption && (
+        <View style={pb.captionRow}>
+          <Text style={pb.captionText} numberOfLines={1}>{caption}</Text>
         </View>
       )}
       <View style={pb.bar}>
@@ -394,6 +428,23 @@ const pb = StyleSheet.create({
     paddingVertical: 7,
   },
   rangeText: { fontSize: 13, color: "#FFFFFF", fontFamily: "Inter_600SemiBold", fontWeight: "600" },
+  repeatingPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#1A1A1A",
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+  },
+  repeatingText: { fontSize: 12, color: "#FFFFFF", fontFamily: "Inter_600SemiBold", fontWeight: "600", letterSpacing: 0.4 },
+  captionRow: {
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 2,
+    backgroundColor: "#FFFFFF",
+  },
+  captionText: { fontSize: 11, color: "#6B6B6B", fontFamily: "Inter_500Medium", fontWeight: "500" },
   bar: {
     flexDirection: "row",
     alignItems: "center",
@@ -533,9 +584,10 @@ function FloatingTopNav({
   surahName: string; onPrev: () => void; onNext: () => void;
   onLongPress: () => void; topInset: number;
 }) {
+  // RTL — left arrow advances forward in the book (Next), right arrow goes backward (Back)
   return (
     <View style={[fn.wrap, { top: topInset + 8 }]}>
-      <TouchableOpacity style={fn.pillBtn} onPress={onPrev} activeOpacity={0.75}>
+      <TouchableOpacity style={fn.pillBtn} onPress={onNext} activeOpacity={0.75}>
         <Feather name="arrow-left" size={14} color="#1A1A1A" />
         <Text style={fn.pillBtnText}>Next</Text>
       </TouchableOpacity>
@@ -548,7 +600,7 @@ function FloatingTopNav({
         <Text style={fn.titleText} numberOfLines={1}>{surahName}</Text>
         <Text style={fn.hintText} numberOfLines={1}>Long press to edit Ayah range</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={fn.pillBtn} onPress={onNext} activeOpacity={0.75}>
+      <TouchableOpacity style={fn.pillBtn} onPress={onPrev} activeOpacity={0.75}>
         <Text style={fn.pillBtnText}>Back</Text>
         <Feather name="arrow-right" size={14} color="#1A1A1A" />
       </TouchableOpacity>
@@ -601,12 +653,13 @@ const fn = StyleSheet.create({
 
 // ─── Inline page-end nav (only at end of page) ────────────────────────────────
 function PageEndNav({ onPrev, onNext }: { onPrev: () => void; onNext: () => void }) {
+  // RTL — left arrow advances forward (Next), right arrow goes backward (Back)
   return (
     <View style={fbn.wrap}>
-      <TouchableOpacity style={fbn.btn} onPress={onPrev} activeOpacity={0.75}>
+      <TouchableOpacity style={fbn.btn} onPress={onNext} activeOpacity={0.75}>
         <Feather name="arrow-left" size={20} color="#1A1A1A" />
       </TouchableOpacity>
-      <TouchableOpacity style={fbn.btn} onPress={onNext} activeOpacity={0.75}>
+      <TouchableOpacity style={fbn.btn} onPress={onPrev} activeOpacity={0.75}>
         <Feather name="arrow-right" size={20} color="#1A1A1A" />
       </TouchableOpacity>
     </View>
@@ -700,23 +753,6 @@ function EditSheet({
               </View>
             </TouchableOpacity>
           ))}
-
-          <Text style={es.sectionLabel}>Recent Reciters</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={es.reciterList}>
-            {RECITERS.map((r) => {
-              const active = r.id === settings.selectedReciter;
-              return (
-                <TouchableOpacity
-                  key={r.id}
-                  style={[es.reciterChip, active && es.reciterChipActive]}
-                  onPress={() => { updateSettings({ selectedReciter: r.id }); }}
-                  activeOpacity={0.85}
-                >
-                  <Text style={[es.reciterName, active && es.reciterNameActive]}>{r.name}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
 
           <Text style={es.sectionLabel}>Playback Speed</Text>
           <View style={es.speedRow}>
@@ -943,11 +979,40 @@ export default function SurahScreen() {
   const [meaningPanelVisible, setMeaningPanelVisible] = useState(false);
   const [tafsirModalVisible, setTafsirModalVisible] = useState(false);
   const [rangeVisible, setRangeVisible] = useState(false);
+  const [repeatSectionVisible, setRepeatSectionVisible] = useState(false);
+  const [repeatSectionInitialAyah, setRepeatSectionInitialAyah] = useState<number | null>(null);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [tajweedMode, setTajweedMode] = useState(false);
   const [selectedTranslations, setSelectedTranslations] = useState<string[]>(["en.sahih", "en.asad"]);
   const [ayahRepeatCounts, setAyahRepeatCounts] = useState<Record<number, number>>({});
+  const [wordModal, setWordModal] = useState<{ word: string; surah: number; ayah: number; translation: string } | null>(null);
+  const [hintsVisible, setHintsVisible] = useState(false);
+
+  // Show onboarding hints once per device
+  useEffect(() => {
+    AsyncStorage.getItem(HINTS_STORAGE_KEY).then((v) => {
+      if (!v) setTimeout(() => setHintsVisible(true), 600);
+    }).catch(() => {});
+  }, []);
+
+  const dismissHints = useCallback(() => {
+    setHintsVisible(false);
+    AsyncStorage.setItem(HINTS_STORAGE_KEY, "1").catch(() => {});
+  }, []);
+
+  const handleWordLongPress = useCallback((word: string, ayah: ApiAyah) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Use sahih translation as the displayed meaning
+    const sahih = translationsMap["en.sahih"];
+    const ta = sahih?.ayahs[ayah.numberInSurah - 1];
+    setWordModal({
+      word,
+      surah: surahNum,
+      ayah: ayah.numberInSurah,
+      translation: ta?.text ?? "",
+    });
+  }, [translationsMap, surahNum]);
 
   const listRef = useRef<FlatList<ApiAyah>>(null);
   const mushafScrollRef = useRef<ScrollView>(null);
@@ -1277,6 +1342,7 @@ export default function SurahScreen() {
                   onSave={handleSaveAyah}
                   onSetRepeat={handleSetRepeat}
                   onPress={() => setMenuVisible(v => !v)}
+                  onWordLongPress={handleWordLongPress}
                 />
               );
             }}
@@ -1292,6 +1358,10 @@ export default function SurahScreen() {
             isLoading={audioState.isLoading}
             range={audioState.range}
             playbackRate={audioState.playbackRate}
+            reciterName={RECITERS.find(r => r.id === settings.selectedReciter)?.name ?? ""}
+            currentRepeat={audioState.currentRepeat}
+            repeatCount={audioState.repeatCount}
+            repeatingSelected={!!audioState.range && audioState.repeatCount > 1}
             onPlay={resumeAudio}
             onPause={pauseAudio}
             onStop={stopAudio}
@@ -1329,7 +1399,29 @@ export default function SurahScreen() {
         playbackRate={audioState.playbackRate}
         onSpeedChange={setPlaybackRate}
         onPlayRange={() => setRangeVisible(true)}
-        onRepeatSection={() => setRangeVisible(true)}
+        onRepeatSection={() => setRepeatSectionVisible(true)}
+      />
+
+      <RepeatSectionSheet
+        visible={repeatSectionVisible}
+        onClose={() => { setRepeatSectionVisible(false); setRepeatSectionInitialAyah(null); }}
+        surahNumber={surahNum}
+        surahName={arabic?.englishName ?? ""}
+        ayahs={arabic?.ayahs ?? []}
+        currentAyah={repeatSectionInitialAyah ?? currentAyahForRange}
+        onConfirm={(startA, endA, repeatCount) => {
+          playRange(
+            { startSurah: surahNum, startAyah: startA, endSurah: surahNum, endAyah: endA },
+            repeatCount,
+          );
+          recordAyahRead(surahNum);
+          saveProgress({
+            surahNumber: surahNum,
+            ayahNumber: startA,
+            ayahNumberInSurah: startA,
+            surahName: arabic?.englishName ?? "",
+          });
+        }}
       />
 
       <MeaningPanel
@@ -1359,6 +1451,31 @@ export default function SurahScreen() {
         }}
         onClose={() => setRangeVisible(false)}
       />
+
+      {wordModal && (
+        <WordModal
+          visible={!!wordModal}
+          word={wordModal.word}
+          translation={wordModal.translation}
+          surahNumber={wordModal.surah}
+          ayahNumber={wordModal.ayah}
+          onClose={() => setWordModal(null)}
+          onRepeat={() => {
+            // Repeat just this ayah ∞ times
+            handleSetRepeat(
+              { numberInSurah: wordModal.ayah } as ApiAyah,
+              999,
+            );
+          }}
+          onCut={() => {
+            setRepeatSectionInitialAyah(wordModal.ayah);
+            setWordModal(null);
+            setRepeatSectionVisible(true);
+          }}
+        />
+      )}
+
+      <OnboardingHints visible={hintsVisible} onDismiss={dismissHints} />
 
       <SettingsSheet visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </View>

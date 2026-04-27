@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
-import { useAudio, PLAYBACK_RATES } from "@/contexts/AudioContext";
+import { useAudio, PLAYBACK_RATES, RECITERS } from "@/contexts/AudioContext";
 import { useQuran } from "@/contexts/QuranContext";
 import { SURAH_DATA } from "@/constants/surahData";
 
@@ -18,6 +18,7 @@ export function AudioPlayerBar() {
   const colors = useColors();
   const s = styles(colors);
   const { audioState, pauseAudio, resumeAudio, stopAudio, playNextAyah, playPrevAyah, setPlaybackRate } = useAudio();
+  const { settings } = useQuran();
   const [showRates, setShowRates] = useState(false);
 
   if (!audioState.currentAyah && !audioState.isLoading) return null;
@@ -26,6 +27,17 @@ export function AudioPlayerBar() {
   const surahName = audioState.currentSurah ? (SURAH_DATA[audioState.currentSurah - 1]?.englishName ?? `Surah ${audioState.currentSurah}`) : "";
   const rateLabel = audioState.playbackRate === 1.0 ? "1x" : `${audioState.playbackRate}x`;
   const isRange = !!audioState.range;
+  const reciter = RECITERS.find(r => r.id === settings.selectedReciter);
+  const reciterName = reciter?.name ?? "";
+
+  // Subtitle: while paused/idle show reciter; while playing show range or repeat status
+  const subtitle = !audioState.isPlaying
+    ? (reciterName || (audioState.isLoading ? "loading…" : ""))
+    : isRange
+      ? `Range: ${SURAH_DATA[(audioState.range!.startSurah - 1)]?.englishName}:${audioState.range!.startAyah} → ${SURAH_DATA[(audioState.range!.endSurah - 1)]?.englishName}:${audioState.range!.endAyah}`
+      : audioState.repeatCount > 1
+        ? `Repeat ${audioState.currentRepeat + 1}/${audioState.repeatCount} · ${reciterName}`
+        : reciterName;
 
   return (
     <>
@@ -38,13 +50,7 @@ export function AudioPlayerBar() {
             <Text style={s.label} numberOfLines={1}>
               {surahName} — Ayah {audioState.currentAyah}
             </Text>
-            <Text style={s.subLabel}>
-              {isRange
-                ? `Range: ${SURAH_DATA[(audioState.range!.startSurah - 1)]?.englishName}:${audioState.range!.startAyah} → ${SURAH_DATA[(audioState.range!.endSurah - 1)]?.englishName}:${audioState.range!.endAyah}`
-                : audioState.repeatCount > 1
-                  ? `Repeat ${audioState.currentRepeat + 1}/${audioState.repeatCount}`
-                  : ""}
-            </Text>
+            <Text style={s.subLabel} numberOfLines={1}>{subtitle}</Text>
           </View>
           <View style={s.controls}>
             <TouchableOpacity onPress={() => setShowRates(true)} style={s.rateBtn} activeOpacity={0.7}>

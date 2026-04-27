@@ -17,7 +17,7 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
 
-const DEFAULT_SURAHS: { number: number; name: string; englishName: string; ayahs: string[] }[] = [
+const DEFAULT_SURAHS: { number: number; name: string; englishName: string; ayahs: string[]; translations: string[] }[] = [
   {
     number: 1, name: "الفاتحة", englishName: "Al-Faatiha",
     ayahs: [
@@ -29,6 +29,15 @@ const DEFAULT_SURAHS: { number: number; name: string; englishName: string; ayahs
       "اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",
       "صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ",
     ],
+    translations: [
+      "In the name of Allah, the Most Gracious, the Most Merciful.",
+      "All praise is due to Allah, Lord of the worlds.",
+      "The Most Gracious, the Most Merciful.",
+      "Master of the Day of Judgment.",
+      "It is You we worship, and You we ask for help.",
+      "Guide us to the straight path.",
+      "The path of those upon whom You have bestowed favor, not of those who have evoked anger or of those who are astray.",
+    ],
   },
   {
     number: 112, name: "الإخلاص", englishName: "Al-Ikhlaas",
@@ -37,6 +46,12 @@ const DEFAULT_SURAHS: { number: number; name: string; englishName: string; ayahs
       "اللَّهُ الصَّمَدُ",
       "لَمْ يَلِدْ وَلَمْ يُولَدْ",
       "وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ",
+    ],
+    translations: [
+      "Say: He is Allah, the One.",
+      "Allah, the Eternal, the Absolute.",
+      "He neither begets nor is born.",
+      "Nor is there to Him any equivalent.",
     ],
   },
   {
@@ -48,6 +63,13 @@ const DEFAULT_SURAHS: { number: number; name: string; englishName: string; ayahs
       "وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ",
       "وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ",
     ],
+    translations: [
+      "Say: I seek refuge in the Lord of daybreak.",
+      "From the evil of that which He created.",
+      "And from the evil of darkness when it settles.",
+      "And from the evil of the blowers in knots.",
+      "And from the evil of an envier when he envies.",
+    ],
   },
   {
     number: 114, name: "الناس", englishName: "An-Naas",
@@ -58,6 +80,14 @@ const DEFAULT_SURAHS: { number: number; name: string; englishName: string; ayahs
       "مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ",
       "الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ",
       "مِنَ الْجِنَّةِ وَالنَّاسِ",
+    ],
+    translations: [
+      "Say: I seek refuge in the Lord of mankind.",
+      "The Sovereign of mankind.",
+      "The God of mankind.",
+      "From the evil of the retreating whisperer.",
+      "Who whispers in the breasts of mankind.",
+      "From among the jinn and mankind.",
     ],
   },
 ];
@@ -90,7 +120,16 @@ interface FillBlankQuestion {
   options: string[];
 }
 
-type Question = FollowUpQuestion | FillBlankQuestion;
+interface TafsirMatchQuestion {
+  type: "tafsir-match";
+  surahName: string;
+  ayahText: string;
+  ayahNumber: number;
+  correctTranslation: string;
+  options: string[];
+}
+
+type Question = FollowUpQuestion | FillBlankQuestion | TafsirMatchQuestion;
 
 function buildFollowUpQuestions(count: number, surahs: typeof DEFAULT_SURAHS): FollowUpQuestion[] {
   const allAyahs: { surahName: string; ayah: string; surahIndex: number; ayahIndex: number }[] = [];
@@ -112,6 +151,35 @@ function buildFollowUpQuestions(count: number, surahs: typeof DEFAULT_SURAHS): F
     if (wrongs.length < 2) continue;
     const options = shuffle([correctAnswer, ...wrongs]);
     questions.push({ type: "follow-up", questionAyah: item.ayah, surahName: item.surahName, asks, correctAnswer, options });
+  }
+  return questions;
+}
+
+function buildTafsirMatchQuestions(count: number, surahs: typeof DEFAULT_SURAHS): TafsirMatchQuestion[] {
+  const allPairs: { surahName: string; ayah: string; translation: string; ayahNumber: number }[] = [];
+  for (const s of surahs) {
+    s.ayahs.forEach((a, i) => {
+      const t = s.translations?.[i];
+      if (t) allPairs.push({ surahName: s.englishName, ayah: a, translation: t, ayahNumber: i + 1 });
+    });
+  }
+  const allTranslations = allPairs.map(p => p.translation);
+  const questions: TafsirMatchQuestion[] = [];
+  const shuffled = shuffle(allPairs);
+  for (const item of shuffled) {
+    if (questions.length >= count) break;
+    const wrongPool = allTranslations.filter(t => t !== item.translation);
+    const wrongs = pickRandom(wrongPool, 3);
+    if (wrongs.length < 3) continue;
+    const options = shuffle([item.translation, ...wrongs]);
+    questions.push({
+      type: "tafsir-match",
+      surahName: item.surahName,
+      ayahText: item.ayah,
+      ayahNumber: item.ayahNumber,
+      correctTranslation: item.translation,
+      options,
+    });
   }
   return questions;
 }
@@ -488,8 +556,77 @@ const fillStyle = StyleSheet.create({
   chipsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center" },
 });
 
+function TafsirMatchQuizScreen({ questions, onFinish }: { questions: TafsirMatchQuestion[]; onFinish: (score: number) => void }) {
+  const [qIdx, setQIdx] = useState(0);
+  const [score, setScore] = useState(0);
+  const [chosen, setChosen] = useState<string | null>(null);
+
+  const q = questions[qIdx];
+  const total = questions.length;
+
+  const handleAnswer = (option: string) => {
+    if (chosen) return;
+    setChosen(option);
+    const isCorrect = option === q.correctTranslation;
+    if (isCorrect) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setScore(s => s + 1);
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+    setTimeout(() => {
+      if (qIdx + 1 >= total) onFinish(score + (isCorrect ? 1 : 0));
+      else { setQIdx(i => i + 1); setChosen(null); }
+    }, 1100);
+  };
+
+  const s = followUpStyle;
+  return (
+    <ScrollView contentContainerStyle={s.container} showsVerticalScrollIndicator={false}>
+      <View style={s.progressRow}>
+        <View style={s.progressTrack}>
+          <View style={[s.progressBar, { width: `${(qIdx / total) * 100}%` as any }]} />
+        </View>
+        <Text style={s.progressLabel}>{qIdx + 1}/{total}</Text>
+      </View>
+
+      <View style={s.card}>
+        <Text style={s.surahLabel}>{q.surahName} · Ayah {q.ayahNumber}</Text>
+        <Text style={s.ayahText}>{q.ayahText}</Text>
+        <View style={s.divider} />
+        <Text style={s.questionText}>
+          What does this ayah <Text style={s.questionBold}>mean</Text>?
+        </Text>
+      </View>
+
+      <View style={s.optionsContainer}>
+        {q.options.map((opt, i) => {
+          let bg = "#FFFFFF";
+          let border = "#E8E8E8";
+          let textColor = "#1A1A1A";
+          if (chosen) {
+            if (opt === q.correctTranslation) { bg = "#DCFCE7"; border = "#16A34A"; textColor = "#166534"; }
+            else if (opt === chosen) { bg = "#FEE2E2"; border = "#DC2626"; textColor = "#991B1B"; }
+          }
+          return (
+            <TouchableOpacity
+              key={i}
+              style={[s.optionBtn, { backgroundColor: bg, borderColor: border }]}
+              onPress={() => handleAnswer(opt)}
+              activeOpacity={0.8}
+              disabled={!!chosen}
+            >
+              <Text style={[s.optionText, { color: textColor, textAlign: "left", writingDirection: "ltr" }]}>{opt}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </ScrollView>
+  );
+}
+
 function ScoreScreen({ score, total, mode, onRetry, onBack }: {
-  score: number; total: number; mode: "follow-up" | "fill-blank"; onRetry: () => void; onBack: () => void;
+  score: number; total: number; mode: "follow-up" | "fill-blank" | "tafsir-match"; onRetry: () => void; onBack: () => void;
 }) {
   const pct = Math.round((score / total) * 100);
   const emoji = pct >= 80 ? "🎉" : pct >= 60 ? "👍" : "💪";
@@ -527,7 +664,7 @@ const scoreStyle = StyleSheet.create({
   backText: { fontSize: 15, color: "#9A9A9A", fontFamily: "Inter_400Regular" },
 });
 
-type QuizMode = null | "follow-up" | "fill-blank";
+type QuizMode = null | "follow-up" | "fill-blank" | "tafsir-match";
 
 export default function MemorizationQuizScreen() {
   const insets = useSafeAreaInsets();
@@ -545,18 +682,15 @@ export default function MemorizationQuizScreen() {
     return checked.length > 0 ? checked : [...DEFAULT_SURAHS];
   }, [checkedSurahs]);
 
-  const startQuiz = useCallback((selectedMode: "follow-up" | "fill-blank") => {
+  const startQuiz = useCallback((selectedMode: "follow-up" | "fill-blank" | "tafsir-match") => {
     const surahs = getAvailableSurahs();
     setMode(selectedMode);
-    if (selectedMode === "follow-up") {
-      const qs = buildFollowUpQuestions(5, surahs);
-      if (qs.length === 0) return;
-      setQuestions(qs);
-    } else {
-      const qs = buildFillBlankQuestions(5, surahs);
-      if (qs.length === 0) return;
-      setQuestions(qs);
-    }
+    let qs: Question[] = [];
+    if (selectedMode === "follow-up") qs = buildFollowUpQuestions(5, surahs);
+    else if (selectedMode === "fill-blank") qs = buildFillBlankQuestions(5, surahs);
+    else qs = buildTafsirMatchQuestions(5, surahs);
+    if (qs.length === 0) return;
+    setQuestions(qs);
     setPhase("quiz");
     setFinalScore(0);
   }, [getAvailableSurahs]);
@@ -587,7 +721,9 @@ export default function MemorizationQuizScreen() {
         <View style={s.headerCenter}>
           <Text style={[s.headerTitle, { color: colors.foreground }]}>Memorization Quiz</Text>
           {mode && <Text style={[s.headerSub, { color: colors.mutedForeground }]}>
-            {mode === "follow-up" ? "Follow-Up Ayah" : "Fill in the Blank"}
+            {mode === "follow-up" ? "Follow-Up Ayah"
+              : mode === "fill-blank" ? "Fill in the Blank"
+              : "Match the Meaning"}
           </Text>}
         </View>
         <View style={{ width: 38 }} />
@@ -620,6 +756,17 @@ export default function MemorizationQuizScreen() {
             <Feather name="chevron-right" size={20} color="#9A9A9A" />
           </TouchableOpacity>
 
+          <TouchableOpacity style={[s.modeCard, { borderColor: "#FED7AA", backgroundColor: "#FFFAF0" }]} onPress={() => startQuiz("tafsir-match")} activeOpacity={0.85}>
+            <View style={[s.modeIcon, { backgroundColor: "#EA580C" }]}>
+              <Ionicons name="language" size={24} color="#FFFFFF" />
+            </View>
+            <View style={s.modeInfo}>
+              <Text style={s.modeName}>Match the Meaning</Text>
+              <Text style={s.modeDesc}>An Arabic ayah is shown — pick the correct English translation from four choices.</Text>
+            </View>
+            <Feather name="chevron-right" size={20} color="#9A9A9A" />
+          </TouchableOpacity>
+
           <View style={s.infoBox}>
             <Ionicons name="information-circle-outline" size={18} color="#9A9A9A" />
             <Text style={s.infoText}>Questions come from Al-Fatiha, Al-Ikhlaas, Al-Falaq, and An-Naas — surahs every Muslim should know by heart.</Text>
@@ -637,6 +784,13 @@ export default function MemorizationQuizScreen() {
       {phase === "quiz" && mode === "fill-blank" && questions.length > 0 && (
         <FillBlankQuizScreen
           questions={questions as FillBlankQuestion[]}
+          onFinish={handleFinish}
+        />
+      )}
+
+      {phase === "quiz" && mode === "tafsir-match" && questions.length > 0 && (
+        <TafsirMatchQuizScreen
+          questions={questions as TafsirMatchQuestion[]}
           onFinish={handleFinish}
         />
       )}
