@@ -172,85 +172,50 @@ const cardStyles = (colors: ReturnType<typeof useColors>) =>
     swipeActionText: { fontSize: 11, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
   });
 
-function AyahCardDeck({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: string) => void }) {
-  const colors = useColors();
-  const s = deckStyles(colors);
-
+function AyahListView({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: string) => void }) {
   if (ayahs.length === 0) {
     return (
-      <View style={s.empty}>
-        <View style={s.emptyIcon}>
+      <View style={listViewStyles.empty}>
+        <View style={listViewStyles.emptyIcon}>
           <Feather name="bookmark" size={32} color="#D0D0D0" />
         </View>
-        <Text style={s.emptyTitle}>No saved ayahs</Text>
-        <Text style={s.emptySubtitle}>Swipe right on any ayah while reading to save it here</Text>
+        <Text style={listViewStyles.emptyTitle}>No saved ayahs</Text>
+        <Text style={listViewStyles.emptySubtitle}>Swipe right on any ayah while reading to save it here</Text>
       </View>
     );
   }
 
   return (
-    <View style={s.deckContainer}>
-      {ayahs.slice(0, 3).map((ayah, idx) => {
-        const isTop = idx === 0;
-        const offsetY = (ayahs.length > 1 ? Math.min(ayahs.length - 1, 2) - idx : 0) * 10;
-        const scale = 1 - idx * 0.025;
-        const opacity = 1 - idx * 0.12;
-        return (
-          <View
-            key={ayah.id}
-            style={[
-              s.cardWrapper,
-              !isTop && {
-                position: "absolute",
-                top: offsetY,
-                left: idx * 8,
-                right: idx * 8,
-                transform: [{ scale }],
-                opacity,
-                zIndex: 10 - idx,
-              },
-            ]}
-          >
-            <AyahCard ayah={ayah} onRemove={onRemove} isTop={isTop} />
-          </View>
-        );
-      })}
-      <View style={s.counter}>
-        <Text style={s.counterText}>{ayahs.length} saved</Text>
-        <Text style={s.counterHint}>← swipe left to remove · swipe right to open →</Text>
-      </View>
-    </View>
+    <FlatList
+      data={ayahs}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => (
+        <AyahCard ayah={item} onRemove={onRemove} isTop={true} />
+      )}
+      contentContainerStyle={listViewStyles.listContent}
+      showsVerticalScrollIndicator={false}
+      ListFooterComponent={
+        <Text style={listViewStyles.hint}>← swipe left to remove · swipe right to open →</Text>
+      }
+    />
   );
 }
 
-const deckStyles = (colors: ReturnType<typeof useColors>) =>
-  StyleSheet.create({
-    deckContainer: {
-      flex: 1,
-      paddingHorizontal: 16,
-      paddingTop: 32,
-    },
-    cardWrapper: { zIndex: 10 },
-    counter: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginTop: 28,
-      paddingHorizontal: 4,
-    },
-    counterText: { fontSize: 13, fontWeight: "600", color: "#6B6B6B", fontFamily: "Inter_600SemiBold" },
-    counterHint: { fontSize: 13, color: "#B0B0B0", fontFamily: "Inter_400Regular" },
-    empty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 14, paddingHorizontal: 40 },
-    emptyIcon: {
-      width: 72,
-      height: 72,
-      borderRadius: 36,
-      backgroundColor: "#F5F5F5",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    emptyTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", textAlign: "center" },
-    emptySubtitle: { fontSize: 14, color: "#9A9A9A", fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
-  });
+const listViewStyles = StyleSheet.create({
+  listContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 160, gap: 12 },
+  hint: { textAlign: "center", fontSize: 12, color: "#B0B0B0", fontFamily: "Inter_400Regular", marginTop: 8, marginBottom: 8 },
+  empty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 14, paddingHorizontal: 40 },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#F5F5F5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", textAlign: "center" },
+  emptySubtitle: { fontSize: 14, color: "#9A9A9A", fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
+});
 
 function WordCard({ word, onRemove, onToggleHighlight }: {
   word: SavedWord;
@@ -417,7 +382,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
       </View>
 
       {filterMode === "ayah" ? (
-        <AyahCardDeck ayahs={savedAyahs} onRemove={removeAyah} />
+        <AyahListView ayahs={savedAyahs} onRemove={removeAyah} />
       ) : showSurahList ? (
         <FlatList
           data={surahGroups}
