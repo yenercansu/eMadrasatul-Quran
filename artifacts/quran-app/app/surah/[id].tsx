@@ -24,7 +24,7 @@ import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
 import { useAudio, RECITERS, PLAYBACK_RATES } from "@/contexts/AudioContext";
 import { SettingsSheet, TAFSIR_EDITIONS } from "@/components/SettingsSheet";
-import { RangeSelectorModal } from "@/components/RangeSelectorModal";
+import { PlayRangeSheet } from "@/components/PlayRangeSheet";
 import { RepeatSectionSheet } from "@/components/RepeatSectionSheet";
 import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
@@ -1496,18 +1496,23 @@ export default function SurahScreen() {
         onClose={() => { setRepeatSectionVisible(false); setRepeatSectionInitialAyah(null); }}
         surahNumber={surahNum}
         surahName={arabic?.englishName ?? ""}
-        ayahs={arabic?.ayahs ?? []}
-        currentAyah={repeatSectionInitialAyah ?? currentAyahForRange}
-        onConfirm={(startA, endA, repeatCount) => {
-          playRange(
-            { startSurah: surahNum, startAyah: startA, endSurah: surahNum, endAyah: endA },
-            repeatCount,
-          );
+        ayahNumber={repeatSectionInitialAyah ?? currentAyahForRange}
+        ayahText={
+          arabic?.ayahs?.[(repeatSectionInitialAyah ?? currentAyahForRange) - 1]?.text ?? ""
+        }
+        onConfirm={(startWordIdx, endWordIdx, totalWords, repeatCount) => {
+          const ayahN = repeatSectionInitialAyah ?? currentAyahForRange;
+          const total = arabic?.ayahs?.length ?? 0;
+          playAyah(surahNum, ayahN, total, repeatCount, {
+            startWordIdx,
+            endWordIdx,
+            totalWords,
+          });
           recordAyahRead(surahNum);
           saveProgress({
             surahNumber: surahNum,
-            ayahNumber: startA,
-            ayahNumberInSurah: startA,
+            ayahNumber: ayahN,
+            ayahNumberInSurah: ayahN,
             surahName: arabic?.englishName ?? "",
           });
         }}
@@ -1529,16 +1534,26 @@ export default function SurahScreen() {
         onPlay={() => { setTafsirModalVisible(false); handlePlayAll(); }}
       />
 
-      <RangeSelectorModal
+      <PlayRangeSheet
         visible={rangeVisible}
-        currentSurah={surahNum}
-        currentAyah={currentAyahForRange}
-        onConfirm={(range, repeatCount) => {
-          playRange(range, repeatCount);
-          recordAyahRead(range.startSurah);
-          saveProgress({ surahNumber: range.startSurah, ayahNumber: range.startAyah, ayahNumberInSurah: range.startAyah, surahName: SURAH_DATA[range.startSurah - 1]?.englishName ?? "" });
-        }}
         onClose={() => setRangeVisible(false)}
+        surahNumber={surahNum}
+        surahName={arabic?.englishName ?? ""}
+        ayahs={arabic?.ayahs ?? []}
+        currentAyah={currentAyahForRange}
+        onConfirm={(startA, endA, repeatCount) => {
+          playRange(
+            { startSurah: surahNum, startAyah: startA, endSurah: surahNum, endAyah: endA },
+            repeatCount,
+          );
+          recordAyahRead(surahNum);
+          saveProgress({
+            surahNumber: surahNum,
+            ayahNumber: startA,
+            ayahNumberInSurah: startA,
+            surahName: arabic?.englishName ?? "",
+          });
+        }}
       />
 
       {wordModal && (
