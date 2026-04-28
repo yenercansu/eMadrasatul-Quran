@@ -197,7 +197,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           rate,
           pitchCorrectionQuality: Audio.PitchCorrectionQuality.High,
           // Tighter polling for accurate word-segment boundary detection.
-          progressUpdateIntervalMillis: segment ? 40 : 250,
+          progressUpdateIntervalMillis: segmentRef.current ? 40 : 250,
         },
         (status) => {
           if (!status.isLoaded) return;
