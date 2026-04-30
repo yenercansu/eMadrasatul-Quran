@@ -399,30 +399,42 @@ const cs = StyleSheet.create({
 });
 
 // ─── Player Bar ───────────────────────────────────────────────────────────────
+const PLAYER_BG = "#C8D9C4";
+
 function PlayerBar({
-  isPlaying, isLoading, range, playbackRate,
-  reciterName, surahName, currentAyahNumber,
-  currentRepeat, repeatCount, repeatingSelected,
+  audioState,
+  playbackRate,
+  reciterName,
+  repeatingSelected,
+  firstPageAyah,
+  onPlayFromStart,
   onPlay, onPause, onStop, onNext, onPrev, onSpeedPress, onEditPress,
 }: {
-  isPlaying: boolean; isLoading: boolean;
-  range: { startSurah: number; startAyah: number; endSurah: number; endAyah: number } | null;
+  audioState: { isPlaying: boolean; isLoading: boolean; currentAyah: number | null; range: any; repeatCount: number; currentRepeat: number };
   playbackRate: number;
-  reciterName?: string;
-  surahName?: string;
-  currentAyahNumber?: number;
-  currentRepeat?: number;
-  repeatCount?: number;
-  repeatingSelected?: boolean;
+  reciterName: string;
+  repeatingSelected: boolean;
+  firstPageAyah: number;
+  onPlayFromStart: () => void;
   onPlay: () => void; onPause: () => void; onStop: () => void;
   onNext: () => void; onPrev: () => void;
   onSpeedPress: () => void; onEditPress: () => void;
 }) {
-  const showRepeat = isPlaying && (repeatCount ?? 0) > 1;
-  const infoLeft = reciterName ?? "";
-  const infoRight = surahName && currentAyahNumber
-    ? `${surahName} · ${currentAyahNumber}`
-    : surahName ?? "";
+  const { isPlaying, isLoading, currentAyah, range, repeatCount, currentRepeat } = audioState;
+  const isIdle = !currentAyah && !isLoading;
+  const showRepeat = !isIdle && (repeatCount ?? 0) > 1;
+
+  const SpeedBtn = (
+    <TouchableOpacity style={pb.speedBtn} onPress={onSpeedPress} activeOpacity={0.8}>
+      <Text style={pb.speedText}>{playbackRate === 1 ? "1x" : `${playbackRate}x`}</Text>
+    </TouchableOpacity>
+  );
+
+  const EditBtn = (
+    <TouchableOpacity style={pb.editBtn} onPress={onEditPress} activeOpacity={0.85}>
+      <Text style={pb.editBtnText}>Edit</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <View style={pb.wrapper}>
@@ -446,51 +458,42 @@ function PlayerBar({
         </View>
       )}
 
-      {/* Info row */}
-      <View style={pb.infoRow}>
-        <Text style={pb.infoLeft} numberOfLines={1}>{infoLeft}</Text>
-        {!!infoRight && <Text style={pb.infoRight} numberOfLines={1}>{infoRight}</Text>}
-      </View>
-
-      {/* Controls row */}
       <View style={pb.bar}>
-        {/* Stop */}
-        <TouchableOpacity style={pb.stopBtn} onPress={onStop} activeOpacity={0.7}>
-          <Ionicons name="stop" size={16} color="#6B6B6B" />
-        </TouchableOpacity>
-
-        {/* Speed */}
-        <TouchableOpacity style={pb.speedBtn} onPress={onSpeedPress} activeOpacity={0.8}>
-          <Text style={pb.speedText}>{playbackRate === 1 ? "1×" : `${playbackRate}×`}</Text>
-        </TouchableOpacity>
-
-        <View style={{ flex: 1 }} />
-
-        {/* Prev */}
-        <TouchableOpacity style={pb.skipBtn} onPress={onPrev} activeOpacity={0.7}>
-          <Ionicons name="play-back" size={22} color="#1A1A1A" />
-        </TouchableOpacity>
-
-        {/* Play / Pause */}
-        <TouchableOpacity style={pb.playBtn} onPress={isPlaying ? onPause : onPlay} activeOpacity={0.85}>
-          {isLoading ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Ionicons name={isPlaying ? "pause" : "play"} size={24} color="#FFFFFF" />
-          )}
-        </TouchableOpacity>
-
-        {/* Next */}
-        <TouchableOpacity style={pb.skipBtn} onPress={onNext} activeOpacity={0.7}>
-          <Ionicons name="play-forward" size={22} color="#1A1A1A" />
-        </TouchableOpacity>
-
-        <View style={{ flex: 1 }} />
-
-        {/* Edit */}
-        <TouchableOpacity style={pb.editBtn} onPress={onEditPress} activeOpacity={0.85}>
-          <Text style={pb.editBtnText}>Edit</Text>
-        </TouchableOpacity>
+        {isIdle ? (
+          // ── IDLE: 1x | ▶ | ReciterName | Edit ──
+          <>
+            {SpeedBtn}
+            <TouchableOpacity style={pb.iconBtn} onPress={onPlayFromStart} activeOpacity={0.7}>
+              <Ionicons name="play" size={30} color="#1A1A1A" />
+            </TouchableOpacity>
+            <Text style={pb.idleReciter} numberOfLines={1}>{reciterName}</Text>
+            {EditBtn}
+          </>
+        ) : (
+          // ── PLAYING or READY-TO-PLAY: Stop | 1x | << | ▶/⏸ | >> | Edit ──
+          <>
+            <TouchableOpacity style={pb.stopBtn} onPress={onStop} activeOpacity={0.7}>
+              <Ionicons name="stop" size={18} color="#4A4A4A" />
+            </TouchableOpacity>
+            {SpeedBtn}
+            <View style={{ flex: 1 }} />
+            <TouchableOpacity style={pb.skipBtn} onPress={onPrev} activeOpacity={0.7}>
+              <Ionicons name="play-back" size={26} color="#1A1A1A" />
+            </TouchableOpacity>
+            <TouchableOpacity style={pb.iconBtn} onPress={isPlaying ? onPause : onPlay} activeOpacity={0.7}>
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#1A1A1A" />
+              ) : (
+                <Ionicons name={isPlaying ? "pause" : "play"} size={30} color="#1A1A1A" />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={pb.skipBtn} onPress={onNext} activeOpacity={0.7}>
+              <Ionicons name="play-forward" size={26} color="#1A1A1A" />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }} />
+            {EditBtn}
+          </>
+        )}
       </View>
     </View>
   );
@@ -498,9 +501,9 @@ function PlayerBar({
 
 const pb = StyleSheet.create({
   wrapper: {
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 2,
-    borderTopColor: "#EFEDE8",
+    backgroundColor: PLAYER_BG,
+    borderTopWidth: 1,
+    borderTopColor: "#B0C8AC",
   },
   rangePill: {
     backgroundColor: "#22C55E",
@@ -521,39 +524,26 @@ const pb = StyleSheet.create({
   },
   repeatingText: { fontSize: 12, color: "#FFFFFF", fontFamily: "Inter_600SemiBold", fontWeight: "600" },
   repeatCountPill: {
-    backgroundColor: "#F0F0F0",
+    backgroundColor: "rgba(0,0,0,0.08)",
     paddingHorizontal: 16,
     paddingVertical: 5,
     alignItems: "center",
   },
-  repeatCountText: { fontSize: 11, color: "#6B6B6B", fontFamily: "Inter_500Medium", fontWeight: "500" },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 2,
-  },
-  infoLeft: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    fontFamily: "Inter_700Bold",
-    flex: 1,
-  },
-  infoRight: {
-    fontSize: 12,
-    color: "#9A9A9A",
-    fontFamily: "Inter_400Regular",
-    marginLeft: 8,
-  },
+  repeatCountText: { fontSize: 11, color: "#3A5A3A", fontFamily: "Inter_500Medium", fontWeight: "500" },
   bar: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 10,
-    gap: 0,
+  },
+  idleReciter: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+    marginHorizontal: 8,
   },
   stopBtn: {
     width: 32,
@@ -568,14 +558,14 @@ const pb = StyleSheet.create({
     justifyContent: "center",
   },
   speedBtn: {
-    minWidth: 40,
-    height: 32,
+    minWidth: 44,
+    height: 36,
     paddingHorizontal: 10,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F5F5F5",
-    borderRadius: 8,
-    marginLeft: 6,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 10,
+    marginRight: 6,
   },
   speedText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
   playBtn: {
@@ -583,6 +573,13 @@ const pb = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 4,
+  },
+  iconBtn: {
+    width: 52,
+    height: 52,
     alignItems: "center",
     justifyContent: "center",
     marginHorizontal: 4,
@@ -1519,16 +1516,18 @@ export default function SurahScreen() {
           }}
         >
           <PlayerBar
-            isPlaying={audioState.isPlaying}
-            isLoading={audioState.isLoading}
-            range={audioState.range}
+            audioState={audioState}
             playbackRate={audioState.playbackRate}
             reciterName={RECITERS.find(r => r.id === settings.selectedReciter)?.name ?? ""}
-            surahName={SURAH_DATA[surahNum - 1]?.englishName ?? ""}
-            currentAyahNumber={audioState.currentAyah ?? undefined}
-            currentRepeat={audioState.currentRepeat}
-            repeatCount={audioState.repeatCount}
             repeatingSelected={!!audioState.range && audioState.repeatCount > 1}
+            firstPageAyah={pageAyahs[0]?.numberInSurah ?? 1}
+            onPlayFromStart={() => {
+              if (!arabic) return;
+              const firstAyah = pageAyahs[0]?.numberInSurah ?? 1;
+              playAyah(surahNum, firstAyah, arabic.ayahs.length, settings.repeatCount);
+              recordAyahRead(surahNum, firstAyah);
+              saveProgress({ surahNumber: surahNum, ayahNumber: firstAyah, ayahNumberInSurah: firstAyah, surahName: arabic.englishName });
+            }}
             onPlay={resumeAudio}
             onPause={pauseAudio}
             onStop={stopAudio}
