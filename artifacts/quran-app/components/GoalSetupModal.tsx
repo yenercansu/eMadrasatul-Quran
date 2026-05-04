@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -79,7 +79,7 @@ interface Props {
 
 export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [path, setPath] = useState<"juz" | "surah">("juz");
+  const [path, setPath] = useState<"juz" | "surah" | null>(null);
   const [selectedSurah, setSelectedSurah] = useState<typeof SURAH_DATA[0] | null>(null);
   const [ayahsPerDay, setAyahsPerDay] = useState(10);
   const [search, setSearch] = useState("");
@@ -87,25 +87,58 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
   useEffect(() => {
     if (visible) {
       setStep(1);
-      setPath("juz");
+      setPath(null);
       setSelectedSurah(null);
       setAyahsPerDay(10);
       setSearch("");
     }
   }, [visible]);
 
-  const filteredSurahs = SURAH_DATA.filter(item => {
-    if (!search) return true;
+  // Group surahs by Juz for Juz mode
+  const juzGroups = useMemo(() => {
+    const groups: { juz: number; surahs: typeof SURAH_DATA }[] = [];
+    for (let j = 1; j <= 30; j++) {
+      const surahsInJuz = SURAH_DATA.filter(s => s.juz === j);
+      if (surahsInJuz.length > 0) {
+        groups.push({ juz: j, surahs: surahsInJuz });
+      }
+    }
+    return groups;
+  }, []);
+
+  // Filter surahs for surah mode
+  const filteredSurahs = useMemo(() => {
+    return SURAH_DATA.filter(item => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return (
+        item.englishName.toLowerCase().includes(q) ||
+        item.name.includes(search) ||
+        String(item.number).includes(q) ||
+        String(item.juz).includes(q)
+      );
+    });
+  }, [search]);
+
+  // Filter juz groups for juz mode
+  const filteredJuzGroups = useMemo(() => {
+    if (!search) return juzGroups;
     const q = search.toLowerCase();
-    return (
-      item.englishName.toLowerCase().includes(q) ||
-      item.name.includes(search) ||
-      String(item.number).includes(q) ||
-      String(item.juz).includes(q)
-    );
-  });
+    return juzGroups
+      .map(group => ({
+        ...group,
+        surahs: group.surahs.filter(s =>
+          s.englishName.toLowerCase().includes(q) ||
+          s.name.includes(search) ||
+          String(s.number).includes(q) ||
+          String(group.juz).includes(q)
+        ),
+      }))
+      .filter(g => g.surahs.length > 0);
+  }, [search, juzGroups]);
 
   const handleComplete = () => {
+    if (!path) return;
     const startSurah = selectedSurah ?? SURAH_DATA[0];
     onComplete(
       {
@@ -171,7 +204,8 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                   </View>
 
                   <TouchableOpacity
-                    style={s.primaryBtn}
+                    style={[s.primaryBtn, !path && { opacity: 0.4 }]}
+                    disabled={!path}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                       setStep(2);
@@ -185,7 +219,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                 </ScrollView>
               )}
 
-              {step === 2 && (
+              {step === 2 && path === "surah" && (
                 <>
                   <View style={s.stepPad}>
                     <View style={s.stepHeader}>
@@ -200,7 +234,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                       <Feather name="search" size={15} color="#9A9A9A" />
                       <TextInput
                         style={s.searchInput}
-                        placeholder="Search Surah or Juz"
+                        placeholder="Search Surah"
                         placeholderTextColor="#9A9A9A"
                         value={search}
                         onChangeText={setSearch}
@@ -244,7 +278,94 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
 
                   <View style={[s.stepPad, { paddingTop: 12 }]}>
                     <TouchableOpacity
-                      style={s.primaryBtn}
+                      style={[s.primaryBtn, !selectedSurah && { opacity: 0.4 }]}
+                      disabled={!selectedSurah}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        setStep(3);
+                      }}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={s.primaryBtnText}>Next</Text>
+                      <Feather name="arrow-right" size={17} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    <Text style={s.stepLabel}>STEP 2 OF 3</Text>
+                  </View>
+                </>
+              )}
+
+              {step === 2 && path === "juz" && (
+                <>
+                  <View style={s.stepPad}>
+                    <View style={s.stepHeader}>
+                      <TouchableOpacity onPress={() => setStep(1)} style={s.backBtn} activeOpacity={0.7}>
+                        <Feather name="chevron-left" size={22} color="#1A1A1A" />
+                      </TouchableOpacity>
+                      <Text style={s.stepTitle}>Select Juz</Text>
+                      <View style={{ width: 32 }} />
+                    </View>
+                    <ProgressBar step={2} />
+                    <View style={s.searchBar}>
+                      <Feather name="search" size={15} color="#9A9A9A" />
+                      <TextInput
+                        style={s.searchInput}
+                        placeholder="Search Juz or Surah"
+                        placeholderTextColor="#9A9A9A"
+                        value={search}
+                        onChangeText={setSearch}
+                        clearButtonMode="while-editing"
+                      />
+                    </View>
+                  </View>
+
+                  <FlatList
+                    data={filteredJuzGroups}
+                    keyExtractor={(item) => String(item.juz)}
+                    showsVerticalScrollIndicator={false}
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ paddingHorizontal: 20 }}
+                    keyboardShouldPersistTaps="handled"
+                    renderItem={({ item: group }) => (
+                      <View>
+                        <View style={s.juzHeader}>
+                          <Text style={s.juzHeaderText}>Juz {group.juz}</Text>
+                          <Text style={s.juzHeaderSub}>
+                            {group.surahs.map(s => s.englishName).join(" • ")}
+                          </Text>
+                        </View>
+                        {group.surahs.map((surah) => {
+                          const isSelected = selectedSurah?.juz === group.juz;
+                          return (
+                            <TouchableOpacity
+                              key={surah.number}
+                              style={s.surahRow}
+                              onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setSelectedSurah(surah);
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <View style={[s.surahNumBubble, isSelected && s.surahNumBubbleActive]}>
+                                <Text style={[s.surahNumText, isSelected && s.surahNumTextActive]}>
+                                  {surah.number}
+                                </Text>
+                              </View>
+                              <View style={s.surahInfo}>
+                                <Text style={s.surahName}>{surah.englishName}</Text>
+                                <Text style={s.surahMeta}>{surah.name} • {surah.ayahCount} Verses • Juz {surah.juz}</Text>
+                              </View>
+                              <Feather name="chevron-right" size={16} color="#C0C0C0" />
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    )}
+                  />
+
+                  <View style={[s.stepPad, { paddingTop: 12 }]}>
+                    <TouchableOpacity
+                      style={[s.primaryBtn, !selectedSurah && { opacity: 0.4 }]}
+                      disabled={!selectedSurah}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                         setStep(3);
@@ -415,6 +536,15 @@ const s = StyleSheet.create({
   surahInfo: { flex: 1 },
   surahName: { fontSize: 15, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
   surahMeta: { fontSize: 12, color: "#8E8E93", fontFamily: "Inter_400Regular", marginTop: 2 },
+
+  juzHeader: {
+    paddingVertical: 12, marginTop: 8, borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E8E8ED",
+  },
+  juzHeaderText: {
+    fontSize: 15, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", marginBottom: 4,
+  },
+  juzHeaderSub: { fontSize: 12, color: "#8E8E93", fontFamily: "Inter_400Regular" },
 
   targetLabel: {
     fontSize: 11, fontWeight: "700", color: "#8E8E93",

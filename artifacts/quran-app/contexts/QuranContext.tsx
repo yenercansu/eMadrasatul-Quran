@@ -57,6 +57,7 @@ export interface MemorizationGoal {
   startSurahNumber: number;
   startSurahName: string;
   startDate: string;
+  ayahsReadAtStart?: number;
 }
 
 export interface GoalAyah {
@@ -130,6 +131,7 @@ interface QuranContextType {
   checkedSurahs: number[];
   toggleCheckedSurah: (surahNum: number, ayahCount: number) => void;
   isSurahChecked: (surahNum: number) => boolean;
+  clearCheckedSurahs: () => void;
 }
 
 const TOTAL_AYAHS = 6236;
@@ -409,6 +411,11 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
 
   const isSurahChecked = useCallback((surahNum: number) => checkedSurahs.includes(surahNum), [checkedSurahs]);
 
+  const clearCheckedSurahs = useCallback(() => {
+    setCheckedSurahs([]);
+    AsyncStorage.setItem("quran_checked_surahs", JSON.stringify([]));
+  }, []);
+
   const recordAyahRead = useCallback((surahNumber: number, ayahNumber?: number) => {
     const today = getTodayStr();
     const isKahf = surahNumber === 18 && isFriday();
@@ -452,7 +459,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       onlineUsers,
       quranPosition, advanceQuranPosition, getTodayGoalAyahs, getTodayGoalProgress,
       surahPositions, saveSurahPosition,
-      checkedSurahs, toggleCheckedSurah, isSurahChecked,
+      checkedSurahs, toggleCheckedSurah, isSurahChecked, clearCheckedSurahs,
     }}>
       {children}
     </QuranContext.Provider>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -79,6 +79,10 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [goalSetupVisible, setGoalSetupVisible] = useState(false);
   const [editDailyGoalVisible, setEditDailyGoalVisible] = useState(false);
+  const [showMemorizationToast, setShowMemorizationToast] = useState(false);
+  const [showDailyToast, setShowDailyToast] = useState(false);
+  const prevMemPercentRef = useRef<number | null>(null);
+  const prevDailyPercentRef = useRef<number | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -111,10 +115,13 @@ export default function HomeScreen() {
     return groups;
   }, [surahs]);
 
-  const totalMemorized = useMemo(
-    () => dailyEntries.reduce((s, e) => s + e.ayahsRead, 0),
-    [dailyEntries]
-  );
+  const totalMemorized = useMemo(() => {
+    if (!memorizationGoal) return 0;
+    const raw = dailyEntries
+      .filter(e => e.date >= memorizationGoal.startDate)
+      .reduce((s, e) => s + e.ayahsRead, 0);
+    return Math.max(0, raw - (memorizationGoal.ayahsReadAtStart ?? 0));
+  }, [dailyEntries, memorizationGoal]);
 
   const streakDays = useMemo(() => {
     const today = new Date();
@@ -146,6 +153,27 @@ export default function HomeScreen() {
 
   const memorizationPercent = Math.min(100, Math.round((totalMemorized / AYAHS_PER_JUZ) * 100));
   const dailyPercent = goal ? Math.min(100, Math.round((todayGoalProgress / goal.ayahsPerDay) * 100)) : 0;
+
+  useEffect(() => {
+    const prev = prevMemPercentRef.current;
+    prevMemPercentRef.current = memorizationPercent;
+    if (prev !== null && prev < 100 && memorizationPercent >= 100) {
+      setShowMemorizationToast(true);
+      const t = setTimeout(() => setShowMemorizationToast(false), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [memorizationPercent]);
+
+  useEffect(() => {
+    const prev = prevDailyPercentRef.current;
+    prevDailyPercentRef.current = dailyPercent;
+    if (prev !== null && prev < 100 && dailyPercent >= 100) {
+      setShowDailyToast(true);
+      const t = setTimeout(() => setShowDailyToast(false), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [dailyPercent]);
+
   const targetJuz = SURAH_DATA.find(s => s.number === memorizationGoal?.startSurahNumber)?.juz ?? 1;
   const targetSurah = SURAH_DATA.find(s => s.number === memorizationGoal?.startSurahNumber);
   const savedSurahsMeta = savedSurahs.map(n => SURAH_DATA[n - 1]).filter(Boolean);
@@ -209,25 +237,38 @@ export default function HomeScreen() {
           {hasMemorizationGoal ? (
             <>
               {memorizationPercent >= 100 ? (
-                /* ── STATE: MEMORIZATION COMPLETE (screenshot 2) ────────────── */
+                /* ── STATE: MEMORIZATION COMPLETE ───────────────────────────── */
                 <View style={s.ctaCardShadow}>
                   <View style={s.ctaCardClip}>
-                    <View style={s.completionBody}>
-                      <CircularRing
-                        percent={100} size={88} strokeWidth={6}
-                        color="#4CAF50" trackColor="#D5F5D5"
-                        label={memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah?.englishName ?? "—")}
-                      />
-                      <Text style={s.completionTitle}>
-                        {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah?.englishName ?? "—")}
-                        {". Done!"}
-                      </Text>
-                      <Text style={s.completionSub}>
-                        {"You've memorized the "}
-                        {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah?.englishName ?? "—")}
-                        {"! BarakAllahu Feek."}
-                      </Text>
-                    </View>
+                    {showMemorizationToast ? (
+                      /* With toast: full green card */
+                      <View style={s.memCompleteGreen}>
+                        <View style={s.memCompleteCheckCircle}>
+                          <Feather name="check" size={18} color="#4CAF50" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.memCompleteGreenText}>
+                            {"You've memorized the "}
+                            <Text style={s.memCompleteGreenBold}>
+                              {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah?.englishName ?? "—")}!
+                            </Text>
+                          </Text>
+                          <Text style={s.memCompleteGreenSub}>BarakAllahu Feek.</Text>
+                        </View>
+                      </View>
+                    ) : (
+                      /* Without toast: step indicator card */
+                      <View style={s.memCompleteSteps}>
+                        <View style={s.memCompleteStep}>
+                          <View style={s.stepNumCircle}><Text style={s.stepNumText}>1</Text></View>
+                          <Text style={s.stepStepText}>Select a Memorization</Text>
+                        </View>
+                        <View style={s.memCompleteStep}>
+                          <View style={s.stepNumCircle}><Text style={s.stepNumText}>2</Text></View>
+                          <Text style={s.stepStepText}>Select a Daily Goal</Text>
+                        </View>
+                      </View>
+                    )}
                     <TouchableOpacity
                       style={s.attachedCta}
                       onPress={() => setGoalSetupVisible(true)}
@@ -238,54 +279,29 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                   </View>
                 </View>
-              ) : goal === null ? (
-                /* ── STATE: NO DAILY GOAL ────────────────────────────────────── */
+              ) : (goal === null || dailyPercent >= 100) ? (
+                /* ── STATE: NO DAILY GOAL / DAILY GOAL COMPLETE ─────────────── */
                 <View style={s.ctaCardShadow}>
                   <View style={s.ctaCardClip}>
-                    <View style={s.widgetCardContent}>
-                      <View style={s.widgetCardHeader}>
-                        <View style={s.headerPill}>
-                          <Text style={s.headerPillText}>MEMORIZATION TARGET</Text>
-                        </View>
-                        <View style={s.modeBadge}>
-                          <Text style={s.modeBadgeText}>
-                            {memorizationGoal!.path === "juz" ? "JUZ MODE" : "SURAH MODE"}
-                          </Text>
-                        </View>
+                    {dailyPercent >= 100 && showDailyToast ? (
+                      <View style={s.topBanner}>
+                        <Feather name="check-circle" size={16} color="#FFFFFF" />
+                        <Text style={s.bannerText}>MashaAllah! You've reached your daily goal.</Text>
                       </View>
-                      <View style={s.widgetCardBody}>
-                        <CircularRing percent={memorizationPercent} size={64} strokeWidth={5} />
-                        <View style={s.widgetCardInfo}>
-                          <Text style={s.widgetCardTitle}>
-                            {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah?.englishName ?? "—")}
-                          </Text>
-                          <Text style={s.widgetCardSub}>{totalMemorized} Ayahs Memorized</Text>
-                        </View>
-                        <TouchableOpacity style={s.editBoxBtn} onPress={() => setGoalSetupVisible(true)} activeOpacity={0.7}>
-                          <Text style={s.editBoxText}>Edit</Text>
-                          <Feather name="edit-2" size={11} color="#1A1A1A" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                    <TouchableOpacity
-                      style={s.attachedCta}
-                      onPress={() => setEditDailyGoalVisible(true)}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={s.attachedCtaText}>Set Daily Goal</Text>
-                      <Feather name="plus" size={20} color="#FFFFFF" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ) : dailyPercent >= 100 ? (
-                /* ── STATE: DAILY GOAL COMPLETE ─────────────────────────────── */
-                <View style={s.ctaCardShadow}>
-                  <View style={s.ctaCardClip}>
-                    <View style={s.topBanner}>
-                      <Feather name="check-circle" size={16} color="#FFFFFF" />
-                      <Text style={s.bannerText}>MashaAllah! You've reached your daily goal.</Text>
-                    </View>
+                    ) : null}
                     <View style={s.widgetCardContent}>
+                      {!(dailyPercent >= 100 && showDailyToast) && (
+                        <View style={s.widgetCardHeader}>
+                          <View style={s.headerPill}>
+                            <Text style={s.headerPillText}>MEMORIZATION TARGET</Text>
+                          </View>
+                          <View style={s.modeBadge}>
+                            <Text style={s.modeBadgeText}>
+                              {memorizationGoal!.path === "juz" ? "JUZ MODE" : "SURAH MODE"}
+                            </Text>
+                          </View>
+                        </View>
+                      )}
                       <View style={s.widgetCardBody}>
                         <CircularRing percent={memorizationPercent} size={64} strokeWidth={5} />
                         <View style={s.widgetCardInfo}>
@@ -554,7 +570,7 @@ export default function HomeScreen() {
         visible={goalSetupVisible}
         onClose={() => setGoalSetupVisible(false)}
         onComplete={(memGoal, dailyGoal) => {
-          setMemorizationGoal(memGoal);
+          setMemorizationGoal({ ...memGoal, ayahsReadAtStart: todayEntry?.ayahsRead ?? 0 });
           setGoal(dailyGoal);
         }}
       />
@@ -730,26 +746,40 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       color: "#FFFFFF",
       fontFamily: "Inter_600SemiBold",
     },
-    completionBody: {
-      padding: 28,
+    memCompleteGreen: {
+      backgroundColor: "#4CAF50",
+      flexDirection: "row",
       alignItems: "center",
-      gap: 10,
+      paddingHorizontal: 20,
+      paddingVertical: 24,
+      gap: 14,
     },
-    completionTitle: {
-      fontSize: 22,
-      fontWeight: "700",
-      color: "#1A1A1A",
-      fontFamily: "Inter_700Bold",
-      textAlign: "center",
-      marginTop: 4,
+    memCompleteCheckCircle: {
+      width: 40, height: 40, borderRadius: 20,
+      backgroundColor: "#FFFFFF",
+      alignItems: "center", justifyContent: "center",
+      flexShrink: 0,
     },
-    completionSub: {
-      fontSize: 14,
-      color: "#8E8E93",
-      fontFamily: "Inter_400Regular",
-      textAlign: "center",
-      lineHeight: 20,
+    memCompleteGreenText: {
+      fontSize: 15, color: "#FFFFFF", fontFamily: "Inter_400Regular", lineHeight: 22,
     },
+    memCompleteGreenBold: { fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+    memCompleteGreenSub: {
+      fontSize: 13, color: "rgba(255,255,255,0.8)", fontFamily: "Inter_400Regular", marginTop: 2,
+    },
+    memCompleteSteps: {
+      paddingHorizontal: 20, paddingVertical: 20, gap: 14,
+    },
+    memCompleteStep: {
+      flexDirection: "row", alignItems: "center", gap: 14,
+    },
+    stepNumCircle: {
+      width: 36, height: 36, borderRadius: 18,
+      backgroundColor: "#C9A02A",
+      alignItems: "center", justifyContent: "center", flexShrink: 0,
+    },
+    stepNumText: { fontSize: 15, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+    stepStepText: { fontSize: 15, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
     widgetCardHeader: {
       flexDirection: "row",
       alignItems: "center",
