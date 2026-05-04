@@ -72,7 +72,7 @@ export default function HomeScreen() {
   const {
     lastListened, goal, setGoal, memorizationGoal, setMemorizationGoal,
     todayEntry, dailyEntries, onlineUsers, recentProgress, savedSurahs,
-    getTodayGoalAyahs, getTodayGoalProgress, recordAyahRead, quranPosition,
+    getTodayGoalAyahs, getTodayGoalProgress, recordAyahRead,
   } = useQuran();
   const [surahs, setSurahs] = useState<ApiSurah[]>([]);
   const [loading, setLoading] = useState(true);
@@ -570,8 +570,29 @@ export default function HomeScreen() {
         visible={goalSetupVisible}
         onClose={() => setGoalSetupVisible(false)}
         onComplete={(memGoal, dailyGoal) => {
+          const readKeys = new Set(todayEntry?.readAyahKeys ?? []);
+          let startSurahNumber = dailyGoal.startSurahNumber ?? 1;
+          let startAyahNumber = dailyGoal.startAyahNumber ?? 1;
+          if (readKeys.size > 0) {
+            let startPos = 0;
+            for (const s of SURAH_DATA) {
+              if (s.number === startSurahNumber) { startPos += startAyahNumber - 1; break; }
+              startPos += s.ayahCount;
+            }
+            let skip = 0;
+            while (skip < TOTAL_AYAHS) {
+              const { surahNumber, ayahNumber } = getAyahAtLinearIndex((startPos + skip) % TOTAL_AYAHS);
+              if (!readKeys.has(`${surahNumber}:${ayahNumber}`)) break;
+              skip++;
+            }
+            if (skip > 0) {
+              const next = getAyahAtLinearIndex((startPos + skip) % TOTAL_AYAHS);
+              startSurahNumber = next.surahNumber;
+              startAyahNumber = next.ayahNumber;
+            }
+          }
           setMemorizationGoal({ ...memGoal, ayahsReadAtStart: todayEntry?.ayahsRead ?? 0 });
-          setGoal(dailyGoal);
+          setGoal({ ...dailyGoal, startSurahNumber, startAyahNumber });
         }}
       />
       <EditDailyGoalModal
@@ -580,29 +601,28 @@ export default function HomeScreen() {
         onSave={(ayahsPerDay) => {
           const today = new Date().toISOString().split("T")[0];
           if (goal !== null && dailyPercent < 100) {
-            // Normal edit: just change the count, keep position
             setGoal({ ...goal, ayahsPerDay });
           } else {
-            // "Set Daily Goal" from scratch (goal===null) or after completing daily goal
-            // Compute the next unread ayah so today's old readAyahKeys don't count
-            let startSurahNumber = memorizationGoal?.startSurahNumber ?? 1;
-            let startAyahNumber = 1;
-            if (goal !== null && dailyPercent >= 100) {
-              // Advance past today's completed ayahs to a fresh start position
-              let startPos = quranPosition;
-              if (goal.startSurahNumber != null && goal.startAyahNumber != null) {
-                let pos = 0;
-                for (const s of SURAH_DATA) {
-                  if (s.number === goal.startSurahNumber) {
-                    startPos = pos + (goal.startAyahNumber - 1);
-                    break;
-                  }
-                  pos += s.ayahCount;
-                }
+            let startSurahNumber = (goal?.startSurahNumber ?? memorizationGoal?.startSurahNumber) ?? 1;
+            let startAyahNumber = goal?.startAyahNumber ?? 1;
+            const readKeys = new Set(todayEntry?.readAyahKeys ?? []);
+            if (readKeys.size > 0) {
+              let startPos = 0;
+              for (const s of SURAH_DATA) {
+                if (s.number === startSurahNumber) { startPos += startAyahNumber - 1; break; }
+                startPos += s.ayahCount;
               }
-              const nextAyah = getAyahAtLinearIndex((startPos + todayGoalProgress) % TOTAL_AYAHS);
-              startSurahNumber = nextAyah.surahNumber;
-              startAyahNumber = nextAyah.ayahNumber;
+              let skip = 0;
+              while (skip < TOTAL_AYAHS) {
+                const { surahNumber, ayahNumber } = getAyahAtLinearIndex((startPos + skip) % TOTAL_AYAHS);
+                if (!readKeys.has(`${surahNumber}:${ayahNumber}`)) break;
+                skip++;
+              }
+              if (skip > 0) {
+                const next = getAyahAtLinearIndex((startPos + skip) % TOTAL_AYAHS);
+                startSurahNumber = next.surahNumber;
+                startAyahNumber = next.ayahNumber;
+              }
             }
             setGoal({ ayahsPerDay, startDate: today, startSurahNumber, startAyahNumber });
           }
