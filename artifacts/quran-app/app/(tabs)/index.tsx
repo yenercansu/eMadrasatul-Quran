@@ -151,7 +151,17 @@ export default function HomeScreen() {
     return groups;
   }, [goal, getTodayGoalAyahs, getTodayGoalProgress]);
 
-  const memorizationPercent = Math.min(100, Math.round((totalMemorized / AYAHS_PER_JUZ) * 100));
+  const targetJuz = memorizationGoal?.path === "juz"
+    ? (memorizationGoal?.startSurahNumber ? SURAH_DATA.find(s => s.number === memorizationGoal?.startSurahNumber)?.juz ?? 1 : 1)
+    : 1;
+  const targetSurah = memorizationGoal?.path === "surah"
+    ? (memorizationGoal?.startSurahNumber ? SURAH_DATA.find(s => s.number === memorizationGoal?.startSurahNumber) : undefined)
+    : undefined;
+  const savedSurahsMeta = savedSurahs.map(n => SURAH_DATA[n - 1]).filter(Boolean);
+
+  const memorizationPercent = Math.min(100, Math.round(
+    (totalMemorized / (memorizationGoal?.path === "juz" ? AYAHS_PER_JUZ : (targetSurah ? targetSurah.ayahCount : AYAHS_PER_JUZ))) * 100
+  ));
   const dailyPercent = goal ? Math.min(100, Math.round((todayGoalProgress / goal.ayahsPerDay) * 100)) : 0;
 
   useEffect(() => {
@@ -173,10 +183,6 @@ export default function HomeScreen() {
       return () => clearTimeout(t);
     }
   }, [dailyPercent]);
-
-  const targetJuz = SURAH_DATA.find(s => s.number === memorizationGoal?.startSurahNumber)?.juz ?? 1;
-  const targetSurah = SURAH_DATA.find(s => s.number === memorizationGoal?.startSurahNumber);
-  const savedSurahsMeta = savedSurahs.map(n => SURAH_DATA[n - 1]).filter(Boolean);
 
   const topPad = insets.top;
   const hasMemorizationGoal = memorizationGoal !== null;
@@ -250,7 +256,7 @@ export default function HomeScreen() {
                           <Text style={s.memCompleteGreenText}>
                             {"You've memorized the "}
                             <Text style={s.memCompleteGreenBold}>
-                              {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah?.englishName ?? "—")}!
+                               {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah ? targetSurah.englishName : "—")}!
                             </Text>
                           </Text>
                           <Text style={s.memCompleteGreenSub}>BarakAllahu Feek.</Text>
@@ -306,7 +312,7 @@ export default function HomeScreen() {
                         <CircularRing percent={memorizationPercent} size={64} strokeWidth={5} />
                         <View style={s.widgetCardInfo}>
                           <Text style={s.widgetCardTitle}>
-                            {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah?.englishName ?? "—")}
+                             {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah ? targetSurah.englishName : "—")}
                           </Text>
                           <Text style={s.widgetCardSub}>{totalMemorized} Ayahs Memorized</Text>
                         </View>
@@ -345,7 +351,7 @@ export default function HomeScreen() {
                       <CircularRing percent={memorizationPercent} size={64} strokeWidth={5} />
                       <View style={s.widgetCardInfo}>
                         <Text style={s.widgetCardTitle}>
-                          {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah?.englishName ?? "—")}
+                           {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah ? targetSurah.englishName : "—")}
                         </Text>
                         <Text style={s.widgetCardSub}>{totalMemorized} Ayahs Memorized</Text>
                       </View>
@@ -362,7 +368,10 @@ export default function HomeScreen() {
                       <View style={s.headerPill}>
                         <Text style={s.headerPillText}>DAILY TARGET</Text>
                       </View>
-                      <View style={s.dailyCompleteCircle} />
+                       <View style={[
+                          s.dailyCompleteCircle,
+                          dailyPercent >= 100 && s.dailyCompleteCircleFilled,
+                        ]} />
                     </View>
                     <View style={s.widgetCardBody}>
                       <CircularRing percent={dailyPercent} size={64} strokeWidth={5} />
@@ -865,6 +874,14 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderRadius: 12,
       borderWidth: 1.5,
       borderColor: "#DADADA",
+    },
+    dailyCompleteCircleFilled: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: "#4CAF50",
+      backgroundColor: "#4CAF50",
     },
     dailyProgressText: {
       fontSize: 14,

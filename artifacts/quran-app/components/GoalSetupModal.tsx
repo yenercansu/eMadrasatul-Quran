@@ -19,7 +19,7 @@ import type { Goal, MemorizationGoal } from "@/contexts/QuranContext";
 const COMMITMENT_STEPS = [1, 2, 3, 5, 7, 10, 15, 25, 45];
 const MAX_DAILY = 45;
 
-function AyahSlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function AyahSlider({ value, onChange, maxValue = MAX_DAILY }: { value: number; onChange: (v: number) => void; maxValue?: number }) {
   const trackWidthRef = useRef(0);
   const [trackWidth, setTrackWidth] = useState(0);
   const THUMB = 26;
@@ -30,16 +30,16 @@ function AyahSlider({ value, onChange }: { value: number; onChange: (v: number) 
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
         const x = Math.max(0, Math.min(trackWidthRef.current, evt.nativeEvent.locationX));
-        onChange(Math.max(1, Math.min(MAX_DAILY, Math.round((x / (trackWidthRef.current || 1)) * (MAX_DAILY - 1)) + 1)));
+        onChange(Math.max(1, Math.min(maxValue, Math.round((x / (trackWidthRef.current || 1)) * (maxValue - 1)) + 1)));
       },
       onPanResponderMove: (evt) => {
         const x = Math.max(0, Math.min(trackWidthRef.current, evt.nativeEvent.locationX));
-        onChange(Math.max(1, Math.min(MAX_DAILY, Math.round((x / (trackWidthRef.current || 1)) * (MAX_DAILY - 1)) + 1)));
+        onChange(Math.max(1, Math.min(maxValue, Math.round((x / (trackWidthRef.current || 1)) * (maxValue - 1)) + 1)));
       },
     })
   ).current;
 
-  const thumbLeft = trackWidth > 0 ? ((value - 1) / (MAX_DAILY - 1)) * (trackWidth - THUMB) : 0;
+  const thumbLeft = trackWidth > 0 ? ((value - 1) / (maxValue - 1)) * (trackWidth - THUMB) : 0;
 
   return (
     <View
@@ -81,7 +81,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [path, setPath] = useState<"juz" | "surah" | null>(null);
   const [selectedSurah, setSelectedSurah] = useState<typeof SURAH_DATA[0] | null>(null);
-  const [ayahsPerDay, setAyahsPerDay] = useState(10);
+  const [ayahsPerDay, setAyahsPerDay] = useState(3);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -89,7 +89,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
       setStep(1);
       setPath(null);
       setSelectedSurah(null);
-      setAyahsPerDay(10);
+      setAyahsPerDay(3);
       setSearch("");
     }
   }, [visible]);
@@ -140,6 +140,8 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
   const handleComplete = () => {
     if (!path) return;
     const startSurah = selectedSurah ?? SURAH_DATA[0];
+    const maxAyahs = path === "surah" ? startSurah.ayahCount : MAX_DAILY;
+    const cappedAyahsPerDay = Math.min(ayahsPerDay, maxAyahs);
     onComplete(
       {
         path,
@@ -148,7 +150,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
         startDate: new Date().toISOString().split("T")[0],
       },
       {
-        ayahsPerDay,
+        ayahsPerDay: cappedAyahsPerDay,
         startDate: new Date().toISOString().split("T")[0],
         startSurahNumber: startSurah.number,
         startAyahNumber: 1,
@@ -380,26 +382,30 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                 </>
               )}
 
-              {step === 3 && (
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.stepPad}>
-                  <View style={s.stepHeader}>
-                    <TouchableOpacity onPress={() => setStep(2)} style={s.backBtn} activeOpacity={0.7}>
-                      <Feather name="chevron-left" size={22} color="#1A1A1A" />
-                    </TouchableOpacity>
-                    <Text style={s.stepTitle}>Set Your Daily Goal</Text>
-                    <View style={{ width: 32 }} />
-                  </View>
-                  <ProgressBar step={3} />
+               {step === 3 && (
+                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.stepPad}>
+                   <View style={s.stepHeader}>
+                     <TouchableOpacity onPress={() => setStep(2)} style={s.backBtn} activeOpacity={0.7}>
+                       <Feather name="chevron-left" size={22} color="#1A1A1A" />
+                     </TouchableOpacity>
+                     <Text style={s.stepTitle}>Set Your Daily Goal</Text>
+                     <View style={{ width: 32 }} />
+                   </View>
+                   <ProgressBar step={3} />
 
-                  <Text style={s.targetLabel}>TARGET VOLUME</Text>
-                  <Text style={s.targetNum}>{ayahsPerDay}</Text>
-                  <Text style={s.targetUnit}>Ayahs per day</Text>
+                   <Text style={s.targetLabel}>TARGET VOLUME</Text>
+                   <Text style={s.targetNum}>{ayahsPerDay}</Text>
+                   <Text style={s.targetUnit}>Ayahs per day</Text>
 
-                  <View style={s.sliderRangeRow}>
-                    <Text style={s.sliderRangeText}>1</Text>
-                    <Text style={s.sliderRangeText}>45</Text>
-                  </View>
-                  <AyahSlider value={ayahsPerDay} onChange={setAyahsPerDay} />
+                   <View style={s.sliderRangeRow}>
+                     <Text style={s.sliderRangeText}>1</Text>
+                     <Text style={s.sliderRangeText}>{path === "surah" && selectedSurah ? Math.min(MAX_DAILY, selectedSurah.ayahCount) : MAX_DAILY}</Text>
+                   </View>
+                   <AyahSlider value={ayahsPerDay} onChange={(v) => setAyahsPerDay(
+                     path === "surah" && selectedSurah
+                       ? Math.min(v, selectedSurah.ayahCount)
+                       : v
+                   )} maxValue={path === "surah" && selectedSurah ? Math.min(MAX_DAILY, selectedSurah.ayahCount) : MAX_DAILY} />
 
                   <Text style={s.commitmentLabel}>DAILY COMMITMENT STEPS</Text>
                   <View style={s.dots}>

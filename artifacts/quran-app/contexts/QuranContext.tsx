@@ -341,17 +341,20 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
 
   const getTodayGoalAyahs = useCallback((): GoalAyah[] => {
     if (!goal) return [];
-    let startPos = quranPosition;
+    // For surah-specific goals, only return ayahs from that surah
     if (goal.startSurahNumber != null && goal.startAyahNumber != null) {
-      let pos = 0;
-      for (const s of SURAH_DATA) {
-        if (s.number === goal.startSurahNumber) {
-          startPos = pos + (goal.startAyahNumber - 1);
-          break;
-        }
-        pos += s.ayahCount;
-      }
+      const surahData = SURAH_DATA.find(s => s.number === goal.startSurahNumber);
+      if (!surahData) return [];
+      const startAyah = goal.startAyahNumber;
+      const endAyah = surahData.ayahCount;
+      const count = Math.min(goal.ayahsPerDay, endAyah - startAyah + 1);
+      return Array.from({ length: count }, (_, i) => ({
+        surahNumber: goal.startSurahNumber!,
+        surahName: surahData.englishName,
+        ayahNumber: startAyah + i,
+      }));
     }
+    let startPos = quranPosition;
     return Array.from({ length: goal.ayahsPerDay }, (_, i) =>
       getAyahAtLinearIndex((startPos + i) % TOTAL_AYAHS)
     );
@@ -365,15 +368,16 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     if (goal.startSurahNumber == null || goal.startAyahNumber == null) {
       return entry.ayahsRead;
     }
-    const goalAyahsList = (() => {
-      let startPos = quranPosition;
-      let pos = 0;
-      for (const s of SURAH_DATA) {
-        if (s.number === goal.startSurahNumber) { startPos = pos + (goal.startAyahNumber! - 1); break; }
-        pos += s.ayahCount;
-      }
-      return Array.from({ length: goal.ayahsPerDay }, (_, i) => getAyahAtLinearIndex((startPos + i) % TOTAL_AYAHS));
-    })();
+    const surahData = SURAH_DATA.find(s => s.number === goal.startSurahNumber);
+    if (!surahData) return 0;
+    const startAyah = goal.startAyahNumber;
+    const endAyah = surahData.ayahCount;
+    const count = Math.min(goal.ayahsPerDay, endAyah - startAyah + 1);
+    const goalAyahsList = Array.from({ length: count }, (_, i) => ({
+      surahNumber: goal.startSurahNumber,
+      surahName: surahData.englishName,
+      ayahNumber: startAyah + i,
+    }));
     const goalKeys = new Set(goalAyahsList.map(a => `${a.surahNumber}:${a.ayahNumber}`));
     const readKeys = entry.readAyahKeys ?? [];
     return readKeys.filter(k => goalKeys.has(k)).length;
