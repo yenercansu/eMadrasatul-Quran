@@ -159,9 +159,8 @@ export function SettingsSheet({ visible, onClose }: Props) {
     fn();
   };
 
-  const THEMES: { key: "auto" | "light" | "dark" | "sepia"; label: string }[] = [
+  const THEMES: { key: "auto" | "light" | "dark"; label: string }[] = [
     { key: "light", label: "Light" },
-    { key: "sepia", label: "Sepia" },
     { key: "dark", label: "Dark" },
     { key: "auto", label: "Auto" },
   ];
@@ -194,7 +193,6 @@ export function SettingsSheet({ visible, onClose }: Props) {
                         style={[
                           s.themeCircle,
                           t.key === "light" && { backgroundColor: "#FFFFFF", borderColor: "#E0E0E0" },
-                          t.key === "sepia" && { backgroundColor: "#F5EDD6", borderColor: "#DDD0B0" },
                           t.key === "dark" && { backgroundColor: "#1A1A1A", borderColor: "#333" },
                           t.key === "auto" && s.themeCircleAuto,
                           accountSettings.theme === t.key && s.themeCircleSelected,

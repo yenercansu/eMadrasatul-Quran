@@ -130,7 +130,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       backgroundColor: "#1A1A1A",
     },
     recentDot: {
-      width: 8, height: 8, borderRadius: 4, backgroundColor: "#4F46E5",
+      width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary,
     },
     body: {
       flexDirection: "row",

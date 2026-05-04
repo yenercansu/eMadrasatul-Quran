@@ -3,7 +3,7 @@ const colors = {
     text: "#1A1A1A",
     tint: "#1A1A1A",
 
-    background: "#F8F4EF",
+    background: "#FDFBF7",
     foreground: "#1A1A1A",
 
     card: "#FFFFFF",
@@ -12,23 +12,23 @@ const colors = {
     primary: "#1A1A1A",
     primaryForeground: "#FFFFFF",
 
-    secondary: "#F0F0F0",
+    secondary: "#F2F2F7",
     secondaryForeground: "#1A1A1A",
 
-    muted: "#EDE8E0",
-    mutedForeground: "#8B8480",
+    muted: "#F2F2F7",
+    mutedForeground: "#8E8E93",
 
-    accent: "#8B8480",
+    accent: "#F9E79F",
     accentForeground: "#1A1A1A",
 
     destructive: "#D9534F",
     destructiveForeground: "#FFFFFF",
 
-    border: "#E0D9D0",
-    input: "#E0D9D0",
+    border: "#E8E8ED",
+    input: "#E8E8ED",
 
-    surface: "#FFFDF9",
-    surfaceAlt: "#F0EBE3",
+    surface: "#FDFBF7",
+    surfaceAlt: "#F2F2F7",
   },
 
   dark: {

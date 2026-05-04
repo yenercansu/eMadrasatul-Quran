@@ -52,6 +52,13 @@ export interface Goal {
   startAyahNumber?: number;
 }
 
+export interface MemorizationGoal {
+  path: "juz" | "surah";
+  startSurahNumber: number;
+  startSurahName: string;
+  startDate: string;
+}
+
 export interface GoalAyah {
   surahNumber: number;
   surahName: string;
@@ -63,7 +70,7 @@ export interface AccountSettings {
   email: string;
   fontSize: number;
   romanFontSize: number;
-  theme: "auto" | "light" | "dark" | "sepia";
+  theme: "auto" | "light" | "dark";
   dailyNotifications: boolean;
   notificationTime: string;
 }
@@ -108,6 +115,8 @@ interface QuranContextType {
   lastListened: Progress | null;
   goal: Goal | null;
   setGoal: (goal: Goal | null) => void;
+  memorizationGoal: MemorizationGoal | null;
+  setMemorizationGoal: (goal: MemorizationGoal | null) => void;
   dailyEntries: DailyEntry[];
   recordAyahRead: (surahNumber: number, ayahNumber?: number) => void;
   todayEntry: DailyEntry | null;
@@ -160,8 +169,8 @@ const DEFAULT_ACCOUNT: AccountSettings = {
 function applyTheme(theme: AccountSettings["theme"]) {
   try {
     if (typeof Appearance.setColorScheme !== "function") return;
-    if (theme === "light") Appearance.setColorScheme("light");
-    else if (theme === "dark") Appearance.setColorScheme("dark");
+    if (theme === "dark") Appearance.setColorScheme("dark");
+    else if (theme === "light") Appearance.setColorScheme("light");
     else Appearance.setColorScheme(null);
   } catch {}
 }
@@ -177,7 +186,7 @@ const SEED_WORDS: SavedWord[] = [
 function getTodayStr(): string { return new Date().toISOString().split("T")[0]; }
 function isFriday(): boolean { return new Date().getDay() === 5; }
 
-const QuranContext = createContext<QuranContextType | undefined>(undefined);
+export const QuranContext = createContext<QuranContextType | undefined>(undefined);
 
 export function QuranProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
@@ -189,6 +198,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const [recentProgress, setRecentProgress] = useState<Progress[]>([]);
   const [lastListened, setLastListened] = useState<Progress | null>(null);
   const [goal, setGoalState] = useState<Goal | null>(null);
+  const [memorizationGoal, setMemorizationGoalState] = useState<MemorizationGoal | null>(null);
   const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
   const [onlineUsers] = useState(() => Math.floor(12000 + Math.random() * 4000));
   const [quranPosition, setQuranPosition] = useState(0);
@@ -204,7 +214,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         "quran_last_listened", "quran_goal", "quran_daily_entries",
         "quran_account", "quran_saved_surahs", "quran_highlighted_words",
         "quran_saved_ayahs", "quran_position", "quran_surah_positions",
-        "quran_checked_surahs",
+        "quran_checked_surahs", "quran_memorization_goal",
       ];
       const results = await AsyncStorage.multiGet(keys);
       const map = Object.fromEntries(results.map(([k, v]) => [k, v]));
@@ -225,6 +235,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       if (map.quran_recent_progress) setRecentProgress(JSON.parse(map.quran_recent_progress));
       if (map.quran_last_listened) setLastListened(JSON.parse(map.quran_last_listened));
       if (map.quran_goal) setGoalState(JSON.parse(map.quran_goal));
+      if (map.quran_memorization_goal) setMemorizationGoalState(JSON.parse(map.quran_memorization_goal));
       if (map.quran_daily_entries) setDailyEntries(JSON.parse(map.quran_daily_entries));
       if (map.quran_position) setQuranPosition(JSON.parse(map.quran_position));
       if (map.quran_surah_positions) setSurahPositions(JSON.parse(map.quran_surah_positions));
@@ -314,6 +325,12 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     setGoalState(newGoal);
     if (newGoal) { AsyncStorage.setItem("quran_goal", JSON.stringify(newGoal)); }
     else { AsyncStorage.removeItem("quran_goal"); }
+  }, []);
+
+  const setMemorizationGoal = useCallback((newGoal: MemorizationGoal | null) => {
+    setMemorizationGoalState(newGoal);
+    if (newGoal) { AsyncStorage.setItem("quran_memorization_goal", JSON.stringify(newGoal)); }
+    else { AsyncStorage.removeItem("quran_memorization_goal"); }
   }, []);
 
   const advanceQuranPosition = useCallback((n: number) => {
@@ -430,6 +447,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       highlightedWords, highlightWord, unhighlightWord, isWordHighlighted,
       recentProgress, saveProgress, lastListened,
       goal, setGoal,
+      memorizationGoal, setMemorizationGoal,
       dailyEntries, recordAyahRead, todayEntry,
       onlineUsers,
       quranPosition, advanceQuranPosition, getTodayGoalAyahs, getTodayGoalProgress,

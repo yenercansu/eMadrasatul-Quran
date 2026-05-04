@@ -381,6 +381,7 @@ const followUpStyle = StyleSheet.create({
 });
 
 function FillBlankQuizScreen({ questions, onFinish }: { questions: FillBlankQuestion[]; onFinish: (score: number) => void }) {
+  const colors = useColors();
   const [qIdx, setQIdx] = useState(0);
   const [score, setScore] = useState(0);
   const [filledWord, setFilledWord] = useState<string | null>(null);
@@ -413,7 +414,7 @@ function FillBlankQuizScreen({ questions, onFinish }: { questions: FillBlankQues
 
   useEffect(() => { setFilledWord(null); setFeedback(null); }, [qIdx]);
 
-  const s = fillStyle;
+  const s = { ...fillStyle, blankInText: { ...fillStyle.blankInText, color: colors.primary }, ayahCard: { ...fillStyle.ayahCard, backgroundColor: colors.card, borderColor: colors.border } };
   return (
     <ScrollView contentContainerStyle={s.container} showsVerticalScrollIndicator={false}>
       <View style={s.progressRow}>
@@ -691,8 +692,8 @@ export default function MemorizationQuizScreen() {
             <Feather name="chevron-right" size={20} color="#9A9A9A" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[s.modeCard, { borderColor: "#E0D4FF", backgroundColor: "#FAFAFF" }]} onPress={() => startQuiz("fill-blank")} activeOpacity={0.85}>
-            <View style={[s.modeIcon, { backgroundColor: "#7C3AED" }]}>
+          <TouchableOpacity style={[s.modeCard, { borderColor: colors.border, backgroundColor: colors.surface }]} onPress={() => startQuiz("fill-blank")} activeOpacity={0.85}>
+            <View style={[s.modeIcon, { backgroundColor: colors.primary }]}>
               <Ionicons name="text" size={24} color="#FFFFFF" />
             </View>
             <View style={s.modeInfo}>
@@ -702,8 +703,8 @@ export default function MemorizationQuizScreen() {
             <Feather name="chevron-right" size={20} color="#9A9A9A" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[s.modeCard, { borderColor: "#FED7AA", backgroundColor: "#FFFAF0" }]} onPress={() => startQuiz("tafsir-match")} activeOpacity={0.85}>
-            <View style={[s.modeIcon, { backgroundColor: "#EA580C" }]}>
+          <TouchableOpacity style={[s.modeCard, { borderColor: colors.border, backgroundColor: colors.surface }]} onPress={() => startQuiz("tafsir-match")} activeOpacity={0.85}>
+            <View style={[s.modeIcon, { backgroundColor: colors.accent }]}>
               <Ionicons name="language" size={24} color="#FFFFFF" />
             </View>
             <View style={s.modeInfo}>
