@@ -11,7 +11,8 @@ import {
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
-const COMMITMENT_STEPS = [1, 2, 3, 5, 7, 10, 15, 25, 50];
+const COMMITMENT_STEPS = [1, 2, 3, 5, 7, 10, 15, 25, 45];
+const MAX_DAILY = 45;
 
 function AyahSlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const trackWidthRef = useRef(0);
@@ -24,16 +25,16 @@ function AyahSlider({ value, onChange }: { value: number; onChange: (v: number) 
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
         const x = Math.max(0, Math.min(trackWidthRef.current, evt.nativeEvent.locationX));
-        onChange(Math.max(1, Math.min(100, Math.round((x / (trackWidthRef.current || 1)) * 99) + 1)));
+        onChange(Math.max(1, Math.min(MAX_DAILY, Math.round((x / (trackWidthRef.current || 1)) * (MAX_DAILY - 1)) + 1)));
       },
       onPanResponderMove: (evt) => {
         const x = Math.max(0, Math.min(trackWidthRef.current, evt.nativeEvent.locationX));
-        onChange(Math.max(1, Math.min(100, Math.round((x / (trackWidthRef.current || 1)) * 99) + 1)));
+        onChange(Math.max(1, Math.min(MAX_DAILY, Math.round((x / (trackWidthRef.current || 1)) * (MAX_DAILY - 1)) + 1)));
       },
     })
   ).current;
 
-  const thumbLeft = trackWidth > 0 ? ((value - 1) / 99) * (trackWidth - THUMB) : 0;
+  const thumbLeft = trackWidth > 0 ? ((value - 1) / (MAX_DAILY - 1)) * (trackWidth - THUMB) : 0;
 
   return (
     <View
@@ -66,7 +67,7 @@ export function EditDailyGoalModal({ visible, currentAyahsPerDay, onSave, onClos
   const [ayahsPerDay, setAyahsPerDay] = useState(currentAyahsPerDay);
 
   useEffect(() => {
-    if (visible) setAyahsPerDay(currentAyahsPerDay);
+    if (visible) setAyahsPerDay(Math.min(MAX_DAILY, currentAyahsPerDay));
   }, [visible, currentAyahsPerDay]);
 
   return (

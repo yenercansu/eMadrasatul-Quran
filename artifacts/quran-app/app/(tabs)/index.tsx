@@ -16,19 +16,23 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
-import { useQuran } from "@/contexts/QuranContext";
+import { useQuran, getAyahAtLinearIndex } from "@/contexts/QuranContext";
 import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
 import { SURAH_DATA } from "@/constants/surahData";
 import { GoalSetupModal } from "@/components/GoalSetupModal";
 import { EditDailyGoalModal } from "@/components/EditDailyGoalModal";
 
 const TOTAL_AYAHS = 6236;
-const COMMITMENT_STEPS = [1, 2, 3, 5, 7, 10, 15, 25, 50];
+const MAX_DAILY = 45;
 const AYAHS_PER_JUZ = Math.round(TOTAL_AYAHS / 30);
 
 function CircularRing({
   percent, size = 60, strokeWidth = 5,
-}: { percent: number; size?: number; strokeWidth?: number }) {
+  color = "#C9A02A", trackColor = "#F0E6C0", label,
+}: {
+  percent: number; size?: number; strokeWidth?: number;
+  color?: string; trackColor?: string; label?: string;
+}) {
   const r = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * r;
   const p = Math.min(100, Math.max(0, percent));
@@ -37,19 +41,26 @@ function CircularRing({
   return (
     <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
       <Svg width={size} height={size} style={{ position: "absolute" }}>
-        <Circle cx={center} cy={center} r={r} stroke="#E8E8ED" strokeWidth={strokeWidth} fill="none" />
+        <Circle cx={center} cy={center} r={r} stroke={trackColor} strokeWidth={strokeWidth} fill="none" />
         <Circle
           cx={center} cy={center} r={r}
-          stroke="#1A1A1A" strokeWidth={strokeWidth} fill="none"
+          stroke={color} strokeWidth={strokeWidth} fill="none"
           strokeDasharray={`${circumference} ${circumference}`}
           strokeDashoffset={dashOffset}
           strokeLinecap="round"
           transform={`rotate(-90, ${center}, ${center})`}
         />
       </Svg>
-      <Text style={{ fontSize: size * 0.2, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" }}>
-        {Math.round(p)}%
-      </Text>
+      <View style={{ alignItems: "center" }}>
+        <Text style={{ fontSize: size * 0.2, fontWeight: "700", color, fontFamily: "Inter_700Bold" }}>
+          {Math.round(p)}%
+        </Text>
+        {label ? (
+          <Text style={{ fontSize: size * 0.15, fontWeight: "700", color, fontFamily: "Inter_700Bold", textAlign: "center" }}>
+            {label}
+          </Text>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -61,7 +72,7 @@ export default function HomeScreen() {
   const {
     lastListened, goal, setGoal, memorizationGoal, setMemorizationGoal,
     todayEntry, dailyEntries, onlineUsers, recentProgress, savedSurahs,
-    getTodayGoalAyahs, getTodayGoalProgress,
+    getTodayGoalAyahs, getTodayGoalProgress, recordAyahRead, quranPosition,
   } = useQuran();
   const [surahs, setSurahs] = useState<ApiSurah[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,11 +135,11 @@ export default function HomeScreen() {
     const goalAyahs = getTodayGoalAyahs();
     const done = getTodayGoalProgress();
     const remaining = goalAyahs.slice(done);
-    const groups: { surahNumber: number; surahName: string; count: number }[] = [];
+    const groups: { surahNumber: number; surahName: string; count: number; ayahs: typeof goalAyahs }[] = [];
     for (const a of remaining) {
       const last = groups[groups.length - 1];
-      if (last?.surahNumber === a.surahNumber) last.count++;
-      else groups.push({ surahNumber: a.surahNumber, surahName: a.surahName, count: 1 });
+      if (last?.surahNumber === a.surahNumber) { last.count++; last.ayahs.push(a); }
+      else groups.push({ surahNumber: a.surahNumber, surahName: a.surahName, count: 1, ayahs: [a] });
     }
     return groups;
   }, [goal, getTodayGoalAyahs, getTodayGoalProgress]);
@@ -140,6 +151,7 @@ export default function HomeScreen() {
   const savedSurahsMeta = savedSurahs.map(n => SURAH_DATA[n - 1]).filter(Boolean);
 
   const topPad = insets.top;
+  const hasMemorizationGoal = memorizationGoal !== null;
   const hasTarget = goal !== null && memorizationGoal !== null;
   const isFirstListen = lastListened === null;
 
@@ -161,7 +173,8 @@ export default function HomeScreen() {
           {/* Header Row */}
           <View style={s.headerRow}>
             <View style={s.badge}>
-              <Text style={s.badgeText}># {onlineUsers.toLocaleString()} memorizing</Text>
+              <View style={s.badgeDot} />
+              <Text style={s.badgeText}>{onlineUsers.toLocaleString()} memorizing</Text>
             </View>
             <TouchableOpacity
               style={s.settingsBtn}
@@ -193,105 +206,223 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity>
 
-          {hasTarget ? (
+          {hasMemorizationGoal ? (
             <>
-              {/* Memorization Target Card */}
-              <View style={s.widgetCard}>
-                <View style={s.widgetCardHeader}>
-                  <Text style={s.widgetCardHeaderLabel}>MEMORIZATION TARGET</Text>
-                  <View style={s.modeBadge}>
-                    <Text style={s.modeBadgeText}>
-                      {memorizationGoal.path === "juz" ? "JUZ MODE" : "SURAH MODE"}
-                    </Text>
-                  </View>
-                </View>
-                <View style={s.widgetCardBody}>
-                  <CircularRing percent={memorizationPercent} size={64} strokeWidth={5} />
-                  <View style={s.widgetCardInfo}>
-                    <Text style={s.widgetCardTitle}>
-                      {memorizationGoal.path === "juz"
-                        ? `Juz ${targetJuz}`
-                        : (targetSurah?.englishName ?? "—")}
-                    </Text>
-                    <Text style={s.widgetCardSub}>{totalMemorized} Ayahs Memorized</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={s.editLinkBtn}
-                    onPress={() => setGoalSetupVisible(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={s.editLinkText}>Edit</Text>
-                    <Feather name="edit-2" size={11} color="#5A5A5A" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Daily Target Card */}
-              <View style={s.widgetCard}>
-                <View style={s.dailyCardHeader}>
-                  <Text style={s.widgetCardHeaderLabel}>DAILY TARGET</Text>
-                  <TouchableOpacity onPress={() => setEditDailyGoalVisible(true)} style={s.editIconBtn} activeOpacity={0.7}>
-                    <Feather name="edit-2" size={14} color="#9A9A9A" />
-                  </TouchableOpacity>
-                </View>
-                <View style={s.widgetCardBody}>
-                  <CircularRing percent={dailyPercent} size={64} strokeWidth={5} />
-                  <View style={s.widgetCardInfo}>
-                    <Text style={s.dailyProgressText}>
-                      {todayGoalProgress}/{goal.ayahsPerDay} Ayahs Memorized
-                    </Text>
-                    <View style={s.miniDots}>
-                      {COMMITMENT_STEPS.map(step => (
-                        <View key={step} style={[s.miniDot, goal.ayahsPerDay >= step && s.miniDotFilled]} />
-                      ))}
+              {memorizationPercent >= 100 ? (
+                /* ── STATE: MEMORIZATION COMPLETE (screenshot 2) ────────────── */
+                <View style={s.ctaCardShadow}>
+                  <View style={s.ctaCardClip}>
+                    <View style={s.completionBody}>
+                      <CircularRing
+                        percent={100} size={88} strokeWidth={6}
+                        color="#4CAF50" trackColor="#D5F5D5"
+                        label={memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah?.englishName ?? "—")}
+                      />
+                      <Text style={s.completionTitle}>
+                        {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah?.englishName ?? "—")}
+                        {". Done!"}
+                      </Text>
+                      <Text style={s.completionSub}>
+                        {"You've memorized the "}
+                        {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah?.englishName ?? "—")}
+                        {"! BarakAllahu Feek."}
+                      </Text>
                     </View>
-                  </View>
-                </View>
-
-                {/* Remaining Ayah Rows */}
-                {remainingAyahGroups.slice(0, 2).map((g) => (
-                  <TouchableOpacity
-                    key={g.surahNumber}
-                    style={s.remainingRow}
-                    onPress={() => router.push(`/surah/${g.surahNumber}`)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={s.remainingName}>{g.surahName}</Text>
-                    <Text style={s.remainingCount}>{g.count} Ayah remaining</Text>
-                    <Feather name="chevron-right" size={14} color="#C0C0C0" />
-                  </TouchableOpacity>
-                ))}
-
-                <View style={s.dailyCardFooter}>
-                  <View style={s.remainingLabelRow}>
-                    <Text style={s.remainingLabel}>TODAY'S REMAINING</Text>
-                    <Text style={s.remainingShowing}>
-                      showing {Math.min(2, remainingAyahGroups.length)}/{remainingAyahGroups.length}
-                    </Text>
-                  </View>
-                  <View style={s.streakRow}>
-                    <Feather name="zap" size={13} color="#F59E0B" />
-                    <Text style={s.streakText}>{streakDays} Day Streak</Text>
-                    <TouchableOpacity style={{ marginLeft: "auto" }} activeOpacity={0.7}>
-                      <Text style={s.detailsLink}>DETAILS</Text>
+                    <TouchableOpacity
+                      style={s.attachedCta}
+                      onPress={() => setGoalSetupVisible(true)}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={s.attachedCtaText}>Set New Goal</Text>
+                      <Feather name="plus" size={20} color="#FFFFFF" />
                     </TouchableOpacity>
                   </View>
                 </View>
-              </View>
+              ) : goal === null ? (
+                /* ── STATE: NO DAILY GOAL ────────────────────────────────────── */
+                <View style={s.ctaCardShadow}>
+                  <View style={s.ctaCardClip}>
+                    <View style={s.widgetCardContent}>
+                      <View style={s.widgetCardHeader}>
+                        <View style={s.headerPill}>
+                          <Text style={s.headerPillText}>MEMORIZATION TARGET</Text>
+                        </View>
+                        <View style={s.modeBadge}>
+                          <Text style={s.modeBadgeText}>
+                            {memorizationGoal!.path === "juz" ? "JUZ MODE" : "SURAH MODE"}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={s.widgetCardBody}>
+                        <CircularRing percent={memorizationPercent} size={64} strokeWidth={5} />
+                        <View style={s.widgetCardInfo}>
+                          <Text style={s.widgetCardTitle}>
+                            {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah?.englishName ?? "—")}
+                          </Text>
+                          <Text style={s.widgetCardSub}>{totalMemorized} Ayahs Memorized</Text>
+                        </View>
+                        <TouchableOpacity style={s.editBoxBtn} onPress={() => setGoalSetupVisible(true)} activeOpacity={0.7}>
+                          <Text style={s.editBoxText}>Edit</Text>
+                          <Feather name="edit-2" size={11} color="#1A1A1A" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={s.attachedCta}
+                      onPress={() => setEditDailyGoalVisible(true)}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={s.attachedCtaText}>Set Daily Goal</Text>
+                      <Feather name="plus" size={20} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : dailyPercent >= 100 ? (
+                /* ── STATE: DAILY GOAL COMPLETE ─────────────────────────────── */
+                <View style={s.ctaCardShadow}>
+                  <View style={s.ctaCardClip}>
+                    <View style={s.topBanner}>
+                      <Feather name="check-circle" size={16} color="#FFFFFF" />
+                      <Text style={s.bannerText}>MashaAllah! You've reached your daily goal.</Text>
+                    </View>
+                    <View style={s.widgetCardContent}>
+                      <View style={s.widgetCardBody}>
+                        <CircularRing percent={memorizationPercent} size={64} strokeWidth={5} />
+                        <View style={s.widgetCardInfo}>
+                          <Text style={s.widgetCardTitle}>
+                            {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah?.englishName ?? "—")}
+                          </Text>
+                          <Text style={s.widgetCardSub}>{totalMemorized} Ayahs Memorized</Text>
+                        </View>
+                        <TouchableOpacity style={s.editBoxBtn} onPress={() => setGoalSetupVisible(true)} activeOpacity={0.7}>
+                          <Text style={s.editBoxText}>Edit</Text>
+                          <Feather name="edit-2" size={11} color="#1A1A1A" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={s.attachedCta}
+                      onPress={() => setEditDailyGoalVisible(true)}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={s.attachedCtaText}>Set Daily Goal</Text>
+                      <Feather name="plus" size={20} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                /* ── STATE: BOTH GOALS IN PROGRESS ──────────────────────────── */
+                <>
+                  {/* Memorization Target Card */}
+                  <View style={s.widgetCard}>
+                    <View style={s.widgetCardHeader}>
+                      <View style={s.headerPill}>
+                        <Text style={s.headerPillText}>MEMORIZATION TARGET</Text>
+                      </View>
+                      <View style={s.modeBadge}>
+                        <Text style={s.modeBadgeText}>
+                          {memorizationGoal!.path === "juz" ? "JUZ MODE" : "SURAH MODE"}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={s.widgetCardBody}>
+                      <CircularRing percent={memorizationPercent} size={64} strokeWidth={5} />
+                      <View style={s.widgetCardInfo}>
+                        <Text style={s.widgetCardTitle}>
+                          {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah?.englishName ?? "—")}
+                        </Text>
+                        <Text style={s.widgetCardSub}>{totalMemorized} Ayahs Memorized</Text>
+                      </View>
+                      <TouchableOpacity style={s.editBoxBtn} onPress={() => setGoalSetupVisible(true)} activeOpacity={0.7}>
+                        <Text style={s.editBoxText}>Edit</Text>
+                        <Feather name="edit-2" size={11} color="#1A1A1A" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Daily Target Card */}
+                  <View style={s.widgetCard}>
+                    <View style={s.dailyCardHeader}>
+                      <View style={s.headerPill}>
+                        <Text style={s.headerPillText}>DAILY TARGET</Text>
+                      </View>
+                      <View style={s.dailyCompleteCircle} />
+                    </View>
+                    <View style={s.widgetCardBody}>
+                      <CircularRing percent={dailyPercent} size={64} strokeWidth={5} />
+                      <View style={s.widgetCardInfo}>
+                        <Text style={s.dailyProgressText}>
+                          {todayGoalProgress}/{Math.min(MAX_DAILY, goal.ayahsPerDay)} Ayahs Memorized
+                        </Text>
+                      </View>
+                      <TouchableOpacity style={s.editBoxBtn} onPress={() => setEditDailyGoalVisible(true)} activeOpacity={0.7}>
+                        <Text style={s.editBoxText}>Edit</Text>
+                        <Feather name="edit-2" size={11} color="#1A1A1A" />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Dot grid: one dot per ayah in daily goal, max 15 per row */}
+                    {Array.from({ length: Math.ceil(Math.min(MAX_DAILY, goal.ayahsPerDay) / 15) }).map((_, rowIdx) => (
+                      <View key={rowIdx} style={s.dotRow}>
+                        {Array.from({ length: 15 }).map((_, colIdx) => {
+                          const i = rowIdx * 15 + colIdx;
+                          if (i >= Math.min(MAX_DAILY, goal.ayahsPerDay)) return null;
+                          return <View key={i} style={[s.dotGridItem, i < todayGoalProgress && s.dotGridItemFilled]} />;
+                        })}
+                      </View>
+                    ))}
+
+                    {/* Remaining Ayah Rows */}
+                    {remainingAyahGroups.slice(0, 2).map((g) => (
+                      <View key={g.surahNumber} style={s.remainingRow}>
+                        <TouchableOpacity
+                          onPress={() => g.ayahs.forEach(a => recordAyahRead(a.surahNumber, a.ayahNumber))}
+                          activeOpacity={0.6}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                          <View style={s.remainingCircle} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={s.remainingTextArea}
+                          onPress={() => router.push(`/surah/${g.surahNumber}`)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={s.remainingName}>{g.surahName}</Text>
+                          <Text style={s.remainingCount}>{g.count} Ayah remaining</Text>
+                          <Feather name="chevron-right" size={14} color="#C0C0C0" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+
+                    <View style={s.dailyCardFooter}>
+                      <View style={s.remainingLabelRow}>
+                        <Text style={s.remainingLabel}>TODAY'S REMAINING</Text>
+                        <Text style={s.remainingShowing}>
+                          showing {Math.min(2, remainingAyahGroups.length)}/{remainingAyahGroups.length}
+                        </Text>
+                      </View>
+                      <View style={s.streakRow}>
+                        <Feather name="zap" size={13} color="#C9A02A" />
+                        <Text style={s.streakText}>{streakDays} Day Streak</Text>
+                        <View style={s.detailsBtn}>
+                          <Text style={s.detailsLink}>DETAILS</Text>
+                          <Feather name="chevron-right" size={11} color="#8E8E93" />
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                </>
+              )}
             </>
           ) : (
-            /* Idle: Greeting + Set Your Goal */
+            /* ── STATE: NO MEMORIZATION GOAL (idle) ─────────────────────────── */
             <View style={s.greetingSection}>
               <Text style={s.greeting}>As Salamu Alaykum</Text>
               <Text style={s.goalTitle}>Set Your Memorization Goal</Text>
               <Text style={s.goalSub}>
                 Start your memorization journey{"\n"}by setting a daily goal.
               </Text>
-              <TouchableOpacity
-                style={s.goalBtn}
-                activeOpacity={0.85}
-                onPress={() => setGoalSetupVisible(true)}
-              >
+              <TouchableOpacity style={s.goalBtn} activeOpacity={0.85} onPress={() => setGoalSetupVisible(true)}>
                 <Text style={s.goalBtnText}>Set Your Goal</Text>
                 <Feather name="chevron-down" size={18} color="#FFFFFF" />
               </TouchableOpacity>
@@ -430,9 +561,36 @@ export default function HomeScreen() {
       <EditDailyGoalModal
         visible={editDailyGoalVisible}
         currentAyahsPerDay={goal?.ayahsPerDay ?? 10}
-        onSave={(ayahsPerDay) =>
-          setGoal(goal ? { ...goal, ayahsPerDay } : { ayahsPerDay, startDate: new Date().toISOString().split("T")[0] })
-        }
+        onSave={(ayahsPerDay) => {
+          const today = new Date().toISOString().split("T")[0];
+          if (goal !== null && dailyPercent < 100) {
+            // Normal edit: just change the count, keep position
+            setGoal({ ...goal, ayahsPerDay });
+          } else {
+            // "Set Daily Goal" from scratch (goal===null) or after completing daily goal
+            // Compute the next unread ayah so today's old readAyahKeys don't count
+            let startSurahNumber = memorizationGoal?.startSurahNumber ?? 1;
+            let startAyahNumber = 1;
+            if (goal !== null && dailyPercent >= 100) {
+              // Advance past today's completed ayahs to a fresh start position
+              let startPos = quranPosition;
+              if (goal.startSurahNumber != null && goal.startAyahNumber != null) {
+                let pos = 0;
+                for (const s of SURAH_DATA) {
+                  if (s.number === goal.startSurahNumber) {
+                    startPos = pos + (goal.startAyahNumber - 1);
+                    break;
+                  }
+                  pos += s.ayahCount;
+                }
+              }
+              const nextAyah = getAyahAtLinearIndex((startPos + todayGoalProgress) % TOTAL_AYAHS);
+              startSurahNumber = nextAyah.surahNumber;
+              startAyahNumber = nextAyah.ayahNumber;
+            }
+            setGoal({ ayahsPerDay, startDate: today, startSurahNumber, startAyahNumber });
+          }
+        }}
         onClose={() => setEditDailyGoalVisible(false)}
       />
     </>
@@ -452,13 +610,25 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingBottom: 16,
     },
     badge: {
+      flexDirection: "row",
+      alignItems: "center",
       backgroundColor: "#F9E79F",
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 20,
+      gap: 6,
     },
+    badgeDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#C9A02A" },
     badgeText: { fontSize: 12, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
-    settingsBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+    settingsBtn: {
+      width: 40, height: 40,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: "#E0E0E0",
+      backgroundColor: "#FFFFFF",
+      alignItems: "center",
+      justifyContent: "center",
+    },
 
     audioCard: {
       marginHorizontal: 16,
@@ -504,30 +674,112 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       shadowRadius: 10,
       elevation: 2,
     },
+    // Cards with attached CTA need a shadow wrapper + overflow:hidden clip
+    ctaCardShadow: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      borderRadius: 16,
+      backgroundColor: "#FFFFFF",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.05,
+      shadowRadius: 10,
+    },
+    ctaCardClip: {
+      borderRadius: 16,
+      overflow: "hidden",
+      elevation: 2,
+    },
+    widgetCardContent: { padding: 16 },
+    attachedCta: {
+      backgroundColor: "#1A1A1A",
+      paddingVertical: 20,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+    },
+    attachedCtaText: {
+      fontSize: 17,
+      fontWeight: "700",
+      color: "#FFFFFF",
+      fontFamily: "Inter_700Bold",
+    },
+    topBanner: {
+      backgroundColor: "#4CAF50",
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      gap: 8,
+    },
+    inlineBanner: {
+      backgroundColor: "#4CAF50",
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      gap: 8,
+      marginHorizontal: -16,
+      marginTop: 12,
+    },
+    bannerText: {
+      flex: 1,
+      fontSize: 13,
+      fontWeight: "600",
+      color: "#FFFFFF",
+      fontFamily: "Inter_600SemiBold",
+    },
+    completionBody: {
+      padding: 28,
+      alignItems: "center",
+      gap: 10,
+    },
+    completionTitle: {
+      fontSize: 22,
+      fontWeight: "700",
+      color: "#1A1A1A",
+      fontFamily: "Inter_700Bold",
+      textAlign: "center",
+      marginTop: 4,
+    },
+    completionSub: {
+      fontSize: 14,
+      color: "#8E8E93",
+      fontFamily: "Inter_400Regular",
+      textAlign: "center",
+      lineHeight: 20,
+    },
     widgetCardHeader: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       marginBottom: 14,
     },
-    widgetCardHeaderLabel: {
+    headerPill: {
+      backgroundColor: "#F2F2F7",
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 20,
+    },
+    headerPillText: {
       fontSize: 10,
       fontWeight: "700",
-      color: "#9A9A9A",
-      letterSpacing: 1.2,
+      color: "#8E8E93",
+      letterSpacing: 1,
       fontFamily: "Inter_700Bold",
       textTransform: "uppercase",
     },
     modeBadge: {
-      backgroundColor: "#F9E79F",
+      backgroundColor: "#1A1A1A",
       paddingHorizontal: 10,
-      paddingVertical: 4,
+      paddingVertical: 5,
       borderRadius: 20,
     },
     modeBadgeText: {
       fontSize: 10,
       fontWeight: "700",
-      color: "#1A1A1A",
+      color: "#C9A02A",
       fontFamily: "Inter_700Bold",
       letterSpacing: 0.5,
     },
@@ -539,8 +791,17 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     widgetCardInfo: { flex: 1 },
     widgetCardTitle: { fontSize: 18, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", marginBottom: 3 },
     widgetCardSub: { fontSize: 12, color: "#8E8E93", fontFamily: "Inter_400Regular" },
-    editLinkBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4 },
-    editLinkText: { fontSize: 13, color: "#5A5A5A", fontFamily: "Inter_400Regular" },
+    editBoxBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      borderWidth: 1,
+      borderColor: "#E0E0E0",
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    editBoxText: { fontSize: 13, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
 
     dailyCardHeader: {
       flexDirection: "row",
@@ -548,17 +809,32 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       justifyContent: "space-between",
       marginBottom: 14,
     },
-    editIconBtn: { padding: 4 },
+    dailyCompleteCircle: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: "#DADADA",
+    },
     dailyProgressText: {
       fontSize: 14,
       fontWeight: "600",
       color: "#1A1A1A",
       fontFamily: "Inter_600SemiBold",
-      marginBottom: 6,
     },
-    miniDots: { flexDirection: "row", gap: 5 },
-    miniDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#E0E0E0" },
-    miniDotFilled: { backgroundColor: "#1A1A1A" },
+
+    dotRow: {
+      flexDirection: "row",
+      gap: 5,
+      marginTop: 5,
+    },
+    dotGridItem: {
+      width: 9,
+      height: 9,
+      borderRadius: 5,
+      backgroundColor: "#E8E8ED",
+    },
+    dotGridItemFilled: { backgroundColor: "#1A1A1A" },
 
     remainingRow: {
       flexDirection: "row",
@@ -566,18 +842,27 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingVertical: 10,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: "#F0F0F0",
-      marginTop: 12,
-      gap: 6,
+      marginTop: 8,
+      gap: 8,
     },
+    remainingCircle: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: "#C0C0C0",
+    },
+    remainingTextArea: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
     remainingName: { flex: 1, fontSize: 14, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
     remainingCount: { fontSize: 12, color: "#8E8E93", fontFamily: "Inter_400Regular" },
 
     dailyCardFooter: { marginTop: 10, gap: 8 },
     remainingLabelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
     remainingLabel: { fontSize: 10, fontWeight: "700", color: "#C0C0C0", letterSpacing: 1, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
-    remainingShowing: { fontSize: 10, color: "#C0C0C0", fontFamily: "Inter_400Regular" },
+    remainingShowing: { fontSize: 10, fontWeight: "700", color: "#8E8E93", fontFamily: "Inter_700Bold" },
     streakRow: { flexDirection: "row", alignItems: "center", gap: 5 },
-    streakText: { fontSize: 13, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
+    streakText: { fontSize: 13, fontWeight: "600", color: "#C9A02A", fontFamily: "Inter_600SemiBold" },
+    detailsBtn: { flexDirection: "row", alignItems: "center", gap: 2, marginLeft: "auto" as any },
     detailsLink: { fontSize: 11, fontWeight: "700", color: "#8E8E93", letterSpacing: 0.8, fontFamily: "Inter_700Bold" },
 
     // ── Idle State ────────────────────────────────────────────────────────────
