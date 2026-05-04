@@ -9,6 +9,7 @@ import {
   Alert,
   Animated,
   Dimensions,
+  ScrollView,
 } from "react-native";
 import Swipeable from "react-native-gesture-handler/Swipeable";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -554,7 +555,7 @@ export default function LibraryScreen() {
   const CARD_SIZE = SCREEN_WIDTH - 32;
 
   return (
-    <View style={[selStyles.container, { paddingTop: topPad + 16 }]}>
+    <ScrollView style={selStyles.container} contentContainerStyle={{ paddingTop: topPad + 8, paddingBottom: 40, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
       <Text style={selStyles.pageTitle}>Select Quiz</Text>
 
       <View style={selStyles.cardsRow}>
@@ -594,7 +595,7 @@ export default function LibraryScreen() {
           </View>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -602,8 +603,6 @@ const selStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F4F4F6",
-    paddingHorizontal: 16,
-    paddingBottom: 100,
   },
   pageTitle: {
     fontSize: 32,
@@ -613,8 +612,8 @@ const selStyles = StyleSheet.create({
     marginBottom: 20,
   },
   cardsRow: {
-    flex: 1,
     gap: 16,
+    paddingBottom: 16,
   },
   card: {
     borderRadius: 28,

@@ -71,7 +71,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const {
     lastListened, goal, setGoal, memorizationGoal, setMemorizationGoal,
-    todayEntry, dailyEntries, onlineUsers, recentProgress, savedSurahs,
+    todayEntry, dailyEntries, onlineUsers, recentProgress, savedSurahs, savedAyahs,
     getTodayGoalAyahs, getTodayGoalProgress, recordAyahRead,
   } = useQuran();
   const [surahs, setSurahs] = useState<ApiSurah[]>([]);
@@ -157,7 +157,11 @@ export default function HomeScreen() {
   const targetSurah = memorizationGoal?.path === "surah"
     ? (memorizationGoal?.startSurahNumber ? SURAH_DATA.find(s => s.number === memorizationGoal?.startSurahNumber) : undefined)
     : undefined;
-  const savedSurahsMeta = savedSurahs.map(n => SURAH_DATA[n - 1]).filter(Boolean);
+  const savedSurahsMeta = useMemo(() => {
+    // Saved ayah'ların düştüğü unique surah'ları bul
+    const surahNumbers = [...new Set(savedAyahs.map(a => a.surahNumber))];
+    return surahNumbers.map(n => SURAH_DATA[n - 1]).filter(Boolean);
+  }, [savedAyahs]);
 
   const memorizationPercent = Math.min(100, Math.round(
     (totalMemorized / (memorizationGoal?.path === "juz" ? AYAHS_PER_JUZ : (targetSurah ? targetSurah.ayahCount : AYAHS_PER_JUZ))) * 100

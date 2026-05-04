@@ -496,7 +496,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     headerTitle: { flex: 1, textAlign: "center", fontSize: 16, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
     quizProgressBar: { height: 3, backgroundColor: colors.border },
     quizProgressFill: { height: "100%", backgroundColor: colors.primary },
-    quizContent: { padding: 16, gap: 16, paddingBottom: 40 },
+     quizContent: { padding: 16, gap: 16, paddingBottom: 40, flexGrow: 1 },
     questionCard: {
       backgroundColor: colors.card,
       borderRadius: 18,

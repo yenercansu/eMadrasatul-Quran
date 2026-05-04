@@ -1151,7 +1151,7 @@ export default function SurahScreen() {
     settings, updateSettings,
     accountSettings,
     saveProgress, recordAyahRead,
-    saveAyah,
+    saveAyah, saveWord,
     surahPositions, saveSurahPosition,
   } = useQuran();
 
@@ -1256,13 +1256,25 @@ export default function SurahScreen() {
 
   const handleSaveAyah = useCallback((ayah: ApiAyah) => {
     const sahih = translationsMap["en.sahih"];
+    const ayahTranslation = sahih?.ayahs[ayah.numberInSurah - 1]?.text ?? "";
     saveAyah({
       surahNumber: surahNum, surahName: arabic?.englishName ?? "",
       ayahNumber: ayah.numberInSurah, arabicText: ayah.text,
-      translationText: sahih?.ayahs[ayah.numberInSurah - 1]?.text ?? "",
+      translationText: ayahTranslation,
+    });
+    // Also save individual words from this ayah for word quiz
+    const words = ayah.text.split(/\s+/).filter(w => w.trim().length > 0);
+    words.forEach(word => {
+      saveWord({
+        arabic: word,
+        translation: ayahTranslation,
+        surahNumber: surahNum,
+        ayahNumber: ayah.numberInSurah,
+        highlighted: false,
+      });
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [surahNum, saveAyah, arabic, translationsMap]);
+  }, [surahNum, saveAyah, arabic, translationsMap, saveWord]);
 
   const handleSetRepeat = useCallback((ayah: ApiAyah, count: number) => {
     setAyahRepeatCounts(prev => ({ ...prev, [ayah.numberInSurah]: count }));

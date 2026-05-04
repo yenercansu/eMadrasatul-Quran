@@ -661,10 +661,11 @@ export default function MemorizationQuizScreen() {
 
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
-      <View style={[s.header, { paddingTop: topPad + 8 }]}>
-        <TouchableOpacity onPress={() => { if (phase !== "menu") handleBack(); else router.back(); }} style={s.backBtn} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={22} color={colors.foreground} />
-        </TouchableOpacity>
+      <ScrollView contentContainerStyle={{ paddingTop: topPad + 8, paddingBottom: 60, backgroundColor: colors.background }} showsVerticalScrollIndicator={false}>
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => { if (phase !== "menu") handleBack(); else router.back(); }} style={s.backBtn} activeOpacity={0.7}>
+            <Feather name="arrow-left" size={22} color={colors.foreground} />
+          </TouchableOpacity>
         <View style={s.headerCenter}>
           <Text style={[s.headerTitle, { color: colors.foreground }]}>Memorization Quiz</Text>
           {mode && <Text style={[s.headerSub, { color: colors.mutedForeground }]}>
@@ -770,15 +771,16 @@ export default function MemorizationQuizScreen() {
         />
       )}
 
-      {phase === "score" && mode && (
-        <ScoreScreen
-          score={finalScore}
-          total={5}
-          mode={mode}
-          onRetry={handleRetry}
-          onBack={handleBack}
-        />
-      )}
+       {phase === "score" && mode && (
+         <ScoreScreen
+           score={finalScore}
+           total={5}
+           mode={mode}
+           onRetry={handleRetry}
+           onBack={handleBack}
+         />
+       )}
+      </ScrollView>
     </View>
   );
 }
