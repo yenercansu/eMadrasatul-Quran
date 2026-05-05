@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useRef, useCallback, useEff
 import { Audio } from "expo-av";
 import { useQuran } from "./QuranContext";
 import { getAyahCount, getNextAyah, isRangeEnd } from "@/constants/surahData";
+import { getAudioUrl as getAudioUrlFromService } from "@/services/quranApi";
 
 export interface Reciter {
   id: string;
@@ -128,9 +129,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const getAudioUrl = (surahNum: number, ayahNum: number, reciterId: string): string => {
-    const s = String(surahNum).padStart(3, "0");
-    const a = String(ayahNum).padStart(3, "0");
-    return `https://cdn.islamic.network/quran/audio/128/${reciterId}/${s}${a}.mp3`;
+    return getAudioUrlFromService(surahNum, ayahNum, reciterId);
   };
 
   const loadAndPlay = useCallback(async (
@@ -156,39 +155,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       segmentEndMsRef.current = null;
       segmentStartMsRef.current = 0;
 
-      // Returns "boundary-hit" synchronously. Seek-to-start is fire-and-forget.
-      const checkSegmentBoundary = (
-        status: { durationMillis?: number; positionMillis?: number; isPlaying?: boolean },
-      ): "seek" | "end" | "none" => {
-        const seg = segmentRef.current;
-        if (!seg) return "none";
-        const dur = status.durationMillis ?? 0;
-        if (dur <= 0) return "none";
+      const hasSeg = !!segmentRef.current;
 
-        if (!segmentSeekedRef.current) {
-          const total = Math.max(1, seg.totalWords);
-          const startFrac = Math.min(1, Math.max(0, seg.startWordIdx / total));
-          const endFrac = Math.min(1, Math.max(0, (seg.endWordIdx + 1) / total));
-          segmentStartMsRef.current = Math.floor(dur * startFrac);
-          segmentEndMsRef.current = Math.floor(dur * endFrac);
-          segmentSeekedRef.current = true;
-          const cur = status.positionMillis ?? 0;
-          if (Math.abs(cur - segmentStartMsRef.current) > 250) {
-            soundRef.current?.setPositionAsync(segmentStartMsRef.current).catch(() => {});
-          }
-          return "seek";
-        }
-        // Only treat as "end" when actually playing — avoids re-triggering
-        // during pause/seek status callbacks.
-        if (!status.isPlaying) return "none";
-        const endMs = segmentEndMsRef.current;
-        const cur = status.positionMillis ?? 0;
-        if (endMs !== null && cur >= endMs && !segmentFinishedRef.current) {
-          segmentFinishedRef.current = true;
-          return "end";
-        }
-        return "none";
-      };
+      // For segments: resolve duration as soon as the first status callback
+      // reports it. Audio starts playing immediately (shouldPlay: true) so
+      // expo-av buffers the file on all platforms, including web.
+      let resolveDuration: ((ms: number) => void) | null = null;
+      const durationPromise: Promise<number> | null = hasSeg
+        ? new Promise(res => { resolveDuration = res; })
+        : null;
 
       const { sound } = await Audio.Sound.createAsync(
         { uri: url },
@@ -196,8 +171,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           shouldPlay: true,
           rate,
           pitchCorrectionQuality: Audio.PitchCorrectionQuality.High,
-          // Tighter polling for accurate word-segment boundary detection.
-          progressUpdateIntervalMillis: segmentRef.current ? 40 : 250,
+          progressUpdateIntervalMillis: hasSeg ? 40 : 250,
         },
         (status) => {
           if (!status.isLoaded) return;
@@ -208,11 +182,19 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
             position: status.positionMillis ?? 0,
           }));
 
-          // Word-segment loop: when active, we ignore didJustFinish so a normal
-          // ayah-end never advances or replays — only the segment boundary does.
+          // Signal duration availability so the segment setup below can proceed.
+          if (resolveDuration && (status.durationMillis ?? 0) > 0) {
+            resolveDuration(status.durationMillis!);
+            resolveDuration = null;
+          }
+
           if (segmentRef.current) {
-            const hit = checkSegmentBoundary(status);
-            if (hit === "end") {
+            // Start boundary is resolved eagerly below; only detect end here.
+            if (!segmentSeekedRef.current || !status.isPlaying) return;
+            const endMs = segmentEndMsRef.current;
+            const cur = status.positionMillis ?? 0;
+            if (endMs !== null && cur >= endMs && !segmentFinishedRef.current) {
+              segmentFinishedRef.current = true;
               const nextRepeat = currentRepeatRef.current + 1;
               if (nextRepeat < repeatCountRef.current) {
                 currentRepeatRef.current = nextRepeat;
@@ -277,6 +259,27 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       soundRef.current = sound;
       repeatCountRef.current = repeatCount;
       currentRepeatRef.current = 0;
+
+      // For segment playback: wait for the duration (signalled by the status
+      // callback above), then seek to the start word. Audio is already playing
+      // so expo-av is definitely buffering on all platforms.
+      if (hasSeg && durationPromise && segmentRef.current) {
+        const seg = segmentRef.current;
+        const dur = await Promise.race([
+          durationPromise,
+          new Promise<number>(r => setTimeout(() => r(0), 5000)),
+        ]);
+        if (dur > 0) {
+          const total = Math.max(1, seg.totalWords);
+          segmentStartMsRef.current = Math.floor(dur * seg.startWordIdx / total);
+          segmentEndMsRef.current = Math.floor(dur * (seg.endWordIdx + 1) / total);
+          if (segmentStartMsRef.current > 0) {
+            await sound.setPositionAsync(segmentStartMsRef.current);
+          }
+        }
+        segmentSeekedRef.current = true;
+        // Audio is already playing — no playAsync() needed here.
+      }
 
       setAudioState((prev) => ({
         ...prev,
