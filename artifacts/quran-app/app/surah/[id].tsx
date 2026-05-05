@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useFocusEffect } from "expo-router";
 import {
   View,
   Text,
@@ -1147,6 +1148,14 @@ export default function SurahScreen() {
     })
   ).current;
 
+  // Scroll to top when screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+      mushafScrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [])
+  );
+
   const {
     settings, updateSettings,
     accountSettings,
@@ -1337,7 +1346,7 @@ export default function SurahScreen() {
   mushafGoNextRef.current = goToNextSurah;
   mushafGoPrevRef.current = goToPrevSurah;
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
   const basmala = surahNum !== 1 && surahNum !== 9;
   const currentAyahForRange = audioState.currentSurah === surahNum && audioState.currentAyah ? audioState.currentAyah : parseInt(ayahParam ?? "1", 10) || 1;
 
@@ -1345,7 +1354,7 @@ export default function SurahScreen() {
     <View style={{ flex: 1, backgroundColor: "#EEEEF0" }}>
       {/* ── Fixed Header ─────────────────────────────────────── */}
       {menuVisible && (
-        <View style={[scr.header, { paddingTop: topPad + 6 }]}>
+        <View style={[scr.header, { paddingTop: topPad + 8 }]}>
           <TouchableOpacity onPress={() => router.back()} style={scr.headerBtn} activeOpacity={0.7}>
             <Feather name="arrow-left" size={22} color="#1A1A1A" />
           </TouchableOpacity>

@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Platform,
   Switch,
   TextInput,
   Alert,
@@ -133,7 +132,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { accountSettings, updateAccountSettings } = useQuran();
   const [editField, setEditField] = useState<"name" | "email" | null>(null);
-  const topPad = Platform.OS === "web" ? 16 : insets.top;
+  const topPad = insets.top;
 
   const fontSizes = [20, 24, 28, 32, 36];
 

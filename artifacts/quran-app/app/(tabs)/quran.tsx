@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Platform,
   ActivityIndicator,
   Animated,
 } from "react-native";
@@ -123,7 +122,7 @@ export default function QuranScreen() {
     return list;
   }, [surahs, search, filterType]);
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
 
   const FILTERS: { key: FilterType; label: string }[] = [
     { key: "all", label: "All" },
@@ -134,7 +133,7 @@ export default function QuranScreen() {
 
   return (
     <View style={s.container}>
-      <View style={[s.header, { paddingTop: topPad + 12 }]}>
+      <View style={[s.header, { paddingTop: topPad + 8 }]}>
         <Text style={s.title}>Al-Quran</Text>
         <Text style={s.subtitle}>
           114 Surahs — swipe ← to save/unsave

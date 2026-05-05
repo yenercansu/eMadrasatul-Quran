@@ -296,7 +296,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
   const { savedWords, removeWord, toggleHighlight, savedAyahs, removeAyah } = useQuran();
   const [filterMode, setFilterMode] = useState<FilterMode>("ayah");
   const [selectedSurahNum, setSelectedSurahNum] = useState<number | null>(null);
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
 
   const surahGroups = useMemo(() => {
     const map = new Map<number, number>();
@@ -335,7 +335,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
 
   return (
     <View style={s.container}>
-      <View style={[s.header, { paddingTop: topPad + 12 }]}>
+      <View style={[s.header, { paddingTop: topPad + 8 }]}>
         {showDrillDown ? (
           <View style={s.drillHeader}>
             <TouchableOpacity onPress={() => setSelectedSurahNum(null)} style={s.backBtn} activeOpacity={0.7}>
@@ -546,7 +546,7 @@ const wordsViewStyles = StyleSheet.create({
 export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
   const [view, setView] = useState<"select" | "words">("select");
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
 
   if (view === "words") {
     return <WordsQuizView onBack={() => setView("select")} />;

@@ -187,9 +187,10 @@ function WordsManagerModal({
   colors: ReturnType<typeof useColors>;
 }) {
   const s = styles(colors);
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
-      <View style={[s.container, { paddingTop: Platform.OS === "web" ? 67 : 44 }]}>
+      <View style={[s.container, { paddingTop: insets.top + 8 }]}>
         <View style={s.header}>
           <TouchableOpacity onPress={onClose} style={s.backBtn} activeOpacity={0.7}>
             <Feather name="x" size={22} color={colors.foreground} />
@@ -230,7 +231,7 @@ export default function QuizScreen() {
   const s = styles(colors);
   const insets = useSafeAreaInsets();
   const { savedWords, removeWord } = useQuran();
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
 
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -487,7 +488,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: 8,
-      paddingVertical: 12,
+      paddingTop: 8,
+      paddingBottom: 12,
       backgroundColor: colors.card,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,

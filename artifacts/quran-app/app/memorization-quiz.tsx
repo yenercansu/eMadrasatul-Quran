@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import { useFocusEffect } from "expo-router";
 import {
   View,
   Text,
@@ -614,7 +615,7 @@ export default function MemorizationQuizScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const { recentProgress, surahPositions, checkedSurahs, savedAyahs, removeAyah } = useQuran();
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = insets.top;
 
   const [mode, setMode] = useState<QuizMode>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
