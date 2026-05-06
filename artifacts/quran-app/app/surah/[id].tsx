@@ -16,7 +16,14 @@ import {
   PanResponder,
   Pressable,
   Switch,
+  LayoutAnimation,
+  UIManager,
 } from "react-native";
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
@@ -126,13 +133,12 @@ function SwipeableAyahCard({
 
   const panResponder = useRef(
     PanResponder.create({
-      // Don't claim on touch start — let Pressable handle taps & FlatList handle vertical scroll
       onStartShouldSetPanResponder: () => false,
-      // Only claim when finger moves horizontally past threshold (loosened: ratio 1.0, min 6px)
+      // Higher thresholds: clearly horizontal (ratio 2:1) and at least 14px — prevents tap/scroll conflict
       onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-        Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 6,
+        Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 12,
       onMoveShouldSetPanResponderCapture: (_, { dx, dy }) =>
-        Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10,
+        Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 16,
       onPanResponderGrant: () => {
         gestureStarted.current = true;
       },
@@ -145,9 +151,9 @@ function SwipeableAyahCard({
         }
       },
       onPanResponderRelease: (_, { dx, vx }) => {
-        // Keep gestureStarted true briefly so the trailing onPress (from Pressable) is suppressed
-        const wasGesture = Math.abs(dx) > 4;
-        setTimeout(() => { gestureStarted.current = false; }, 150);
+        // Longer suppression for real swipe gestures (>8px) to prevent tap from firing after swipe
+        const wasSignificantGesture = Math.abs(dx) > 8;
+        setTimeout(() => { gestureStarted.current = false; }, wasSignificantGesture ? 300 : 60);
         if (swipeOpenRef.current) {
           if (dx < -20) {
             close();
@@ -156,14 +162,12 @@ function SwipeableAyahCard({
           }
           return;
         }
-        // Loosened thresholds: 35px or velocity 0.3
         if (dx > 35 || vx > 0.3) {
           Animated.spring(pan, { toValue: REPEAT_SWIPE_OPEN, useNativeDriver: true, tension: 80 }).start();
           swipeOpenRef.current = true;
           force(v => v + 1);
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         } else if (dx < -35 || vx < -0.3) {
-          // SAVE: flash a SAVED pill then slide off
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           flashSaved();
           Animated.sequence([
@@ -177,10 +181,9 @@ function SwipeableAyahCard({
         } else {
           Animated.spring(pan, { toValue: 0, useNativeDriver: true }).start();
         }
-        void wasGesture;
       },
       onPanResponderTerminate: () => {
-        setTimeout(() => { gestureStarted.current = false; }, 150);
+        setTimeout(() => { gestureStarted.current = false; }, 300);
         Animated.spring(pan, { toValue: swipeOpenRef.current ? REPEAT_SWIPE_OPEN : 0, useNativeDriver: true }).start();
       },
     })
@@ -202,7 +205,7 @@ function SwipeableAyahCard({
     <View style={cs.wrap}>
       {/* Vertical white repeat buttons on the LEFT */}
       <View style={cs.swipeReveal}>
-        {[2, 5, 10, 0].map((count) => (
+        {[10, 20, 0].map((count) => (
           <TouchableOpacity
             key={count}
             style={cs.repeatBtn}
@@ -212,7 +215,7 @@ function SwipeableAyahCard({
             }}
             activeOpacity={0.7}
           >
-            <Text style={cs.repeatBtnText}>{count === 0 ? "∞" : `${count}X`}</Text>
+            <Text style={cs.repeatBtnText}>{count === 0 ? "∞" : `${count}x`}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -1125,6 +1128,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
 
   const listRef = useRef<FlatList<ApiAyah>>(null);
   const mushafScrollRef = useRef<ScrollView>(null);
+  const scrollYRef = useRef(0);
 
   // Horizontal swipe detector for Mushaf page navigation (via stable ref callbacks)
   const mushafGoNextRef = useRef<() => void>(() => {});
@@ -1321,6 +1325,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
   }, [settings.showTafsir, updateSettings]);
 
   const handleMeaningTranslationToggle = useCallback((id: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setSelectedTranslations(prev => {
       if (prev.includes(id)) return prev.filter(x => x !== id);
       return [...prev, id];
@@ -1477,10 +1482,17 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             }}
             style={{ flex: 1, backgroundColor: "#FFFFFF" }}
             ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: "#F0F0F0" }} />}
-            onScrollBeginDrag={() => {
-              menuToggleLockRef.current = Date.now() + 600; // suppress accidental tap-toggle for 600ms
-              if (menuVisible) setMenuVisible(false);
+            onScrollBeginDrag={(e) => {
+              menuToggleLockRef.current = Date.now() + 600;
+              scrollYRef.current = e.nativeEvent.contentOffset.y;
             }}
+            onScroll={(e) => {
+              const y = e.nativeEvent.contentOffset.y;
+              if (menuVisible && Math.abs(y - scrollYRef.current) > 40) {
+                setMenuVisible(false);
+              }
+            }}
+            scrollEventThrottle={32}
             ListFooterComponent={
               !menuVisible ? (
                 <PageEndNav onPrev={goToPrevSurah} onNext={goToNextSurah} />
@@ -1491,7 +1503,8 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             renderItem={({ item }) => {
               const isPlaying = audioState.currentSurah === surahNum && audioState.currentAyah === item.numberInSurah;
               const repeatVal = ayahRepeatCounts[item.numberInSurah];
-              const isOnRepeat = isPlaying && (audioState.repeatCount > 1 || (repeatVal && repeatVal > 1));
+              // Show repeat badge when ayah has repeat set OR is currently playing on repeat
+              const isOnRepeat = (repeatVal != null && repeatVal > 1) || (isPlaying && audioState.repeatCount > 1);
               const repeatCount = repeatVal ?? audioState.repeatCount;
               const isRangeSelected = !!audioState.range
                 && surahNum >= audioState.range.startSurah
