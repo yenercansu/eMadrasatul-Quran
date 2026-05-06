@@ -113,6 +113,7 @@ interface QuranContextType {
   isWordHighlighted: (arabic: string, surahNumber: number, ayahNumber: number) => boolean;
   recentProgress: Progress[];
   saveProgress: (progress: Omit<Progress, "timestamp">) => void;
+  recordVisit: (progress: Omit<Progress, "timestamp">) => void;
   lastListened: Progress | null;
   goal: Goal | null;
   setGoal: (goal: Goal | null) => void;
@@ -323,6 +324,16 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem("quran_last_listened", JSON.stringify(full));
   }, []);
 
+  const recordVisit = useCallback((progress: Omit<Progress, "timestamp">) => {
+    const full: Progress = { ...progress, timestamp: Date.now() };
+    setRecentProgress((prev) => {
+      const filtered = prev.filter(p => p.surahNumber !== progress.surahNumber);
+      const next = [full, ...filtered].slice(0, 10);
+      AsyncStorage.setItem("quran_recent_progress", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const setGoal = useCallback((newGoal: Goal | null) => {
     setGoalState(newGoal);
     if (newGoal) { AsyncStorage.setItem("quran_goal", JSON.stringify(newGoal)); }
@@ -456,7 +467,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       savedAyahs, saveAyah, removeAyah, isAyahSaved,
       savedSurahs, saveSurah, removeSavedSurah, isSurahSaved,
       highlightedWords, highlightWord, unhighlightWord, isWordHighlighted,
-      recentProgress, saveProgress, lastListened,
+      recentProgress, saveProgress, recordVisit, lastListened,
       goal, setGoal,
       memorizationGoal, setMemorizationGoal,
       dailyEntries, recordAyahRead, todayEntry,

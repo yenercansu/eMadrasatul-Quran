@@ -65,6 +65,11 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, isChecked
           <Text style={s.englishName}>{surah.englishName}</Text>
           <Text style={s.translation}>{surah.englishNameTranslation}</Text>
           <Text style={s.ayahCount}>{surah.numberOfAyahs} ayahs</Text>
+          {isChecked && (
+            <View style={s.memorizedBadge}>
+              <Text style={s.memorizedBadgeText}>MEMORIZED</Text>
+            </View>
+          )}
         </View>
         <Text style={s.arabicName}>{surah.name}</Text>
       </View>
@@ -131,6 +136,21 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     recentDot: {
       width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary,
+    },
+    memorizedBadge: {
+      alignSelf: "flex-start",
+      backgroundColor: "#16A34A",
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+      marginTop: 6,
+    },
+    memorizedBadgeText: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: "#FFFFFF",
+      fontFamily: "Inter_700Bold",
+      letterSpacing: 0.5,
     },
     body: {
       flexDirection: "row",

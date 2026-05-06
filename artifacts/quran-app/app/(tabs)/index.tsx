@@ -71,8 +71,8 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const {
     lastListened, goal, setGoal, memorizationGoal, setMemorizationGoal,
-    todayEntry, dailyEntries, onlineUsers, recentProgress, savedSurahs, savedAyahs,
-    getTodayGoalAyahs, getTodayGoalProgress, recordAyahRead,
+    todayEntry, dailyEntries, onlineUsers, recentProgress, savedSurahs,
+    getTodayGoalAyahs, getTodayGoalProgress, recordAyahRead, isSurahChecked,
   } = useQuran();
   const [surahs, setSurahs] = useState<ApiSurah[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,10 +158,8 @@ export default function HomeScreen() {
     ? (memorizationGoal?.startSurahNumber ? SURAH_DATA.find(s => s.number === memorizationGoal?.startSurahNumber) : undefined)
     : undefined;
   const savedSurahsMeta = useMemo(() => {
-    // Saved ayah'ların düştüğü unique surah'ları bul
-    const surahNumbers = [...new Set(savedAyahs.map(a => a.surahNumber))];
-    return surahNumbers.map(n => SURAH_DATA[n - 1]).filter(Boolean);
-  }, [savedAyahs]);
+    return savedSurahs.map(n => SURAH_DATA[n - 1]).filter(Boolean);
+  }, [savedSurahs]);
 
   const memorizationPercent = Math.min(100, Math.round(
     (totalMemorized / (memorizationGoal?.path === "juz" ? AYAHS_PER_JUZ : (targetSurah ? targetSurah.ayahCount : AYAHS_PER_JUZ))) * 100
@@ -190,7 +188,6 @@ export default function HomeScreen() {
 
   const topPad = insets.top;
   const hasMemorizationGoal = memorizationGoal !== null;
-  const hasTarget = goal !== null && memorizationGoal !== null;
   const isFirstListen = lastListened === null;
 
   return (
@@ -471,8 +468,8 @@ export default function HomeScreen() {
             <Feather name="chevron-right" size={20} color="#1A1A1A" />
           </TouchableOpacity>
 
-          {/* Last Visited — only when goal is set */}
-          {hasTarget && recentProgress.length > 0 && (
+          {/* Last Visited */}
+          {recentProgress.length > 0 && (
             <View style={s.listSection}>
               <View style={s.listSectionHeader}>
                 <Text style={s.listSectionTitle}>Last Visited</Text>
@@ -515,8 +512,8 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* Saved Surahs — only when goal is set */}
-          {hasTarget && savedSurahsMeta.length > 0 && (
+          {/* Saved Surahs */}
+          {savedSurahsMeta.length > 0 && (
             <View style={s.listSection}>
               <View style={s.listSectionHeader}>
                 <Text style={s.listSectionTitle}>Saved Surahs</Text>
@@ -525,23 +522,29 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
               <View style={s.savedCard}>
-                {savedSurahsMeta.slice(0, 3).map((meta, i) => (
-                  <TouchableOpacity
-                    key={meta.number}
-                    style={[s.savedRow, i === savedSurahsMeta.slice(0, 3).length - 1 && s.savedRowLast]}
-                    onPress={() => router.push(`/surah/${meta.number}`)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={s.savedNumBubble}>
-                      <Text style={s.savedNumText}>{meta.number}</Text>
-                    </View>
-                    <View style={s.savedInfo}>
+                {savedSurahsMeta.slice(0, 3).map((meta, i) => {
+                  const apiSurah = surahs.find(s => s.number === meta.number);
+                  return (
+                    <TouchableOpacity
+                      key={meta.number}
+                      style={[s.savedRow, i === savedSurahsMeta.slice(0, 3).length - 1 && s.savedRowLast]}
+                      onPress={() => router.push(`/surah/${meta.number}`)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={s.savedNumBubble}>
+                        <Text style={s.savedNumText}>{meta.number}</Text>
+                      </View>
+                      <View style={s.savedInfo}>
+                        <Text style={s.savedName}>{meta.englishName}</Text>
+                        <Text style={s.savedMeta}>
+                          {meta.ayahCount} Ayahs{apiSurah?.revelationType ? ` • ${apiSurah.revelationType}` : ""}
+                        </Text>
+                      </View>
                       <Text style={s.savedArabic}>{meta.name}</Text>
-                      <Text style={s.savedMeta}>{meta.englishName} • {meta.ayahCount} Ayahs</Text>
-                    </View>
-                    <Feather name="bookmark" size={18} color="#1A1A1A" />
-                  </TouchableOpacity>
-                ))}
+                      <Ionicons name="bookmark" size={18} color="#1A1A1A" />
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
           )}
@@ -557,21 +560,29 @@ export default function HomeScreen() {
                   <View style={s.juzHeader}>
                     <Text style={s.juzLabel}>JUZ {group.juz}</Text>
                   </View>
-                  {group.surahs.map((surah, i) => (
-                    <TouchableOpacity
-                      key={surah.number}
-                      style={[s.surahRow, i === group.surahs.length - 1 && s.surahRowLast]}
-                      onPress={() => router.push(`/surah/${surah.number}`)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={s.surahNum}>{surah.number}</Text>
-                      <View style={s.surahInfo}>
-                        <Text style={s.surahName}>{surah.englishName}</Text>
-                        <Text style={s.surahMeta}>{surah.numberOfAyahs} Ayahs • {surah.revelationType}</Text>
-                      </View>
-                      <Text style={s.surahArabic}>{surah.name}</Text>
-                    </TouchableOpacity>
-                  ))}
+                  {group.surahs.map((surah, i) => {
+                    const memorized = isSurahChecked(surah.number);
+                    return (
+                      <TouchableOpacity
+                        key={surah.number}
+                        style={[s.surahRow, i === group.surahs.length - 1 && s.surahRowLast]}
+                        onPress={() => router.push(`/surah/${surah.number}`)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={s.surahNum}>{surah.number}</Text>
+                        <View style={s.surahInfo}>
+                          <Text style={s.surahName}>{surah.englishName}</Text>
+                          <Text style={s.surahMeta}>{surah.numberOfAyahs} Ayahs • {surah.revelationType}</Text>
+                        </View>
+                        {memorized && (
+                          <View style={s.memorizedTag}>
+                            <Text style={s.memorizedTagText}>MEMORIZED</Text>
+                          </View>
+                        )}
+                        <Text style={s.surahArabic}>{surah.name}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               ))
             )}
@@ -1029,7 +1040,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     savedNumText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
     savedInfo: { flex: 1 },
-    savedArabic: { fontSize: 15, color: "#1A1A1A", marginBottom: 2 },
+    savedName: { fontSize: 15, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold", marginBottom: 2 },
+    savedArabic: { fontSize: 17, color: "#1A1A1A" },
     savedMeta: { fontSize: 11, color: "#8E8E93", fontFamily: "Inter_400Regular" },
 
     // ── All Surahs by Juz ─────────────────────────────────────────────────────
@@ -1052,4 +1064,19 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     surahName: { fontSize: 15, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
     surahMeta: { fontSize: 11, color: "#8E8E93", fontFamily: "Inter_400Regular", marginTop: 2 },
     surahArabic: { fontSize: 19, color: "#1A1A1A", fontFamily: Platform.OS === "ios" ? "System" : undefined },
+
+    memorizedTag: {
+      backgroundColor: "#16A34A",
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+      marginRight: 4,
+    },
+    memorizedTagText: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: "#FFFFFF",
+      fontFamily: "Inter_700Bold",
+      letterSpacing: 0.3,
+    },
   });

@@ -1090,10 +1090,10 @@ export default function SurahScreen() {
     lastMenuToggleRef.current = now;
     setMenuVisible(v => !v);
   }, []);
-  const [settingsVisible, setSettingsVisible] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [tajweedMode, setTajweedMode] = useState(false);
-  const [selectedTranslations, setSelectedTranslations] = useState<string[]>(["en.sahih", "en.asad"]);
+const [settingsVisible, setSettingsVisible] = useState(false);
+   const [currentPage, setCurrentPage] = useState(1);
+   const [tajweedMode, setTajweedMode] = useState(false);
+   const [selectedTranslations, setSelectedTranslations] = useState<string[]>([]);
   const [ayahRepeatCounts, setAyahRepeatCounts] = useState<Record<number, number>>({});
   const [wordModal, setWordModal] = useState<{ word: string; surah: number; ayah: number; translation: string } | null>(null);
   const [hintsVisible, setHintsVisible] = useState(false);
@@ -1159,7 +1159,7 @@ export default function SurahScreen() {
   const {
     settings, updateSettings,
     accountSettings,
-    saveProgress, recordAyahRead,
+    saveProgress, recordVisit, recordAyahRead,
     saveAyah, saveWord,
     surahPositions, saveSurahPosition,
   } = useQuran();
@@ -1251,6 +1251,16 @@ export default function SurahScreen() {
       let initialIndex = 0;
       if (ayahParam) initialIndex = Math.max(0, parseInt(ayahParam, 10) - 1);
       else if (savedPos !== undefined) initialIndex = savedPos;
+
+      // Record visit so surah appears in Last Visited (does NOT update CONTINUE LISTENING)
+      const visitAyah = initialIndex + 1;
+      recordVisit({
+        surahNumber: surahNum,
+        ayahNumber: visitAyah,
+        ayahNumberInSurah: visitAyah,
+        surahName: main.arabic.englishName,
+      });
+
       if (initialIndex > 0) {
         const page = Math.ceil((initialIndex + 1) / AYAHS_PER_PAGE);
         setCurrentPage(page);
@@ -1312,11 +1322,10 @@ export default function SurahScreen() {
 
   const handleMeaningTranslationToggle = useCallback((id: string) => {
     setSelectedTranslations(prev => {
-      if (prev.includes(id)) return prev.length > 1 ? prev.filter(x => x !== id) : prev;
+      if (prev.includes(id)) return prev.filter(x => x !== id);
       return [...prev, id];
     });
-    if (!settings.showTranslation) updateSettings({ showTranslation: true });
-  }, [settings.showTranslation, updateSettings]);
+  }, []);
 
   const totalPages = arabic ? Math.ceil(arabic.ayahs.length / AYAHS_PER_PAGE) : 1;
   const pageAyahs = useMemo(() => {
@@ -1509,7 +1518,7 @@ export default function SurahScreen() {
                   isOnRepeat={!!isOnRepeat}
                   repeatCount={repeatCount}
                   isRangeSelected={isRangeSelected && !isPlaying}
-                  translations={settings.showTranslation ? translations : []}
+                  translations={selectedTranslations.length > 0 ? translations : []}
                   transliterationText={transliteration?.ayahs[item.numberInSurah - 1]?.text ?? null}
                   showTransliteration={settings.showTransliteration}
                   colorCoding={settings.colorCoding}
@@ -1562,7 +1571,7 @@ export default function SurahScreen() {
             onEditPress={() => setEditSheetVisible(true)}
           />
           <ContentBar
-            showTranslation={settings.showTranslation}
+            showTranslation={selectedTranslations.length > 0}
             showTransliteration={settings.showTransliteration && !settings.mushafMode}
             showTafsir={settings.showTafsir}
             colorCoding={settings.colorCoding}
