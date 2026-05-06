@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,7 +18,7 @@ function NativeTabLayout() {
         <Label>Quran</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="library">
-        <Icon sf={{ default: "bookmark", selected: "bookmark.fill" }} />
+        <Icon sf={{ default: "graduationcap", selected: "graduationcap.fill" }} />
         <Label>Quiz</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
@@ -26,9 +26,9 @@ function NativeTabLayout() {
 }
 
 const TAB_DEFS = [
-  { name: "index", icon: "home" as const, label: "Home" },
-  { name: "quran", icon: "book-open" as const, label: "Quran" },
-  { name: "library", icon: "bookmark" as const, label: "Quiz" },
+  { name: "index", icon: "home" as const, label: "Home", iconLib: "feather" as const },
+  { name: "quran", icon: "book-open" as const, label: "Quran", iconLib: "feather" as const },
+  { name: "library", icon: "school-outline" as const, label: "Quiz", iconLib: "ionicons" as const },
 ];
 
 function FixedTabBar(props: any) {
@@ -65,11 +65,19 @@ function FixedTabBar(props: any) {
             onPress={onPress}
             activeOpacity={0.7}
           >
-            <Feather
-              name={tabDef.icon}
-              size={22}
-              color={isFocused ? "#1A1A1A" : "#AAAAAA"}
-            />
+            {tabDef.iconLib === "ionicons" ? (
+              <Ionicons
+                name={isFocused ? "school" : (tabDef.icon as any)}
+                size={22}
+                color={isFocused ? "#1A1A1A" : "#AAAAAA"}
+              />
+            ) : (
+              <Feather
+                name={tabDef.icon as any}
+                size={22}
+                color={isFocused ? "#1A1A1A" : "#AAAAAA"}
+              />
+            )}
             <Text style={[styles.label, isFocused && styles.labelActive]}>
               {tabDef.label}
             </Text>
@@ -84,8 +92,8 @@ const styles = StyleSheet.create({
   bar: {
     flexDirection: "row",
     backgroundColor: "#FFFFFF",
-    borderTopWidth: 2,
-    borderTopColor: "#EFEDE8",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#DDD5C8",
     paddingTop: 10,
   },
   item: {
