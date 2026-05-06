@@ -26,12 +26,9 @@ const TOTAL_AYAHS = 6236;
 const MAX_DAILY = 45;
 const AYAHS_PER_JUZ = Math.round(TOTAL_AYAHS / 30);
 
-const GOLD = "#C9A02A";
-const GOLD_TRACK = "#F0E6C0";
-
 function CircularRing({
   percent, size = 60, strokeWidth = 5,
-  color = GOLD, trackColor = GOLD_TRACK, label,
+  color, trackColor, label,
 }: {
   percent: number; size?: number; strokeWidth?: number;
   color?: string; trackColor?: string; label?: string;
@@ -214,11 +211,11 @@ export default function HomeScreen() {
   return (
     <>
       <StatusBar barStyle="dark-content" />
-      <LinearGradient
-        colors={["#FAFAF9", "#F5F4F0"]}
-        locations={[0, 1]}
-        style={s.container}
-      >
+       <LinearGradient
+         colors={[colors.appLightBg, colors.appWhite]}
+         locations={[0, 1]}
+         style={s.container}
+       >
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[s.scrollContent, { paddingTop: topPad + 12 }]}
@@ -226,7 +223,7 @@ export default function HomeScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => { setRefreshing(true); load(true); }}
-              tintColor="#8E8E93"
+               tintColor={colors.appBorderLight}
             />
           }
         >
@@ -243,7 +240,7 @@ export default function HomeScreen() {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={s.settingsBtn}
             >
-              <Feather name="settings" size={18} color="#6B6B6B" strokeWidth={1.5} />
+               <Feather name="settings" size={18} color={colors.appLightText} strokeWidth={1.5} />
             </TouchableOpacity>
           </View>
 
@@ -265,7 +262,7 @@ export default function HomeScreen() {
               </View>
             </View>
             <View style={s.playBtn}>
-              <Ionicons name="play" size={22} color="#1A1A1A" />
+              <Ionicons name="play" size={22} color={colors.appBlack} />
             </View>
           </TouchableOpacity>
 
@@ -278,7 +275,7 @@ export default function HomeScreen() {
                     {showMemorizationToast ? (
                       <View style={s.memCompleteGreen}>
                         <View style={s.memCompleteCheckCircle}>
-                          <Feather name="check" size={18} color="#4CAF50" />
+                           <Feather name="check" size={18} color={colors.appSuccess} />
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={s.memCompleteGreenText}>
@@ -306,9 +303,9 @@ export default function HomeScreen() {
                     )}
                     {/* FIX #1: warm cream button, dark text */}
                     <TouchableOpacity style={s.attachedCta} onPress={() => setGoalSetupVisible(true)} activeOpacity={0.85}>
-                      <Text style={s.attachedCtaText}>Set New Goal</Text>
-                      <Feather name="plus" size={20} color="#1A1A1A" />
-                    </TouchableOpacity>
+                       <Text style={s.attachedCtaText}>Set New Goal</Text>
+                       <Feather name="plus" size={20} color={colors.appBlack} />
+                     </TouchableOpacity>
                   </View>
                 </View>
               ) : (goal === null || weekPercent >= 100) ? (
@@ -316,7 +313,7 @@ export default function HomeScreen() {
                   <View style={s.ctaCardClip}>
                     {weekPercent >= 100 && showWeeklyToast ? (
                       <View style={s.topBanner}>
-                        <Feather name="check-circle" size={16} color="#FFFFFF" />
+                         <Feather name="check-circle" size={16} color={colors.appWhite} />
                         <Text style={s.bannerText}>MashaAllah! You've reached your weekly goal.</Text>
                       </View>
                     ) : null}
@@ -334,7 +331,7 @@ export default function HomeScreen() {
                         </View>
                       )}
                       <View style={s.widgetCardBody}>
-                        <CircularRing percent={memorizationPercent} size={64} strokeWidth={5} />
+                         <CircularRing percent={memorizationPercent} size={64} strokeWidth={5} color={colors.appGold} trackColor={colors.appLighterBg} />
                         <View style={s.widgetCardInfo}>
                           <Text style={s.widgetCardTitle}>
                             {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah ? targetSurah.englishName : "—")}
@@ -343,14 +340,14 @@ export default function HomeScreen() {
                         </View>
                         <TouchableOpacity style={s.editBoxBtn} onPress={() => setGoalSetupVisible(true)} activeOpacity={0.7}>
                           <Text style={s.editBoxText}>Edit</Text>
-                          <Feather name="edit-2" size={11} color="#1A1A1A" />
+                          <Feather name="edit-2" size={11} color={colors.appBlack} />
                         </TouchableOpacity>
                       </View>
                     </View>
                     {/* FIX #1: warm cream button */}
                     <TouchableOpacity style={s.attachedCta} onPress={() => setEditDailyGoalVisible(true)} activeOpacity={0.85}>
                       <Text style={s.attachedCtaText}>Set Weekly Goal</Text>
-                      <Feather name="plus" size={20} color="#1A1A1A" />
+                       <Feather name="plus" size={20} color={colors.appBlack} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -369,17 +366,17 @@ export default function HomeScreen() {
                       </View>
                     </View>
                     <View style={s.widgetCardBody}>
-                      <CircularRing percent={memorizationPercent} size={64} strokeWidth={5} />
+                       <CircularRing percent={memorizationPercent} size={64} strokeWidth={5} color={colors.appGold} trackColor={colors.appLighterBg} />
                       <View style={s.widgetCardInfo}>
                         <Text style={s.widgetCardTitle}>
                           {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah ? targetSurah.englishName : "—")}
                         </Text>
                         <Text style={s.widgetCardSub}>{totalMemorized} Ayahs Memorized</Text>
                       </View>
-                      <TouchableOpacity style={s.editBoxBtn} onPress={() => setGoalSetupVisible(true)} activeOpacity={0.7}>
-                        <Text style={s.editBoxText}>Edit</Text>
-                        <Feather name="edit-2" size={11} color="#1A1A1A" />
-                      </TouchableOpacity>
+                       <TouchableOpacity style={s.editBoxBtn} onPress={() => setGoalSetupVisible(true)} activeOpacity={0.7}>
+                         <Text style={s.editBoxText}>Edit</Text>
+                         <Feather name="edit-2" size={11} color={colors.appBlack} />
+                       </TouchableOpacity>
                     </View>
                   </View>
 
@@ -395,7 +392,7 @@ export default function HomeScreen() {
                       ]} />
                     </View>
                     <View style={s.widgetCardBody}>
-                      <CircularRing percent={weekPercent} size={64} strokeWidth={5} />
+                       <CircularRing percent={weekPercent} size={64} strokeWidth={5} color={colors.appGold} trackColor={colors.appLighterBg} />
                       <View style={s.widgetCardInfo}>
                         <Text style={s.dailyProgressText}>
                           {weekGoalProgress}/{effectiveGoalCount} Ayahs Memorized
@@ -403,7 +400,7 @@ export default function HomeScreen() {
                       </View>
                       <TouchableOpacity style={s.editBoxBtn} onPress={() => setEditDailyGoalVisible(true)} activeOpacity={0.7}>
                         <Text style={s.editBoxText}>Edit</Text>
-                        <Feather name="edit-2" size={11} color="#1A1A1A" />
+                         <Feather name="edit-2" size={11} color={colors.appBlack} />
                       </TouchableOpacity>
                     </View>
 
@@ -433,7 +430,7 @@ export default function HomeScreen() {
                         >
                           <Text style={s.remainingName}>{g.surahName}</Text>
                           <Text style={s.remainingCount}>{g.count} Ayah remaining</Text>
-                          <Feather name="chevron-right" size={14} color="#CCCCCC" />
+                           <Feather name="chevron-right" size={14} color={colors.appLightText} />
                         </TouchableOpacity>
                       </View>
                     ))}
@@ -446,11 +443,11 @@ export default function HomeScreen() {
                         </Text>
                       </View>
                       <View style={s.streakRow}>
-                        <Feather name="zap" size={13} color={GOLD} />
+                         <Feather name="zap" size={13} color={colors.appGold} />
                         <Text style={s.streakText}>{streakDays} Day Streak</Text>
                         <View style={s.detailsBtn}>
                           <Text style={s.detailsLink}>DETAILS</Text>
-                          <Feather name="chevron-right" size={11} color="#AAAAAA" />
+                           <Feather name="chevron-right" size={11} color={colors.appLightText} />
                         </View>
                       </View>
                     </View>
@@ -474,7 +471,7 @@ export default function HomeScreen() {
                 </View>
                 <TouchableOpacity style={s.attachedCta} onPress={() => setGoalSetupVisible(true)} activeOpacity={0.85}>
                   <Text style={s.attachedCtaText}>Set New Goal</Text>
-                  <Feather name="plus" size={20} color="#57534E" />
+                   <Feather name="plus" size={20} color={colors.appBlack} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -491,7 +488,7 @@ export default function HomeScreen() {
               <Text style={s.quizCtaTitle}>Test Yourself!</Text>
               <Text style={s.quizCtaSub}>With the Saved Surahs, Ayahs & Words</Text>
             </View>
-            <Feather name="chevron-right" size={20} color="#1A1A1A" />
+             <Feather name="chevron-right" size={20} color={colors.appBlack} />
           </TouchableOpacity>
 
           {/* ── Last Visited ──────────────────────────────────────────────── */}
@@ -528,7 +525,7 @@ export default function HomeScreen() {
                       <View style={s.lvFooter}>
                         <Text style={s.lvPct}>{pct}%</Text>
                         <View style={s.lvPlayBtn}>
-                          <Ionicons name="play" size={9} color="#FFFFFF" style={{ marginLeft: 1 }} />
+                           <Ionicons name="play" size={9} color={colors.appWhite} style={{ marginLeft: 1 }} />
                         </View>
                       </View>
                     </TouchableOpacity>
@@ -567,7 +564,7 @@ export default function HomeScreen() {
                         </Text>
                       </View>
                       <Text style={s.savedArabic}>{meta.name}</Text>
-                      <Ionicons name="bookmark" size={18} color="#1A1A1A" />
+                       <Ionicons name="bookmark" size={18} color={colors.appBlack} />
                     </TouchableOpacity>
                   );
                 })}
@@ -579,7 +576,7 @@ export default function HomeScreen() {
           <View style={s.surahSection}>
             <Text style={s.sectionTitle}>All Surahs by Juz</Text>
             {loading ? (
-              <ActivityIndicator color="#AAAAAA" style={{ paddingVertical: 28 }} />
+              <ActivityIndicator color={colors.appLightText} style={{ paddingVertical: 28 }} />
             ) : (
               juzGroups.map(group => (
                 <View key={group.juz}>
@@ -683,37 +680,37 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     badge: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: "#FEFCE8",
+      backgroundColor: colors.appLightBg,
       paddingHorizontal: 12,
       paddingVertical: 4,
       borderRadius: 20,
       gap: 8,
       borderWidth: 1,
-      borderColor: "#FCD34D",
+      borderColor: colors.appWarning,
     },
-    badgeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#EAB308" },
-    badgeText: { fontSize: 10, fontWeight: "700", color: "#EAB308", fontFamily: "Inter_700Bold" },
+    badgeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.appWarning },
+    badgeText: { fontSize: 10, fontWeight: "700", color: colors.appWarning, fontFamily: "Inter_700Bold" },
 
     settingsBtn: {
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: "#FFFFFF",
+      backgroundColor: colors.appWhite,
       alignItems: "center",
       justifyContent: "center",
-      shadowColor: "#000",
+      shadowColor: colors.appBlack,
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.05,
       shadowRadius: 2,
       elevation: 1,
       borderWidth: 1,
-      borderColor: "#F1F0EF",
+      borderColor: colors.appBorderLight,
     },
 
     // ── Audio Card ─────────────────────────────────────────────────────────────
     audioCard: {
       marginHorizontal: 16,
-      backgroundColor: "#FAFAF9",
+      backgroundColor: colors.appLighterBg,
       borderRadius: 10,
       paddingTop: 28,
       paddingBottom: 20,
@@ -721,19 +718,18 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: "row",
       alignItems: "center",
       borderWidth: 1,
-      borderColor: "#D6D3D1",
-      shadowColor: "#000",
+      borderColor: colors.appBorderLight,
+      shadowColor: colors.appBlack,
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.05,
       shadowRadius: 2,
       elevation: 1,
-      overflow: "hidden",
     },
     audioCardLeft: { flex: 1, marginRight: 14 },
     audioLabel: {
       fontSize: 10,
       letterSpacing: 1.2,
-      color: "#78716C",
+      color: colors.appDarkGray,
       fontFamily: "Inter_700Bold",
       textTransform: "uppercase",
       marginBottom: 4,
@@ -741,25 +737,25 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     audioTitle: {
       fontSize: 18,
       fontWeight: "700",
-      color: "#18181B",
+      color: colors.appBlack,
       fontFamily: "Inter_700Bold",
       marginBottom: 2,
     },
     audioSub: {
       fontSize: 12,
-      color: "#71717A",
+      color: colors.appLightText,
       fontFamily: "Inter_400Regular",
       marginBottom: 14,
     },
     audioProgressRail: {
       height: 8,
-      backgroundColor: "#F5F5F4",
+      backgroundColor: colors.appLightGray,
       borderRadius: 4,
       overflow: "hidden",
     },
     audioProgressFill: {
       height: "100%" as any,
-      backgroundColor: "#18181B",
+      backgroundColor: colors.appBlack,
       borderRadius: 4,
     },
     playBtn: {
@@ -773,25 +769,25 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     widgetCard: {
       marginHorizontal: 16,
       marginTop: 12,
-      backgroundColor: "#FFFFFF",
+      backgroundColor: colors.appWhite,
       borderRadius: 10,
       padding: 16,
       borderWidth: 1,
-      borderColor: "#D6D3D1",
-      shadowColor: "#000",
+      borderColor: colors.appBorderLight,
+      shadowColor: colors.appBlack,
       shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
-      shadowRadius: 6,
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
       elevation: 1,
     },
     ctaCardShadow: {
       marginHorizontal: 16,
       marginTop: 12,
       borderRadius: 10,
-      backgroundColor: "#FAFAF9",
+      backgroundColor: colors.appLighterBg,
       borderWidth: 1,
-      borderColor: "#D6D3D1",
-      shadowColor: "#000",
+      borderColor: colors.appBorderLight,
+      shadowColor: colors.appBlack,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.03,
       shadowRadius: 20,
@@ -805,7 +801,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     widgetCardContent: { padding: 16 },
 
     attachedCta: {
-      backgroundColor: "#FFEDD5",
+      backgroundColor: colors.appLightBg,
       paddingVertical: 18,
       flexDirection: "row",
       alignItems: "center",
@@ -815,11 +811,11 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     attachedCtaText: {
       fontSize: 16,
       fontWeight: "600",
-      color: "#57534E",
+      color: colors.appDarkerGray,
       fontFamily: "Inter_600SemiBold",
     },
     topBanner: {
-      backgroundColor: "#4CAF50",
+      backgroundColor: colors.appSuccess,
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: 16,
@@ -827,14 +823,13 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       gap: 8,
     },
     bannerText: {
-      flex: 1,
       fontSize: 13,
       fontWeight: "600",
-      color: "#FFFFFF",
+      color: colors.appWhite,
       fontFamily: "Inter_600SemiBold",
     },
     memCompleteGreen: {
-      backgroundColor: "#4CAF50",
+      backgroundColor: colors.appSuccess,
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: 20,
@@ -843,14 +838,13 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     memCompleteCheckCircle: {
       width: 40, height: 40, borderRadius: 20,
-      backgroundColor: "#FFFFFF",
+      backgroundColor: colors.appWhite,
       alignItems: "center", justifyContent: "center",
       flexShrink: 0,
     },
-    memCompleteGreenText: { fontSize: 15, color: "#FFFFFF", fontFamily: "Inter_400Regular", lineHeight: 22 },
-    memCompleteGreenBold: { fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+    memCompleteGreenText: { fontSize: 15, color: colors.appWhite, fontFamily: "Inter_400Regular", lineHeight: 22 },
+    memCompleteGreenBold: { fontFamily: "Inter_700Bold", color: colors.appWhite },
     memCompleteGreenSub: { fontSize: 13, color: "rgba(255,255,255,0.8)", fontFamily: "Inter_400Regular", marginTop: 2 },
-
     memCompleteSteps: {
       flexDirection: "row",
       alignItems: "center",
@@ -867,24 +861,21 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     stepDivider: {
       width: 0.5,
       height: 32,
-      backgroundColor: "#E7E5E4",
+      backgroundColor: colors.appLightBg,
       marginHorizontal: 14,
     },
     stepNumCircle: {
       width: 32, height: 32, borderRadius: 16,
-      backgroundColor: "#FFEDD5",
+      backgroundColor: colors.appLightBg,
       alignItems: "center", justifyContent: "center", flexShrink: 0,
     },
-    stepNumText: { fontSize: 16, fontWeight: "400", color: "#1F2937", fontFamily: "Inter_400Regular" },
+    stepNumText: { fontSize: 16, fontWeight: "400", color: colors.appBlack, fontFamily: "Inter_400Regular" },
     stepStepText: {
       flex: 1,
-      fontSize: 13,
-      fontWeight: "500",
-      color: "#57534E",
+      color: colors.appDarkerGray,
       fontFamily: "Inter_600SemiBold",
       lineHeight: 17,
     },
-
     widgetCardHeader: {
       flexDirection: "row",
       alignItems: "center",
@@ -892,7 +883,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginBottom: 16,
     },
     headerPill: {
-      backgroundColor: "#F0EDE8",
+      backgroundColor: colors.appLightGray,
       paddingHorizontal: 10,
       paddingVertical: 5,
       borderRadius: 20,
@@ -900,13 +891,13 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     headerPillText: {
       fontSize: 10,
       fontWeight: "700",
-      color: "#AAAAAA",
+      color: colors.appLightText,
       letterSpacing: 0.8,
       fontFamily: "Inter_700Bold",
       textTransform: "uppercase",
     },
     modeBadge: {
-      backgroundColor: "#1A1A1A",
+      backgroundColor: colors.appBlack,
       paddingHorizontal: 10,
       paddingVertical: 5,
       borderRadius: 20,
@@ -914,10 +905,11 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     modeBadgeText: {
       fontSize: 10,
       fontWeight: "700",
-      color: GOLD,
+      color: colors.appGold,
       fontFamily: "Inter_700Bold",
       letterSpacing: 0.5,
     },
+
     widgetCardBody: {
       flexDirection: "row",
       alignItems: "center",
@@ -927,23 +919,23 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     widgetCardTitle: {
       fontSize: 18,
       fontWeight: "700",
-      color: "#1A1A1A",
+      color: colors.appBlack,
       fontFamily: "Inter_700Bold",
       marginBottom: 3,
       letterSpacing: -0.2,
     },
-    widgetCardSub: { fontSize: 12, color: "#AAAAAA", fontFamily: "Inter_400Regular" },
+    widgetCardSub: { fontSize: 12, color: colors.appLightText, fontFamily: "Inter_400Regular" },
     editBoxBtn: {
       flexDirection: "row",
       alignItems: "center",
       gap: 5,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: "#DDDAD4",
+      borderColor: colors.appBorderLighter,
       borderRadius: 10,
       paddingHorizontal: 12,
       paddingVertical: 8,
     },
-    editBoxText: { fontSize: 13, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
+    editBoxText: { fontSize: 13, fontWeight: "600", color: colors.appBlack, fontFamily: "Inter_600SemiBold" },
 
     dailyCardHeader: {
       flexDirection: "row",
@@ -956,19 +948,18 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       height: 22,
       borderRadius: 11,
       borderWidth: 1.5,
-      borderColor: "#DDDAD4",
+      borderColor: colors.appBorderLighter,
     },
     dailyCompleteCircleFilled: {
-      borderColor: "#4CAF50",
-      backgroundColor: "#4CAF50",
+      borderColor: colors.appSuccess,
+      backgroundColor: colors.appSuccess,
     },
     dailyProgressText: {
       fontSize: 14,
       fontWeight: "600",
-      color: "#1A1A1A",
+      color: colors.appBlack,
       fontFamily: "Inter_600SemiBold",
     },
-
     dotRow: {
       flexDirection: "row",
       gap: 5,
@@ -978,16 +969,15 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: 8,
       height: 8,
       borderRadius: 4,
-      backgroundColor: "#EAE0D0",
+      backgroundColor: colors.appBorderLighter,
     },
-    dotGridItemFilled: { backgroundColor: "#1A1A1A" },
-
+    dotGridItemFilled: { backgroundColor: colors.appBlack },
     remainingRow: {
       flexDirection: "row",
       alignItems: "center",
       paddingVertical: 11,
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: "#EAE0D0",
+      borderTopColor: colors.appBorderLighter,
       marginTop: 10,
       gap: 10,
     },
@@ -996,37 +986,36 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       height: 20,
       borderRadius: 10,
       borderWidth: 1.5,
-      borderColor: "#CCCCCC",
+      borderColor: colors.appBorderLighter,
     },
     remainingTextArea: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
-    remainingName: { flex: 1, fontSize: 14, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
-    remainingCount: { fontSize: 12, color: "#AAAAAA", fontFamily: "Inter_400Regular" },
+    remainingName: { flex: 1, fontSize: 14, fontWeight: "600", color: colors.appBlack, fontFamily: "Inter_600SemiBold" },
+    remainingCount: { fontSize: 12, color: colors.appLightText, fontFamily: "Inter_400Regular" },
 
     dailyCardFooter: { marginTop: 10, gap: 8 },
     remainingLabelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
     remainingLabel: {
-      fontSize: 10, fontWeight: "700", color: "#CCCCCC",
+      fontSize: 10, fontWeight: "700", color: colors.appBorderLight,
       letterSpacing: 1, fontFamily: "Inter_700Bold", textTransform: "uppercase",
     },
-    remainingShowing: { fontSize: 10, fontWeight: "700", color: "#AAAAAA", fontFamily: "Inter_700Bold" },
+    remainingShowing: { fontSize: 10, fontWeight: "700", color: colors.appLightText, fontFamily: "Inter_700Bold" },
     streakRow: { flexDirection: "row", alignItems: "center", gap: 5 },
-    streakText: { fontSize: 13, fontWeight: "600", color: GOLD, fontFamily: "Inter_600SemiBold" },
+    streakText: { fontSize: 13, fontWeight: "600", color: colors.appGold, fontFamily: "Inter_600SemiBold" },
     detailsBtn: { flexDirection: "row", alignItems: "center", gap: 2, marginLeft: "auto" as any },
-    detailsLink: { fontSize: 11, fontWeight: "700", color: "#AAAAAA", letterSpacing: 0.8, fontFamily: "Inter_700Bold" },
-
+    detailsLink: { fontSize: 11, fontWeight: "700", color: colors.appLightText, letterSpacing: 0.8, fontFamily: "Inter_700Bold" },
     // ── Idle / No Goal ─────────────────────────────────────────────────────────
     greetingSection: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
     greeting: {
       fontSize: 22,
-      color: "#1A1A1A",
+      color: colors.appBlack,
       fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
       fontStyle: "italic",
       marginBottom: 24,
     },
-    goalTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", marginBottom: 6 },
-    goalSub: { fontSize: 14, color: "#AAAAAA", fontFamily: "Inter_400Regular", lineHeight: 21, marginBottom: 20 },
+    goalTitle: { fontSize: 20, fontWeight: "700", color: colors.appBlack, fontFamily: "Inter_700Bold", marginBottom: 6 },
+    goalSub: { fontSize: 14, color: colors.appLightText, fontFamily: "Inter_400Regular", lineHeight: 21, marginBottom: 20 },
     goalBtn: {
-      backgroundColor: "#1A1A1A",
+      backgroundColor: colors.appBlack,
       borderRadius: 14,
       paddingVertical: 17,
       paddingHorizontal: 20,
@@ -1034,13 +1023,12 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       justifyContent: "space-between",
     },
-    goalBtnText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold", letterSpacing: 0.2 },
-
+    goalBtnText: { fontSize: 16, fontWeight: "700", color: colors.appWhite, fontFamily: "Inter_700Bold", letterSpacing: 0.2 },
     // ── Quiz CTA Banner ────────────────────────────────────────────────────────
     quizCta: {
       marginHorizontal: 16,
       marginTop: 12,
-      backgroundColor: "#E7E5E4",
+      backgroundColor: colors.appLightBg,
       borderRadius: 10,
       paddingHorizontal: 16,
       paddingVertical: 16,
@@ -1048,16 +1036,15 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       gap: 12,
       borderWidth: 1,
-      borderColor: "#A8A29E",
-      shadowColor: "#000",
+      borderColor: colors.appBorderLight,
+      shadowColor: colors.appBlack,
       shadowOffset: { width: 0, height: 1.5 },
       shadowOpacity: 0.15,
       shadowRadius: 3,
       elevation: 2,
     },
-    quizCtaTitle: { fontSize: 16, fontWeight: "700", color: "#000000", fontFamily: "Inter_700Bold" },
-    quizCtaSub: { fontSize: 10, color: "#000000", fontFamily: "Inter_400Regular", marginTop: 2 },
-
+    quizCtaTitle: { fontSize: 16, fontWeight: "700", color: colors.appBlack, fontFamily: "Inter_700Bold" },
+    quizCtaSub: { fontSize: 10, color: colors.appBlack, fontFamily: "Inter_400Regular", marginTop: 2 },
     // ── List Sections (Last Visited / Saved Surahs) ────────────────────────────
     listSection: { marginTop: 28, paddingHorizontal: 16 },
     listSectionHeader: {
@@ -1069,21 +1056,20 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     listSectionTitle: {
       fontSize: 18,
       fontWeight: "700",
-      color: "#1A1A1A",
+      color: colors.appBlack,
       fontFamily: "Inter_700Bold",
       letterSpacing: -0.3,
     },
-    viewAllText: { fontSize: 13, color: "#AAAAAA", fontFamily: "Inter_400Regular" },
-
+    viewAllText: { fontSize: 13, color: colors.appLightText, fontFamily: "Inter_400Regular" },
     lvScroll: { gap: 10, paddingRight: 16, paddingLeft: 2 },
     lvCard: {
       width: 136,
-      backgroundColor: "#FFFFFF",
+      backgroundColor: colors.appWhite,
       borderRadius: 16,
       padding: 14,
       borderWidth: 0.5,
-      borderColor: "#EAE0D0",
-      shadowColor: "#000",
+      borderColor: colors.appBorderLighter,
+      shadowColor: colors.appBlack,
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.04,
       shadowRadius: 5,
@@ -1091,7 +1077,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     lvArabic: {
       fontSize: 26,
-      color: "#1A1A1A",
+      color: colors.appBlack,
       textAlign: "center",
       marginBottom: 6,
       lineHeight: 38,
@@ -1099,13 +1085,13 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     lvName: {
       fontSize: 12,
       fontWeight: "700",
-      color: "#1A1A1A",
+      color: colors.appBlack,
       fontFamily: "Inter_700Bold",
       textAlign: "center",
     },
     lvAyah: {
       fontSize: 11,
-      color: "#AAAAAA",
+      color: colors.appLightText,
       fontFamily: "Inter_400Regular",
       textAlign: "center",
       marginTop: 2,
@@ -1113,27 +1099,27 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     lvProgressRail: {
       height: 2,
-      backgroundColor: "#EAE0D0",
+      backgroundColor: colors.appBorderLighter,
       borderRadius: 1,
       overflow: "hidden",
       marginBottom: 8,
     },
-    lvProgressFill: { height: "100%" as any, backgroundColor: "#1A1A1A", borderRadius: 1 },
+    lvProgressFill: { height: "100%" as any, backgroundColor: colors.appBlack, borderRadius: 1 },
     lvFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-    lvPct: { fontSize: 11, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
+    lvPct: { fontSize: 11, fontWeight: "600", color: colors.appBlack, fontFamily: "Inter_600SemiBold" },
     lvPlayBtn: {
       width: 22, height: 22, borderRadius: 11,
-      backgroundColor: "#1A1A1A", alignItems: "center", justifyContent: "center",
+      backgroundColor: colors.appBlack, alignItems: "center", justifyContent: "center",
     },
 
     // ── Saved Surahs ───────────────────────────────────────────────────────────
     savedCard: {
-      backgroundColor: "#FFFFFF",
+      backgroundColor: colors.appWhite,
       borderRadius: 16,
       overflow: "hidden",
       borderWidth: 0.5,
-      borderColor: "#EAE0D0",
-      shadowColor: "#000",
+      borderColor: colors.appBorderLighter,
+      shadowColor: colors.appBlack,
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.04,
       shadowRadius: 5,
@@ -1145,46 +1131,46 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: 16,
       paddingVertical: 14,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: "#EAE0D0",
+      borderBottomColor: colors.appBorderLighter,
       gap: 12,
     },
     savedRowLast: { borderBottomWidth: 0 },
     savedNumBubble: {
       width: 36, height: 36, borderRadius: 18,
-      backgroundColor: "#F0EDE8",
+      backgroundColor: colors.appLightGray,
       alignItems: "center", justifyContent: "center",
     },
-    savedNumText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+    savedNumText: { fontSize: 13, fontWeight: "700", color: colors.appBlack, fontFamily: "Inter_700Bold" },
     savedInfo: { flex: 1 },
     savedName: {
       fontSize: 15,
       fontWeight: "600",
-      color: "#1A1A1A",
+      color: colors.appBlack,
       fontFamily: "Inter_600SemiBold",
       marginBottom: 2,
     },
-    savedArabic: { fontSize: 17, color: "#1A1A1A" },
-    savedMeta: { fontSize: 11, color: "#AAAAAA", fontFamily: "Inter_400Regular" },
+    savedArabic: { fontSize: 17, color: colors.appBlack },
+    savedMeta: { fontSize: 11, color: colors.appLightText, fontFamily: "Inter_400Regular" },
 
     // ── All Surahs by Juz ──────────────────────────────────────────────────────
     surahSection: { marginTop: 28 },
     sectionTitle: {
       fontSize: 18,
       fontWeight: "700",
-      color: "#18181B",
+      color: colors.appBlack,
       fontFamily: "Inter_700Bold",
       paddingHorizontal: 20,
       paddingBottom: 10,
     },
     juzHeader: {
-      backgroundColor: "#E7E5E4",
+      backgroundColor: colors.appLightBg,
       paddingHorizontal: 20,
       paddingVertical: 6,
     },
     juzLabel: {
       fontSize: 10,
       fontWeight: "700",
-      color: "#71717A",
+      color: colors.appLightText,
       letterSpacing: 1.4,
       textTransform: "uppercase",
       fontFamily: "Inter_700Bold",
@@ -1195,7 +1181,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: 20,
       paddingVertical: 12,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: "#F9FAFB",
+      borderBottomColor: colors.appBorderLighter,
       gap: 16,
     },
     surahRowLast: { borderBottomWidth: 0 },
@@ -1204,7 +1190,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       height: 36,
       borderRadius: 18,
       borderWidth: 1,
-      borderColor: "#E4E4E7",
+      borderColor: colors.appBorderLighter,
       alignItems: "center",
       justifyContent: "center",
       flexShrink: 0,
@@ -1212,19 +1198,19 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     surahNum: {
       fontSize: 12,
       fontWeight: "500",
-      color: "#18181B",
+      color: colors.appBlack,
       fontFamily: "Inter_600SemiBold",
     },
     surahInfo: { flex: 1 },
-    surahName: { fontSize: 14, fontWeight: "700", color: "#18181B", fontFamily: "Inter_700Bold" },
-    surahMeta: { fontSize: 12, color: "#71717A", fontFamily: "Inter_400Regular", marginTop: 2 },
+    surahName: { fontSize: 14, fontWeight: "700", color: colors.appBlack, fontFamily: "Inter_700Bold" },
+    surahMeta: { fontSize: 12, color: colors.appLightText, fontFamily: "Inter_400Regular", marginTop: 2 },
     surahArabic: {
       fontSize: 18,
-      color: "#18181B",
+      color: colors.appBlack,
     },
 
     memorizedTag: {
-      backgroundColor: "#16A34A",
+      backgroundColor: colors.appSuccess,
       paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 8,
@@ -1233,7 +1219,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     memorizedTagText: {
       fontSize: 10,
       fontWeight: "700",
-      color: "#FFFFFF",
+      color: colors.appWhite,
       fontFamily: "Inter_700Bold",
       letterSpacing: 0.3,
     },

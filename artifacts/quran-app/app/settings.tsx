@@ -354,7 +354,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     themeChipTextActive: { color: colors.primaryForeground, fontFamily: "Inter_600SemiBold" },
     themeChipTextDisabled: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     editOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center", padding: 24 },
-    editCard: { backgroundColor: colors.card, borderRadius: 16, padding: 20, width: "100%", shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 12 },
+    editCard: { backgroundColor: colors.card, borderRadius: 16, padding: 20, width: "100%", shadowColor: colors.appBlack, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 12 },
     editTitle: { fontSize: 17, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold", marginBottom: 12 },
     editInput: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, fontSize: 16, color: colors.foreground, fontFamily: "Inter_400Regular", marginBottom: 16 },
     editActions: { flexDirection: "row", gap: 10 },

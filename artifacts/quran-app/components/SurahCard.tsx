@@ -37,7 +37,7 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, isChecked
             <Ionicons
               name={isChecked ? "checkmark-circle" : "checkmark-circle-outline"}
               size={20}
-              color={isChecked ? "#FFFFFF" : "#C0C0C0"}
+              color={isChecked ? colors.appWhite : colors.appLightText}
             />
           </TouchableOpacity>
         )}
@@ -83,11 +83,11 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginHorizontal: 16,
       marginBottom: 10,
       backgroundColor: colors.card,
-      borderRadius: 20,
+      borderRadius: colors.radius + 8, // 20px
       padding: 18,
       borderWidth: 1,
       borderColor: colors.border,
-      shadowColor: "#000",
+      shadowColor: colors.appBlack,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.06,
       shadowRadius: 8,
@@ -110,7 +110,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     numberText: {
       fontSize: 13,
       fontWeight: "700",
-      color: "#FFFFFF",
+      color: colors.appWhite,
       fontFamily: "Inter_700Bold",
     },
     meta: { flex: 1 },
@@ -127,19 +127,19 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: 30,
       height: 30,
       borderRadius: 15,
-      backgroundColor: "#F0F0F0",
+      backgroundColor: colors.appLightBg,
       alignItems: "center",
       justifyContent: "center",
     },
     checkBtnActive: {
-      backgroundColor: "#1A1A1A",
+      backgroundColor: colors.appBlack,
     },
     recentDot: {
       width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary,
     },
     memorizedBadge: {
       alignSelf: "flex-start",
-      backgroundColor: "#16A34A",
+      backgroundColor: colors.appSuccess,
       paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 8,
@@ -148,7 +148,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     memorizedBadgeText: {
       fontSize: 10,
       fontWeight: "700",
-      color: "#FFFFFF",
+      color: colors.appWhite,
       fontFamily: "Inter_700Bold",
       letterSpacing: 0.5,
     },

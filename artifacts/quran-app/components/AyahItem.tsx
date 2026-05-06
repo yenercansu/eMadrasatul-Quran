@@ -109,7 +109,7 @@ export function AyahItem({
     return (
       <Animated.View style={[s.rightAction, { transform: [{ translateX: trans }] }]}>
         <TouchableOpacity style={s.saveActionInner} onPress={handleSave} activeOpacity={0.85}>
-          <Ionicons name="bookmark" size={22} color="#FFFFFF" />
+           <Ionicons name="bookmark" size={22} color={colors.appWhite} />
           <Text style={s.saveActionText}>Save{"\n"}Ayah</Text>
         </TouchableOpacity>
       </Animated.View>
@@ -268,7 +268,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       bottom: 12,
       width: 2,
       borderRadius: 1,
-      backgroundColor: "#B3D5F5",
+      backgroundColor: colors.appInfo,
       opacity: 0.7,
     },
     swipeHintRight: {
@@ -278,7 +278,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       bottom: 12,
       width: 2,
       borderRadius: 1,
-      backgroundColor: "#B3D5F5",
+      backgroundColor: colors.appInfo,
       opacity: 0.7,
     },
     header: {
@@ -307,14 +307,14 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 3,
-      backgroundColor: "#F0F0F0",
+      backgroundColor: colors.appLightGray,
       borderRadius: 8,
       paddingHorizontal: 7,
       paddingVertical: 3,
     },
     repeatBadgeText: {
       fontSize: 11,
-      color: "#6B6B6B",
+      color: colors.appDarkerGray,
       fontWeight: "700",
       fontFamily: "Inter_700Bold",
     },
@@ -334,11 +334,11 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: Platform.OS === "ios" ? "System" : undefined,
       writingDirection: "rtl",
     },
-    highlightedWord: {
-      backgroundColor: "#1A1A1A22",
-      borderRadius: 4,
-      paddingHorizontal: 2,
-    },
+      highlightedWord: {
+        backgroundColor: colors.appBlack + "22",
+        borderRadius: 4,
+        paddingHorizontal: 2,
+      },
     transliterationText: {
       fontSize: 14,
       lineHeight: 22,
@@ -363,7 +363,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     tafsirLabel: {
       fontSize: 11,
       fontWeight: "700",
-      color: "#1A1A1A",
+      color: colors.appBlack,
       letterSpacing: 0.8,
       textTransform: "uppercase",
       fontFamily: "Inter_700Bold",
@@ -387,7 +387,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     dot3: { opacity: 0.3 },
     rightAction: {
       width: 80,
-      backgroundColor: "#1A1A1A",
+      backgroundColor: colors.appBlack,
       justifyContent: "center",
       alignItems: "center",
     },
@@ -401,7 +401,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     saveActionText: {
       fontSize: 12,
       fontWeight: "700",
-      color: "#FFFFFF",
+      color: colors.appWhite,
       fontFamily: "Inter_700Bold",
       textAlign: "center",
     },
@@ -417,7 +417,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     repeatLabel: {
       fontSize: 11,
-      color: "#6B6B6B",
+      color: colors.appDarkerGray,
       fontFamily: "Inter_700Bold",
       textTransform: "uppercase",
       letterSpacing: 0.8,
@@ -431,7 +431,10 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderWidth: 1.5,
       borderColor: colors.border,
     },
-    repeatChipActive: { backgroundColor: "#1A1A1A", borderColor: "#1A1A1A" },
-    repeatChipText: { fontSize: 13, fontWeight: "700", color: "#6B6B6B", fontFamily: "Inter_700Bold" },
-    repeatChipTextActive: { color: "#FFFFFF" },
+    repeatChipActive: {
+      backgroundColor: colors.appBlack,
+      borderColor: colors.appBlack,
+    },
+    repeatChipText: { fontSize: 13, fontWeight: "700", color: colors.appDarkerGray, fontFamily: "Inter_700Bold" },
+    repeatChipTextActive: { color: colors.appWhite },
   });
