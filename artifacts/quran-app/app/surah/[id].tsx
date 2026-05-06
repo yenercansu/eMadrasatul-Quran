@@ -199,7 +199,7 @@ function SwipeableAyahCard({
     onPress();
   }, [close, onPress]);
 
-  const cardBg = isPlaying || isOnRepeat || isRangeSelected ? "#DCFCE7" : "#FFFFFF";
+  const cardBg = isPlaying || isOnRepeat ? "#F5F0E8" : isRangeSelected ? "#F0F5EE" : "#FFFFFF";
 
   return (
     <View style={cs.wrap}>
@@ -243,7 +243,7 @@ function SwipeableAyahCard({
                 {repeatCount === 999
                   ? <Text style={cs.repeatIconText}>∞</Text>
                   : <Text style={cs.repeatIconText}>{repeatCount}x</Text>}
-                <Ionicons name="repeat" size={13} color="#1A1A1A" style={{ marginLeft: 3 }} />
+                <Ionicons name="repeat" size={12} color="#FFFFFF" />
               </View>
             )}
             <View style={cs.numBadge}>
@@ -273,7 +273,7 @@ function SwipeableAyahCard({
 
           {translations.map((t) => (
             <View key={t.editionId} style={cs.transBlock}>
-              <Text style={[cs.transText, { fontSize: romanFontSize, lineHeight: romanFontSize * 1.6 }]}>"{t.text}"</Text>
+              <Text style={[cs.transText, { fontSize: romanFontSize, lineHeight: romanFontSize * 1.6 }]}>{"“"}{t.text}{"”"}</Text>
               <Text style={cs.transSource}>{t.name}</Text>
             </View>
           ))}
@@ -335,9 +335,9 @@ const cs = StyleSheet.create({
   },
   repeatBtnText: { fontSize: 16, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
   card: {
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 18,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 20,
     zIndex: 1,
   },
   topRow: {
@@ -350,12 +350,15 @@ const cs = StyleSheet.create({
   repeatIconBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "transparent",
-    paddingHorizontal: 4,
+    backgroundColor: "#1A1A1A",
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 2,
   },
-  repeatIconText: { fontSize: 13, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
+  repeatIconText: { fontSize: 11, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
   numBadge: {
-    backgroundColor: "#F0F0F0",
+    backgroundColor: "#EDEBE6",
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -387,8 +390,8 @@ const cs = StyleSheet.create({
     lineHeight: 22,
   },
   transBlock: { marginBottom: 12 },
-  transText: { fontSize: 14, color: "#1A1A1A", fontFamily: "Inter_400Regular", lineHeight: 22 },
-  transSource: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 4, fontStyle: "italic" },
+  transText: { fontSize: 14, color: "#2C2C2C", fontFamily: "Inter_400Regular", lineHeight: 22 },
+  transSource: { fontSize: 11, color: "#ABABAB", fontFamily: "Inter_400Regular", marginTop: 3, fontStyle: "italic", letterSpacing: 0.1 },
   tafBox: {
     backgroundColor: "#FFF8EE",
     borderRadius: 10,
@@ -403,7 +406,7 @@ const cs = StyleSheet.create({
 });
 
 // ─── Player Bar ───────────────────────────────────────────────────────────────
-const PLAYER_BG = "#C8D9C4";
+const PLAYER_BG = "#F2EDE6";
 
 function PlayerBar({
   audioState,
@@ -507,7 +510,7 @@ const pb = StyleSheet.create({
   wrapper: {
     backgroundColor: PLAYER_BG,
     borderTopWidth: 1,
-    borderTopColor: "#B0C8AC",
+    borderTopColor: "#E2D9CF",
   },
   rangePill: {
     backgroundColor: "#22C55E",
@@ -567,7 +570,7 @@ const pb = StyleSheet.create({
     paddingHorizontal: 10,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.6)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 10,
     marginRight: 6,
   },
@@ -655,22 +658,24 @@ function ContentBar({
 const cb = StyleSheet.create({
   bar: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F9F8F6",
     paddingTop: 8,
     paddingBottom: 6,
     paddingHorizontal: 4,
+    borderTopWidth: 1,
+    borderTopColor: "#EDEAE5",
   },
   tab: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 6,
+    paddingVertical: 7,
     paddingHorizontal: 4,
     gap: 4,
     borderRadius: 12,
   },
-  tabActive: { backgroundColor: "#F2F2F2" },
-  label: { fontSize: 11, fontWeight: "600", color: "#AAAAAA", fontFamily: "Inter_600SemiBold" },
+  tabActive: { backgroundColor: "#EDEAE5" },
+  label: { fontSize: 11, fontWeight: "600", color: "#BBBBBB", fontFamily: "Inter_600SemiBold" },
   labelActive: { color: "#1A1A1A" },
   dotsRow: { flexDirection: "row", gap: 2, marginBottom: 1, height: 18, alignItems: "center" },
   dot: { width: 6, height: 6, borderRadius: 3 },
@@ -1373,7 +1378,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
   const currentAyahForRange = audioState.currentSurah === surahNum && audioState.currentAyah ? audioState.currentAyah : parseInt(ayahParam ?? "1", 10) || 1;
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#EEEEF0" }}>
+    <View style={{ flex: 1, backgroundColor: "#F5F2EE" }}>
       {/* ── Fixed Header ─────────────────────────────────────── */}
       {menuVisible && (
         <View style={[scr.header, { paddingTop: topPad + 8 }]}>
@@ -1389,7 +1394,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             )}
           </View>
           <TouchableOpacity onPress={() => setSettingsVisible(true)} style={scr.headerBtn} activeOpacity={0.7}>
-            <Feather name="settings" size={20} color="#1A1A1A" />
+            <Feather name="menu" size={22} color="#1A1A1A" />
           </TouchableOpacity>
         </View>
       )}
@@ -1488,8 +1493,8 @@ const [settingsVisible, setSettingsVisible] = useState(false);
               paddingTop: menuVisible ? 4 : (insets.top + 64),
               paddingBottom: menuVisible ? (bottomBarHeight + 16) : 24,
             }}
-            style={{ flex: 1, backgroundColor: "#FFFFFF" }}
-            ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: "#F0F0F0" }} />}
+            style={{ flex: 1, backgroundColor: "#FAF9F7" }}
+            ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: "#EDEAE5" }} />}
             onScrollBeginDrag={(e) => {
               menuToggleLockRef.current = Date.now() + 600;
               scrollYRef.current = e.nativeEvent.contentOffset.y;
@@ -1719,38 +1724,40 @@ const scr = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 8,
-    paddingBottom: 8,
-    backgroundColor: "#FFFFFF",
+    paddingBottom: 10,
+    backgroundColor: "#FAF9F7",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E2DDD6",
   },
   headerBtn: { padding: 8, width: 40, alignItems: "center" },
   headerCenter: { flex: 1, alignItems: "center" },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  headerSub: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular" },
+  headerTitle: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", letterSpacing: -0.2 },
+  headerSub: { fontSize: 12, color: "#A0A0A0", fontFamily: "Inter_400Regular", marginTop: 1 },
   modeBar: {
     alignItems: "center",
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FAF9F7",
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: "#EDEAE5",
   },
   modeSwitcher: {
     flexDirection: "row",
-    backgroundColor: "#F0F0F0",
+    backgroundColor: "#EDEAE5",
     borderRadius: 14,
     padding: 3,
     minWidth: 240,
   },
   modeBtn: { flex: 1, paddingVertical: 9, borderRadius: 11, alignItems: "center" },
-  modeBtnActive: { backgroundColor: "#FFFFFF", shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
-  modeBtnText: { fontSize: 13, fontWeight: "700", color: "#9A9A9A", fontFamily: "Inter_700Bold" },
+  modeBtnActive: { backgroundColor: "#FFFFFF", shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 2 },
+  modeBtnText: { fontSize: 13, fontWeight: "700", color: "#AAAAAA", fontFamily: "Inter_700Bold" },
   modeBtnTextActive: { color: "#1A1A1A" },
   bottom: {
     position: "absolute",
     left: 0, right: 0, bottom: 0,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: "#F2EDE6",
     borderTopWidth: 1,
-    borderTopColor: "#E5E5E5",
+    borderTopColor: "#E2D9CF",
     zIndex: 50,
   },
   mushafInfo: { alignItems: "center", paddingVertical: 16, backgroundColor: MUSHAF_BG },
