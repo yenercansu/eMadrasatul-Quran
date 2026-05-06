@@ -26,9 +26,13 @@ const TOTAL_AYAHS = 6236;
 const MAX_DAILY = 45;
 const AYAHS_PER_JUZ = Math.round(TOTAL_AYAHS / 30);
 
+// Gold accent used throughout
+const GOLD = "#C9A02A";
+const GOLD_TRACK = "#F0E6C0";
+
 function CircularRing({
   percent, size = 60, strokeWidth = 5,
-  color = "#C9A02A", trackColor = "#F0E6C0", label,
+  color = GOLD, trackColor = GOLD_TRACK, label,
 }: {
   percent: number; size?: number; strokeWidth?: number;
   color?: string; trackColor?: string; label?: string;
@@ -157,6 +161,7 @@ export default function HomeScreen() {
   const targetSurah = memorizationGoal?.path === "surah"
     ? (memorizationGoal?.startSurahNumber ? SURAH_DATA.find(s => s.number === memorizationGoal?.startSurahNumber) : undefined)
     : undefined;
+
   const savedSurahsMeta = useMemo(() => {
     return savedSurahs.map(n => SURAH_DATA[n - 1]).filter(Boolean);
   }, [savedSurahs]);
@@ -190,13 +195,25 @@ export default function HomeScreen() {
   const hasMemorizationGoal = memorizationGoal !== null;
   const isFirstListen = lastListened === null;
 
+  // Calculate audio progress fill percentage
+  const audioProgressPct = useMemo(() => {
+    if (!lastListened) return 0;
+    const meta = SURAH_DATA[lastListened.surahNumber - 1];
+    if (!meta) return 0;
+    return Math.round((lastListened.ayahNumberInSurah / meta.ayahCount) * 100);
+  }, [lastListened]);
+
   return (
     <>
       <StatusBar barStyle="dark-content" />
-      <LinearGradient colors={["#FDFBF7", "#EDE0C4"]} style={s.container}>
+      <LinearGradient
+        colors={["#FDFCFA", "#F5EDDB"]}
+        locations={[0, 1]}
+        style={s.container}
+      >
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[s.scrollContent, { paddingTop: topPad + 8 }]}
+          contentContainerStyle={[s.scrollContent, { paddingTop: topPad + 12 }]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -205,50 +222,50 @@ export default function HomeScreen() {
             />
           }
         >
-          {/* Header Row */}
+          {/* ── Header Row ──────────────────────────────────────────────── */}
           <View style={s.headerRow}>
             <View style={s.badge}>
               <View style={s.badgeDot} />
               <Text style={s.badgeText}>{onlineUsers.toLocaleString()} memorizing</Text>
             </View>
             <TouchableOpacity
-              style={s.settingsBtn}
               onPress={() => router.push("/settings")}
-              activeOpacity={0.7}
+              activeOpacity={0.6}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Feather name="settings" size={18} color="#8E8E93" strokeWidth={1.5} />
+              <Feather name="settings" size={20} color="#8E8E93" strokeWidth={1.5} />
             </TouchableOpacity>
           </View>
 
-          {/* Audio Player Card */}
+          {/* ── Continue / Start Listening Card ─────────────────────────── */}
           <TouchableOpacity
             style={s.audioCard}
             onPress={() => router.push(isFirstListen ? "/surah/1" : `/surah/${lastListened!.surahNumber}?ayah=${lastListened!.ayahNumberInSurah}`)}
-            activeOpacity={0.92}
+            activeOpacity={0.88}
           >
             <View style={s.audioCardLeft}>
               <Text style={s.audioLabel}>{isFirstListen ? "START LISTENING" : "CONTINUE LISTENING"}</Text>
               <Text style={s.audioTitle}>{isFirstListen ? "Al-Faatiha" : lastListened!.surahName}</Text>
               <Text style={s.audioSub}>
-                {isFirstListen ? "Ayah 1" : `Ayah ${lastListened!.ayahNumberInSurah}`} • Reciter: Al-Afasy
+                {isFirstListen ? "Ayah 1" : `Ayah ${lastListened!.ayahNumberInSurah}`}
+                {" "}• Reciter: Al-Afasy
               </Text>
               <View style={s.audioProgressRail}>
-                {!isFirstListen && <View style={s.audioProgressFill} />}
+                <View style={[s.audioProgressFill, { width: `${audioProgressPct}%` as any }]} />
               </View>
             </View>
             <View style={s.playBtn}>
-              <Ionicons name="play" size={18} color="#FFFFFF" />
+              <Ionicons name="play" size={15} color="#FFFFFF" style={{ marginLeft: 2 }} />
             </View>
           </TouchableOpacity>
 
+          {/* ── Goal Widgets ─────────────────────────────────────────────── */}
           {hasMemorizationGoal ? (
             <>
               {memorizationPercent >= 100 ? (
-                /* ── STATE: MEMORIZATION COMPLETE ───────────────────────────── */
                 <View style={s.ctaCardShadow}>
                   <View style={s.ctaCardClip}>
                     {showMemorizationToast ? (
-                      /* With toast: full green card */
                       <View style={s.memCompleteGreen}>
                         <View style={s.memCompleteCheckCircle}>
                           <Feather name="check" size={18} color="#4CAF50" />
@@ -257,14 +274,13 @@ export default function HomeScreen() {
                           <Text style={s.memCompleteGreenText}>
                             {"You've memorized the "}
                             <Text style={s.memCompleteGreenBold}>
-                               {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah ? targetSurah.englishName : "—")}!
+                              {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah ? targetSurah.englishName : "—")}!
                             </Text>
                           </Text>
                           <Text style={s.memCompleteGreenSub}>BarakAllahu Feek.</Text>
                         </View>
                       </View>
                     ) : (
-                      /* Without toast: step indicator card */
                       <View style={s.memCompleteSteps}>
                         <View style={s.memCompleteStep}>
                           <View style={s.stepNumCircle}><Text style={s.stepNumText}>1</Text></View>
@@ -276,18 +292,13 @@ export default function HomeScreen() {
                         </View>
                       </View>
                     )}
-                    <TouchableOpacity
-                      style={s.attachedCta}
-                      onPress={() => setGoalSetupVisible(true)}
-                      activeOpacity={0.85}
-                    >
+                    <TouchableOpacity style={s.attachedCta} onPress={() => setGoalSetupVisible(true)} activeOpacity={0.85}>
                       <Text style={s.attachedCtaText}>Set New Goal</Text>
                       <Feather name="plus" size={20} color="#FFFFFF" />
                     </TouchableOpacity>
                   </View>
                 </View>
               ) : (goal === null || dailyPercent >= 100) ? (
-                /* ── STATE: NO DAILY GOAL / DAILY GOAL COMPLETE ─────────────── */
                 <View style={s.ctaCardShadow}>
                   <View style={s.ctaCardClip}>
                     {dailyPercent >= 100 && showDailyToast ? (
@@ -313,7 +324,7 @@ export default function HomeScreen() {
                         <CircularRing percent={memorizationPercent} size={64} strokeWidth={5} />
                         <View style={s.widgetCardInfo}>
                           <Text style={s.widgetCardTitle}>
-                             {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah ? targetSurah.englishName : "—")}
+                            {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah ? targetSurah.englishName : "—")}
                           </Text>
                           <Text style={s.widgetCardSub}>{totalMemorized} Ayahs Memorized</Text>
                         </View>
@@ -323,18 +334,13 @@ export default function HomeScreen() {
                         </TouchableOpacity>
                       </View>
                     </View>
-                    <TouchableOpacity
-                      style={s.attachedCta}
-                      onPress={() => setEditDailyGoalVisible(true)}
-                      activeOpacity={0.85}
-                    >
+                    <TouchableOpacity style={s.attachedCta} onPress={() => setEditDailyGoalVisible(true)} activeOpacity={0.85}>
                       <Text style={s.attachedCtaText}>Set Daily Goal</Text>
                       <Feather name="plus" size={20} color="#FFFFFF" />
                     </TouchableOpacity>
                   </View>
                 </View>
               ) : (
-                /* ── STATE: BOTH GOALS IN PROGRESS ──────────────────────────── */
                 <>
                   {/* Memorization Target Card */}
                   <View style={s.widgetCard}>
@@ -352,7 +358,7 @@ export default function HomeScreen() {
                       <CircularRing percent={memorizationPercent} size={64} strokeWidth={5} />
                       <View style={s.widgetCardInfo}>
                         <Text style={s.widgetCardTitle}>
-                           {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah ? targetSurah.englishName : "—")}
+                          {memorizationGoal!.path === "juz" ? `Juz ${targetJuz}` : (targetSurah ? targetSurah.englishName : "—")}
                         </Text>
                         <Text style={s.widgetCardSub}>{totalMemorized} Ayahs Memorized</Text>
                       </View>
@@ -369,10 +375,10 @@ export default function HomeScreen() {
                       <View style={s.headerPill}>
                         <Text style={s.headerPillText}>DAILY TARGET</Text>
                       </View>
-                       <View style={[
-                          s.dailyCompleteCircle,
-                          dailyPercent >= 100 && s.dailyCompleteCircleFilled,
-                        ]} />
+                      <View style={[
+                        s.dailyCompleteCircle,
+                        dailyPercent >= 100 && s.dailyCompleteCircleFilled,
+                      ]} />
                     </View>
                     <View style={s.widgetCardBody}>
                       <CircularRing percent={dailyPercent} size={64} strokeWidth={5} />
@@ -387,7 +393,7 @@ export default function HomeScreen() {
                       </TouchableOpacity>
                     </View>
 
-                    {/* Dot grid: one dot per ayah in daily goal, max 15 per row */}
+                    {/* Dot grid */}
                     {Array.from({ length: Math.ceil(Math.min(MAX_DAILY, goal.ayahsPerDay) / 15) }).map((_, rowIdx) => (
                       <View key={rowIdx} style={s.dotRow}>
                         {Array.from({ length: 15 }).map((_, colIdx) => {
@@ -398,7 +404,7 @@ export default function HomeScreen() {
                       </View>
                     ))}
 
-                    {/* Remaining Ayah Rows */}
+                    {/* Remaining Ayah rows */}
                     {remainingAyahGroups.slice(0, 2).map((g) => (
                       <View key={g.surahNumber} style={s.remainingRow}>
                         <TouchableOpacity
@@ -415,7 +421,7 @@ export default function HomeScreen() {
                         >
                           <Text style={s.remainingName}>{g.surahName}</Text>
                           <Text style={s.remainingCount}>{g.count} Ayah remaining</Text>
-                          <Feather name="chevron-right" size={14} color="#C0C0C0" />
+                          <Feather name="chevron-right" size={14} color="#CCCCCC" />
                         </TouchableOpacity>
                       </View>
                     ))}
@@ -428,11 +434,11 @@ export default function HomeScreen() {
                         </Text>
                       </View>
                       <View style={s.streakRow}>
-                        <Feather name="zap" size={13} color="#C9A02A" />
+                        <Feather name="zap" size={13} color={GOLD} />
                         <Text style={s.streakText}>{streakDays} Day Streak</Text>
                         <View style={s.detailsBtn}>
                           <Text style={s.detailsLink}>DETAILS</Text>
-                          <Feather name="chevron-right" size={11} color="#8E8E93" />
+                          <Feather name="chevron-right" size={11} color="#AAAAAA" />
                         </View>
                       </View>
                     </View>
@@ -441,7 +447,6 @@ export default function HomeScreen() {
               )}
             </>
           ) : (
-            /* ── STATE: NO MEMORIZATION GOAL (idle) ─────────────────────────── */
             <View style={s.greetingSection}>
               <Text style={s.greeting}>As Salamu Alaykum</Text>
               <Text style={s.goalTitle}>Set Your Memorization Goal</Text>
@@ -455,20 +460,20 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* Test Yourself CTA */}
+          {/* ── Test Yourself CTA ─────────────────────────────────────────── */}
           <TouchableOpacity
             style={s.quizCta}
             onPress={() => router.push("/(tabs)/library")}
             activeOpacity={0.85}
           >
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={s.quizCtaTitle}>Test Yourself!</Text>
               <Text style={s.quizCtaSub}>With the Saved Surahs, Ayahs & Words</Text>
             </View>
             <Feather name="chevron-right" size={20} color="#1A1A1A" />
           </TouchableOpacity>
 
-          {/* Last Visited */}
+          {/* ── Last Visited ──────────────────────────────────────────────── */}
           {recentProgress.length > 0 && (
             <View style={s.listSection}>
               <View style={s.listSectionHeader}>
@@ -502,7 +507,7 @@ export default function HomeScreen() {
                       <View style={s.lvFooter}>
                         <Text style={s.lvPct}>{pct}%</Text>
                         <View style={s.lvPlayBtn}>
-                          <Ionicons name="play" size={10} color="#FFFFFF" />
+                          <Ionicons name="play" size={9} color="#FFFFFF" style={{ marginLeft: 1 }} />
                         </View>
                       </View>
                     </TouchableOpacity>
@@ -512,7 +517,7 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* Saved Surahs */}
+          {/* ── Saved Surahs ──────────────────────────────────────────────── */}
           {savedSurahsMeta.length > 0 && (
             <View style={s.listSection}>
               <View style={s.listSectionHeader}>
@@ -549,11 +554,11 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* All Surahs by Juz */}
+          {/* ── All Surahs by Juz ─────────────────────────────────────────── */}
           <View style={s.surahSection}>
             <Text style={s.sectionTitle}>All Surahs by Juz</Text>
             {loading ? (
-              <ActivityIndicator color="#8E8E93" style={{ paddingVertical: 24 }} />
+              <ActivityIndicator color="#AAAAAA" style={{ paddingVertical: 28 }} />
             ) : (
               juzGroups.map(group => (
                 <View key={group.juz}>
@@ -562,12 +567,13 @@ export default function HomeScreen() {
                   </View>
                   {group.surahs.map((surah, i) => {
                     const memorized = isSurahChecked(surah.number);
+                    const compactArabicName = SURAH_DATA[surah.number - 1]?.name ?? surah.name;
                     return (
                       <TouchableOpacity
                         key={surah.number}
                         style={[s.surahRow, i === group.surahs.length - 1 && s.surahRowLast]}
                         onPress={() => router.push(`/surah/${surah.number}`)}
-                        activeOpacity={0.7}
+                        activeOpacity={0.65}
                       >
                         <Text style={s.surahNum}>{surah.number}</Text>
                         <View style={s.surahInfo}>
@@ -579,7 +585,7 @@ export default function HomeScreen() {
                             <Text style={s.memorizedTagText}>MEMORIZED</Text>
                           </View>
                         )}
-                        <Text style={s.surahArabic}>{surah.name}</Text>
+                        <Text style={s.surahArabic}>{compactArabicName}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -662,6 +668,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     container: { flex: 1 },
     scrollContent: { paddingBottom: 120 },
 
+    // ── Header ─────────────────────────────────────────────────────────────────
     headerRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -678,50 +685,67 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderRadius: 20,
       gap: 6,
     },
-    badgeDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#C9A02A" },
+    badgeDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: GOLD },
     badgeText: { fontSize: 12, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
-    settingsBtn: {
-      width: 40, height: 40,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: "#E0E0E0",
-      backgroundColor: "#FFFFFF",
-      alignItems: "center",
-      justifyContent: "center",
-    },
 
+    // ── Audio Card ─────────────────────────────────────────────────────────────
     audioCard: {
       marginHorizontal: 16,
       backgroundColor: "#FFFFFF",
       borderRadius: 16,
-      padding: 16,
+      padding: 18,
       flexDirection: "row",
       alignItems: "center",
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.05,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
       shadowRadius: 10,
       elevation: 2,
     },
-    audioCardLeft: { flex: 1, marginRight: 12 },
+    audioCardLeft: { flex: 1, marginRight: 14 },
     audioLabel: {
       fontSize: 9,
-      letterSpacing: 1.5,
-      color: "#8E8E93",
+      letterSpacing: 1.6,
+      color: "#AAAAAA",
       fontFamily: "Inter_600SemiBold",
       textTransform: "uppercase",
-      marginBottom: 4,
+      marginBottom: 5,
     },
-    audioTitle: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", marginBottom: 2 },
-    audioSub: { fontSize: 12, color: "#8E8E93", fontFamily: "Inter_400Regular", marginBottom: 12 },
-    audioProgressRail: { height: 2, backgroundColor: "#F2F2F7", borderRadius: 1, overflow: "hidden" },
-    audioProgressFill: { height: "100%" as any, width: "0%", backgroundColor: "#1A1A1A", borderRadius: 1 },
+    audioTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: "#1A1A1A",
+      fontFamily: "Inter_700Bold",
+      marginBottom: 3,
+      letterSpacing: -0.3,
+    },
+    audioSub: {
+      fontSize: 12,
+      color: "#AAAAAA",
+      fontFamily: "Inter_400Regular",
+      marginBottom: 14,
+    },
+    audioProgressRail: {
+      height: 2,
+      backgroundColor: "#F0EDE8",
+      borderRadius: 1,
+      overflow: "hidden",
+    },
+    audioProgressFill: {
+      height: "100%" as any,
+      backgroundColor: "#1A1A1A",
+      borderRadius: 1,
+    },
     playBtn: {
-      width: 46, height: 46, borderRadius: 23,
-      backgroundColor: "#1A1A1A", alignItems: "center", justifyContent: "center",
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: "#1A1A1A",
+      alignItems: "center",
+      justifyContent: "center",
     },
 
-    // ── Goal Widgets ─────────────────────────────────────────────────────────
+    // ── Goal Widget Cards ───────────────────────────────────────────────────────
     widgetCard: {
       marginHorizontal: 16,
       marginTop: 12,
@@ -729,19 +753,18 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderRadius: 16,
       padding: 16,
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
+      shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.05,
       shadowRadius: 10,
       elevation: 2,
     },
-    // Cards with attached CTA need a shadow wrapper + overflow:hidden clip
     ctaCardShadow: {
       marginHorizontal: 16,
       marginTop: 12,
       borderRadius: 16,
       backgroundColor: "#FFFFFF",
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
+      shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.05,
       shadowRadius: 10,
     },
@@ -753,14 +776,14 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     widgetCardContent: { padding: 16 },
     attachedCta: {
       backgroundColor: "#1A1A1A",
-      paddingVertical: 20,
+      paddingVertical: 18,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: 10,
     },
     attachedCtaText: {
-      fontSize: 17,
+      fontSize: 16,
       fontWeight: "700",
       color: "#FFFFFF",
       fontFamily: "Inter_700Bold",
@@ -772,16 +795,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: 16,
       paddingVertical: 12,
       gap: 8,
-    },
-    inlineBanner: {
-      backgroundColor: "#4CAF50",
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      gap: 8,
-      marginHorizontal: -16,
-      marginTop: 12,
     },
     bannerText: {
       flex: 1,
@@ -804,34 +817,27 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center", justifyContent: "center",
       flexShrink: 0,
     },
-    memCompleteGreenText: {
-      fontSize: 15, color: "#FFFFFF", fontFamily: "Inter_400Regular", lineHeight: 22,
-    },
+    memCompleteGreenText: { fontSize: 15, color: "#FFFFFF", fontFamily: "Inter_400Regular", lineHeight: 22 },
     memCompleteGreenBold: { fontFamily: "Inter_700Bold", color: "#FFFFFF" },
-    memCompleteGreenSub: {
-      fontSize: 13, color: "rgba(255,255,255,0.8)", fontFamily: "Inter_400Regular", marginTop: 2,
-    },
-    memCompleteSteps: {
-      paddingHorizontal: 20, paddingVertical: 20, gap: 14,
-    },
-    memCompleteStep: {
-      flexDirection: "row", alignItems: "center", gap: 14,
-    },
+    memCompleteGreenSub: { fontSize: 13, color: "rgba(255,255,255,0.8)", fontFamily: "Inter_400Regular", marginTop: 2 },
+    memCompleteSteps: { paddingHorizontal: 20, paddingVertical: 20, gap: 14 },
+    memCompleteStep: { flexDirection: "row", alignItems: "center", gap: 14 },
     stepNumCircle: {
       width: 36, height: 36, borderRadius: 18,
-      backgroundColor: "#C9A02A",
+      backgroundColor: GOLD,
       alignItems: "center", justifyContent: "center", flexShrink: 0,
     },
     stepNumText: { fontSize: 15, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
     stepStepText: { fontSize: 15, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
+
     widgetCardHeader: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: 14,
+      marginBottom: 16,
     },
     headerPill: {
-      backgroundColor: "#F2F2F7",
+      backgroundColor: "#F0EDE8",
       paddingHorizontal: 10,
       paddingVertical: 5,
       borderRadius: 20,
@@ -839,8 +845,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     headerPillText: {
       fontSize: 10,
       fontWeight: "700",
-      color: "#8E8E93",
-      letterSpacing: 1,
+      color: "#AAAAAA",
+      letterSpacing: 0.8,
       fontFamily: "Inter_700Bold",
       textTransform: "uppercase",
     },
@@ -853,7 +859,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     modeBadgeText: {
       fontSize: 10,
       fontWeight: "700",
-      color: "#C9A02A",
+      color: GOLD,
       fontFamily: "Inter_700Bold",
       letterSpacing: 0.5,
     },
@@ -863,14 +869,21 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       gap: 14,
     },
     widgetCardInfo: { flex: 1 },
-    widgetCardTitle: { fontSize: 18, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", marginBottom: 3 },
-    widgetCardSub: { fontSize: 12, color: "#8E8E93", fontFamily: "Inter_400Regular" },
+    widgetCardTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: "#1A1A1A",
+      fontFamily: "Inter_700Bold",
+      marginBottom: 3,
+      letterSpacing: -0.2,
+    },
+    widgetCardSub: { fontSize: 12, color: "#AAAAAA", fontFamily: "Inter_400Regular" },
     editBoxBtn: {
       flexDirection: "row",
       alignItems: "center",
       gap: 5,
-      borderWidth: 1,
-      borderColor: "#E0E0E0",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: "#DDDAD4",
       borderRadius: 10,
       paddingHorizontal: 12,
       paddingVertical: 8,
@@ -881,20 +894,16 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: 14,
+      marginBottom: 16,
     },
     dailyCompleteCircle: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
       borderWidth: 1.5,
-      borderColor: "#DADADA",
+      borderColor: "#DDDAD4",
     },
     dailyCompleteCircleFilled: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      borderWidth: 1.5,
       borderColor: "#4CAF50",
       backgroundColor: "#4CAF50",
     },
@@ -908,46 +917,49 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     dotRow: {
       flexDirection: "row",
       gap: 5,
-      marginTop: 5,
+      marginTop: 6,
     },
     dotGridItem: {
-      width: 9,
-      height: 9,
-      borderRadius: 5,
-      backgroundColor: "#E8E8ED",
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: "#EDEAE5",
     },
     dotGridItemFilled: { backgroundColor: "#1A1A1A" },
 
     remainingRow: {
       flexDirection: "row",
       alignItems: "center",
-      paddingVertical: 10,
+      paddingVertical: 11,
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: "#F0F0F0",
-      marginTop: 8,
-      gap: 8,
+      borderTopColor: "#EDEAE5",
+      marginTop: 10,
+      gap: 10,
     },
     remainingCircle: {
       width: 20,
       height: 20,
       borderRadius: 10,
       borderWidth: 1.5,
-      borderColor: "#C0C0C0",
+      borderColor: "#CCCCCC",
     },
     remainingTextArea: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
     remainingName: { flex: 1, fontSize: 14, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
-    remainingCount: { fontSize: 12, color: "#8E8E93", fontFamily: "Inter_400Regular" },
+    remainingCount: { fontSize: 12, color: "#AAAAAA", fontFamily: "Inter_400Regular" },
 
     dailyCardFooter: { marginTop: 10, gap: 8 },
     remainingLabelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-    remainingLabel: { fontSize: 10, fontWeight: "700", color: "#C0C0C0", letterSpacing: 1, fontFamily: "Inter_700Bold", textTransform: "uppercase" },
-    remainingShowing: { fontSize: 10, fontWeight: "700", color: "#8E8E93", fontFamily: "Inter_700Bold" },
+    remainingLabel: {
+      fontSize: 10, fontWeight: "700", color: "#CCCCCC",
+      letterSpacing: 1, fontFamily: "Inter_700Bold", textTransform: "uppercase",
+    },
+    remainingShowing: { fontSize: 10, fontWeight: "700", color: "#AAAAAA", fontFamily: "Inter_700Bold" },
     streakRow: { flexDirection: "row", alignItems: "center", gap: 5 },
-    streakText: { fontSize: 13, fontWeight: "600", color: "#C9A02A", fontFamily: "Inter_600SemiBold" },
+    streakText: { fontSize: 13, fontWeight: "600", color: GOLD, fontFamily: "Inter_600SemiBold" },
     detailsBtn: { flexDirection: "row", alignItems: "center", gap: 2, marginLeft: "auto" as any },
-    detailsLink: { fontSize: 11, fontWeight: "700", color: "#8E8E93", letterSpacing: 0.8, fontFamily: "Inter_700Bold" },
+    detailsLink: { fontSize: 11, fontWeight: "700", color: "#AAAAAA", letterSpacing: 0.8, fontFamily: "Inter_700Bold" },
 
-    // ── Idle State ────────────────────────────────────────────────────────────
+    // ── Idle / No Goal ─────────────────────────────────────────────────────────
     greetingSection: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 4 },
     greeting: {
       fontSize: 22,
@@ -957,55 +969,91 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginBottom: 24,
     },
     goalTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", marginBottom: 6 },
-    goalSub: { fontSize: 14, color: "#8E8E93", fontFamily: "Inter_400Regular", lineHeight: 21, marginBottom: 20 },
+    goalSub: { fontSize: 14, color: "#AAAAAA", fontFamily: "Inter_400Regular", lineHeight: 21, marginBottom: 20 },
     goalBtn: {
       backgroundColor: "#1A1A1A",
-      borderRadius: 12,
+      borderRadius: 14,
       paddingVertical: 17,
       paddingHorizontal: 20,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
     },
-    goalBtnText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold", letterSpacing: 0.3 },
+    goalBtnText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold", letterSpacing: 0.2 },
 
-    // ── Quiz CTA ──────────────────────────────────────────────────────────────
+    // ── Quiz CTA Banner ────────────────────────────────────────────────────────
     quizCta: {
       marginHorizontal: 16,
-      marginTop: 16,
+      marginTop: 20,
       backgroundColor: "#F9E79F",
       borderRadius: 14,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
+      paddingHorizontal: 18,
+      paddingVertical: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    quizCtaTitle: { fontSize: 15, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+    quizCtaSub: { fontSize: 12, color: "#6B6B3A", fontFamily: "Inter_400Regular", marginTop: 2 },
+
+    // ── List Sections (Last Visited / Saved Surahs) ────────────────────────────
+    listSection: { marginTop: 28, paddingHorizontal: 16 },
+    listSectionHeader: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+      marginBottom: 14,
     },
-    quizCtaTitle: { fontSize: 15, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-    quizCtaSub: { fontSize: 12, color: "#5A5A5A", fontFamily: "Inter_400Regular", marginTop: 2 },
+    listSectionTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: "#1A1A1A",
+      fontFamily: "Inter_700Bold",
+      letterSpacing: -0.3,
+    },
+    viewAllText: { fontSize: 13, color: "#AAAAAA", fontFamily: "Inter_400Regular" },
 
-    // ── List Sections (Last Visited, Saved Surahs) ────────────────────────────
-    listSection: { marginTop: 24, paddingHorizontal: 16 },
-    listSectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
-    listSectionTitle: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-    viewAllText: { fontSize: 13, color: "#8E8E93", fontFamily: "Inter_400Regular" },
-
-    lvScroll: { gap: 10, paddingRight: 16 },
+    lvScroll: { gap: 10, paddingRight: 16, paddingLeft: 2 },
     lvCard: {
-      width: 130,
+      width: 136,
       backgroundColor: "#FFFFFF",
-      borderRadius: 14,
+      borderRadius: 16,
       padding: 14,
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 3 },
+      shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.05,
       shadowRadius: 8,
       elevation: 2,
     },
-    lvArabic: { fontSize: 22, color: "#1A1A1A", textAlign: "center", marginBottom: 6 },
-    lvName: { fontSize: 12, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold", textAlign: "center" },
-    lvAyah: { fontSize: 11, color: "#8E8E93", fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 2, marginBottom: 10 },
-    lvProgressRail: { height: 2, backgroundColor: "#F2F2F7", borderRadius: 1, overflow: "hidden", marginBottom: 8 },
+    lvArabic: {
+      fontSize: 26,
+      color: "#1A1A1A",
+      textAlign: "center",
+      marginBottom: 6,
+      lineHeight: 38,
+    },
+    lvName: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: "#1A1A1A",
+      fontFamily: "Inter_700Bold",
+      textAlign: "center",
+    },
+    lvAyah: {
+      fontSize: 11,
+      color: "#AAAAAA",
+      fontFamily: "Inter_400Regular",
+      textAlign: "center",
+      marginTop: 2,
+      marginBottom: 10,
+    },
+    lvProgressRail: {
+      height: 2,
+      backgroundColor: "#F0EDE8",
+      borderRadius: 1,
+      overflow: "hidden",
+      marginBottom: 8,
+    },
     lvProgressFill: { height: "100%" as any, backgroundColor: "#1A1A1A", borderRadius: 1 },
     lvFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
     lvPct: { fontSize: 11, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
@@ -1014,12 +1062,13 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       backgroundColor: "#1A1A1A", alignItems: "center", justifyContent: "center",
     },
 
+    // ── Saved Surahs ───────────────────────────────────────────────────────────
     savedCard: {
       backgroundColor: "#FFFFFF",
-      borderRadius: 14,
+      borderRadius: 16,
       overflow: "hidden",
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 3 },
+      shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.05,
       shadowRadius: 8,
       elevation: 2,
@@ -1030,47 +1079,83 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: 16,
       paddingVertical: 14,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: "#F0F0F0",
+      borderBottomColor: "#EDEAE5",
       gap: 12,
     },
     savedRowLast: { borderBottomWidth: 0 },
     savedNumBubble: {
       width: 36, height: 36, borderRadius: 18,
-      backgroundColor: "#F2F2F7", alignItems: "center", justifyContent: "center",
+      backgroundColor: "#F0EDE8",
+      alignItems: "center", justifyContent: "center",
     },
     savedNumText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
     savedInfo: { flex: 1 },
-    savedName: { fontSize: 15, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold", marginBottom: 2 },
+    savedName: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: "#1A1A1A",
+      fontFamily: "Inter_600SemiBold",
+      marginBottom: 2,
+    },
     savedArabic: { fontSize: 17, color: "#1A1A1A" },
-    savedMeta: { fontSize: 11, color: "#8E8E93", fontFamily: "Inter_400Regular" },
+    savedMeta: { fontSize: 11, color: "#AAAAAA", fontFamily: "Inter_400Regular" },
 
-    // ── All Surahs by Juz ─────────────────────────────────────────────────────
-    surahSection: { marginTop: 24 },
-    sectionTitle: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", paddingHorizontal: 20, paddingBottom: 10 },
-    juzHeader: { backgroundColor: "#F2F2F7", paddingHorizontal: 20, paddingVertical: 7 },
-    juzLabel: { fontSize: 11, fontWeight: "700", color: "#8E8E93", letterSpacing: 1, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
+    // ── All Surahs by Juz ──────────────────────────────────────────────────────
+    surahSection: { marginTop: 28 },
+    sectionTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: "#1A1A1A",
+      fontFamily: "Inter_700Bold",
+      paddingHorizontal: 20,
+      paddingBottom: 12,
+      letterSpacing: -0.3,
+    },
+    juzHeader: {
+      backgroundColor: "#F0EDE8",
+      paddingHorizontal: 20,
+      paddingVertical: 7,
+    },
+    juzLabel: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: "#AAAAAA",
+      letterSpacing: 1.2,
+      textTransform: "uppercase",
+      fontFamily: "Inter_700Bold",
+    },
     surahRow: {
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: 20,
       paddingVertical: 13,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: "#E8E8ED",
+      borderBottomColor: "#EDEAE5",
       backgroundColor: "#FFFFFF",
     },
     surahRowLast: { borderBottomWidth: 0 },
-    surahNum: { width: 30, fontSize: 13, fontWeight: "600", color: "#8E8E93", fontFamily: "Inter_600SemiBold" },
+    surahNum: {
+      width: 30,
+      fontSize: 13,
+      fontWeight: "600",
+      color: "#AAAAAA",
+      fontFamily: "Inter_600SemiBold",
+    },
     surahInfo: { flex: 1 },
     surahName: { fontSize: 15, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
-    surahMeta: { fontSize: 11, color: "#8E8E93", fontFamily: "Inter_400Regular", marginTop: 2 },
-    surahArabic: { fontSize: 19, color: "#1A1A1A", fontFamily: Platform.OS === "ios" ? "System" : undefined },
+    surahMeta: { fontSize: 11, color: "#AAAAAA", fontFamily: "Inter_400Regular", marginTop: 2 },
+    surahArabic: {
+      fontSize: 18,
+      color: "#1A1A1A",
+      fontFamily: Platform.OS === "ios" ? "System" : undefined,
+    },
 
     memorizedTag: {
       backgroundColor: "#16A34A",
       paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 8,
-      marginRight: 4,
+      marginRight: 6,
     },
     memorizedTagText: {
       fontSize: 10,
