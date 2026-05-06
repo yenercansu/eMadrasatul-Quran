@@ -17,19 +17,21 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useQuran, type SavedWord } from "@/contexts/QuranContext";
-import { fetchAyahText } from "@/services/quranApi";
 import { SURAH_DATA } from "@/constants/surahData";
 
 type QuizMode = "word-meaning" | "fill-blank";
 type QuizState = "loading" | "answering" | "answered" | "finished" | "no-words";
 
+interface QuizOption {
+  text: string;
+  wordTranslation?: string; // per-option word-level translation (fill-blank mode)
+}
+
 interface QuizQuestion {
   word: SavedWord;
-  options: string[];
+  options: QuizOption[];
   correctIndex: number;
   mode: QuizMode;
-  verseText?: string;
-  blankVerseText?: string;
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -41,21 +43,15 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-async function buildQuestions(words: SavedWord[]): Promise<QuizQuestion[]> {
+function buildQuestions(words: SavedWord[]): QuizQuestion[] {
   if (words.length < 2) return [];
 
   const wordsWithTranslation = words.filter(w => w.translation && w.translation.trim().length > 0);
-  const allArabics = words.map(w => w.arabic);
   const selectedWords = shuffle(words).slice(0, 10);
 
-  const verseTexts: Record<string, string> = {};
-  await Promise.all(
-    selectedWords.map(async (word) => {
-      const key = `${word.surahNumber}:${word.ayahNumber}`;
-      if (!verseTexts[key]) {
-        verseTexts[key] = await fetchAyahText(word.surahNumber, word.ayahNumber);
-      }
-    })
+  // Build a lookup so fill-blank option buttons can show per-word translations
+  const arabicToTranslation = new Map<string, string>(
+    words.map(w => [w.arabic, w.translation])
   );
 
   let wordMeaningToggle = true;
@@ -72,10 +68,8 @@ async function buildQuestions(words: SavedWord[]): Promise<QuizQuestion[]> {
       wordMeaningToggle = !wordMeaningToggle;
     }
 
-    const verseKey = `${word.surahNumber}:${word.ayahNumber}`;
-    const verseText = verseTexts[verseKey] ?? "";
-
     if (mode === "word-meaning") {
+      // Options are English translations — no wordTranslation needed on option
       const otherTranslations = shuffle(
         wordsWithTranslation
           .filter(w => w.translation !== word.translation)
@@ -84,21 +78,25 @@ async function buildQuestions(words: SavedWord[]): Promise<QuizQuestion[]> {
       while (otherTranslations.length < 3) {
         otherTranslations.push("Unknown meaning");
       }
-      const options = shuffle([word.translation, ...otherTranslations]);
-      const correctIndex = options.indexOf(word.translation);
+      const rawOptions = shuffle([word.translation, ...otherTranslations]);
+      const options: QuizOption[] = rawOptions.map(t => ({ text: t }));
+      const correctIndex = options.findIndex(o => o.text === word.translation);
       return { word, options, correctIndex, mode };
     } else {
-      const otherArabics = shuffle(allArabics.filter(a => a !== word.arabic)).slice(0, 3);
+      // Options are Arabic words — attach their word-level translations
+      const otherArabics = shuffle(
+        words.filter(w => w.arabic !== word.arabic).map(w => w.arabic)
+      ).slice(0, 3);
       while (otherArabics.length < 3) {
         otherArabics.push("ـ");
       }
-      const options = shuffle([word.arabic, ...otherArabics]);
-      const correctIndex = options.indexOf(word.arabic);
-      let blankVerseText = verseText;
-      if (verseText.includes(word.arabic)) {
-        blankVerseText = verseText.replace(word.arabic, "______");
-      }
-      return { word, options, correctIndex, mode, verseText, blankVerseText };
+      const rawOptions = shuffle([word.arabic, ...otherArabics]);
+      const options: QuizOption[] = rawOptions.map(a => ({
+        text: a,
+        wordTranslation: arabicToTranslation.get(a) ?? "",
+      }));
+      const correctIndex = options.findIndex(o => o.text === word.arabic);
+      return { word, options, correctIndex, mode };
     }
   });
 }
@@ -240,23 +238,15 @@ export default function QuizScreen() {
   const [quizState, setQuizState] = useState<QuizState>("loading");
   const [wordsManagerVisible, setWordsManagerVisible] = useState(false);
 
-  const initQuiz = useCallback(async (words: SavedWord[]) => {
-    if (words.length < 2) {
-      setQuizState("no-words");
-      return;
-    }
-    setQuizState("loading");
-    try {
-      const q = await buildQuestions(words);
-      if (q.length === 0) { setQuizState("no-words"); return; }
-      setQuestions(q);
-      setCurrentIndex(0);
-      setScore(0);
-      setSelectedAnswer(null);
-      setQuizState("answering");
-    } catch {
-      setQuizState("no-words");
-    }
+  const initQuiz = useCallback((words: SavedWord[]) => {
+    if (words.length < 2) { setQuizState("no-words"); return; }
+    const q = buildQuestions(words);
+    if (q.length === 0) { setQuizState("no-words"); return; }
+    setQuestions(q);
+    setCurrentIndex(0);
+    setScore(0);
+    setSelectedAnswer(null);
+    setQuizState("answering");
   }, []);
 
   useEffect(() => {
@@ -392,32 +382,22 @@ export default function QuizScreen() {
             </Text>
           </View>
 
+          {/* Word card: Arabic large, English meaning below — same layout for both modes */}
+          <Text style={s.arabicQuestion}>{currentQ.word.arabic}</Text>
           {isWordMeaning ? (
-            <>
-              <Text style={s.arabicQuestion}>{currentQ.word.arabic}</Text>
-              <Text style={s.questionSub}>Surah {currentQ.word.surahNumber} • Ayah {currentQ.word.ayahNumber}</Text>
-            </>
+            <Text style={s.questionSub}>
+              {SURAH_DATA[currentQ.word.surahNumber - 1]?.englishName ?? `Surah ${currentQ.word.surahNumber}`} • Ayah {currentQ.word.ayahNumber}
+            </Text>
           ) : (
-            <View style={s.fillBlankContainer}>
-              <View style={s.fillBlankContext}>
-                <Text style={s.fillBlankContextLabel}>
-                  {SURAH_DATA[currentQ.word.surahNumber - 1]?.englishName ?? `Surah ${currentQ.word.surahNumber}`} • Ayah {currentQ.word.ayahNumber}
-                </Text>
-              </View>
-              {currentQ.blankVerseText ? (
-                <Text style={s.fillBlankVerse} textBreakStrategy="highQuality">
-                  {currentQ.blankVerseText}
-                </Text>
-              ) : (
-                <View style={s.fillBlankNoVerse}>
-                  <Text style={s.fillBlankPromptLabel}>Which word belongs here?</Text>
-                  <Text style={s.fillBlankArabicHint}>{currentQ.word.arabic}</Text>
-                  <Text style={s.fillBlankArrow}>↑</Text>
-                  <Text style={s.fillBlankBlankLine}>_ _ _ _ _ _</Text>
-                </View>
-              )}
-              <Text style={s.fillBlankInstruct}>Select the correct Arabic word</Text>
-            </View>
+            <>
+              {currentQ.word.translation ? (
+                <Text style={s.wordMeaning}>{currentQ.word.translation}</Text>
+              ) : null}
+              <Text style={s.questionSub}>
+                {SURAH_DATA[currentQ.word.surahNumber - 1]?.englishName ?? `Surah ${currentQ.word.surahNumber}`} • Ayah {currentQ.word.ayahNumber}
+              </Text>
+              <Text style={s.fillBlankInstruct}>Select the matching Arabic word</Text>
+            </>
           )}
         </View>
 
@@ -430,9 +410,10 @@ export default function QuizScreen() {
             let bgColor = colors.card;
             let borderColor = colors.border;
             let textColor = colors.foreground;
+            let subColor = colors.mutedForeground;
 
             if (showResult) {
-              if (isCorrect) { bgColor = colors.primary; borderColor = colors.primary; textColor = colors.primaryForeground; }
+              if (isCorrect) { bgColor = colors.primary; borderColor = colors.primary; textColor = colors.primaryForeground; subColor = "rgba(255,255,255,0.75)"; }
               else if (isSelected) { bgColor = "#FFF0F0"; borderColor = colors.destructive; textColor = colors.destructive; }
             } else if (isSelected) {
               bgColor = colors.secondary; borderColor = colors.primary;
@@ -441,14 +422,25 @@ export default function QuizScreen() {
             return (
               <TouchableOpacity
                 key={idx}
-                style={[s.optionBtn, { backgroundColor: bgColor, borderColor }]}
+                style={[s.optionBtn, { backgroundColor: bgColor, borderColor }, isFillBlank && s.optionBtnFillBlank]}
                 onPress={() => handleAnswer(idx)}
                 activeOpacity={0.8}
                 disabled={quizState === "answered"}
               >
-                <Text style={[s.optionText, { color: textColor }, isFillBlank && s.optionTextArabic]}>
-                  {option}
-                </Text>
+                <View style={s.optionInner}>
+                  <Text style={[
+                    isFillBlank ? s.optionTextArabic : s.optionText,
+                    { color: textColor },
+                  ]}>
+                    {option.text}
+                  </Text>
+                  {/* Word-level translation shown on Arabic options in fill-blank mode */}
+                  {isFillBlank && option.wordTranslation ? (
+                    <Text style={[s.optionWordTrans, { color: subColor }]} numberOfLines={1}>
+                      {option.wordTranslation}
+                    </Text>
+                  ) : null}
+                </View>
                 {showResult && isCorrect && (
                   <Ionicons name="checkmark-circle" size={18} color={colors.primaryForeground} />
                 )}
@@ -498,7 +490,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     headerTitle: { flex: 1, textAlign: "center", fontSize: 16, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
     quizProgressBar: { height: 3, backgroundColor: colors.border },
     quizProgressFill: { height: "100%", backgroundColor: colors.primary },
-     quizContent: { padding: 12, gap: 12, paddingBottom: 24, flexGrow: 1 },
+      quizContent: { padding: 8, gap: 8, paddingBottom: 16, flexGrow: 1 },
     questionCard: {
       backgroundColor: colors.card,
       borderRadius: 18,
@@ -555,7 +547,30 @@ const styles = (colors: ReturnType<typeof useColors>) =>
    borderWidth: 1,
  },
  optionText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
- optionTextArabic: { fontSize: 18, fontFamily: Platform.OS === "ios" ? "System" : undefined, textAlign: "right" },
+ optionTextArabic: { fontSize: 18, fontFamily: Platform.OS === "ios" ? "System" : undefined, textAlign: "center" },
+ wordMeaning: {
+   fontSize: 16,
+   color: colors.mutedForeground,
+   fontFamily: "Inter_400Regular",
+   textAlign: "center",
+   marginBottom: 6,
+   fontStyle: "italic",
+ },
+ optionInner: {
+   flex: 1,
+   gap: 3,
+   alignItems: "center",
+ },
+ optionBtnFillBlank: {
+   paddingVertical: 14,
+   alignItems: "center",
+ },
+ optionWordTrans: {
+   fontSize: 12,
+   fontFamily: "Inter_400Regular",
+   textAlign: "center",
+   opacity: 0.75,
+ },
     feedbackRow: { flexDirection: "row", gap: 10, alignItems: "center" },
     removeWordBtn: {
       flexDirection: "row",

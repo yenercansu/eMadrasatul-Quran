@@ -37,10 +37,15 @@ import { RepeatSectionSheet } from "@/components/RepeatSectionSheet";
 import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { fetchSurahWithTranslations, fetchTafsir, fetchTranslation, type SurahDetail, type ApiAyah } from "@/services/quranApi";
+import { fetchSurahWithTranslations, fetchTafsir, fetchTranslation, fetchWordTranslations, type SurahDetail, type ApiAyah, type WordTranslation } from "@/services/quranApi";
 import { SURAH_DATA } from "@/constants/surahData";
 
 const HINTS_STORAGE_KEY = "@squran/surah-hints-seen-v1";
+
+// Strip Arabic diacritics for fuzzy word matching against quran.com API text
+function normalizeArabic(s: string): string {
+  return s.replace(/[ً-ٟؐ-ؚٰۖ-ۭـ]/g, "").trim();
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const AYAHS_PER_PAGE = 10;
@@ -1118,22 +1123,36 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     AsyncStorage.setItem(HINTS_STORAGE_KEY, "1").catch(() => {});
   }, []);
 
-  const handleWordLongPress = useCallback((word: string, ayah: ApiAyah) => {
+  const handleWordLongPress = useCallback(async (word: string, ayah: ApiAyah) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // Use sahih translation as the displayed meaning
+
+    const cacheKey = `${surahNum}:${ayah.numberInSurah}`;
+    let wordTranslations = wordTranslationsCache.current[cacheKey];
+    if (!wordTranslations) {
+      wordTranslations = await fetchWordTranslations(surahNum, ayah.numberInSurah);
+      wordTranslationsCache.current[cacheKey] = wordTranslations;
+    }
+
+    // Match this word against API words by normalized Arabic text
+    const normWord = normalizeArabic(word);
+    const match = wordTranslations.find((wt) => normalizeArabic(wt.arabic) === normWord);
+
+    // Fallback to full ayah sahih translation if no word-level match
     const sahih = translationsMap["en.sahih"];
-    const ta = sahih?.ayahs[ayah.numberInSurah - 1];
+    const fallback = sahih?.ayahs[ayah.numberInSurah - 1]?.text ?? "";
+
     setWordModal({
       word,
       surah: surahNum,
       ayah: ayah.numberInSurah,
-      translation: ta?.text ?? "",
+      translation: match?.translation || fallback,
     });
-  }, [translationsMap, surahNum]);
+  }, [surahNum, translationsMap]);
 
   const listRef = useRef<FlatList<ApiAyah>>(null);
   const mushafScrollRef = useRef<ScrollView>(null);
   const scrollYRef = useRef(0);
+  const wordTranslationsCache = useRef<Record<string, WordTranslation[]>>({});
 
   // Horizontal swipe detector for Mushaf page navigation (via stable ref callbacks)
   const mushafGoNextRef = useRef<() => void>(() => {});
@@ -1282,7 +1301,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     }
   }
 
-  const handleSaveAyah = useCallback((ayah: ApiAyah) => {
+  const handleSaveAyah = useCallback(async (ayah: ApiAyah) => {
     const sahih = translationsMap["en.sahih"];
     const ayahTranslation = sahih?.ayahs[ayah.numberInSurah - 1]?.text ?? "";
     saveAyah({
@@ -1290,19 +1309,28 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       ayahNumber: ayah.numberInSurah, arabicText: ayah.text,
       translationText: ayahTranslation,
     });
-    // Also save individual words from this ayah for word quiz
-    const words = ayah.text.split(/\s+/).filter(w => w.trim().length > 0);
-    words.forEach(word => {
-      saveWord({
-        arabic: word,
-        translation: ayahTranslation,
-        surahNumber: surahNum,
-        ayahNumber: ayah.numberInSurah,
-        highlighted: false,
-      });
-    });
+
+    // Also save each word of the ayah into the vocabulary list
+    const cacheKey = `${surahNum}:${ayah.numberInSurah}`;
+    let wordTranslations = wordTranslationsCache.current[cacheKey];
+    if (!wordTranslations) {
+      wordTranslations = await fetchWordTranslations(surahNum, ayah.numberInSurah);
+      wordTranslationsCache.current[cacheKey] = wordTranslations;
+    }
+    for (const wt of wordTranslations) {
+      if (wt.arabic && wt.translation) {
+        saveWord({
+          arabic: wt.arabic,
+          translation: wt.translation,
+          surahNumber: surahNum,
+          ayahNumber: ayah.numberInSurah,
+          highlighted: false,
+        });
+      }
+    }
+
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [surahNum, saveAyah, arabic, translationsMap, saveWord]);
+  }, [surahNum, saveAyah, saveWord, arabic, translationsMap]);
 
   const handleSetRepeat = useCallback((ayah: ApiAyah, count: number) => {
     setAyahRepeatCounts(prev => ({ ...prev, [ayah.numberInSurah]: count }));

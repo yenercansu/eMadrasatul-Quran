@@ -103,6 +103,36 @@ export async function fetchTranslation(
   return data.data;
 }
 
+export interface WordTranslation {
+  arabic: string;
+  translation: string;
+  position: number;
+}
+
+// Fetches word-level translations from quran.com API v4 (cached per ayah in caller)
+export async function fetchWordTranslations(
+  surahNum: number,
+  ayahNum: number
+): Promise<WordTranslation[]> {
+  try {
+    const res = await fetch(
+      `https://api.quran.com/api/v4/verses/by_key/${surahNum}:${ayahNum}?words=true&word_fields=text_uthmani,translation_text`
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    const words: any[] = data.verse?.words ?? [];
+    return words
+      .filter((w) => w.char_type_name === "word")
+      .map((w, idx) => ({
+        arabic: w.text_uthmani ?? "",
+        translation: w.translation?.text ?? "",
+        position: idx,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchAyahText(surahNum: number, ayahNum: number): Promise<string> {
   try {
     const res = await fetch(`${BASE_URL}/ayah/${surahNum}:${ayahNum}/quran-uthmani`);
