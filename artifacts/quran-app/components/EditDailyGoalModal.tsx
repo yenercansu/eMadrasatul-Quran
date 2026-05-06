@@ -58,19 +58,19 @@ function AyahSlider({ value, onChange, max }: { value: number; onChange: (v: num
 
 interface Props {
   visible: boolean;
-  currentAyahsPerDay: number;
+  currentAyahsPerWeek: number;
   remainingInTarget?: number;
-  onSave: (ayahsPerDay: number) => void;
+  onSave: (ayahsPerWeek: number) => void;
   onClose: () => void;
 }
 
-export function EditDailyGoalModal({ visible, currentAyahsPerDay, remainingInTarget, onSave, onClose }: Props) {
+export function EditDailyGoalModal({ visible, currentAyahsPerWeek, remainingInTarget, onSave, onClose }: Props) {
   const effectiveMax = Math.min(MAX_DAILY, remainingInTarget ?? MAX_DAILY);
-  const [ayahsPerDay, setAyahsPerDay] = useState(currentAyahsPerDay);
+  const [ayahsPerWeek, setAyahsPerWeek] = useState(currentAyahsPerWeek);
 
   useEffect(() => {
-    if (visible) setAyahsPerDay(Math.min(effectiveMax, currentAyahsPerDay));
-  }, [visible, currentAyahsPerDay, effectiveMax]);
+    if (visible) setAyahsPerWeek(Math.min(effectiveMax, currentAyahsPerWeek));
+  }, [visible, currentAyahsPerWeek, effectiveMax]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -79,24 +79,24 @@ export function EditDailyGoalModal({ visible, currentAyahsPerDay, remainingInTar
           <TouchableWithoutFeedback>
             <View style={s.sheet}>
               <View style={s.handle} />
-              <Text style={s.title}>Edit Daily Goal</Text>
+              <Text style={s.title}>Edit Weekly Goal</Text>
               <Text style={s.sub}>
-                Adjust how many Ayahs you want to memorize every day.
+                Adjust how many Ayahs you want to memorize every week.
               </Text>
 
               <View style={s.pinWrapper}>
                 <View style={s.valueBadge}>
-                  <Text style={s.valueNum}>{ayahsPerDay}</Text>
+                  <Text style={s.valueNum}>{ayahsPerWeek}</Text>
                 </View>
                 <View style={s.valuePin} />
               </View>
-              <Text style={s.valueLabel}>AYAHS PER DAY</Text>
+              <Text style={s.valueLabel}>AYAHS PER WEEK</Text>
 
-              <AyahSlider value={ayahsPerDay} onChange={setAyahsPerDay} max={effectiveMax} />
+              <AyahSlider value={ayahsPerWeek} onChange={setAyahsPerWeek} max={effectiveMax} />
 
               <View style={s.dots}>
                 {COMMITMENT_STEPS.filter(step => step <= effectiveMax).map((step) => (
-                  <View key={step} style={[s.dot, ayahsPerDay >= step && s.dotFilled]} />
+                  <View key={step} style={[s.dot, ayahsPerWeek >= step && s.dotFilled]} />
                 ))}
               </View>
 
@@ -113,7 +113,7 @@ export function EditDailyGoalModal({ visible, currentAyahsPerDay, remainingInTar
                 style={s.updateBtn}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  onSave(ayahsPerDay);
+                  onSave(ayahsPerWeek);
                   onClose();
                 }}
                 activeOpacity={0.85}

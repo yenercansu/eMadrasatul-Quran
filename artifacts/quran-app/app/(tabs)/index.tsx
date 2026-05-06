@@ -75,7 +75,8 @@ export default function HomeScreen() {
   const {
     lastListened, goal, setGoal, memorizationGoal, setMemorizationGoal,
     todayEntry, dailyEntries, onlineUsers, recentProgress, savedSurahs,
-    getTodayGoalAyahs, getTodayGoalProgress, recordAyahRead, isSurahChecked,
+    getWeekGoalAyahs, getWeekGoalProgress, recordAyahRead, isSurahChecked,
+    markAyahsMemorized,
   } = useQuran();
   const [surahs, setSurahs] = useState<ApiSurah[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,9 +84,9 @@ export default function HomeScreen() {
   const [goalSetupVisible, setGoalSetupVisible] = useState(false);
   const [editDailyGoalVisible, setEditDailyGoalVisible] = useState(false);
   const [showMemorizationToast, setShowMemorizationToast] = useState(false);
-  const [showDailyToast, setShowDailyToast] = useState(false);
+  const [showWeeklyToast, setShowWeeklyToast] = useState(false);
   const prevMemPercentRef = useRef<number | null>(null);
-  const prevDailyPercentRef = useRef<number | null>(null);
+  const prevWeekPercentRef = useRef<number | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -100,7 +101,9 @@ export default function HomeScreen() {
 
   useEffect(() => { load(); }, []);
 
-  const todayGoalProgress = goal ? getTodayGoalProgress() : 0;
+  const weekGoalAyahs = useMemo(() => goal ? getWeekGoalAyahs() : [], [goal, getWeekGoalAyahs]);
+  const effectiveGoalCount = weekGoalAyahs.length;
+  const weekGoalProgress = goal ? getWeekGoalProgress() : 0;
 
   const juzGroups = useMemo(() => {
     if (surahs.length === 0) return [];
@@ -142,17 +145,16 @@ export default function HomeScreen() {
 
   const remainingAyahGroups = useMemo(() => {
     if (!goal) return [];
-    const goalAyahs = getTodayGoalAyahs();
-    const done = getTodayGoalProgress();
-    const remaining = goalAyahs.slice(done);
-    const groups: { surahNumber: number; surahName: string; count: number; ayahs: typeof goalAyahs }[] = [];
+    const done = getWeekGoalProgress();
+    const remaining = weekGoalAyahs.slice(done);
+    const groups: { surahNumber: number; surahName: string; count: number; ayahs: typeof weekGoalAyahs }[] = [];
     for (const a of remaining) {
       const last = groups[groups.length - 1];
       if (last?.surahNumber === a.surahNumber) { last.count++; last.ayahs.push(a); }
       else groups.push({ surahNumber: a.surahNumber, surahName: a.surahName, count: 1, ayahs: [a] });
     }
     return groups;
-  }, [goal, getTodayGoalAyahs, getTodayGoalProgress]);
+  }, [goal, weekGoalAyahs, getWeekGoalProgress]);
 
   const targetJuz = memorizationGoal?.path === "juz"
     ? (memorizationGoal?.startSurahNumber ? SURAH_DATA.find(s => s.number === memorizationGoal?.startSurahNumber)?.juz ?? 1 : 1)
@@ -167,9 +169,12 @@ export default function HomeScreen() {
 
   const targetTotal = memorizationGoal?.path === "juz" ? AYAHS_PER_JUZ : (targetSurah ? targetSurah.ayahCount : AYAHS_PER_JUZ);
   const memorizationPercent = Math.min(100, Math.round((totalMemorized / targetTotal) * 100));
-  const dailyPercent = goal ? Math.min(100, Math.round((todayGoalProgress / goal.ayahsPerDay) * 100)) : 0;
+  // Use effectiveGoalCount (actual available ayahs) to avoid 41/44 type lock
+  const weekPercent = goal
+    ? (effectiveGoalCount > 0 ? Math.min(100, Math.round((weekGoalProgress / effectiveGoalCount) * 100)) : 100)
+    : 0;
 
-  // Cap daily goal to whatever remains in the current juz/surah target
+  // Cap weekly goal editor to whatever remains in the current juz/surah target
   const remainingInTarget = memorizationGoal ? Math.max(1, targetTotal - totalMemorized) : undefined;
 
   useEffect(() => {
@@ -183,14 +188,17 @@ export default function HomeScreen() {
   }, [memorizationPercent]);
 
   useEffect(() => {
-    const prev = prevDailyPercentRef.current;
-    prevDailyPercentRef.current = dailyPercent;
-    if (prev !== null && prev < 100 && dailyPercent >= 100) {
-      setShowDailyToast(true);
-      const t = setTimeout(() => setShowDailyToast(false), 5000);
+    const prev = prevWeekPercentRef.current;
+    prevWeekPercentRef.current = weekPercent;
+    if (prev !== null && prev < 100 && weekPercent >= 100 && goal) {
+      // Permanently mark completed ayahs as memorized
+      const keys = weekGoalAyahs.map(a => `${a.surahNumber}:${a.ayahNumber}`);
+      markAyahsMemorized(keys);
+      setShowWeeklyToast(true);
+      const t = setTimeout(() => setShowWeeklyToast(false), 5000);
       return () => clearTimeout(t);
     }
-  }, [dailyPercent]);
+  }, [weekPercent]);
 
   const topPad = insets.top;
   const hasMemorizationGoal = memorizationGoal !== null;
@@ -292,7 +300,7 @@ export default function HomeScreen() {
                         <View style={s.stepDivider} />
                         <View style={s.memCompleteStep}>
                           <View style={s.stepNumCircle}><Text style={s.stepNumText}>2</Text></View>
-                          <Text style={s.stepStepText}>Select a Daily Goal</Text>
+                          <Text style={s.stepStepText}>Select a Weekly Goal</Text>
                         </View>
                       </View>
                     )}
@@ -303,17 +311,17 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                   </View>
                 </View>
-              ) : (goal === null || dailyPercent >= 100) ? (
+              ) : (goal === null || weekPercent >= 100) ? (
                 <View style={s.ctaCardShadow}>
                   <View style={s.ctaCardClip}>
-                    {dailyPercent >= 100 && showDailyToast ? (
+                    {weekPercent >= 100 && showWeeklyToast ? (
                       <View style={s.topBanner}>
                         <Feather name="check-circle" size={16} color="#FFFFFF" />
-                        <Text style={s.bannerText}>MashaAllah! You've reached your daily goal.</Text>
+                        <Text style={s.bannerText}>MashaAllah! You've reached your weekly goal.</Text>
                       </View>
                     ) : null}
                     <View style={s.widgetCardContent}>
-                      {!(dailyPercent >= 100 && showDailyToast) && (
+                      {!(weekPercent >= 100 && showWeeklyToast) && (
                         <View style={s.widgetCardHeader}>
                           <View style={s.headerPill}>
                             <Text style={s.headerPillText}>MEMORIZATION TARGET</Text>
@@ -341,7 +349,7 @@ export default function HomeScreen() {
                     </View>
                     {/* FIX #1: warm cream button */}
                     <TouchableOpacity style={s.attachedCta} onPress={() => setEditDailyGoalVisible(true)} activeOpacity={0.85}>
-                      <Text style={s.attachedCtaText}>Set Daily Goal</Text>
+                      <Text style={s.attachedCtaText}>Set Weekly Goal</Text>
                       <Feather name="plus" size={20} color="#1A1A1A" />
                     </TouchableOpacity>
                   </View>
@@ -375,22 +383,22 @@ export default function HomeScreen() {
                     </View>
                   </View>
 
-                  {/* Daily Target Card */}
+                  {/* Weekly Target Card */}
                   <View style={s.widgetCard}>
                     <View style={s.dailyCardHeader}>
                       <View style={s.headerPill}>
-                        <Text style={s.headerPillText}>DAILY TARGET</Text>
+                        <Text style={s.headerPillText}>WEEKLY TARGET</Text>
                       </View>
                       <View style={[
                         s.dailyCompleteCircle,
-                        dailyPercent >= 100 && s.dailyCompleteCircleFilled,
+                        weekPercent >= 100 && s.dailyCompleteCircleFilled,
                       ]} />
                     </View>
                     <View style={s.widgetCardBody}>
-                      <CircularRing percent={dailyPercent} size={64} strokeWidth={5} />
+                      <CircularRing percent={weekPercent} size={64} strokeWidth={5} />
                       <View style={s.widgetCardInfo}>
                         <Text style={s.dailyProgressText}>
-                          {todayGoalProgress}/{Math.min(MAX_DAILY, goal.ayahsPerDay)} Ayahs Memorized
+                          {weekGoalProgress}/{effectiveGoalCount} Ayahs Memorized
                         </Text>
                       </View>
                       <TouchableOpacity style={s.editBoxBtn} onPress={() => setEditDailyGoalVisible(true)} activeOpacity={0.7}>
@@ -399,12 +407,12 @@ export default function HomeScreen() {
                       </TouchableOpacity>
                     </View>
 
-                    {Array.from({ length: Math.ceil(Math.min(MAX_DAILY, goal.ayahsPerDay) / 15) }).map((_, rowIdx) => (
+                    {Array.from({ length: Math.ceil(effectiveGoalCount / 15) }).map((_, rowIdx) => (
                       <View key={rowIdx} style={s.dotRow}>
                         {Array.from({ length: 15 }).map((_, colIdx) => {
                           const i = rowIdx * 15 + colIdx;
-                          if (i >= Math.min(MAX_DAILY, goal.ayahsPerDay)) return null;
-                          return <View key={i} style={[s.dotGridItem, i < todayGoalProgress && s.dotGridItemFilled]} />;
+                          if (i >= effectiveGoalCount) return null;
+                          return <View key={i} style={[s.dotGridItem, i < weekGoalProgress && s.dotGridItemFilled]} />;
                         })}
                       </View>
                     ))}
@@ -432,7 +440,7 @@ export default function HomeScreen() {
 
                     <View style={s.dailyCardFooter}>
                       <View style={s.remainingLabelRow}>
-                        <Text style={s.remainingLabel}>TODAY'S REMAINING</Text>
+                        <Text style={s.remainingLabel}>THIS WEEK'S REMAINING</Text>
                         <Text style={s.remainingShowing}>
                           showing {Math.min(2, remainingAyahGroups.length)}/{remainingAyahGroups.length}
                         </Text>
@@ -461,7 +469,7 @@ export default function HomeScreen() {
                   <View style={s.stepDivider} />
                   <View style={s.memCompleteStep}>
                     <View style={s.stepNumCircle}><Text style={s.stepNumText}>2</Text></View>
-                    <Text style={s.stepStepText}>Select a Daily Goal</Text>
+                    <Text style={s.stepStepText}>Select a Weekly Goal</Text>
                   </View>
                 </View>
                 <TouchableOpacity style={s.attachedCta} onPress={() => setGoalSetupVisible(true)} activeOpacity={0.85}>
@@ -614,40 +622,20 @@ export default function HomeScreen() {
       <GoalSetupModal
         visible={goalSetupVisible}
         onClose={() => setGoalSetupVisible(false)}
-        onComplete={(memGoal, dailyGoal) => {
-          const readKeys = new Set(todayEntry?.readAyahKeys ?? []);
-          let startSurahNumber = dailyGoal.startSurahNumber ?? 1;
-          let startAyahNumber = dailyGoal.startAyahNumber ?? 1;
-          if (readKeys.size > 0) {
-            let startPos = 0;
-            for (const s of SURAH_DATA) {
-              if (s.number === startSurahNumber) { startPos += startAyahNumber - 1; break; }
-              startPos += s.ayahCount;
-            }
-            let skip = 0;
-            while (skip < TOTAL_AYAHS) {
-              const { surahNumber, ayahNumber } = getAyahAtLinearIndex((startPos + skip) % TOTAL_AYAHS);
-              if (!readKeys.has(`${surahNumber}:${ayahNumber}`)) break;
-              skip++;
-            }
-            if (skip > 0) {
-              const next = getAyahAtLinearIndex((startPos + skip) % TOTAL_AYAHS);
-              startSurahNumber = next.surahNumber;
-              startAyahNumber = next.ayahNumber;
-            }
-          }
+        onComplete={(memGoal, weeklyGoal) => {
+          // startAyahNumber comes from step 4 selection — respect it directly
           setMemorizationGoal({ ...memGoal, ayahsReadAtStart: todayEntry?.ayahsRead ?? 0 });
-          setGoal({ ...dailyGoal, startSurahNumber, startAyahNumber });
+          setGoal({ ...weeklyGoal });
         }}
       />
       <EditDailyGoalModal
         visible={editDailyGoalVisible}
-        currentAyahsPerDay={goal?.ayahsPerDay ?? 10}
+        currentAyahsPerWeek={goal?.ayahsPerWeek ?? 10}
         remainingInTarget={remainingInTarget}
-        onSave={(ayahsPerDay) => {
+        onSave={(ayahsPerWeek) => {
           const today = new Date().toISOString().split("T")[0];
-          if (goal !== null && dailyPercent < 100) {
-            setGoal({ ...goal, ayahsPerDay });
+          if (goal !== null && weekPercent < 100) {
+            setGoal({ ...goal, ayahsPerWeek });
           } else {
             let startSurahNumber = (goal?.startSurahNumber ?? memorizationGoal?.startSurahNumber) ?? 1;
             let startAyahNumber = goal?.startAyahNumber ?? 1;
@@ -670,7 +658,7 @@ export default function HomeScreen() {
                 startAyahNumber = next.ayahNumber;
               }
             }
-            setGoal({ ayahsPerDay, startDate: today, startSurahNumber, startAyahNumber });
+            setGoal({ ayahsPerWeek, startDate: today, startSurahNumber, startAyahNumber });
           }
         }}
         onClose={() => setEditDailyGoalVisible(false)}
