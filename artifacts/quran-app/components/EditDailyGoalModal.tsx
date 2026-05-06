@@ -14,7 +14,7 @@ import * as Haptics from "expo-haptics";
 const COMMITMENT_STEPS = [1, 2, 3, 5, 7, 10, 15, 25, 45];
 const MAX_DAILY = 45;
 
-function AyahSlider({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function AyahSlider({ value, onChange, max }: { value: number; onChange: (v: number) => void; max: number }) {
   const trackWidthRef = useRef(0);
   const [trackWidth, setTrackWidth] = useState(0);
   const THUMB = 26;
@@ -25,16 +25,16 @@ function AyahSlider({ value, onChange }: { value: number; onChange: (v: number) 
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
         const x = Math.max(0, Math.min(trackWidthRef.current, evt.nativeEvent.locationX));
-        onChange(Math.max(1, Math.min(MAX_DAILY, Math.round((x / (trackWidthRef.current || 1)) * (MAX_DAILY - 1)) + 1)));
+        onChange(Math.max(1, Math.min(max, Math.round((x / (trackWidthRef.current || 1)) * (max - 1)) + 1)));
       },
       onPanResponderMove: (evt) => {
         const x = Math.max(0, Math.min(trackWidthRef.current, evt.nativeEvent.locationX));
-        onChange(Math.max(1, Math.min(MAX_DAILY, Math.round((x / (trackWidthRef.current || 1)) * (MAX_DAILY - 1)) + 1)));
+        onChange(Math.max(1, Math.min(max, Math.round((x / (trackWidthRef.current || 1)) * (max - 1)) + 1)));
       },
     })
   ).current;
 
-  const thumbLeft = trackWidth > 0 ? ((value - 1) / (MAX_DAILY - 1)) * (trackWidth - THUMB) : 0;
+  const thumbLeft = trackWidth > 0 ? ((value - 1) / (max - 1)) * (trackWidth - THUMB) : 0;
 
   return (
     <View
@@ -59,16 +59,18 @@ function AyahSlider({ value, onChange }: { value: number; onChange: (v: number) 
 interface Props {
   visible: boolean;
   currentAyahsPerDay: number;
+  remainingInTarget?: number;
   onSave: (ayahsPerDay: number) => void;
   onClose: () => void;
 }
 
-export function EditDailyGoalModal({ visible, currentAyahsPerDay, onSave, onClose }: Props) {
+export function EditDailyGoalModal({ visible, currentAyahsPerDay, remainingInTarget, onSave, onClose }: Props) {
+  const effectiveMax = Math.min(MAX_DAILY, remainingInTarget ?? MAX_DAILY);
   const [ayahsPerDay, setAyahsPerDay] = useState(currentAyahsPerDay);
 
   useEffect(() => {
-    if (visible) setAyahsPerDay(Math.min(MAX_DAILY, currentAyahsPerDay));
-  }, [visible, currentAyahsPerDay]);
+    if (visible) setAyahsPerDay(Math.min(effectiveMax, currentAyahsPerDay));
+  }, [visible, currentAyahsPerDay, effectiveMax]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -90,10 +92,10 @@ export function EditDailyGoalModal({ visible, currentAyahsPerDay, onSave, onClos
               </View>
               <Text style={s.valueLabel}>AYAHS PER DAY</Text>
 
-              <AyahSlider value={ayahsPerDay} onChange={setAyahsPerDay} />
+              <AyahSlider value={ayahsPerDay} onChange={setAyahsPerDay} max={effectiveMax} />
 
               <View style={s.dots}>
-                {COMMITMENT_STEPS.map((step) => (
+                {COMMITMENT_STEPS.filter(step => step <= effectiveMax).map((step) => (
                   <View key={step} style={[s.dot, ayahsPerDay >= step && s.dotFilled]} />
                 ))}
               </View>

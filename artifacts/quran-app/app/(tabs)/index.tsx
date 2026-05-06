@@ -165,10 +165,12 @@ export default function HomeScreen() {
     return savedSurahs.map(n => SURAH_DATA[n - 1]).filter(Boolean);
   }, [savedSurahs]);
 
-  const memorizationPercent = Math.min(100, Math.round(
-    (totalMemorized / (memorizationGoal?.path === "juz" ? AYAHS_PER_JUZ : (targetSurah ? targetSurah.ayahCount : AYAHS_PER_JUZ))) * 100
-  ));
+  const targetTotal = memorizationGoal?.path === "juz" ? AYAHS_PER_JUZ : (targetSurah ? targetSurah.ayahCount : AYAHS_PER_JUZ);
+  const memorizationPercent = Math.min(100, Math.round((totalMemorized / targetTotal) * 100));
   const dailyPercent = goal ? Math.min(100, Math.round((todayGoalProgress / goal.ayahsPerDay) * 100)) : 0;
+
+  // Cap daily goal to whatever remains in the current juz/surah target
+  const remainingInTarget = memorizationGoal ? Math.max(1, targetTotal - totalMemorized) : undefined;
 
   useEffect(() => {
     const prev = prevMemPercentRef.current;
@@ -631,6 +633,7 @@ export default function HomeScreen() {
       <EditDailyGoalModal
         visible={editDailyGoalVisible}
         currentAyahsPerDay={goal?.ayahsPerDay ?? 10}
+        remainingInTarget={remainingInTarget}
         onSave={(ayahsPerDay) => {
           const today = new Date().toISOString().split("T")[0];
           if (goal !== null && dailyPercent < 100) {

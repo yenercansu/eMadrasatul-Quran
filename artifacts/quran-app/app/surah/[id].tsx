@@ -949,9 +949,11 @@ function MeaningPanel({ visible, onClose, selected, onToggle, onPlay }: {
               <Text style={mp.rowLabel}>{t.name}</Text>
               <Switch
                 value={active}
-                onValueChange={() => onToggle(t.id)}
-                trackColor={{ false: "#E0E0E0", true: "#1A1A1A" }}
+                onValueChange={undefined}
+                trackColor={{ false: "#E0E0E0", true: "#2E8B7A" }}
                 thumbColor="#FFFFFF"
+                ios_backgroundColor="#E0E0E0"
+                pointerEvents="none"
               />
             </TouchableOpacity>
           );
@@ -1106,10 +1108,19 @@ export default function SurahScreen() {
 const [settingsVisible, setSettingsVisible] = useState(false);
    const [currentPage, setCurrentPage] = useState(1);
    const [tajweedMode, setTajweedMode] = useState(false);
-   const [selectedTranslations, setSelectedTranslations] = useState<string[]>(["en.sahih", "en.asad"]);
+   const [selectedTranslations, setSelectedTranslations] = useState<string[]>([]);
   const [ayahRepeatCounts, setAyahRepeatCounts] = useState<Record<number, number>>({});
   const [wordModal, setWordModal] = useState<{ word: string; surah: number; ayah: number; translation: string } | null>(null);
   const [hintsVisible, setHintsVisible] = useState(false);
+
+  // Load persisted translation preferences
+  useEffect(() => {
+    AsyncStorage.getItem("quran_selected_translations").then((v) => {
+      if (v) {
+        try { setSelectedTranslations(JSON.parse(v)); } catch {}
+      }
+    }).catch(() => {});
+  }, []);
 
   // Show onboarding hints once per device
   useEffect(() => {
@@ -1360,15 +1371,9 @@ const [settingsVisible, setSettingsVisible] = useState(false);
    const handleMeaningTranslationToggle = useCallback((id: string) => {
      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
      setSelectedTranslations(prev => {
-       let next = [];
-       if (prev.includes(id)) {
-         // toggling off: keep at least one selected
-         next = prev.length > 1 ? prev.filter(x => x !== id) : prev;
-       } else {
-         next = [...prev, id];
-       }
-       // Update translation visibility setting
+       const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
        updateSettings({ showTranslation: next.length > 0 });
+       AsyncStorage.setItem("quran_selected_translations", JSON.stringify(next)).catch(() => {});
        return next;
      });
    }, [updateSettings]);
