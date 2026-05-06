@@ -1096,7 +1096,7 @@ export default function SurahScreen() {
 const [settingsVisible, setSettingsVisible] = useState(false);
    const [currentPage, setCurrentPage] = useState(1);
    const [tajweedMode, setTajweedMode] = useState(false);
-   const [selectedTranslations, setSelectedTranslations] = useState<string[]>([]);
+   const [selectedTranslations, setSelectedTranslations] = useState<string[]>(["en.sahih", "en.asad"]);
   const [ayahRepeatCounts, setAyahRepeatCounts] = useState<Record<number, number>>({});
   const [wordModal, setWordModal] = useState<{ word: string; surah: number; ayah: number; translation: string } | null>(null);
   const [hintsVisible, setHintsVisible] = useState(false);
@@ -1324,13 +1324,21 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [settings.showTafsir, updateSettings]);
 
-  const handleMeaningTranslationToggle = useCallback((id: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setSelectedTranslations(prev => {
-      if (prev.includes(id)) return prev.filter(x => x !== id);
-      return [...prev, id];
-    });
-  }, []);
+   const handleMeaningTranslationToggle = useCallback((id: string) => {
+     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+     setSelectedTranslations(prev => {
+       let next = [];
+       if (prev.includes(id)) {
+         // toggling off: keep at least one selected
+         next = prev.length > 1 ? prev.filter(x => x !== id) : prev;
+       } else {
+         next = [...prev, id];
+       }
+       // Update translation visibility setting
+       updateSettings({ showTranslation: next.length > 0 });
+       return next;
+     });
+   }, [updateSettings]);
 
   const totalPages = arabic ? Math.ceil(arabic.ayahs.length / AYAHS_PER_PAGE) : 1;
   const pageAyahs = useMemo(() => {

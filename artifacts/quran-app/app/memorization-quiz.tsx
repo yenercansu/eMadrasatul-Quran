@@ -796,7 +796,7 @@ const pageStyles = StyleSheet.create({
   headerCenter: { flex: 1, alignItems: "center" },
   headerTitle: { fontSize: 17, fontWeight: "700", fontFamily: "Inter_700Bold" },
   headerSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
-  menuContent: { padding: 20, gap: 14, paddingBottom: 60 },
+  menuContent: { padding: 16, gap: 10, paddingBottom: 40 },
   menuTitle: { fontSize: 22, fontWeight: "700", fontFamily: "Inter_700Bold" },
   menuSub: { fontSize: 14, fontFamily: "Inter_400Regular", marginBottom: 6 },
   modeCard: {
