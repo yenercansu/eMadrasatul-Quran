@@ -135,6 +135,7 @@ interface QuranContextType {
   clearCheckedSurahs: () => void;
   memorizedAyahKeys: string[];
   markAyahsMemorized: (keys: string[]) => void;
+  toggleAyahMemorized: (surahNumber: number, ayahNumber: number) => void;
   isAyahMemorized: (surahNumber: number, ayahNumber: number) => boolean;
 }
 
@@ -494,6 +495,15 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const toggleAyahMemorized = useCallback((surahNumber: number, ayahNumber: number) => {
+    const key = `${surahNumber}:${ayahNumber}`;
+    setMemorizedAyahKeys((prev) => {
+      const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key];
+      AsyncStorage.setItem("quran_memorized_ayahs", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const isAyahMemorized = useCallback((surahNumber: number, ayahNumber: number) =>
     memorizedAyahKeys.includes(`${surahNumber}:${ayahNumber}`), [memorizedAyahKeys]);
 
@@ -515,7 +525,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       quranPosition, advanceQuranPosition, getWeekGoalAyahs, getWeekGoalProgress,
       surahPositions, saveSurahPosition,
       checkedSurahs, toggleCheckedSurah, isSurahChecked, clearCheckedSurahs,
-      memorizedAyahKeys, markAyahsMemorized, isAyahMemorized,
+      memorizedAyahKeys, markAyahsMemorized, toggleAyahMemorized, isAyahMemorized,
     }}>
       {children}
     </QuranContext.Provider>

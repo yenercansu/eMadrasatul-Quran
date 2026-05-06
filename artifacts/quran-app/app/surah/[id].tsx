@@ -92,6 +92,8 @@ interface AyahCardProps {
   isOnRepeat: boolean;
   repeatCount: number;
   isRangeSelected: boolean;
+  showMemorizedToggle: boolean;
+  isMemorized: boolean;
   translations: { editionId: string; name: string; text: string }[];
   transliterationText: string | null;
   showTransliteration: boolean;
@@ -101,6 +103,7 @@ interface AyahCardProps {
   romanFontSize: number;
   onSave: (ayah: ApiAyah) => void;
   onSetRepeat: (ayah: ApiAyah, count: number) => void;
+  onToggleMemorized: (ayah: ApiAyah) => void;
   onPress: () => void;
   onWordLongPress?: (word: string, ayah: ApiAyah) => void;
 }
@@ -109,10 +112,11 @@ const TAP_THRESHOLD = 8; // px movement allowed for tap
 
 function SwipeableAyahCard({
   ayah, surahNum, isPlaying, isOnRepeat, repeatCount, isRangeSelected,
+  showMemorizedToggle, isMemorized,
   translations, transliterationText,
   showTransliteration,
   colorCoding, showBasmala, arabicFontSize, romanFontSize,
-  onSave, onSetRepeat, onPress, onWordLongPress,
+  onSave, onSetRepeat, onToggleMemorized, onPress, onWordLongPress,
 }: AyahCardProps) {
   const pan = useRef(new Animated.Value(0)).current;
   const swipeOpenRef = useRef(false);
@@ -254,6 +258,21 @@ function SwipeableAyahCard({
             <View style={cs.numBadge}>
               <Text style={cs.numText}>{surahNum}:{ayah.numberInSurah}</Text>
             </View>
+            {showMemorizedToggle && (
+              <TouchableOpacity
+                style={[cs.memorizedRadio, isMemorized && cs.memorizedRadioChecked]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  onToggleMemorized(ayah);
+                }}
+                activeOpacity={0.75}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: isMemorized }}
+                accessibilityLabel={`Mark ayah ${ayah.numberInSurah} memorized`}
+              >
+                {isMemorized && <View style={cs.memorizedRadioDot} />}
+              </TouchableOpacity>
+            )}
           </View>
 
           {showBasmala && (
@@ -369,6 +388,25 @@ const cs = StyleSheet.create({
     paddingVertical: 3,
   },
   numText: { fontSize: 11, fontWeight: "700", color: "#6B6B6B", fontFamily: "Inter_700Bold" },
+  memorizedRadio: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#B8B1A8",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+  },
+  memorizedRadioChecked: {
+    borderColor: "#16A34A",
+  },
+  memorizedRadioDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#16A34A",
+  },
   basmala: {
     fontSize: 22,
     color: "#1A1A1A",
@@ -1201,6 +1239,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     saveProgress, recordVisit, recordAyahRead,
     saveAyah, saveWord,
     surahPositions, saveSurahPosition,
+    goal, isAyahMemorized, toggleAyahMemorized,
   } = useQuran();
 
   const { audioState, playAyah, playRange, pauseAudio, resumeAudio, stopAudio, setPlaybackRate, playNextAyah, playPrevAyah, setOnNextAyah } = useAudio();
@@ -1409,6 +1448,14 @@ const [settingsVisible, setSettingsVisible] = useState(false);
   const topPad = insets.top;
   const basmala = surahNum !== 1 && surahNum !== 9;
   const currentAyahForRange = audioState.currentSurah === surahNum && audioState.currentAyah ? audioState.currentAyah : parseInt(ayahParam ?? "1", 10) || 1;
+  const memorizationGoalRange = useMemo(() => {
+    if (!goal?.startSurahNumber || !goal.startAyahNumber) return null;
+    const surahData = SURAH_DATA.find(s => s.number === goal.startSurahNumber);
+    if (!surahData) return null;
+    const startAyah = goal.startAyahNumber;
+    const endAyah = Math.min(surahData.ayahCount, startAyah + goal.ayahsPerWeek - 1);
+    return { surahNumber: goal.startSurahNumber, startAyah, endAyah };
+  }, [goal]);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F5F2EE" }}>
@@ -1557,6 +1604,10 @@ const [settingsVisible, setSettingsVisible] = useState(false);
                 && surahNum <= audioState.range.endSurah
                 && item.numberInSurah >= (surahNum === audioState.range.startSurah ? audioState.range.startAyah : 1)
                 && item.numberInSurah <= (surahNum === audioState.range.endSurah ? audioState.range.endAyah : 999);
+              const isInMemorizationGoal = !!memorizationGoalRange
+                && surahNum === memorizationGoalRange.surahNumber
+                && item.numberInSurah >= memorizationGoalRange.startAyah
+                && item.numberInSurah <= memorizationGoalRange.endAyah;
               const showB = item.numberInSurah === 1 && basmala;
 
               const translations = selectedTranslations
@@ -1577,6 +1628,8 @@ const [settingsVisible, setSettingsVisible] = useState(false);
                   isOnRepeat={!!isOnRepeat}
                   repeatCount={repeatCount}
                   isRangeSelected={isRangeSelected && !isPlaying}
+                  showMemorizedToggle={isInMemorizationGoal}
+                  isMemorized={isAyahMemorized(surahNum, item.numberInSurah)}
                   translations={selectedTranslations.length > 0 ? translations : []}
                   transliterationText={transliteration?.ayahs[item.numberInSurah - 1]?.text ?? null}
                   showTransliteration={settings.showTransliteration}
@@ -1586,6 +1639,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
                   romanFontSize={accountSettings.romanFontSize ?? 14}
                   onSave={handleSaveAyah}
                   onSetRepeat={handleSetRepeat}
+                  onToggleMemorized={(ayah) => toggleAyahMemorized(surahNum, ayah.numberInSurah)}
                   onPress={safeToggleMenu}
                   onWordLongPress={handleWordLongPress}
                 />

@@ -16,14 +16,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
-import { useQuran, getAyahAtLinearIndex } from "@/contexts/QuranContext";
+import { useQuran } from "@/contexts/QuranContext";
 import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
 import { SURAH_DATA } from "@/constants/surahData";
 import { GoalSetupModal } from "@/components/GoalSetupModal";
 import { EditDailyGoalModal } from "@/components/EditDailyGoalModal";
 
 const TOTAL_AYAHS = 6236;
-const MAX_DAILY = 45;
 const AYAHS_PER_JUZ = Math.round(TOTAL_AYAHS / 30);
 
 function CircularRing({
@@ -72,8 +71,8 @@ export default function HomeScreen() {
   const {
     lastListened, goal, setGoal, memorizationGoal, setMemorizationGoal,
     todayEntry, dailyEntries, onlineUsers, recentProgress, savedSurahs,
-    getWeekGoalAyahs, getWeekGoalProgress, recordAyahRead, isSurahChecked,
-    markAyahsMemorized,
+    getWeekGoalAyahs, recordAyahRead, isSurahChecked, markAyahsMemorized,
+    memorizedAyahKeys,
   } = useQuran();
   const [surahs, setSurahs] = useState<ApiSurah[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,7 +99,11 @@ export default function HomeScreen() {
 
   const weekGoalAyahs = useMemo(() => goal ? getWeekGoalAyahs() : [], [goal, getWeekGoalAyahs]);
   const effectiveGoalCount = weekGoalAyahs.length;
-  const weekGoalProgress = goal ? getWeekGoalProgress() : 0;
+  const weekGoalProgress = useMemo(() => {
+    if (!goal) return 0;
+    const memorized = new Set(memorizedAyahKeys);
+    return weekGoalAyahs.filter(a => memorized.has(`${a.surahNumber}:${a.ayahNumber}`)).length;
+  }, [goal, weekGoalAyahs, memorizedAyahKeys]);
 
   const juzGroups = useMemo(() => {
     if (surahs.length === 0) return [];
@@ -120,11 +123,19 @@ export default function HomeScreen() {
 
   const totalMemorized = useMemo(() => {
     if (!memorizationGoal) return 0;
-    const raw = dailyEntries
-      .filter(e => e.date >= memorizationGoal.startDate)
-      .reduce((s, e) => s + e.ayahsRead, 0);
-    return Math.max(0, raw - (memorizationGoal.ayahsReadAtStart ?? 0));
-  }, [dailyEntries, memorizationGoal]);
+    return memorizedAyahKeys.filter((key) => {
+      const [surahRaw, ayahRaw] = key.split(":");
+      const surahNumber = Number(surahRaw);
+      const ayahNumber = Number(ayahRaw);
+      if (!Number.isFinite(surahNumber) || !Number.isFinite(ayahNumber)) return false;
+      if (memorizationGoal.path === "surah") {
+        return surahNumber === memorizationGoal.startSurahNumber;
+      }
+      const surahMeta = SURAH_DATA[surahNumber - 1];
+      const targetJuzNumber = SURAH_DATA[memorizationGoal.startSurahNumber - 1]?.juz;
+      return !!surahMeta && surahMeta.juz === targetJuzNumber;
+    }).length;
+  }, [memorizedAyahKeys, memorizationGoal]);
 
   const streakDays = useMemo(() => {
     const today = new Date();
@@ -142,8 +153,8 @@ export default function HomeScreen() {
 
   const remainingAyahGroups = useMemo(() => {
     if (!goal) return [];
-    const done = getWeekGoalProgress();
-    const remaining = weekGoalAyahs.slice(done);
+    const memorized = new Set(memorizedAyahKeys);
+    const remaining = weekGoalAyahs.filter(a => !memorized.has(`${a.surahNumber}:${a.ayahNumber}`));
     const groups: { surahNumber: number; surahName: string; count: number; ayahs: typeof weekGoalAyahs }[] = [];
     for (const a of remaining) {
       const last = groups[groups.length - 1];
@@ -151,7 +162,7 @@ export default function HomeScreen() {
       else groups.push({ surahNumber: a.surahNumber, surahName: a.surahName, count: 1, ayahs: [a] });
     }
     return groups;
-  }, [goal, weekGoalAyahs, getWeekGoalProgress]);
+  }, [goal, weekGoalAyahs, memorizedAyahKeys]);
 
   const targetJuz = memorizationGoal?.path === "juz"
     ? (memorizationGoal?.startSurahNumber ? SURAH_DATA.find(s => s.number === memorizationGoal?.startSurahNumber)?.juz ?? 1 : 1)
@@ -171,8 +182,8 @@ export default function HomeScreen() {
     ? (effectiveGoalCount > 0 ? Math.min(100, Math.round((weekGoalProgress / effectiveGoalCount) * 100)) : 100)
     : 0;
 
-  // Cap weekly goal editor to whatever remains in the current juz/surah target
-  const remainingInTarget = memorizationGoal ? Math.max(1, targetTotal - totalMemorized) : undefined;
+  const editableGoalSurahNumber = (goal?.startSurahNumber ?? memorizationGoal?.startSurahNumber) ?? 1;
+  const editableGoalSurah = SURAH_DATA.find(s => s.number === editableGoalSurahNumber) ?? SURAH_DATA[0];
 
   useEffect(() => {
     const prev = prevMemPercentRef.current;
@@ -188,9 +199,6 @@ export default function HomeScreen() {
     const prev = prevWeekPercentRef.current;
     prevWeekPercentRef.current = weekPercent;
     if (prev !== null && prev < 100 && weekPercent >= 100 && goal) {
-      // Permanently mark completed ayahs as memorized
-      const keys = weekGoalAyahs.map(a => `${a.surahNumber}:${a.ayahNumber}`);
-      markAyahsMemorized(keys);
       setShowWeeklyToast(true);
       const t = setTimeout(() => setShowWeeklyToast(false), 5000);
       return () => clearTimeout(t);
@@ -417,7 +425,7 @@ export default function HomeScreen() {
                     {remainingAyahGroups.slice(0, 2).map((g) => (
                       <View key={g.surahNumber} style={s.remainingRow}>
                         <TouchableOpacity
-                          onPress={() => g.ayahs.forEach(a => recordAyahRead(a.surahNumber, a.ayahNumber))}
+                          onPress={() => markAyahsMemorized(g.ayahs.map(a => `${a.surahNumber}:${a.ayahNumber}`))}
                           activeOpacity={0.6}
                           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         >
@@ -627,36 +635,20 @@ export default function HomeScreen() {
       />
       <EditDailyGoalModal
         visible={editDailyGoalVisible}
+        surahName={editableGoalSurah.englishName}
+        surahNumber={editableGoalSurah.number}
+        ayahCount={editableGoalSurah.ayahCount}
+        currentStartAyah={goal?.startAyahNumber ?? 1}
         currentAyahsPerWeek={goal?.ayahsPerWeek ?? 10}
-        remainingInTarget={remainingInTarget}
-        onSave={(ayahsPerWeek) => {
+        memorizedAyahKeys={memorizedAyahKeys}
+        onSave={({ startAyahNumber, ayahsPerWeek }) => {
           const today = new Date().toISOString().split("T")[0];
-          if (goal !== null && weekPercent < 100) {
-            setGoal({ ...goal, ayahsPerWeek });
-          } else {
-            let startSurahNumber = (goal?.startSurahNumber ?? memorizationGoal?.startSurahNumber) ?? 1;
-            let startAyahNumber = goal?.startAyahNumber ?? 1;
-            const readKeys = new Set(todayEntry?.readAyahKeys ?? []);
-            if (readKeys.size > 0) {
-              let startPos = 0;
-              for (const s of SURAH_DATA) {
-                if (s.number === startSurahNumber) { startPos += startAyahNumber - 1; break; }
-                startPos += s.ayahCount;
-              }
-              let skip = 0;
-              while (skip < TOTAL_AYAHS) {
-                const { surahNumber, ayahNumber } = getAyahAtLinearIndex((startPos + skip) % TOTAL_AYAHS);
-                if (!readKeys.has(`${surahNumber}:${ayahNumber}`)) break;
-                skip++;
-              }
-              if (skip > 0) {
-                const next = getAyahAtLinearIndex((startPos + skip) % TOTAL_AYAHS);
-                startSurahNumber = next.surahNumber;
-                startAyahNumber = next.ayahNumber;
-              }
-            }
-            setGoal({ ayahsPerWeek, startDate: today, startSurahNumber, startAyahNumber });
-          }
+          setGoal({
+            ayahsPerWeek,
+            startDate: goal?.startDate ?? today,
+            startSurahNumber: editableGoalSurah.number,
+            startAyahNumber,
+          });
         }}
         onClose={() => setEditDailyGoalVisible(false)}
       />
