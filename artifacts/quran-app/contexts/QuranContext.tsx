@@ -46,7 +46,7 @@ export interface DailyEntry {
 }
 
 export interface Goal {
-  ayahsPerDay: number;
+  ayahsPerWeek: number;
   startDate: string;
   startSurahNumber?: number;
   startAyahNumber?: number;
@@ -125,14 +125,17 @@ interface QuranContextType {
   onlineUsers: number;
   quranPosition: number;
   advanceQuranPosition: (n: number) => void;
-  getTodayGoalAyahs: () => GoalAyah[];
-  getTodayGoalProgress: () => number;
+  getWeekGoalAyahs: () => GoalAyah[];
+  getWeekGoalProgress: () => number;
   surahPositions: Record<number, number>;
   saveSurahPosition: (surahNum: number, ayahIndex: number) => void;
   checkedSurahs: number[];
   toggleCheckedSurah: (surahNum: number, ayahCount: number) => void;
   isSurahChecked: (surahNum: number) => boolean;
   clearCheckedSurahs: () => void;
+  memorizedAyahKeys: string[];
+  markAyahsMemorized: (keys: string[]) => void;
+  isAyahMemorized: (surahNumber: number, ayahNumber: number) => boolean;
 }
 
 const TOTAL_AYAHS = 6236;
@@ -189,6 +192,15 @@ const SEED_WORDS: SavedWord[] = [
 function getTodayStr(): string { return new Date().toISOString().split("T")[0]; }
 function isFriday(): boolean { return new Date().getDay() === 5; }
 
+function getWeekStartStr(): string {
+  const d = new Date();
+  const day = d.getDay();
+  const daysToMonday = day === 0 ? 6 : day - 1;
+  const monday = new Date(d.getTime() - daysToMonday * 86400000);
+  monday.setHours(0, 0, 0, 0);
+  return monday.toISOString().split("T")[0];
+}
+
 export const QuranContext = createContext<QuranContextType | undefined>(undefined);
 
 export function QuranProvider({ children }: { children: React.ReactNode }) {
@@ -207,6 +219,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const [quranPosition, setQuranPosition] = useState(0);
   const [surahPositions, setSurahPositions] = useState<Record<number, number>>({});
   const [checkedSurahs, setCheckedSurahs] = useState<number[]>([]);
+  const [memorizedAyahKeys, setMemorizedAyahKeys] = useState<string[]>([]);
 
   useEffect(() => { loadData(); }, []);
 
@@ -217,7 +230,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         "quran_last_listened", "quran_goal", "quran_daily_entries",
         "quran_account", "quran_saved_surahs", "quran_highlighted_words",
         "quran_saved_ayahs", "quran_position", "quran_surah_positions",
-        "quran_checked_surahs", "quran_memorization_goal",
+        "quran_checked_surahs", "quran_memorization_goal", "quran_memorized_ayahs",
       ];
       const results = await AsyncStorage.multiGet(keys);
       const map = Object.fromEntries(results.map(([k, v]) => [k, v]));
@@ -237,12 +250,21 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       if (map.quran_highlighted_words) setHighlightedWords(JSON.parse(map.quran_highlighted_words));
       if (map.quran_recent_progress) setRecentProgress(JSON.parse(map.quran_recent_progress));
       if (map.quran_last_listened) setLastListened(JSON.parse(map.quran_last_listened));
-      if (map.quran_goal) setGoalState(JSON.parse(map.quran_goal));
+      if (map.quran_goal) {
+        const loaded = JSON.parse(map.quran_goal);
+        // Migration: rename legacy ayahsPerDay → ayahsPerWeek
+        if (loaded.ayahsPerDay != null && loaded.ayahsPerWeek == null) {
+          loaded.ayahsPerWeek = loaded.ayahsPerDay;
+          delete loaded.ayahsPerDay;
+        }
+        setGoalState(loaded);
+      }
       if (map.quran_memorization_goal) setMemorizationGoalState(JSON.parse(map.quran_memorization_goal));
       if (map.quran_daily_entries) setDailyEntries(JSON.parse(map.quran_daily_entries));
       if (map.quran_position) setQuranPosition(JSON.parse(map.quran_position));
       if (map.quran_surah_positions) setSurahPositions(JSON.parse(map.quran_surah_positions));
       if (map.quran_checked_surahs) setCheckedSurahs(JSON.parse(map.quran_checked_surahs));
+      if (map.quran_memorized_ayahs) setMemorizedAyahKeys(JSON.parse(map.quran_memorized_ayahs));
     } catch {}
   }
 
@@ -350,49 +372,54 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     setQuranPosition((prev) => { const next = (prev + n) % TOTAL_AYAHS; AsyncStorage.setItem("quran_position", JSON.stringify(next)); return next; });
   }, []);
 
-  const getTodayGoalAyahs = useCallback((): GoalAyah[] => {
+  const getWeekGoalAyahs = useCallback((): GoalAyah[] => {
     if (!goal) return [];
-    // For surah-specific goals, only return ayahs from that surah
     if (goal.startSurahNumber != null && goal.startAyahNumber != null) {
       const surahData = SURAH_DATA.find(s => s.number === goal.startSurahNumber);
       if (!surahData) return [];
       const startAyah = goal.startAyahNumber;
       const endAyah = surahData.ayahCount;
-      const count = Math.min(goal.ayahsPerDay, endAyah - startAyah + 1);
+      const count = Math.min(goal.ayahsPerWeek, endAyah - startAyah + 1);
+      if (count <= 0) return [];
       return Array.from({ length: count }, (_, i) => ({
         surahNumber: goal.startSurahNumber!,
         surahName: surahData.englishName,
         ayahNumber: startAyah + i,
       }));
     }
-    let startPos = quranPosition;
-    return Array.from({ length: goal.ayahsPerDay }, (_, i) =>
+    const startPos = quranPosition;
+    return Array.from({ length: goal.ayahsPerWeek }, (_, i) =>
       getAyahAtLinearIndex((startPos + i) % TOTAL_AYAHS)
     );
   }, [goal, quranPosition]);
 
-  const getTodayGoalProgress = useCallback((): number => {
+  const getWeekGoalProgress = useCallback((): number => {
     if (!goal) return 0;
-    const todayStr = getTodayStr();
-    const entry = dailyEntries.find(e => e.date === todayStr);
-    if (!entry) return 0;
+    const weekStart = getWeekStartStr();
+    const weekEntries = dailyEntries.filter(e => e.date >= weekStart);
+
     if (goal.startSurahNumber == null || goal.startAyahNumber == null) {
-      return entry.ayahsRead;
+      return weekEntries.reduce((sum, e) => sum + e.ayahsRead, 0);
     }
     const surahData = SURAH_DATA.find(s => s.number === goal.startSurahNumber);
     if (!surahData) return 0;
     const startAyah = goal.startAyahNumber;
     const endAyah = surahData.ayahCount;
-    const count = Math.min(goal.ayahsPerDay, endAyah - startAyah + 1);
+    const count = Math.min(goal.ayahsPerWeek, endAyah - startAyah + 1);
+    if (count <= 0) return 0;
     const goalAyahsList = Array.from({ length: count }, (_, i) => ({
-      surahNumber: goal.startSurahNumber,
-      surahName: surahData.englishName,
+      surahNumber: goal.startSurahNumber!,
       ayahNumber: startAyah + i,
     }));
     const goalKeys = new Set(goalAyahsList.map(a => `${a.surahNumber}:${a.ayahNumber}`));
-    const readKeys = entry.readAyahKeys ?? [];
-    return readKeys.filter(k => goalKeys.has(k)).length;
-  }, [goal, dailyEntries, quranPosition]);
+    const allReadKeys = new Set<string>();
+    for (const entry of weekEntries) {
+      for (const k of (entry.readAyahKeys ?? [])) {
+        allReadKeys.add(k);
+      }
+    }
+    return [...allReadKeys].filter(k => goalKeys.has(k)).length;
+  }, [goal, dailyEntries]);
 
   const saveSurahPosition = useCallback((surahNum: number, ayahIndex: number) => {
     setSurahPositions((prev) => {
@@ -457,6 +484,19 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const markAyahsMemorized = useCallback((keys: string[]) => {
+    setMemorizedAyahKeys((prev) => {
+      const newKeys = keys.filter(k => !prev.includes(k));
+      if (newKeys.length === 0) return prev;
+      const next = [...prev, ...newKeys];
+      AsyncStorage.setItem("quran_memorized_ayahs", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const isAyahMemorized = useCallback((surahNumber: number, ayahNumber: number) =>
+    memorizedAyahKeys.includes(`${surahNumber}:${ayahNumber}`), [memorizedAyahKeys]);
+
   const todayEntry = dailyEntries.find(e => e.date === getTodayStr()) ?? null;
 
   return (
@@ -472,9 +512,10 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       memorizationGoal, setMemorizationGoal,
       dailyEntries, recordAyahRead, todayEntry,
       onlineUsers,
-      quranPosition, advanceQuranPosition, getTodayGoalAyahs, getTodayGoalProgress,
+      quranPosition, advanceQuranPosition, getWeekGoalAyahs, getWeekGoalProgress,
       surahPositions, saveSurahPosition,
       checkedSurahs, toggleCheckedSurah, isSurahChecked, clearCheckedSurahs,
+      memorizedAyahKeys, markAyahsMemorized, isAyahMemorized,
     }}>
       {children}
     </QuranContext.Provider>

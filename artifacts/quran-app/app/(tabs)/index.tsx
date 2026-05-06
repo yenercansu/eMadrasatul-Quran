@@ -207,8 +207,8 @@ export default function HomeScreen() {
     <>
       <StatusBar barStyle="dark-content" />
       <LinearGradient
-        colors={["#FAF7F0", "#EDE3D0"]}
-        locations={[0, 0.72]}
+        colors={["#FAFAF9", "#F5F4F0"]}
+        locations={[0, 1]}
         style={s.container}
       >
         <ScrollView
@@ -257,7 +257,7 @@ export default function HomeScreen() {
               </View>
             </View>
             <View style={s.playBtn}>
-              <Ionicons name="play" size={15} color="#FFFFFF" style={{ marginLeft: 2 }} />
+              <Ionicons name="play" size={22} color="#1A1A1A" />
             </View>
           </TouchableOpacity>
 
@@ -451,16 +451,24 @@ export default function HomeScreen() {
               )}
             </>
           ) : (
-            <View style={s.greetingSection}>
-              <Text style={s.greeting}>As Salamu Alaykum</Text>
-              <Text style={s.goalTitle}>Set Your Memorization Goal</Text>
-              <Text style={s.goalSub}>
-                Start your memorization journey{"\n"}by setting a daily goal.
-              </Text>
-              <TouchableOpacity style={s.goalBtn} activeOpacity={0.85} onPress={() => setGoalSetupVisible(true)}>
-                <Text style={s.goalBtnText}>Set Your Goal</Text>
-                <Feather name="chevron-down" size={18} color="#FFFFFF" />
-              </TouchableOpacity>
+            <View style={s.ctaCardShadow}>
+              <View style={s.ctaCardClip}>
+                <View style={s.memCompleteSteps}>
+                  <View style={s.memCompleteStep}>
+                    <View style={s.stepNumCircle}><Text style={s.stepNumText}>1</Text></View>
+                    <Text style={s.stepStepText}>Select a Memorization</Text>
+                  </View>
+                  <View style={s.stepDivider} />
+                  <View style={s.memCompleteStep}>
+                    <View style={s.stepNumCircle}><Text style={s.stepNumText}>2</Text></View>
+                    <Text style={s.stepStepText}>Select a Daily Goal</Text>
+                  </View>
+                </View>
+                <TouchableOpacity style={s.attachedCta} onPress={() => setGoalSetupVisible(true)} activeOpacity={0.85}>
+                  <Text style={s.attachedCtaText}>Set New Goal</Text>
+                  <Feather name="plus" size={20} color="#57534E" />
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
@@ -580,7 +588,9 @@ export default function HomeScreen() {
                         onPress={() => router.push(`/surah/${surah.number}`)}
                         activeOpacity={0.65}
                       >
-                        <Text style={s.surahNum}>{surah.number}</Text>
+                        <View style={s.surahNumBubble}>
+                          <Text style={s.surahNum}>{surah.number}</Text>
+                        </View>
                         <View style={s.surahInfo}>
                           <Text style={s.surahName}>{surah.englishName}</Text>
                           <Text style={s.surahMeta}>{surah.numberOfAyahs} Ayahs • {surah.revelationType}</Text>
@@ -682,107 +692,104 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: 20,
       paddingBottom: 16,
     },
-    // FIX #4: muted warm amber badge (was #F9E79F bright yellow)
     badge: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: "#F0E2B4",
+      backgroundColor: "#FEFCE8",
       paddingHorizontal: 12,
-      paddingVertical: 6,
+      paddingVertical: 4,
       borderRadius: 20,
-      gap: 6,
+      gap: 8,
+      borderWidth: 1,
+      borderColor: "#FCD34D",
     },
-    badgeDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: GOLD },
-    badgeText: { fontSize: 12, fontWeight: "600", color: "#7A5A10", fontFamily: "Inter_600SemiBold" },
+    badgeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#EAB308" },
+    badgeText: { fontSize: 10, fontWeight: "700", color: "#EAB308", fontFamily: "Inter_700Bold" },
 
-    // FIX #2: white rounded container for settings icon
     settingsBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: 10,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       backgroundColor: "#FFFFFF",
       alignItems: "center",
       justifyContent: "center",
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.07,
-      shadowRadius: 4,
-      elevation: 2,
-      borderWidth: 0.5,
-      borderColor: "#EAE0D0",
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+      borderWidth: 1,
+      borderColor: "#F1F0EF",
     },
 
     // ── Audio Card ─────────────────────────────────────────────────────────────
-    // FIX #6 & #7: hairline border added, shadow reduced
     audioCard: {
       marginHorizontal: 16,
-      backgroundColor: "#FFFFFF",
-      borderRadius: 16,
-      paddingVertical: 20,
-      paddingHorizontal: 20,
+      backgroundColor: "#FAFAF9",
+      borderRadius: 10,
+      paddingTop: 28,
+      paddingBottom: 20,
+      paddingHorizontal: 24,
       flexDirection: "row",
       alignItems: "center",
-      borderWidth: 0.5,
-      borderColor: "#EAE0D0",
+      borderWidth: 1,
+      borderColor: "#D6D3D1",
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
-      shadowRadius: 6,
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
       elevation: 1,
+      overflow: "hidden",
     },
     audioCardLeft: { flex: 1, marginRight: 14 },
     audioLabel: {
-      fontSize: 9,
-      letterSpacing: 1.6,
-      color: "#AAAAAA",
-      fontFamily: "Inter_600SemiBold",
+      fontSize: 10,
+      letterSpacing: 1.2,
+      color: "#78716C",
+      fontFamily: "Inter_700Bold",
       textTransform: "uppercase",
-      marginBottom: 5,
+      marginBottom: 4,
     },
     audioTitle: {
       fontSize: 18,
       fontWeight: "700",
-      color: "#1A1A1A",
+      color: "#18181B",
       fontFamily: "Inter_700Bold",
-      marginBottom: 3,
-      letterSpacing: -0.3,
+      marginBottom: 2,
     },
     audioSub: {
       fontSize: 12,
-      color: "#AAAAAA",
+      color: "#71717A",
       fontFamily: "Inter_400Regular",
       marginBottom: 14,
     },
     audioProgressRail: {
-      height: 3,
-      backgroundColor: "#EAE0D0",
-      borderRadius: 1.5,
+      height: 8,
+      backgroundColor: "#F5F5F4",
+      borderRadius: 4,
       overflow: "hidden",
     },
     audioProgressFill: {
       height: "100%" as any,
-      backgroundColor: "#1A1A1A",
-      borderRadius: 1,
+      backgroundColor: "#18181B",
+      borderRadius: 4,
     },
     playBtn: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: "#1A1A1A",
+      width: 48,
+      height: 48,
       alignItems: "center",
       justifyContent: "center",
     },
 
     // ── Goal Widget Cards ───────────────────────────────────────────────────────
-    // FIX #6 & #7: hairline border, lighter shadow
     widgetCard: {
       marginHorizontal: 16,
       marginTop: 12,
       backgroundColor: "#FFFFFF",
-      borderRadius: 16,
+      borderRadius: 10,
       padding: 16,
-      borderWidth: 0.5,
-      borderColor: "#EAE0D0",
+      borderWidth: 1,
+      borderColor: "#D6D3D1",
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.04,
@@ -792,37 +799,36 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     ctaCardShadow: {
       marginHorizontal: 16,
       marginTop: 12,
-      borderRadius: 16,
-      backgroundColor: "#FFFFFF",
-      borderWidth: 0.5,
-      borderColor: "#EAE0D0",
+      borderRadius: 10,
+      backgroundColor: "#FAFAF9",
+      borderWidth: 1,
+      borderColor: "#D6D3D1",
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
-      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.03,
+      shadowRadius: 20,
+      elevation: 1,
     },
     ctaCardClip: {
-      borderRadius: 16,
+      borderRadius: 10,
       overflow: "hidden",
       elevation: 1,
     },
     widgetCardContent: { padding: 16 },
 
-    // FIX #1: warm cream/tan button — NOT black
     attachedCta: {
-      backgroundColor: "#E8D5B8",
+      backgroundColor: "#FFEDD5",
       paddingVertical: 18,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: 10,
     },
-    // FIX #1: dark text on warm background
     attachedCtaText: {
       fontSize: 16,
-      fontWeight: "700",
-      color: "#1A1A1A",
-      fontFamily: "Inter_700Bold",
+      fontWeight: "600",
+      color: "#57534E",
+      fontFamily: "Inter_600SemiBold",
     },
     topBanner: {
       backgroundColor: "#4CAF50",
@@ -870,25 +876,23 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       gap: 10,
     },
-    // vertical hairline between step 1 and step 2
     stepDivider: {
       width: 0.5,
       height: 32,
-      backgroundColor: "#EAE0D0",
+      backgroundColor: "#E7E5E4",
       marginHorizontal: 14,
     },
-    // FIX #8: 32px circles (was 36px)
     stepNumCircle: {
       width: 32, height: 32, borderRadius: 16,
-      backgroundColor: GOLD,
+      backgroundColor: "#FFEDD5",
       alignItems: "center", justifyContent: "center", flexShrink: 0,
     },
-    stepNumText: { fontSize: 14, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+    stepNumText: { fontSize: 16, fontWeight: "400", color: "#1F2937", fontFamily: "Inter_400Regular" },
     stepStepText: {
       flex: 1,
       fontSize: 13,
-      fontWeight: "600",
-      color: "#1A1A1A",
+      fontWeight: "500",
+      color: "#57534E",
       fontFamily: "Inter_600SemiBold",
       lineHeight: 17,
     },
@@ -1023,7 +1027,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     detailsLink: { fontSize: 11, fontWeight: "700", color: "#AAAAAA", letterSpacing: 0.8, fontFamily: "Inter_700Bold" },
 
     // ── Idle / No Goal ─────────────────────────────────────────────────────────
-    greetingSection: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 4 },
+    greetingSection: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
     greeting: {
       fontSize: 22,
       color: "#1A1A1A",
@@ -1048,19 +1052,23 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     quizCta: {
       marginHorizontal: 16,
       marginTop: 12,
-      backgroundColor: "#EDE3D4",
-      borderRadius: 14,
-      paddingHorizontal: 18,
+      backgroundColor: "#E7E5E4",
+      borderRadius: 10,
+      paddingHorizontal: 16,
       paddingVertical: 16,
       flexDirection: "row",
       alignItems: "center",
       gap: 12,
-      borderWidth: 0.5,
-      borderColor: "#DDD0B8",
+      borderWidth: 1,
+      borderColor: "#A8A29E",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1.5 },
+      shadowOpacity: 0.15,
+      shadowRadius: 3,
+      elevation: 2,
     },
-    quizCtaTitle: { fontSize: 15, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-    // FIX #10: warm brown tone
-    quizCtaSub: { fontSize: 12, color: "#8A7B60", fontFamily: "Inter_400Regular", marginTop: 2 },
+    quizCtaTitle: { fontSize: 16, fontWeight: "700", color: "#000000", fontFamily: "Inter_700Bold" },
+    quizCtaSub: { fontSize: 10, color: "#000000", fontFamily: "Inter_400Regular", marginTop: 2 },
 
     // ── List Sections (Last Visited / Saved Surahs) ────────────────────────────
     listSection: { marginTop: 28, paddingHorizontal: 16 },
@@ -1173,23 +1181,22 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     // ── All Surahs by Juz ──────────────────────────────────────────────────────
     surahSection: { marginTop: 28 },
     sectionTitle: {
-      fontSize: 22,
+      fontSize: 18,
       fontWeight: "700",
-      color: "#1A1A1A",
+      color: "#18181B",
       fontFamily: "Inter_700Bold",
       paddingHorizontal: 20,
       paddingBottom: 10,
-      letterSpacing: -0.4,
     },
     juzHeader: {
-      backgroundColor: "rgba(180,160,130,0.10)",
+      backgroundColor: "#E7E5E4",
       paddingHorizontal: 20,
       paddingVertical: 6,
     },
     juzLabel: {
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: "700",
-      color: "#C0B4A0",
+      color: "#71717A",
       letterSpacing: 1.4,
       textTransform: "uppercase",
       fontFamily: "Inter_700Bold",
@@ -1198,26 +1205,34 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: 20,
-      paddingVertical: 13,
+      paddingVertical: 12,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: "#EAE0D0",
-      backgroundColor: "#FFFFFF",
+      borderBottomColor: "#F9FAFB",
+      gap: 16,
     },
     surahRowLast: { borderBottomWidth: 0 },
+    surahNumBubble: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: "#E4E4E7",
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0,
+    },
     surahNum: {
-      width: 30,
-      fontSize: 13,
-      fontWeight: "600",
-      color: "#AAAAAA",
+      fontSize: 12,
+      fontWeight: "500",
+      color: "#18181B",
       fontFamily: "Inter_600SemiBold",
     },
     surahInfo: { flex: 1 },
-    surahName: { fontSize: 15, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
-    surahMeta: { fontSize: 11, color: "#AAAAAA", fontFamily: "Inter_400Regular", marginTop: 2 },
+    surahName: { fontSize: 14, fontWeight: "700", color: "#18181B", fontFamily: "Inter_700Bold" },
+    surahMeta: { fontSize: 12, color: "#71717A", fontFamily: "Inter_400Regular", marginTop: 2 },
     surahArabic: {
       fontSize: 18,
-      color: "#1A1A1A",
-      fontFamily: Platform.OS === "ios" ? "System" : undefined,
+      color: "#18181B",
     },
 
     memorizedTag: {
