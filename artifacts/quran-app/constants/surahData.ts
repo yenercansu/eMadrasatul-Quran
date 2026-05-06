@@ -6,6 +6,12 @@ export interface SurahMeta {
   juz: number;
 }
 
+export interface AyahRef {
+  surahNumber: number;
+  surahName: string;
+  ayahNumber: number;
+}
+
 export const SURAH_DATA: SurahMeta[] = [
   { number: 1, name: "الفاتحة", englishName: "Al-Faatiha", ayahCount: 7, juz: 1 },
   { number: 2, name: "البقرة", englishName: "Al-Baqara", ayahCount: 286, juz: 1 },
@@ -173,3 +179,64 @@ export const JUZ_STARTS: { juz: number; surah: number; ayah: number; label: stri
   { juz: 29, surah: 67, ayah: 1, label: "Juz 29" },
   { juz: 30, surah: 78, ayah: 1, label: "Juz 30" },
 ];
+
+function compareAyahRef(a: { surah: number; ayah: number }, b: { surah: number; ayah: number }) {
+  if (a.surah !== b.surah) return a.surah - b.surah;
+  return a.ayah - b.ayah;
+}
+
+export function getJuzAyahs(juz: number): AyahRef[] {
+  const start = JUZ_STARTS.find((j) => j.juz === juz);
+  if (!start) return [];
+  const nextStart = JUZ_STARTS.find((j) => j.juz === juz + 1);
+  const ayahs: AyahRef[] = [];
+
+  for (const surah of SURAH_DATA) {
+    for (let ayah = 1; ayah <= surah.ayahCount; ayah++) {
+      const ref = { surah: surah.number, ayah };
+      if (compareAyahRef(ref, { surah: start.surah, ayah: start.ayah }) < 0) continue;
+      if (nextStart && compareAyahRef(ref, { surah: nextStart.surah, ayah: nextStart.ayah }) >= 0) {
+        return ayahs;
+      }
+      ayahs.push({ surahNumber: surah.number, surahName: surah.englishName, ayahNumber: ayah });
+    }
+  }
+
+  return ayahs;
+}
+
+export function getJuzForAyah(surahNumber: number, ayahNumber: number): number {
+  let current = 1;
+  for (const start of JUZ_STARTS) {
+    if (compareAyahRef({ surah: surahNumber, ayah: ayahNumber }, { surah: start.surah, ayah: start.ayah }) >= 0) {
+      current = start.juz;
+    } else {
+      break;
+    }
+  }
+  return current;
+}
+
+export function getWeeklyGoalAyahsFrom(
+  startSurahNumber: number,
+  startAyahNumber: number,
+  count: number,
+  target: { path: "surah"; juz?: never } | { path: "juz"; juz: number }
+): AyahRef[] {
+  const source = target.path === "juz"
+    ? getJuzAyahs(target.juz)
+    : (() => {
+        const surah = SURAH_DATA.find((s) => s.number === startSurahNumber);
+        if (!surah) return [];
+        return Array.from({ length: surah.ayahCount }, (_, i) => ({
+          surahNumber: surah.number,
+          surahName: surah.englishName,
+          ayahNumber: i + 1,
+        }));
+      })();
+  const startIndex = source.findIndex(
+    (a) => a.surahNumber === startSurahNumber && a.ayahNumber === startAyahNumber
+  );
+  if (startIndex < 0 || count <= 0) return [];
+  return source.slice(startIndex, startIndex + count);
+}

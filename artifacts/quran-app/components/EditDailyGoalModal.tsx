@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { getJuzAyahs, getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
 
 const COMMITMENT_STEPS = [1, 2, 3, 5, 7, 10, 15, 25, 45];
 const MAX_WEEKLY = 45;
@@ -75,10 +76,12 @@ interface Props {
   surahName: string;
   surahNumber: number;
   ayahCount: number;
+  targetPath?: "surah" | "juz";
+  targetJuz?: number;
   currentStartAyah: number;
   currentAyahsPerWeek: number;
   memorizedAyahKeys?: string[];
-  onSave: (next: { startAyahNumber: number; ayahsPerWeek: number }) => void;
+  onSave: (next: { startSurahNumber: number; startAyahNumber: number; ayahsPerWeek: number }) => void;
   onClose: () => void;
 }
 
@@ -87,6 +90,8 @@ export function EditDailyGoalModal({
   surahName,
   surahNumber,
   ayahCount,
+  targetPath = "surah",
+  targetJuz,
   currentStartAyah,
   currentAyahsPerWeek,
   memorizedAyahKeys = [],
@@ -94,23 +99,59 @@ export function EditDailyGoalModal({
   onClose,
 }: Props) {
   const [step, setStep] = useState<1 | 2>(1);
+  const [startSurahNumber, setStartSurahNumber] = useState(surahNumber);
   const [startAyahNumber, setStartAyahNumber] = useState(currentStartAyah);
   const [ayahsPerWeek, setAyahsPerWeek] = useState(currentAyahsPerWeek);
 
+  const targetAyahs = useMemo(() => {
+    if (targetPath === "juz" && targetJuz) return getJuzAyahs(targetJuz);
+    const surah = SURAH_DATA[surahNumber - 1];
+    if (!surah) return [];
+    return Array.from({ length: ayahCount }, (_, i) => ({
+      surahNumber,
+      surahName,
+      ayahNumber: i + 1,
+    }));
+  }, [targetPath, targetJuz, surahNumber, surahName, ayahCount]);
+
+  const targetGroups = useMemo(() => {
+    const groups: { surahNumber: number; surahName: string; ayahs: number[] }[] = [];
+    for (const ayah of targetAyahs) {
+      const last = groups[groups.length - 1];
+      if (last?.surahNumber === ayah.surahNumber) last.ayahs.push(ayah.ayahNumber);
+      else groups.push({ surahNumber: ayah.surahNumber, surahName: ayah.surahName, ayahs: [ayah.ayahNumber] });
+    }
+    return groups;
+  }, [targetAyahs]);
+
   const maxFromStart = useMemo(
-    () => Math.max(1, Math.min(MAX_WEEKLY, ayahCount - startAyahNumber + 1)),
-    [ayahCount, startAyahNumber]
+    () => {
+      const idx = targetAyahs.findIndex(a => a.surahNumber === startSurahNumber && a.ayahNumber === startAyahNumber);
+      return Math.max(1, Math.min(MAX_WEEKLY, idx >= 0 ? targetAyahs.length - idx : 1));
+    },
+    [targetAyahs, startSurahNumber, startAyahNumber]
   );
-  const endingAyah = Math.min(ayahCount, startAyahNumber + ayahsPerWeek - 1);
+  const weeklySelection = useMemo(() => getWeeklyGoalAyahsFrom(
+    startSurahNumber,
+    startAyahNumber,
+    ayahsPerWeek,
+    targetPath === "juz" && targetJuz ? { path: "juz", juz: targetJuz } : { path: "surah" }
+  ), [startSurahNumber, startAyahNumber, ayahsPerWeek, targetPath, targetJuz]);
+  const endingAyah = weeklySelection[weeklySelection.length - 1];
 
   useEffect(() => {
     if (!visible) return;
-    const safeStart = Math.max(1, Math.min(ayahCount || 1, currentStartAyah || 1));
-    const safeMax = Math.max(1, Math.min(MAX_WEEKLY, (ayahCount || 1) - safeStart + 1));
+    const fallback = targetAyahs[0] ?? { surahNumber, ayahNumber: 1 };
+    const currentExists = targetAyahs.some(a => a.surahNumber === surahNumber && a.ayahNumber === currentStartAyah);
+    const safeStartSurah = currentExists ? surahNumber : fallback.surahNumber;
+    const safeStartAyah = currentExists ? currentStartAyah : fallback.ayahNumber;
+    const startIdx = targetAyahs.findIndex(a => a.surahNumber === safeStartSurah && a.ayahNumber === safeStartAyah);
+    const safeMax = Math.max(1, Math.min(MAX_WEEKLY, startIdx >= 0 ? targetAyahs.length - startIdx : 1));
     setStep(1);
-    setStartAyahNumber(safeStart);
+    setStartSurahNumber(safeStartSurah);
+    setStartAyahNumber(safeStartAyah);
     setAyahsPerWeek(Math.max(1, Math.min(safeMax, currentAyahsPerWeek || 1)));
-  }, [visible, ayahCount, currentStartAyah, currentAyahsPerWeek]);
+  }, [visible, targetAyahs, surahNumber, currentStartAyah, currentAyahsPerWeek]);
 
   useEffect(() => {
     setAyahsPerWeek((prev) => Math.max(1, Math.min(prev, maxFromStart)));
@@ -133,44 +174,52 @@ export function EditDailyGoalModal({
                     </TouchableOpacity>
                   </View>
                   <ProgressBar step={1} />
-                  <Text style={s.sub}>{surahName}</Text>
+                  <Text style={s.sub}>{targetPath === "juz" && targetJuz ? `Juz ${targetJuz}` : surahName}</Text>
                   <Text style={s.ayahGridLabel}>SELECT STARTING AYAH</Text>
 
-                  <View style={s.ayahGrid}>
-                    {Array.from({ length: ayahCount }, (_, i) => i + 1).map((ayahNum) => {
-                      const key = `${surahNumber}:${ayahNum}`;
-                      const isMemorized = memorizedAyahKeys.includes(key);
-                      const isSelected = startAyahNumber === ayahNum;
-                      return (
-                        <TouchableOpacity
-                          key={ayahNum}
-                          style={[
-                            s.ayahBubble,
-                            isMemorized && !isSelected && s.ayahBubbleMemorized,
-                            isSelected && s.ayahBubbleSelected,
-                          ]}
-                          onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            setStartAyahNumber(ayahNum);
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          {isMemorized && !isSelected ? (
-                            <Feather name="check" size={12} color="#FFFFFF" />
-                          ) : (
-                            <Text style={[s.ayahBubbleText, isSelected && s.ayahBubbleTextActive]}>
-                              {ayahNum}
-                            </Text>
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
+                  {targetGroups.map((group) => (
+                    <View key={group.surahNumber} style={s.ayahGroup}>
+                      {targetPath === "juz" && (
+                        <Text style={s.ayahGroupTitle}>{group.surahName}</Text>
+                      )}
+                      <View style={s.ayahGrid}>
+                        {group.ayahs.map((ayahNum) => {
+                          const key = `${group.surahNumber}:${ayahNum}`;
+                          const isMemorized = memorizedAyahKeys.includes(key);
+                          const isSelected = startSurahNumber === group.surahNumber && startAyahNumber === ayahNum;
+                          return (
+                            <TouchableOpacity
+                              key={ayahNum}
+                              style={[
+                                s.ayahBubble,
+                                isMemorized && !isSelected && s.ayahBubbleMemorized,
+                                isSelected && s.ayahBubbleSelected,
+                              ]}
+                              onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setStartSurahNumber(group.surahNumber);
+                                setStartAyahNumber(ayahNum);
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              {isMemorized && !isSelected ? (
+                                <Feather name="check" size={12} color="#FFFFFF" />
+                              ) : (
+                                <Text style={[s.ayahBubbleText, isSelected && s.ayahBubbleTextActive]}>
+                                  {ayahNum}
+                                </Text>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  ))}
 
                   <View style={s.rangeChip}>
                     <Feather name="map-pin" size={13} color="#1A1A1A" />
                     <Text style={s.rangeChipText}>
-                      Starting Ayah: <Text style={s.rangeChipBold}>{startAyahNumber}</Text>
+                      Starting Ayah: <Text style={s.rangeChipBold}>{SURAH_DATA[startSurahNumber - 1]?.englishName ?? surahName} {startAyahNumber}</Text>
                     </Text>
                   </View>
 
@@ -211,7 +260,7 @@ export function EditDailyGoalModal({
                   <View style={s.limitChip}>
                     <Feather name="info" size={12} color="#8E8E93" />
                     <Text style={s.limitText}>
-                      Max <Text style={s.limitBold}>{maxFromStart}</Text> ayahs from Ayah {startAyahNumber}
+                      Max <Text style={s.limitBold}>{maxFromStart}</Text> ayahs from {SURAH_DATA[startSurahNumber - 1]?.englishName ?? surahName} {startAyahNumber}
                     </Text>
                   </View>
 
@@ -229,18 +278,18 @@ export function EditDailyGoalModal({
 
                   <View style={s.summaryCard}>
                     <View style={s.summaryRow}>
-                      <Text style={s.summaryLabel}>Surah</Text>
-                      <Text style={s.summaryValue}>{surahName}</Text>
+                      <Text style={s.summaryLabel}>{targetPath === "juz" ? "Juz" : "Surah"}</Text>
+                      <Text style={s.summaryValue}>{targetPath === "juz" && targetJuz ? `Juz ${targetJuz}` : surahName}</Text>
                     </View>
                     <View style={s.summaryDivider} />
                     <View style={s.summaryRow}>
                       <Text style={s.summaryLabel}>Starting Ayah</Text>
-                      <Text style={s.summaryValue}>{startAyahNumber}</Text>
+                      <Text style={s.summaryValue}>{SURAH_DATA[startSurahNumber - 1]?.englishName ?? surahName} {startAyahNumber}</Text>
                     </View>
                     <View style={s.summaryDivider} />
                     <View style={s.summaryRow}>
                       <Text style={s.summaryLabel}>Ending Ayah</Text>
-                      <Text style={s.summaryValue}>{endingAyah}</Text>
+                      <Text style={s.summaryValue}>{endingAyah ? `${endingAyah.surahName} ${endingAyah.ayahNumber}` : startAyahNumber}</Text>
                     </View>
                     <View style={s.summaryDivider} />
                     <View style={s.summaryRow}>
@@ -253,7 +302,7 @@ export function EditDailyGoalModal({
                     style={s.primaryBtn}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                      onSave({ startAyahNumber, ayahsPerWeek });
+                      onSave({ startSurahNumber, startAyahNumber, ayahsPerWeek });
                       onClose();
                     }}
                     activeOpacity={0.85}
@@ -310,6 +359,14 @@ const s = StyleSheet.create({
     fontSize: 11, fontWeight: "700", color: "#8E8E93",
     letterSpacing: 1.2, fontFamily: "Inter_700Bold",
     textTransform: "uppercase", marginBottom: 12,
+  },
+  ayahGroup: { marginBottom: 12 },
+  ayahGroupTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+    marginBottom: 8,
   },
   ayahGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 },
   ayahBubble: {

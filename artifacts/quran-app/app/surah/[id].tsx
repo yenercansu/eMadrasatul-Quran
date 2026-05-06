@@ -38,7 +38,7 @@ import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchSurahWithTranslations, fetchTafsir, fetchTranslation, fetchWordTranslations, type SurahDetail, type ApiAyah, type WordTranslation } from "@/services/quranApi";
-import { SURAH_DATA } from "@/constants/surahData";
+import { getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
 
 const HINTS_STORAGE_KEY = "@squran/surah-hints-seen-v1";
 
@@ -1239,7 +1239,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     saveProgress, recordVisit, recordAyahRead,
     saveAyah, saveWord,
     surahPositions, saveSurahPosition,
-    goal, isAyahMemorized, toggleAyahMemorized,
+    goal, memorizationGoal, isAyahMemorized, toggleAyahMemorized,
   } = useQuran();
 
   const { audioState, playAyah, playRange, pauseAudio, resumeAudio, stopAudio, setPlaybackRate, playNextAyah, playPrevAyah, setOnNextAyah } = useAudio();
@@ -1448,14 +1448,18 @@ const [settingsVisible, setSettingsVisible] = useState(false);
   const topPad = insets.top;
   const basmala = surahNum !== 1 && surahNum !== 9;
   const currentAyahForRange = audioState.currentSurah === surahNum && audioState.currentAyah ? audioState.currentAyah : parseInt(ayahParam ?? "1", 10) || 1;
-  const memorizationGoalRange = useMemo(() => {
+  const memorizationGoalAyahKeys = useMemo(() => {
     if (!goal?.startSurahNumber || !goal.startAyahNumber) return null;
-    const surahData = SURAH_DATA.find(s => s.number === goal.startSurahNumber);
-    if (!surahData) return null;
-    const startAyah = goal.startAyahNumber;
-    const endAyah = Math.min(surahData.ayahCount, startAyah + goal.ayahsPerWeek - 1);
-    return { surahNumber: goal.startSurahNumber, startAyah, endAyah };
-  }, [goal]);
+    const target = memorizationGoal?.path === "juz" && memorizationGoal.targetJuz
+      ? { path: "juz" as const, juz: memorizationGoal.targetJuz }
+      : { path: "surah" as const };
+    return new Set(getWeeklyGoalAyahsFrom(
+      goal.startSurahNumber,
+      goal.startAyahNumber,
+      goal.ayahsPerWeek,
+      target
+    ).map(a => `${a.surahNumber}:${a.ayahNumber}`));
+  }, [goal, memorizationGoal]);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F5F2EE" }}>
@@ -1604,10 +1608,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
                 && surahNum <= audioState.range.endSurah
                 && item.numberInSurah >= (surahNum === audioState.range.startSurah ? audioState.range.startAyah : 1)
                 && item.numberInSurah <= (surahNum === audioState.range.endSurah ? audioState.range.endAyah : 999);
-              const isInMemorizationGoal = !!memorizationGoalRange
-                && surahNum === memorizationGoalRange.surahNumber
-                && item.numberInSurah >= memorizationGoalRange.startAyah
-                && item.numberInSurah <= memorizationGoalRange.endAyah;
+              const isInMemorizationGoal = !!memorizationGoalAyahKeys?.has(`${surahNum}:${item.numberInSurah}`);
               const showB = item.numberInSurah === 1 && basmala;
 
               const translations = selectedTranslations

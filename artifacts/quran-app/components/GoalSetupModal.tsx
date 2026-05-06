@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { SURAH_DATA } from "@/constants/surahData";
+import { getJuzAyahs, getWeeklyGoalAyahsFrom, JUZ_STARTS, SURAH_DATA } from "@/constants/surahData";
 import type { Goal, MemorizationGoal } from "@/contexts/QuranContext";
 import { useQuran } from "@/contexts/QuranContext";
 
@@ -86,6 +86,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [path, setPath] = useState<"juz" | "surah" | null>(null);
+  const [selectedJuz, setSelectedJuz] = useState<number | null>(null);
   const [selectedSurah, setSelectedSurah] = useState<(typeof SURAH_DATA)[0] | null>(null);
   const [startAyahNumber, setStartAyahNumber] = useState(1);
   const [ayahsPerWeek, setAyahsPerWeek] = useState(3);
@@ -96,6 +97,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
     if (visible) {
       setStep(1);
       setPath(null);
+      setSelectedJuz(null);
       setSelectedSurah(null);
       setStartAyahNumber(1);
       setAyahsPerWeek(3);
@@ -103,10 +105,30 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
     }
   }, [visible]);
 
-  // Reset starting ayah when surah changes
   useEffect(() => {
-    setStartAyahNumber(1);
-  }, [selectedSurah]);
+    if (path !== "juz" || selectedJuz == null) return;
+    const firstAyah = getJuzAyahs(selectedJuz)[0];
+    if (!firstAyah) return;
+    setSelectedSurah(SURAH_DATA[firstAyah.surahNumber - 1] ?? null);
+    setStartAyahNumber(firstAyah.ayahNumber);
+  }, [path, selectedJuz]);
+
+  const selectedJuzAyahs = useMemo(
+    () => path === "juz" && selectedJuz != null ? getJuzAyahs(selectedJuz) : [],
+    [path, selectedJuz]
+  );
+
+  const selectedJuzGroups = useMemo(() => {
+    const groups: { surah: (typeof SURAH_DATA)[0]; ayahs: number[] }[] = [];
+    for (const ayah of selectedJuzAyahs) {
+      const surah = SURAH_DATA[ayah.surahNumber - 1];
+      if (!surah) continue;
+      const last = groups[groups.length - 1];
+      if (last?.surah.number === surah.number) last.ayahs.push(ayah.ayahNumber);
+      else groups.push({ surah, ayahs: [ayah.ayahNumber] });
+    }
+    return groups;
+  }, [selectedJuzAyahs]);
 
   // ── Dynamic max for Step 4 ────────────────────────────────────────────────
   // Remaining ayahs from the selected starting point to the end of the surah/juz
@@ -115,22 +137,11 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
     if (path === "surah") {
       return Math.max(1, selectedSurah.ayahCount - startAyahNumber + 1);
     }
-    // Juz mode: count all ayahs from startAyahNumber in selectedSurah to end of juz
-    const juzSurahs = SURAH_DATA.filter((s) => s.juz === selectedSurah.juz).sort(
-      (a, b) => a.number - b.number
+    const idx = selectedJuzAyahs.findIndex(
+      (a) => a.surahNumber === selectedSurah.number && a.ayahNumber === startAyahNumber
     );
-    let total = 0;
-    let started = false;
-    for (const surah of juzSurahs) {
-      if (surah.number === selectedSurah.number) {
-        started = true;
-        total += surah.ayahCount - startAyahNumber + 1;
-      } else if (started) {
-        total += surah.ayahCount;
-      }
-    }
-    return Math.max(1, total);
-  }, [selectedSurah, startAyahNumber, path]);
+    return idx >= 0 ? Math.max(1, selectedJuzAyahs.length - idx) : 1;
+  }, [selectedSurah, startAyahNumber, path, selectedJuzAyahs]);
 
   const dynamicMax = Math.min(MAX_WEEKLY, remainingAyahsFromStart);
 
@@ -140,14 +151,11 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
   }, [dynamicMax]);
 
   // ── Surah / Juz lists ─────────────────────────────────────────────────────
-  const juzGroups = useMemo(() => {
-    const groups: { juz: number; surahs: (typeof SURAH_DATA) }[] = [];
-    for (let j = 1; j <= 30; j++) {
-      const surahsInJuz = SURAH_DATA.filter((s) => s.juz === j);
-      if (surahsInJuz.length > 0) groups.push({ juz: j, surahs: surahsInJuz });
-    }
-    return groups;
-  }, []);
+  const juzGroups = useMemo(() => JUZ_STARTS.map((juz) => ({
+    juz: juz.juz,
+    ayahCount: getJuzAyahs(juz.juz).length,
+    startsAt: juz,
+  })), []);
 
   const filteredSurahs = useMemo(() => {
     if (!search) return SURAH_DATA;
@@ -164,30 +172,38 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
   const filteredJuzGroups = useMemo(() => {
     if (!search) return juzGroups;
     const q = search.toLowerCase();
-    return juzGroups
-      .map((group) => ({
-        ...group,
-        surahs: group.surahs.filter(
-          (s) =>
-            s.englishName.toLowerCase().includes(q) ||
-            s.name.includes(search) ||
-            String(s.number).includes(q) ||
-            String(group.juz).includes(q)
-        ),
-      }))
-      .filter((g) => g.surahs.length > 0);
+    return juzGroups.filter((group) => {
+      const ayahs = getJuzAyahs(group.juz);
+      return String(group.juz).includes(q) || ayahs.some((a) => {
+        const surah = SURAH_DATA[a.surahNumber - 1];
+        return surah?.englishName.toLowerCase().includes(q) || surah?.name.includes(search);
+      });
+    });
   }, [search, juzGroups]);
+
+  const weeklySelection = useMemo(() => {
+    if (!selectedSurah) return [];
+    return getWeeklyGoalAyahsFrom(
+      selectedSurah.number,
+      startAyahNumber,
+      Math.min(ayahsPerWeek, dynamicMax),
+      path === "juz" && selectedJuz != null ? { path: "juz", juz: selectedJuz } : { path: "surah" }
+    );
+  }, [selectedSurah, startAyahNumber, ayahsPerWeek, dynamicMax, path, selectedJuz]);
+  const endingAyah = weeklySelection[weeklySelection.length - 1];
 
   // ── Completion ────────────────────────────────────────────────────────────
   const handleComplete = () => {
     if (!path || !selectedSurah) return;
     const cappedAyahsPerWeek = Math.min(ayahsPerWeek, dynamicMax);
+    const targetJuz = path === "juz" ? selectedJuz ?? undefined : undefined;
     onComplete(
       {
         path,
         startSurahNumber: selectedSurah.number,
-        startSurahName: selectedSurah.englishName,
+        startSurahName: path === "juz" && targetJuz ? `Juz ${targetJuz}` : selectedSurah.englishName,
         startDate: new Date().toISOString().split("T")[0],
+        targetJuz,
       },
       {
         ayahsPerWeek: cappedAyahsPerWeek,
@@ -225,6 +241,9 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                         onPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                           setPath(p);
+                          setSelectedJuz(null);
+                          setSelectedSurah(null);
+                          setStartAyahNumber(1);
                         }}
                         activeOpacity={0.85}
                       >
@@ -303,6 +322,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                           onPress={() => {
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             setSelectedSurah(item);
+                            setStartAyahNumber(1);
                           }}
                           activeOpacity={0.7}
                         >
@@ -371,51 +391,55 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                     style={{ flex: 1 }}
                     contentContainerStyle={{ paddingHorizontal: 20 }}
                     keyboardShouldPersistTaps="handled"
-                    renderItem={({ item: group }) => (
-                      <View>
-                        <View style={s.juzHeader}>
-                          <Text style={s.juzHeaderText}>Juz {group.juz}</Text>
-                          <Text style={s.juzHeaderSub}>
-                            {group.surahs.map((s) => s.englishName).join(" • ")}
-                          </Text>
-                        </View>
-                        {group.surahs.map((surah) => {
-                          const isSelected = selectedSurah?.number === surah.number;
-                          return (
-                            <TouchableOpacity
-                              key={surah.number}
-                              style={s.surahRow}
-                              onPress={() => {
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                setSelectedSurah(surah);
-                              }}
-                              activeOpacity={0.7}
-                            >
-                              <View style={[s.surahNumBubble, isSelected && s.surahNumBubbleActive]}>
-                                <Text style={[s.surahNumText, isSelected && s.surahNumTextActive]}>
-                                  {surah.number}
-                                </Text>
-                              </View>
-                              <View style={s.surahInfo}>
-                                <Text style={s.surahName}>{surah.englishName}</Text>
-                                <Text style={s.surahMeta}>
-                                  {surah.name} • {surah.ayahCount} Verses • Juz {surah.juz}
-                                </Text>
-                              </View>
-                              <Feather name="chevron-right" size={16} color="#C0C0C0" />
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    )}
+                    renderItem={({ item: group }) => {
+                      const isSelected = selectedJuz === group.juz;
+                      const firstSurah = SURAH_DATA[group.startsAt.surah - 1];
+                      const juzAyahs = getJuzAyahs(group.juz);
+                      const surahNames = Array.from(new Set(juzAyahs.map(a => a.surahName))).slice(0, 4).join(" • ");
+                      return (
+                        <TouchableOpacity
+                          style={s.surahRow}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setSelectedJuz(group.juz);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[s.surahNumBubble, isSelected && s.surahNumBubbleActive]}>
+                            <Text style={[s.surahNumText, isSelected && s.surahNumTextActive]}>
+                              {group.juz}
+                            </Text>
+                          </View>
+                          <View style={s.surahInfo}>
+                            <Text style={s.surahName}>Juz {group.juz}</Text>
+                            <Text style={s.surahMeta}>
+                              Starts {firstSurah?.englishName ?? ""} {group.startsAt.ayah} • {group.ayahCount} Ayahs
+                            </Text>
+                            <Text style={s.juzHeaderSub}>{surahNames}</Text>
+                          </View>
+                          {isSelected ? (
+                            <Feather name="check" size={16} color="#1A1A1A" />
+                          ) : (
+                            <Feather name="chevron-right" size={16} color="#C0C0C0" />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    }}
                   />
 
                   <View style={[s.stepPad, { paddingTop: 12 }]}>
                     <TouchableOpacity
-                      style={[s.primaryBtn, !selectedSurah && { opacity: 0.4 }]}
-                      disabled={!selectedSurah}
+                      style={[s.primaryBtn, selectedJuz == null && { opacity: 0.4 }]}
+                      disabled={selectedJuz == null}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        if (selectedJuz != null && !selectedSurah) {
+                          const firstAyah = getJuzAyahs(selectedJuz)[0];
+                          if (firstAyah) {
+                            setSelectedSurah(SURAH_DATA[firstAyah.surahNumber - 1] ?? null);
+                            setStartAyahNumber(firstAyah.ayahNumber);
+                          }
+                        }
                         setStep(3);
                       }}
                       activeOpacity={0.85}
@@ -441,50 +465,91 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                   <ProgressBar step={3} />
 
                   <Text style={s.ayahGridLabel}>
-                    SELECT STARTING AYAH • {selectedSurah?.englishName ?? ""}
+                    SELECT STARTING AYAH • {path === "juz" ? `Juz ${selectedJuz}` : selectedSurah?.englishName ?? ""}
                   </Text>
                   <Text style={s.ayahGridSub}>
                     Green = already memorized. Tap an ayah to set your starting point.
                   </Text>
 
-                  <View style={s.ayahGrid}>
-                    {Array.from({ length: selectedSurah?.ayahCount ?? 0 }, (_, i) => i + 1).map(
-                      (ayahNum) => {
-                        const key = `${selectedSurah!.number}:${ayahNum}`;
-                        const isMemorized = memorizedAyahKeys.includes(key);
-                        const isSelected = startAyahNumber === ayahNum;
-                        return (
-                          <TouchableOpacity
-                            key={ayahNum}
-                            style={[
-                              s.ayahBubble,
-                              isMemorized && !isSelected && s.ayahBubbleMemorized,
-                              isSelected && s.ayahBubbleSelected,
-                            ]}
-                            onPress={() => {
-                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                              setStartAyahNumber(ayahNum);
-                            }}
-                            activeOpacity={0.7}
-                          >
-                            {isMemorized && !isSelected ? (
-                              <Feather name="check" size={12} color="#FFFFFF" />
-                            ) : (
-                              <Text style={[s.ayahBubbleText, isSelected && s.ayahBubbleTextActive]}>
-                                {ayahNum}
-                              </Text>
-                            )}
-                          </TouchableOpacity>
-                        );
-                      }
-                    )}
-                  </View>
+                  {path === "juz" ? (
+                    selectedJuzGroups.map((group) => (
+                      <View key={group.surah.number} style={s.juzAyahGroup}>
+                        <View style={s.juzHeader}>
+                          <Text style={s.juzHeaderText}>{group.surah.englishName}</Text>
+                          <Text style={s.juzHeaderSub}>{group.surah.name}</Text>
+                        </View>
+                        <View style={s.ayahGrid}>
+                          {group.ayahs.map((ayahNum) => {
+                            const key = `${group.surah.number}:${ayahNum}`;
+                            const isMemorized = memorizedAyahKeys.includes(key);
+                            const isSelected = selectedSurah?.number === group.surah.number && startAyahNumber === ayahNum;
+                            return (
+                              <TouchableOpacity
+                                key={ayahNum}
+                                style={[
+                                  s.ayahBubble,
+                                  isMemorized && !isSelected && s.ayahBubbleMemorized,
+                                  isSelected && s.ayahBubbleSelected,
+                                ]}
+                                onPress={() => {
+                                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                  setSelectedSurah(group.surah);
+                                  setStartAyahNumber(ayahNum);
+                                }}
+                                activeOpacity={0.7}
+                              >
+                                {isMemorized && !isSelected ? (
+                                  <Feather name="check" size={12} color="#FFFFFF" />
+                                ) : (
+                                  <Text style={[s.ayahBubbleText, isSelected && s.ayahBubbleTextActive]}>
+                                    {ayahNum}
+                                  </Text>
+                                )}
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    ))
+                  ) : (
+                    <View style={s.ayahGrid}>
+                      {Array.from({ length: selectedSurah?.ayahCount ?? 0 }, (_, i) => i + 1).map(
+                        (ayahNum) => {
+                          const key = `${selectedSurah!.number}:${ayahNum}`;
+                          const isMemorized = memorizedAyahKeys.includes(key);
+                          const isSelected = startAyahNumber === ayahNum;
+                          return (
+                            <TouchableOpacity
+                              key={ayahNum}
+                              style={[
+                                s.ayahBubble,
+                                isMemorized && !isSelected && s.ayahBubbleMemorized,
+                                isSelected && s.ayahBubbleSelected,
+                              ]}
+                              onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setStartAyahNumber(ayahNum);
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              {isMemorized && !isSelected ? (
+                                <Feather name="check" size={12} color="#FFFFFF" />
+                              ) : (
+                                <Text style={[s.ayahBubbleText, isSelected && s.ayahBubbleTextActive]}>
+                                  {ayahNum}
+                                </Text>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        }
+                      )}
+                    </View>
+                  )}
 
-                  {/* Info chip: how many ayahs are available from this starting point */}
                   <View style={s.availabilityChip}>
                     <Feather name="map-pin" size={13} color="#1A1A1A" />
                     <Text style={s.availabilityText}>
-                      Starting at Ayah {startAyahNumber} •{" "}
+                      Starting at {selectedSurah?.englishName} {startAyahNumber} •{" "}
                       <Text style={s.availabilityBold}>{remainingAyahsFromStart}</Text> ayah
                       {remainingAyahsFromStart !== 1 ? "s" : ""} available
                     </Text>
@@ -526,8 +591,8 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                     <Feather name="info" size={12} color="#8E8E93" />
                     <Text style={s.dynamicLimitText}>
                       Max <Text style={s.dynamicLimitBold}>{dynamicMax}</Text> ayahs available
-                      from Ayah {startAyahNumber} in {selectedSurah?.englishName}
-                      {path === "juz" ? ` (Juz ${selectedSurah?.juz})` : ""}
+                      from {selectedSurah?.englishName} {startAyahNumber}
+                      {path === "juz" ? ` in Juz ${selectedJuz}` : ""}
                     </Text>
                   </View>
 
@@ -559,20 +624,18 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                   {/* Summary of the full selection */}
                   <View style={s.summaryCard}>
                     <View style={s.summaryRow}>
-                      <Text style={s.summaryLabel}>Surah</Text>
-                      <Text style={s.summaryValue}>{selectedSurah?.englishName}</Text>
+                      <Text style={s.summaryLabel}>{path === "juz" ? "Juz" : "Surah"}</Text>
+                      <Text style={s.summaryValue}>{path === "juz" ? `Juz ${selectedJuz}` : selectedSurah?.englishName}</Text>
                     </View>
                     <View style={s.summaryDivider} />
                     <View style={s.summaryRow}>
                       <Text style={s.summaryLabel}>Starting Ayah</Text>
-                      <Text style={s.summaryValue}>{startAyahNumber}</Text>
+                      <Text style={s.summaryValue}>{selectedSurah?.englishName} {startAyahNumber}</Text>
                     </View>
                     <View style={s.summaryDivider} />
                     <View style={s.summaryRow}>
                       <Text style={s.summaryLabel}>Ending Ayah</Text>
-                      <Text style={s.summaryValue}>
-                        {Math.min(startAyahNumber + ayahsPerWeek - 1, selectedSurah?.ayahCount ?? startAyahNumber)}
-                      </Text>
+                      <Text style={s.summaryValue}>{endingAyah ? `${endingAyah.surahName} ${endingAyah.ayahNumber}` : startAyahNumber}</Text>
                     </View>
                     <View style={s.summaryDivider} />
                     <View style={s.summaryRow}>
@@ -693,6 +756,7 @@ const s = StyleSheet.create({
   juzHeaderSub: { fontSize: 12, color: "#8E8E93", fontFamily: "Inter_400Regular" },
 
   // ── Step 3: Ayah grid ────────────────────────────────────────────────────
+  juzAyahGroup: { marginBottom: 12 },
   ayahGridLabel: {
     fontSize: 11, fontWeight: "700", color: "#8E8E93",
     letterSpacing: 1.2, fontFamily: "Inter_700Bold",

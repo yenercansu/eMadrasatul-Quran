@@ -18,12 +18,11 @@ import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
 import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
-import { SURAH_DATA } from "@/constants/surahData";
+import { getJuzAyahs, SURAH_DATA } from "@/constants/surahData";
 import { GoalSetupModal } from "@/components/GoalSetupModal";
 import { EditDailyGoalModal } from "@/components/EditDailyGoalModal";
 
 const TOTAL_AYAHS = 6236;
-const AYAHS_PER_JUZ = Math.round(TOTAL_AYAHS / 30);
 
 function CircularRing({
   percent, size = 60, strokeWidth = 5,
@@ -123,6 +122,9 @@ export default function HomeScreen() {
 
   const totalMemorized = useMemo(() => {
     if (!memorizationGoal) return 0;
+    const targetJuzAyahKeys = memorizationGoal.path === "juz" && memorizationGoal.targetJuz
+      ? new Set(getJuzAyahs(memorizationGoal.targetJuz).map(a => `${a.surahNumber}:${a.ayahNumber}`))
+      : null;
     return memorizedAyahKeys.filter((key) => {
       const [surahRaw, ayahRaw] = key.split(":");
       const surahNumber = Number(surahRaw);
@@ -131,9 +133,7 @@ export default function HomeScreen() {
       if (memorizationGoal.path === "surah") {
         return surahNumber === memorizationGoal.startSurahNumber;
       }
-      const surahMeta = SURAH_DATA[surahNumber - 1];
-      const targetJuzNumber = SURAH_DATA[memorizationGoal.startSurahNumber - 1]?.juz;
-      return !!surahMeta && surahMeta.juz === targetJuzNumber;
+      return !!targetJuzAyahKeys?.has(key);
     }).length;
   }, [memorizedAyahKeys, memorizationGoal]);
 
@@ -165,7 +165,7 @@ export default function HomeScreen() {
   }, [goal, weekGoalAyahs, memorizedAyahKeys]);
 
   const targetJuz = memorizationGoal?.path === "juz"
-    ? (memorizationGoal?.startSurahNumber ? SURAH_DATA.find(s => s.number === memorizationGoal?.startSurahNumber)?.juz ?? 1 : 1)
+    ? (memorizationGoal.targetJuz ?? 1)
     : 1;
   const targetSurah = memorizationGoal?.path === "surah"
     ? (memorizationGoal?.startSurahNumber ? SURAH_DATA.find(s => s.number === memorizationGoal?.startSurahNumber) : undefined)
@@ -175,7 +175,7 @@ export default function HomeScreen() {
     return savedSurahs.map(n => SURAH_DATA[n - 1]).filter(Boolean);
   }, [savedSurahs]);
 
-  const targetTotal = memorizationGoal?.path === "juz" ? AYAHS_PER_JUZ : (targetSurah ? targetSurah.ayahCount : AYAHS_PER_JUZ);
+  const targetTotal = memorizationGoal?.path === "juz" ? getJuzAyahs(targetJuz).length : (targetSurah ? targetSurah.ayahCount : TOTAL_AYAHS);
   const memorizationPercent = Math.min(100, Math.round((totalMemorized / targetTotal) * 100));
   // Use effectiveGoalCount (actual available ayahs) to avoid 41/44 type lock
   const weekPercent = goal
@@ -638,15 +638,17 @@ export default function HomeScreen() {
         surahName={editableGoalSurah.englishName}
         surahNumber={editableGoalSurah.number}
         ayahCount={editableGoalSurah.ayahCount}
+        targetPath={memorizationGoal?.path ?? "surah"}
+        targetJuz={memorizationGoal?.targetJuz}
         currentStartAyah={goal?.startAyahNumber ?? 1}
         currentAyahsPerWeek={goal?.ayahsPerWeek ?? 10}
         memorizedAyahKeys={memorizedAyahKeys}
-        onSave={({ startAyahNumber, ayahsPerWeek }) => {
+        onSave={({ startSurahNumber, startAyahNumber, ayahsPerWeek }) => {
           const today = new Date().toISOString().split("T")[0];
           setGoal({
             ayahsPerWeek,
             startDate: goal?.startDate ?? today,
-            startSurahNumber: editableGoalSurah.number,
+            startSurahNumber,
             startAyahNumber,
           });
         }}

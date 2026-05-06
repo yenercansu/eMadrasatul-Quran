@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Appearance } from "react-native";
-import { SURAH_DATA } from "@/constants/surahData";
+import { getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
 
 export interface SavedWord {
   id: string;
@@ -58,6 +58,7 @@ export interface MemorizationGoal {
   startSurahName: string;
   startDate: string;
   ayahsReadAtStart?: number;
+  targetJuz?: number;
 }
 
 export interface GoalAyah {
@@ -376,23 +377,21 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const getWeekGoalAyahs = useCallback((): GoalAyah[] => {
     if (!goal) return [];
     if (goal.startSurahNumber != null && goal.startAyahNumber != null) {
-      const surahData = SURAH_DATA.find(s => s.number === goal.startSurahNumber);
-      if (!surahData) return [];
-      const startAyah = goal.startAyahNumber;
-      const endAyah = surahData.ayahCount;
-      const count = Math.min(goal.ayahsPerWeek, endAyah - startAyah + 1);
-      if (count <= 0) return [];
-      return Array.from({ length: count }, (_, i) => ({
-        surahNumber: goal.startSurahNumber!,
-        surahName: surahData.englishName,
-        ayahNumber: startAyah + i,
-      }));
+      const target = memorizationGoal?.path === "juz" && memorizationGoal.targetJuz
+        ? { path: "juz" as const, juz: memorizationGoal.targetJuz }
+        : { path: "surah" as const };
+      return getWeeklyGoalAyahsFrom(
+        goal.startSurahNumber,
+        goal.startAyahNumber,
+        goal.ayahsPerWeek,
+        target
+      );
     }
     const startPos = quranPosition;
     return Array.from({ length: goal.ayahsPerWeek }, (_, i) =>
       getAyahAtLinearIndex((startPos + i) % TOTAL_AYAHS)
     );
-  }, [goal, quranPosition]);
+  }, [goal, memorizationGoal, quranPosition]);
 
   const getWeekGoalProgress = useCallback((): number => {
     if (!goal) return 0;
@@ -402,16 +401,15 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     if (goal.startSurahNumber == null || goal.startAyahNumber == null) {
       return weekEntries.reduce((sum, e) => sum + e.ayahsRead, 0);
     }
-    const surahData = SURAH_DATA.find(s => s.number === goal.startSurahNumber);
-    if (!surahData) return 0;
-    const startAyah = goal.startAyahNumber;
-    const endAyah = surahData.ayahCount;
-    const count = Math.min(goal.ayahsPerWeek, endAyah - startAyah + 1);
-    if (count <= 0) return 0;
-    const goalAyahsList = Array.from({ length: count }, (_, i) => ({
-      surahNumber: goal.startSurahNumber!,
-      ayahNumber: startAyah + i,
-    }));
+    const target = memorizationGoal?.path === "juz" && memorizationGoal.targetJuz
+      ? { path: "juz" as const, juz: memorizationGoal.targetJuz }
+      : { path: "surah" as const };
+    const goalAyahsList = getWeeklyGoalAyahsFrom(
+      goal.startSurahNumber,
+      goal.startAyahNumber,
+      goal.ayahsPerWeek,
+      target
+    );
     const goalKeys = new Set(goalAyahsList.map(a => `${a.surahNumber}:${a.ayahNumber}`));
     const allReadKeys = new Set<string>();
     for (const entry of weekEntries) {
@@ -420,7 +418,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       }
     }
     return [...allReadKeys].filter(k => goalKeys.has(k)).length;
-  }, [goal, dailyEntries]);
+  }, [goal, dailyEntries, memorizationGoal]);
 
   const saveSurahPosition = useCallback((surahNum: number, ayahIndex: number) => {
     setSurahPositions((prev) => {
