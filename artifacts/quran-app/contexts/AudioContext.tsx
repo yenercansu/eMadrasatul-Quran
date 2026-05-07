@@ -1,8 +1,11 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from "react";
 import { Audio } from "expo-av";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuran } from "./QuranContext";
 import { getAyahCount, getNextAyah, isRangeEnd } from "@/constants/surahData";
 import { getAudioUrl as getAudioUrlFromService } from "@/services/quranApi";
+
+export const RECENT_RECITERS_KEY = "@squran/recent-reciters";
 
 export interface Reciter {
   id: string;
@@ -148,6 +151,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
       const url = getAudioUrl(surahNum, ayahNum, settings.selectedReciter);
       const rate = playbackRateRef.current;
+
+      // Track recently used reciters (fire-and-forget, max 3 entries)
+      AsyncStorage.getItem(RECENT_RECITERS_KEY).then((v) => {
+        const prev: string[] = v ? JSON.parse(v) : [];
+        const next = [settings.selectedReciter, ...prev.filter(id => id !== settings.selectedReciter)].slice(0, 3);
+        AsyncStorage.setItem(RECENT_RECITERS_KEY, JSON.stringify(next));
+      }).catch(() => {});
 
       // Reset segment state for this load
       segmentSeekedRef.current = false;

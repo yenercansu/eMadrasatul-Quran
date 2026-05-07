@@ -39,6 +39,7 @@ import { OnboardingHints } from "@/components/OnboardingHints";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchSurahWithTranslations, fetchTafsir, fetchTranslation, fetchWordTranslations, type SurahDetail, type ApiAyah, type WordTranslation } from "@/services/quranApi";
 import { getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
+import { RECENT_RECITERS_KEY } from "@/contexts/AudioContext";
 
 const HINTS_STORAGE_KEY = "@squran/surah-hints-seen-v1";
 
@@ -833,7 +834,15 @@ function EditSheet({
 }) {
   const [wordByWord, setWordByWord] = useState(false);
   const [memMode, setMemMode] = useState(false);
+  const [recentReciterIds, setRecentReciterIds] = useState<string[]>([]);
   const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    if (!visible) return;
+    AsyncStorage.getItem(RECENT_RECITERS_KEY).then((v) => {
+      setRecentReciterIds(v ? JSON.parse(v) : []);
+    }).catch(() => {});
+  }, [visible]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -868,7 +877,7 @@ function EditSheet({
           <View style={es.optionRow}>
             <Feather name="headphones" size={20} color="#1A1A1A" style={es.optionIcon} />
             <View style={es.optionInfo}>
-              <Text style={es.optionLabel}>Memorisation Mode</Text>
+              <Text style={es.optionLabel}>Ustadh Mode</Text>
               <Text style={es.optionDesc}>Listen every Ayah with a pre-determined repetition frequence</Text>
             </View>
             <Switch
@@ -892,6 +901,32 @@ function EditSheet({
               </View>
             </TouchableOpacity>
           ))}
+
+          {recentReciterIds.length > 0 && (
+            <>
+              <Text style={es.sectionLabel}>Recently listened reciters</Text>
+              {recentReciterIds.map((id) => {
+                const reciter = RECITERS.find(r => r.id === id);
+                if (!reciter) return null;
+                const isActive = settings.selectedReciter === id;
+                return (
+                  <TouchableOpacity
+                    key={id}
+                    style={es.optionRow}
+                    onPress={() => updateSettings({ selectedReciter: id })}
+                    activeOpacity={0.7}
+                  >
+                    <Feather name="mic" size={20} color="#1A1A1A" style={es.optionIcon} />
+                    <View style={es.optionInfo}>
+                      <Text style={es.optionLabel}>{reciter.name}</Text>
+                      <Text style={es.optionDesc}>{reciter.style}</Text>
+                    </View>
+                    {isActive && <Feather name="check" size={18} color="#1A1A1A" />}
+                  </TouchableOpacity>
+                );
+              })}
+            </>
+          )}
 
           <Text style={es.sectionLabel}>Playback Speed</Text>
           <View style={es.speedRow}>
