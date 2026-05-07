@@ -53,6 +53,8 @@ const colors = {
     appBorderLighter: "#DDDAD4",
     appWhite: "#FFFFFF",
     appBlack: "#000000",
+    appFlame: "#E86A33",
+    appGoldSurface: "#F1D887",
   },
 
   dark: {
@@ -109,6 +111,8 @@ const colors = {
     appBorderLighter: "#444444",
     appWhite: "#FFFFFF",
     appBlack: "#000000",
+    appFlame: "#FF7F45",
+    appGoldSurface: "#3D2800",
   },
 
   radius: 12,

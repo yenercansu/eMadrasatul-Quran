@@ -543,230 +543,472 @@ const wordsViewStyles = StyleSheet.create({
   deleteAllText: { fontSize: 14, color: "#D9534F", fontFamily: "Inter_400Regular", flex: 1 },
 });
 
+const TOTAL_AYAHS = 6236;
+const QUIZ_TYPES = 3;
+
 export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
-  const { memorizedAyahKeys } = useQuran();
+  const colors = useColors();
+  const { memorizedAyahKeys, savedWords, savedAyahs, dailyEntries } = useQuran();
   const [view, setView] = useState<"select" | "words">("select");
   const topPad = insets.top;
+
+  const streakDays = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let streak = 0;
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(today.getTime() - i * 86400000);
+      const dateStr = d.toISOString().split("T")[0];
+      const entry = dailyEntries.find((e) => e.date === dateStr);
+      if (entry && entry.ayahsRead > 0) streak++;
+      else break;
+    }
+    return streak;
+  }, [dailyEntries]);
+
+  const weekDots = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const day = today.getDay();
+    const daysToMonday = day === 0 ? 6 : day - 1;
+    const monday = new Date(today.getTime() - daysToMonday * 86400000);
+    return ["M", "T", "W", "T", "F", "S", "S"].map((label, i) => {
+      const d = new Date(monday.getTime() + i * 86400000);
+      const dateStr = d.toISOString().split("T")[0];
+      const entry = dailyEntries.find((e) => e.date === dateStr);
+      return { label, active: !!(entry && entry.ayahsRead > 0) };
+    });
+  }, [dailyEntries]);
 
   if (view === "words") {
     return <WordsQuizView onBack={() => setView("select")} />;
   }
 
-  const totalAyahs = 6236;
   const memorizedCount = memorizedAyahKeys.length;
-  const certificationPercent = Math.min(100, Math.round((memorizedCount / totalAyahs) * 100));
+  const certificationPercent = Math.min(100, Math.round((memorizedCount / TOTAL_AYAHS) * 100));
+  const s = libStyles(colors);
 
   return (
-    <ScrollView style={selStyles.container} contentContainerStyle={{ paddingTop: topPad + 8, paddingBottom: 40, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
-      <Text style={selStyles.pageTitle}>Madrasa</Text>
+    <ScrollView
+      style={s.container}
+      contentContainerStyle={[s.content, { paddingTop: topPad + 16 }]}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <Text style={s.pageTitle}>Madrasa</Text>
+      <Text style={s.pageSubtitle}>Your learning hub</Text>
 
-      <View style={selStyles.cardsRow}>
-        <TouchableOpacity
-          style={[selStyles.card, selStyles.cardDark]}
-          onPress={() => router.push("/memorization-quiz")}
-          activeOpacity={0.88}
-        >
-          <View style={selStyles.cardTopRow}>
-            <View style={selStyles.iconWrapDark}>
-              <Ionicons name="bulb" size={22} color="#FFFFFF" />
-            </View>
-            <View style={selStyles.cardTextBlock}>
-              <Text style={selStyles.cardTitleDark}>Memorization Quiz</Text>
-              <Text style={selStyles.cardDescDark}>Test ayah order, blanks, and meanings.</Text>
-            </View>
+      {/* ── Streak Widget ──────────────────────────────────────────────── */}
+      <View style={s.streakCard}>
+        <View style={s.streakLeft}>
+          <Ionicons name="flame" size={22} color={colors.appFlame} />
+          <View>
+            <Text style={s.streakTitle}>{streakDays}-day streak</Text>
+            <Text style={s.streakSub}>Keep it up!</Text>
           </View>
-          <View style={selStyles.selectBtnDark}>
-            <Text style={selStyles.selectBtnTextDark}>Start Quiz</Text>
-            <Feather name="arrow-right" size={14} color="rgba(255,255,255,0.8)" />
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[selStyles.card, selStyles.cardLight]}
-          onPress={() => setView("words")}
-          activeOpacity={0.88}
-        >
-          <View style={selStyles.cardTopRow}>
-            <View style={selStyles.iconWrapLight}>
-              <Ionicons name="book" size={22} color="#1A1A1A" />
+        </View>
+        <View style={s.weekDotsRow}>
+          {weekDots.map((dot, i) => (
+            <View key={i} style={[s.dot, dot.active && s.dotActive]}>
+              <Text style={[s.dotLetter, dot.active && s.dotLetterActive]}>{dot.label}</Text>
             </View>
-            <View style={selStyles.cardTextBlock}>
-              <Text style={selStyles.cardTitleLight}>Words Quiz</Text>
-              <Text style={selStyles.cardDescLight}>Review saved vocabulary and meanings.</Text>
-            </View>
-          </View>
-          <View style={selStyles.selectBtnLight}>
-            <Text style={selStyles.selectBtnTextLight}>Open Words</Text>
-            <Feather name="arrow-right" size={14} color="#6B6B6B" />
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[selStyles.card, selStyles.cardGold]}
-          onPress={() => router.push("/certifications")}
-          activeOpacity={0.88}
-        >
-          <View style={selStyles.cardTopRow}>
-            <View style={selStyles.iconWrapGold}>
-              <Ionicons name="ribbon" size={22} color="#1A1A1A" />
-            </View>
-            <View style={selStyles.cardTextBlock}>
-              <Text style={selStyles.cardTitleLight}>Certifications</Text>
-              <Text style={selStyles.cardDescLight}>{memorizedCount}/{totalAyahs} ayahs memorized · {certificationPercent}%</Text>
-            </View>
-          </View>
-          <View style={selStyles.selectBtnGold}>
-            <Text style={selStyles.selectBtnTextLight}>View Progress</Text>
-            <Feather name="arrow-right" size={14} color="#6B6B6B" />
-          </View>
-        </TouchableOpacity>
+          ))}
+        </View>
       </View>
+
+      {/* ── Memorization Quiz Card (dark) ──────────────────────────────── */}
+      <TouchableOpacity
+        style={s.quizCardDark}
+        onPress={() => router.push("/memorization-quiz")}
+        activeOpacity={0.88}
+      >
+        <View style={s.quizCardTopRow}>
+          <View style={s.iconWrapDark}>
+            <Ionicons name="bulb-outline" size={22} color={colors.appWhite} />
+          </View>
+          <View style={s.quizCardTextBlock}>
+            <Text style={s.quizTitleDark}>Memorization Quiz</Text>
+            <Text style={s.quizDescDark}>Test ayah order, blanks, and meanings.</Text>
+          </View>
+          <View style={s.badgeDark}>
+            <Text style={s.badgeNumDark}>{QUIZ_TYPES}</Text>
+            <Text style={s.badgeLabelDark}>types</Text>
+          </View>
+        </View>
+        <View style={s.startRowDark}>
+          <Text style={s.startTextDark}>Start Quiz</Text>
+          <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.7)" />
+        </View>
+      </TouchableOpacity>
+
+      {/* ── Words Quiz Card (light) ────────────────────────────────────── */}
+      <TouchableOpacity
+        style={s.quizCardLight}
+        onPress={() => setView("words")}
+        activeOpacity={0.88}
+      >
+        <View style={s.quizCardTopRow}>
+          <View style={s.iconWrapLight}>
+            <Ionicons name="book-outline" size={22} color={colors.appText} />
+          </View>
+          <View style={s.quizCardTextBlock}>
+            <Text style={s.quizTitleLight}>Words Quiz</Text>
+            <Text style={s.quizDescLight}>Review vocabulary &amp; meanings</Text>
+          </View>
+          <View style={s.badgeLight}>
+            <Text style={s.badgeNumLight}>{savedWords.length}</Text>
+            <Text style={s.badgeLabelLight}>words</Text>
+          </View>
+        </View>
+        <View style={s.startRowLight}>
+          <Text style={s.startTextLight}>Start Quiz</Text>
+          <Feather name="chevron-right" size={16} color={colors.appTextMuted} />
+        </View>
+      </TouchableOpacity>
+
+      {/* ── Certifications Card ────────────────────────────────────────── */}
+      <TouchableOpacity
+        style={s.infoCard}
+        onPress={() => router.push("/certifications")}
+        activeOpacity={0.88}
+      >
+        <View style={s.iconWrapGold}>
+          <Ionicons name="ribbon-outline" size={22} color={colors.appText} />
+        </View>
+        <View style={s.infoTextBlock}>
+          <Text style={s.infoTitle}>Certifications</Text>
+          <Text style={s.infoDesc}>{memorizedCount}/{TOTAL_AYAHS} ayahs</Text>
+        </View>
+        <View style={s.infoBadge}>
+          <Text style={s.infoBadgeNum}>{certificationPercent}%</Text>
+          <Text style={s.infoBadgeLabel}>memorized</Text>
+        </View>
+        <Feather name="chevron-right" size={18} color={colors.appTextMuted} />
+      </TouchableOpacity>
+
+      {/* ── Saved Ayahs Card ───────────────────────────────────────────── */}
+      <TouchableOpacity
+        style={s.infoCard}
+        onPress={() => setView("words")}
+        activeOpacity={0.88}
+      >
+        <View style={s.iconWrapLight}>
+          <Ionicons name="bookmark-outline" size={22} color={colors.appText} />
+        </View>
+        <View style={s.infoTextBlock}>
+          <Text style={s.infoTitle}>Saved Ayahs</Text>
+          <Text style={s.infoDesc}>Used across all quizzes</Text>
+        </View>
+        <View style={s.infoBadge}>
+          <Text style={s.infoBadgeNum}>{savedAyahs.length}</Text>
+          <Text style={s.infoBadgeLabel}>ayahs</Text>
+        </View>
+        <Feather name="chevron-right" size={18} color={colors.appTextMuted} />
+      </TouchableOpacity>
     </ScrollView>
   );
 }
 
-const selStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F4F4F6",
-  },
-  pageTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#1A1A1A",
-    fontFamily: "Inter_700Bold",
-    marginBottom: 14,
-  },
-  cardsRow: {
-    gap: 10,
-    paddingBottom: 16,
-  },
-  card: {
-    borderRadius: 18,
-    padding: 16,
-    justifyContent: "space-between",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
-    minHeight: 152,
-  },
-  cardDark: {
-    backgroundColor: "#1A1A1A",
-  },
-  cardLight: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#EBEBEB",
-  },
-  cardGold: {
-    backgroundColor: "#FFF8E6",
-    borderWidth: 1,
-    borderColor: "#EEDFAF",
-  },
-  cardTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 12,
-  },
-  cardTextBlock: { flex: 1 },
-  iconWrapDark: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconWrapLight: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: "#F0F0F0",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconWrapGold: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: "#F1D887",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardTitleDark: {
-    fontSize: 19,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    lineHeight: 22,
-    marginBottom: 3,
-  },
-  cardTitleLight: {
-    fontSize: 19,
-    fontWeight: "800",
-    color: "#1A1A1A",
-    fontFamily: "Inter_700Bold",
-    lineHeight: 22,
-    marginBottom: 3,
-  },
-  cardDescDark: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.6)",
-    fontFamily: "Inter_400Regular",
-    lineHeight: 17,
-  },
-  cardDescLight: {
-    fontSize: 12,
-    color: "#9A9A9A",
-    fontFamily: "Inter_400Regular",
-    lineHeight: 17,
-  },
-  selectBtnDark: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    alignSelf: "stretch",
-  },
-  selectBtnLight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#F0F0F0",
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    alignSelf: "stretch",
-  },
-  selectBtnGold: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(255,255,255,0.65)",
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    alignSelf: "stretch",
-  },
-  selectBtnTextDark: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "700",
-    color: "rgba(255,255,255,0.85)",
-    fontFamily: "Inter_700Bold",
-  },
-  selectBtnTextLight: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#3A3A3A",
-    fontFamily: "Inter_700Bold",
-  },
-});
+const libStyles = (colors: ReturnType<typeof useColors>) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.appBackground,
+    },
+    content: {
+      paddingHorizontal: 16,
+      paddingBottom: 48,
+    },
+
+    // ── Header ───────────────────────────────────────────────────────────
+    pageTitle: {
+      fontSize: 28,
+      fontWeight: "800",
+      color: colors.appText,
+      fontFamily: "Inter_700Bold",
+      marginBottom: 2,
+    },
+    pageSubtitle: {
+      fontSize: 14,
+      color: colors.appTextMuted,
+      fontFamily: "Inter_400Regular",
+      marginBottom: 20,
+    },
+
+    // ── Streak Widget ─────────────────────────────────────────────────────
+    streakCard: {
+      backgroundColor: colors.appCard,
+      borderRadius: 16,
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderWidth: 1,
+      borderColor: colors.appBorderLight,
+      shadowColor: colors.appBlack,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 1,
+      marginBottom: 10,
+    },
+    streakLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    streakTitle: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.appText,
+      fontFamily: "Inter_700Bold",
+    },
+    streakSub: {
+      fontSize: 12,
+      color: colors.appTextMuted,
+      fontFamily: "Inter_400Regular",
+      marginTop: 2,
+    },
+    weekDotsRow: {
+      flexDirection: "row",
+      gap: 5,
+    },
+    dot: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.appLightGray,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    dotActive: {
+      backgroundColor: colors.appText,
+    },
+    dotLetter: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: colors.appTextMuted,
+      fontFamily: "Inter_700Bold",
+    },
+    dotLetterActive: {
+      color: colors.appWhite,
+    },
+
+    // ── Shared quiz card top row ──────────────────────────────────────────
+    quizCardTopRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 12,
+      marginBottom: 16,
+    },
+    quizCardTextBlock: {
+      flex: 1,
+    },
+
+    // ── Memorization Quiz Card ────────────────────────────────────────────
+    quizCardDark: {
+      backgroundColor: colors.appText,
+      borderRadius: 18,
+      padding: 16,
+      marginBottom: 10,
+      shadowColor: colors.appBlack,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.1,
+      shadowRadius: 10,
+      elevation: 3,
+    },
+    iconWrapDark: {
+      width: 46,
+      height: 46,
+      borderRadius: 14,
+      backgroundColor: "rgba(255,255,255,0.15)",
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0,
+    },
+    quizTitleDark: {
+      fontSize: 18,
+      fontWeight: "800",
+      color: colors.appWhite,
+      fontFamily: "Inter_700Bold",
+      marginBottom: 4,
+    },
+    quizDescDark: {
+      fontSize: 13,
+      color: "rgba(255,255,255,0.6)",
+      fontFamily: "Inter_400Regular",
+      lineHeight: 18,
+    },
+    badgeDark: {
+      backgroundColor: "rgba(255,255,255,0.15)",
+      borderRadius: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      alignItems: "center",
+      minWidth: 52,
+      flexShrink: 0,
+    },
+    badgeNumDark: {
+      fontSize: 18,
+      fontWeight: "800",
+      color: colors.appWhite,
+      fontFamily: "Inter_700Bold",
+    },
+    badgeLabelDark: {
+      fontSize: 10,
+      color: "rgba(255,255,255,0.6)",
+      fontFamily: "Inter_400Regular",
+    },
+    startRowDark: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: "rgba(255,255,255,0.12)",
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+    },
+    startTextDark: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: "rgba(255,255,255,0.85)",
+      fontFamily: "Inter_700Bold",
+    },
+
+    // ── Words Quiz Card ───────────────────────────────────────────────────
+    quizCardLight: {
+      backgroundColor: colors.appCard,
+      borderRadius: 18,
+      padding: 16,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: colors.appBorderLight,
+      shadowColor: colors.appBlack,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    iconWrapLight: {
+      width: 46,
+      height: 46,
+      borderRadius: 14,
+      backgroundColor: colors.appLightGray,
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0,
+    },
+    quizTitleLight: {
+      fontSize: 18,
+      fontWeight: "800",
+      color: colors.appText,
+      fontFamily: "Inter_700Bold",
+      marginBottom: 4,
+    },
+    quizDescLight: {
+      fontSize: 13,
+      color: colors.appTextMuted,
+      fontFamily: "Inter_400Regular",
+      lineHeight: 18,
+    },
+    badgeLight: {
+      backgroundColor: colors.appLightGray,
+      borderRadius: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      alignItems: "center",
+      minWidth: 52,
+      flexShrink: 0,
+    },
+    badgeNumLight: {
+      fontSize: 18,
+      fontWeight: "800",
+      color: colors.appText,
+      fontFamily: "Inter_700Bold",
+    },
+    badgeLabelLight: {
+      fontSize: 10,
+      color: colors.appTextMuted,
+      fontFamily: "Inter_400Regular",
+    },
+    startRowLight: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: colors.appLightGray,
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+    },
+    startTextLight: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: colors.appText,
+      fontFamily: "Inter_700Bold",
+    },
+
+    // ── Info Cards (Certifications, Saved Ayahs) ──────────────────────────
+    infoCard: {
+      backgroundColor: colors.appCard,
+      borderRadius: 18,
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+      marginBottom: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      borderWidth: 1,
+      borderColor: colors.appBorderLight,
+      shadowColor: colors.appBlack,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    iconWrapGold: {
+      width: 46,
+      height: 46,
+      borderRadius: 14,
+      backgroundColor: colors.appGoldSurface,
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0,
+    },
+    infoTextBlock: {
+      flex: 1,
+    },
+    infoTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: colors.appText,
+      fontFamily: "Inter_700Bold",
+    },
+    infoDesc: {
+      fontSize: 12,
+      color: colors.appTextMuted,
+      fontFamily: "Inter_400Regular",
+      marginTop: 2,
+    },
+    infoBadge: {
+      backgroundColor: colors.appLightGray,
+      borderRadius: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      alignItems: "center",
+      minWidth: 60,
+      flexShrink: 0,
+    },
+    infoBadgeNum: {
+      fontSize: 14,
+      fontWeight: "800",
+      color: colors.appText,
+      fontFamily: "Inter_700Bold",
+    },
+    infoBadgeLabel: {
+      fontSize: 10,
+      color: colors.appTextMuted,
+      fontFamily: "Inter_400Regular",
+    },
+  });
