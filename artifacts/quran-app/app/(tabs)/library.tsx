@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
-  Alert,
   Animated,
   Dimensions,
   ScrollView,
@@ -14,7 +13,7 @@ import {
 import Swipeable from "react-native-gesture-handler/Swipeable";
 import { TouchableOpacity as GHTouchable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
@@ -273,83 +272,127 @@ const listViewStyles = StyleSheet.create({
   ctaSubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
 });
 
-function WordCard({ word, onRemove, onToggleHighlight }: {
+function WordCard({ word, onToggleMemorized }: {
   word: SavedWord;
-  onRemove: (id: string) => void;
-  onToggleHighlight: (id: string) => void;
+  onToggleMemorized: () => void;
 }) {
   const colors = useColors();
+  const [revealed, setRevealed] = useState(false);
+  const isMemorized = !!word.memorized;
+
   return (
-    <View style={[
-      wordCardStyles.card,
-      { backgroundColor: colors.card, borderColor: word.highlighted ? colors.appGold : colors.border },
-      word.highlighted && { backgroundColor: colors.appLightBg },
-    ]}>
-      <View style={wordCardStyles.main}>
-        <Text style={[wordCardStyles.arabic, { color: colors.foreground }]}>{word.arabic}</Text>
-        {word.translation ? (
-          <Text style={[wordCardStyles.translation, { color: colors.foreground }]}>{word.translation}</Text>
-        ) : (
-          <Text style={[wordCardStyles.translationEmpty, { color: colors.mutedForeground }]}>No translation saved</Text>
-        )}
-        <Text style={[wordCardStyles.meta, { color: colors.mutedForeground }]}>
-          Surah {word.surahNumber} · Ayah {word.ayahNumber}
+    <TouchableOpacity
+      onPress={() => setRevealed(prev => !prev)}
+      style={[wordCardStyles.card, { backgroundColor: colors.card, borderColor: colors.appDarkerGray }]}
+      activeOpacity={0.85}
+    >
+      <View style={wordCardStyles.cardTop}>
+        <Text style={[wordCardStyles.arabic, { color: colors.appText }]}>
+          {word.arabic}
         </Text>
-      </View>
-      <View style={wordCardStyles.actions}>
         <TouchableOpacity
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onToggleHighlight(word.id); }}
-          style={wordCardStyles.actionBtn}
+          style={[
+            wordCardStyles.checkCircle,
+            {
+              borderColor: isMemorized ? colors.appText : colors.appBorderMid,
+              backgroundColor: isMemorized ? colors.appText : "transparent",
+            },
+          ]}
+          onPress={onToggleMemorized}
           activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Ionicons name={word.highlighted ? "star" : "star-outline"} size={18} color={word.highlighted ? colors.appGold : colors.mutedForeground} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => {
-            Alert.alert("Remove word?", `Remove "${word.arabic}" from your library?`, [
-              { text: "Cancel", style: "cancel" },
-              { text: "Remove", style: "destructive", onPress: () => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning); onRemove(word.id); } },
-            ]);
-          }}
-          style={wordCardStyles.actionBtn}
-          activeOpacity={0.7}
-        >
-          <Feather name="trash-2" size={16} color={colors.mutedForeground} />
+          <Feather
+            name="check"
+            size={14}
+            color={isMemorized ? colors.card : colors.appBorderMid}
+          />
         </TouchableOpacity>
       </View>
-    </View>
+      <View style={[wordCardStyles.divider, { backgroundColor: colors.appStone }]} />
+      <View style={wordCardStyles.cardBottom}>
+        {revealed ? (
+          <Text style={[wordCardStyles.translationText, { color: colors.appText }]}>
+            {word.translation || word.arabic}
+          </Text>
+        ) : (
+          <Text style={[wordCardStyles.tapToReveal, { color: colors.appBorderMid }]}>
+            tap to reveal
+          </Text>
+        )}
+      </View>
+    </TouchableOpacity>
   );
 }
 
 const wordCardStyles = StyleSheet.create({
   card: {
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    minHeight: 112,
+  },
+  cardTop: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 12,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    borderWidth: 1,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 4,
-    elevation: 1,
+    justifyContent: "center",
+    position: "relative",
+    minHeight: 68,
   },
-  main: { flex: 1, gap: 4 },
-  arabic: { fontSize: 22, fontFamily: Platform.OS === "ios" ? "System" : undefined, marginBottom: 2 },
-  translation: { fontSize: 14, fontFamily: "Inter_400Regular" },
-  translationEmpty: { fontSize: 13, fontFamily: "Inter_400Regular", fontStyle: "italic" },
-  meta: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 4 },
-  actions: { gap: 10, alignItems: "center" },
-  actionBtn: { padding: 4 },
+  arabic: {
+    flex: 1,
+    fontSize: 30,
+    fontWeight: "400",
+    lineHeight: 28,
+    textAlign: "center",
+    fontFamily: Platform.OS === "ios" ? "System" : undefined,
+  },
+  checkCircle: {
+    position: "absolute",
+    right: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  divider: {
+    height: 1,
+    marginHorizontal: 20,
+  },
+  cardBottom: {
+    paddingHorizontal: 20,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tapToReveal: {
+    fontSize: 16,
+    fontWeight: "400",
+    lineHeight: 24,
+    textAlign: "center",
+    fontFamily: "Inter_400Regular",
+  },
+  translationText: {
+    fontSize: 16,
+    fontWeight: "700",
+    lineHeight: 24,
+    textAlign: "center",
+    fontFamily: "Inter_700Bold",
+  },
 });
 
 function WordsQuizView({ onBack }: { onBack: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { savedWords, removeWord, toggleHighlight, savedAyahs, removeAyah } = useQuran();
+  const { savedWords, savedAyahs, removeAyah, toggleWordMemorized } = useQuran();
   const [filterMode, setFilterMode] = useState<FilterMode>("ayah");
   const [selectedSurahNum, setSelectedSurahNum] = useState<number | null>(null);
+  const [wordTab, setWordTab] = useState<"active" | "memorized">("active");
   const topPad = insets.top;
 
   const surahGroups = useMemo(() => {
@@ -378,6 +421,13 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
     }
     return savedWords;
   }, [savedWords, filterMode, selectedSurahNum]);
+
+  const activeWordCount = useMemo(() => filteredWords.filter(w => !w.memorized).length, [filteredWords]);
+  const memorizedWordCount = useMemo(() => filteredWords.filter(w => !!w.memorized).length, [filteredWords]);
+  const displayedWords = useMemo(
+    () => filteredWords.filter(w => wordTab === "memorized" ? !!w.memorized : !w.memorized),
+    [filteredWords, wordTab]
+  );
 
   const showDrillDown = filterMode === "by-surah" && selectedSurahNum !== null;
   const showSurahList = filterMode === "by-surah" && selectedSurahNum === null;
@@ -467,6 +517,37 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
             ))}
           </View>
         )}
+
+        {filterMode === "words" && !showDrillDown && (
+          <View style={[wvs.segmentedControl, { backgroundColor: colors.appBorderLight }]}>
+            <TouchableOpacity
+              style={[
+                wvs.segmentPill,
+                wordTab === "active" && { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.appText },
+              ]}
+              onPress={() => setWordTab("active")}
+              activeOpacity={0.8}
+            >
+              <Text style={[wvs.segmentText, { color: wordTab === "active" ? colors.appNeutralDark : colors.appBorderMid }]}>
+                <Text style={{ fontFamily: wordTab === "active" ? "Inter_700Bold" : "Inter_600SemiBold" }}>Active</Text>
+                <Text style={{ fontFamily: "Inter_400Regular" }}>{` (${activeWordCount})`}</Text>
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                wvs.segmentPill,
+                wordTab === "memorized" && { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.appText },
+              ]}
+              onPress={() => setWordTab("memorized")}
+              activeOpacity={0.8}
+            >
+              <Text style={[wvs.segmentText, { color: wordTab === "memorized" ? colors.appNeutralDark : colors.appBorderMid }]}>
+                <Text style={{ fontFamily: wordTab === "memorized" ? "Inter_700Bold" : "Inter_600SemiBold" }}>Memorized</Text>
+                <Text style={{ fontFamily: "Inter_400Regular" }}>{` (${memorizedWordCount})`}</Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* Content */}
@@ -547,7 +628,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
           data={filteredWords}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <WordCard word={item} onRemove={removeWord} onToggleHighlight={toggleHighlight} />
+            <WordCard word={item} onToggleMemorized={() => toggleWordMemorized(item.id)} />
           )}
           contentContainerStyle={wvs.wordsListContent}
           showsVerticalScrollIndicator={false}
@@ -556,41 +637,27 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
         />
       ) : (
         <FlatList
-          data={filteredWords}
+          data={displayedWords}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <WordCard word={item} onRemove={removeWord} onToggleHighlight={toggleHighlight} />
+            <WordCard word={item} onToggleMemorized={() => toggleWordMemorized(item.id)} />
           )}
           contentContainerStyle={wvs.wordsListContent}
           showsVerticalScrollIndicator={false}
-          ListEmptyComponent={emptyWords}
+          ListEmptyComponent={
+            wordTab === "memorized" ? (
+              <View style={wvs.empty}>
+                <Text style={[wvs.emptyTitle, { color: colors.foreground }]}>No memorized words yet</Text>
+                <Text style={[wvs.emptySubtitle, { color: colors.mutedForeground }]}>
+                  Tap the check mark on any word to mark it as memorized
+                </Text>
+              </View>
+            ) : emptyWords
+          }
           ListFooterComponent={ctaCard}
         />
       )}
 
-      {showDrillDown && (
-        <TouchableOpacity
-          style={wvs.deleteAllBtn}
-          onPress={() => {
-            Alert.alert(`Delete from ${selectedSurahName}?`, `Remove all ${filteredWords.length} words?`, [
-              { text: "Cancel", style: "cancel" },
-              {
-                text: "Delete All",
-                style: "destructive",
-                onPress: () => {
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                  filteredWords.map(w => w.id).forEach(id => removeWord(id));
-                  setSelectedSurahNum(null);
-                },
-              },
-            ]);
-          }}
-          activeOpacity={0.85}
-        >
-          <Feather name="trash-2" size={16} color="#D9534F" />
-          <Text style={wvs.deleteAllText}>Delete all {filteredWords.length} words from {selectedSurahName}</Text>
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
@@ -614,6 +681,25 @@ const wordsViewStyles = StyleSheet.create({
     borderWidth: 1.5,
   },
   filterText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+
+  // Active / Memorized segmented control
+  segmentedControl: {
+    flexDirection: "row",
+    borderRadius: 999,
+    height: 44,
+    padding: 2,
+    marginTop: 10,
+  },
+  segmentPill: {
+    flex: 1,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  segmentText: {
+    fontSize: 14,
+    textAlign: "center",
+  },
 
   // JUZ header
   juzHeader: {
@@ -680,20 +766,6 @@ const wordsViewStyles = StyleSheet.create({
   ctaTitle: { fontSize: 16, fontFamily: "Inter_700Bold", textAlign: "center" },
   ctaSubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
 
-  // Delete all
-  deleteAllBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    margin: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#FFCDD2",
-    backgroundColor: "#FFF5F5",
-  },
-  deleteAllText: { fontSize: 14, color: "#D9534F", fontFamily: "Inter_400Regular", flex: 1 },
 });
 
 const TOTAL_AYAHS = 6236;

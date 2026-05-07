@@ -11,6 +11,7 @@ export interface SavedWord {
   ayahNumber: number;
   addedAt: number;
   highlighted: boolean;
+  memorized?: boolean;
 }
 
 export interface SavedAyah {
@@ -100,6 +101,7 @@ interface QuranContextType {
   saveWord: (word: Omit<SavedWord, "id" | "addedAt">) => void;
   removeWord: (id: string) => void;
   toggleHighlight: (id: string) => void;
+  toggleWordMemorized: (id: string) => void;
   savedAyahs: SavedAyah[];
   saveAyah: (ayah: Omit<SavedAyah, "id" | "addedAt">) => void;
   removeAyah: (id: string) => void;
@@ -309,6 +311,10 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     setSavedWords((prev) => { const next = prev.map(w => w.id === id ? { ...w, highlighted: !w.highlighted } : w); AsyncStorage.setItem("quran_saved_words", JSON.stringify(next)); return next; });
   }, []);
 
+  const toggleWordMemorized = useCallback((id: string) => {
+    setSavedWords((prev) => { const next = prev.map(w => w.id === id ? { ...w, memorized: !w.memorized } : w); AsyncStorage.setItem("quran_saved_words", JSON.stringify(next)); return next; });
+  }, []);
+
   const saveAyah = useCallback((ayah: Omit<SavedAyah, "id" | "addedAt">) => {
     setSavedAyahs((prev) => {
       const exists = prev.find(a => a.surahNumber === ayah.surahNumber && a.ayahNumber === ayah.ayahNumber);
@@ -511,7 +517,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     <QuranContext.Provider value={{
       settings, updateSettings,
       accountSettings, updateAccountSettings,
-      savedWords, saveWord, removeWord, toggleHighlight,
+      savedWords, saveWord, removeWord, toggleHighlight, toggleWordMemorized,
       savedAyahs, saveAyah, removeAyah, isAyahSaved,
       savedSurahs, saveSurah, removeSavedSurah, isSurahSaved,
       highlightedWords, highlightWord, unhighlightWord, isWordHighlighted,
