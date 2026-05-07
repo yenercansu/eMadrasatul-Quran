@@ -123,23 +123,12 @@ function SwipeableAyahCard({
   const gestureStarted = useRef(false);
   const suppressTapUntilRef = useRef(0);
   const [, force] = useState(0);
-  const [savedFlash, setSavedFlash] = useState(false);
-  const savedOpacity = useRef(new Animated.Value(0)).current;
 
   const close = useCallback(() => {
     Animated.spring(pan, { toValue: 0, useNativeDriver: true, tension: 80, friction: 10 }).start();
     swipeOpenRef.current = false;
     force(v => v + 1);
   }, [pan]);
-
-  const flashSaved = useCallback(() => {
-    setSavedFlash(true);
-    Animated.sequence([
-      Animated.timing(savedOpacity, { toValue: 1, duration: 140, useNativeDriver: true }),
-      Animated.delay(700),
-      Animated.timing(savedOpacity, { toValue: 0, duration: 220, useNativeDriver: true }),
-    ]).start(() => setSavedFlash(false));
-  }, [savedOpacity]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -180,7 +169,6 @@ function SwipeableAyahCard({
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         } else if (dx < -20 || vx < -0.3) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          flashSaved();
           Animated.sequence([
             Animated.timing(pan, { toValue: -100, duration: 180, useNativeDriver: true }),
             Animated.delay(450),
@@ -239,13 +227,6 @@ function SwipeableAyahCard({
         <Text style={cs.saveRevealText}>SAVE</Text>
       </View>
 
-      {/* SAVED feedback pill — fades in/out during swipe-left */}
-      {savedFlash && (
-        <Animated.View pointerEvents="none" style={[cs.savedPill, { opacity: savedOpacity }]}>
-          <Ionicons name="bookmark" size={16} color="#FFFFFF" />
-          <Text style={cs.savedPillText}>SAVED</Text>
-        </Animated.View>
-      )}
       <Animated.View
         style={[{ transform: [{ translateX: pan }] }]}
         {...panResponder.panHandlers}
@@ -325,26 +306,6 @@ function SwipeableAyahCard({
 
 const cs = StyleSheet.create({
   wrap: { marginHorizontal: 0, marginBottom: 0, position: "relative" },
-  savedPill: {
-    position: "absolute",
-    top: "50%",
-    right: 16,
-    marginTop: -16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#16A34A",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    zIndex: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  savedPillText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800", fontFamily: "Inter_700Bold", letterSpacing: 0.6 },
   swipeReveal: {
     position: "absolute",
     left: 12,
