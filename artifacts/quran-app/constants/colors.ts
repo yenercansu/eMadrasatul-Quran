@@ -55,6 +55,8 @@ const colors = {
     appBlack: "#000000",
     appFlame: "#E86A33",
     appGoldSurface: "#F1D887",
+    appStone: "#E7E5E4",
+    appBorderAccent: "#5D4A37",
   },
 
   dark: {
@@ -113,6 +115,8 @@ const colors = {
     appBlack: "#000000",
     appFlame: "#FF7F45",
     appGoldSurface: "#3D2800",
+    appStone: "#2C2C2C",
+    appBorderAccent: "#5D4A37",
   },
 
   radius: 12,

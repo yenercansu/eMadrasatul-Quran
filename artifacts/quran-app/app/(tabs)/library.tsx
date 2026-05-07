@@ -745,120 +745,116 @@ export default function LibraryScreen() {
   return (
     <ScrollView
       style={s.container}
-      contentContainerStyle={[s.content, { paddingTop: topPad + 16 }]}
+      contentContainerStyle={[s.content, { paddingTop: topPad + 15 }]}
       showsVerticalScrollIndicator={false}
     >
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <Text style={s.pageTitle}>Madrasa</Text>
-      <Text style={s.pageSubtitle}>Your learning hub</Text>
-
-      {/* ── Streak Widget ──────────────────────────────────────────────── */}
-      <View style={s.streakCard}>
-        <View style={s.streakLeft}>
-          <Ionicons name="flame" size={22} color={colors.appFlame} />
-          <View>
-            <Text style={s.streakTitle}>{streakDays}-day streak</Text>
-            <Text style={s.streakSub}>Keep it up!</Text>
-          </View>
+      {/* ── Header + Streak ────────────────────────────────────────────── */}
+      <View style={s.headerSection}>
+        <View style={s.titleBlock}>
+          <Text style={s.pageTitle}>Madrasa</Text>
+          <Text style={s.pageSubtitle}>Qur'an Learning Hub</Text>
         </View>
-        <View style={s.weekDotsRow}>
-          {weekDots.map((dot, i) => (
-            <View key={i} style={[s.dot, dot.active && s.dotActive]}>
-              <Text style={[s.dotLetter, dot.active && s.dotLetterActive]}>{dot.label}</Text>
+        <View style={s.streakCard}>
+          <View style={s.streakContent}>
+            <View style={s.streakLeft}>
+              <Text style={s.streakTitle}>{streakDays}-day attendance</Text>
+              <Text style={s.streakSub}>Keep it up!</Text>
             </View>
-          ))}
+            <View style={s.weekDotsRow}>
+              {weekDots.map((dot, i) => (
+                <View key={i} style={[s.dot, dot.active && s.dotActive]}>
+                  <Text style={[s.dotLetter, dot.active && s.dotLetterActive]}>{dot.label}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
         </View>
       </View>
 
-      {/* ── Memorization Quiz Card (dark) ──────────────────────────────── */}
+      <Text style={s.swipeHint}>← swipe left to remove · swipe right to open →</Text>
+
+      {/* ── Memorization Quiz Card ─────────────────────────────────────── */}
       <TouchableOpacity
-        style={s.quizCardDark}
+        style={s.quizCard}
         onPress={() => router.push("/memorization-quiz")}
         activeOpacity={0.88}
       >
-        <View style={s.quizCardTopRow}>
-          <View style={s.iconWrapDark}>
-            <Ionicons name="bulb-outline" size={22} color={colors.appWhite} />
+        <View style={s.cardTopRow}>
+          <View style={s.cardTextBlock}>
+            <Text style={s.cardTitle}>Memorization Quiz</Text>
+            <Text style={s.cardDesc}>Test ayah order, blanks, and meanings.</Text>
           </View>
-          <View style={s.quizCardTextBlock}>
-            <Text style={s.quizTitleDark}>Memorization Quiz</Text>
-            <Text style={s.quizDescDark}>Test ayah order, blanks, and meanings.</Text>
-          </View>
-          <View style={s.badgeDark}>
-            <Text style={s.badgeNumDark}>{QUIZ_TYPES}</Text>
-            <Text style={s.badgeLabelDark}>types</Text>
+          <View style={s.cardBadge}>
+            <Text style={s.cardBadgeNum}>{QUIZ_TYPES}</Text>
+            <Text style={s.cardBadgeLabel}>types</Text>
           </View>
         </View>
-        <View style={s.startRowDark}>
-          <Text style={s.startTextDark}>Start Quiz</Text>
-          <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.7)" />
+        <View style={s.cardDivider} />
+        <View style={s.startRow}>
+          <Text style={s.startText}>Start Quiz</Text>
+          <Feather name="chevron-right" size={16} color={colors.appTextMuted} />
         </View>
       </TouchableOpacity>
 
-      {/* ── Words Quiz Card (light) ────────────────────────────────────── */}
+      {/* ── Words Quiz Card ────────────────────────────────────────────── */}
       <TouchableOpacity
-        style={s.quizCardLight}
+        style={s.quizCard}
         onPress={() => setView("words")}
         activeOpacity={0.88}
       >
-        <View style={s.quizCardTopRow}>
-          <View style={s.iconWrapLight}>
-            <Ionicons name="book-outline" size={22} color={colors.appText} />
+        <View style={s.cardTopRow}>
+          <View style={s.cardTextBlock}>
+            <Text style={s.cardTitle}>Words Quiz</Text>
+            <Text style={s.cardDesc}>Review vocabulary & meanings</Text>
           </View>
-          <View style={s.quizCardTextBlock}>
-            <Text style={s.quizTitleLight}>Words Quiz</Text>
-            <Text style={s.quizDescLight}>Review vocabulary &amp; meanings</Text>
-          </View>
-          <View style={s.badgeLight}>
-            <Text style={s.badgeNumLight}>{savedWords.length}</Text>
-            <Text style={s.badgeLabelLight}>words</Text>
+          <View style={s.cardBadge}>
+            <Text style={s.cardBadgeNum}>{savedWords.length}</Text>
+            <Text style={s.cardBadgeLabel}>words</Text>
           </View>
         </View>
-        <View style={s.startRowLight}>
-          <Text style={s.startTextLight}>Start Quiz</Text>
+        <View style={s.cardDivider} />
+        <View style={s.startRow}>
+          <Text style={s.startText}>Start Quiz</Text>
           <Feather name="chevron-right" size={16} color={colors.appTextMuted} />
         </View>
       </TouchableOpacity>
 
       {/* ── Certifications Card ────────────────────────────────────────── */}
       <TouchableOpacity
-        style={s.infoCard}
+        style={s.quizCard}
         onPress={() => router.push("/certifications")}
         activeOpacity={0.88}
       >
-        <View style={s.iconWrapGold}>
-          <Ionicons name="ribbon-outline" size={22} color={colors.appText} />
+        <View style={s.cardTopRow}>
+          <View style={s.cardTextBlock}>
+            <Text style={s.cardTitle}>Certifications</Text>
+            <Text style={s.cardDesc}>{memorizedCount}/{TOTAL_AYAHS} ayahs memorized</Text>
+          </View>
+          <View style={s.cardBadge}>
+            <Text style={s.cardBadgeNum}>{certificationPercent}%</Text>
+            <Text style={s.cardBadgeLabel}>memorized</Text>
+          </View>
         </View>
-        <View style={s.infoTextBlock}>
-          <Text style={s.infoTitle}>Certifications</Text>
-          <Text style={s.infoDesc}>{memorizedCount}/{TOTAL_AYAHS} ayahs</Text>
+        <View style={s.cardDivider} />
+        <View style={s.startRow}>
+          <Text style={s.startText}>See Certifications</Text>
+          <Feather name="chevron-right" size={16} color={colors.appTextMuted} />
         </View>
-        <View style={s.infoBadge}>
-          <Text style={s.infoBadgeNum}>{certificationPercent}%</Text>
-          <Text style={s.infoBadgeLabel}>memorized</Text>
-        </View>
-        <Feather name="chevron-right" size={18} color={colors.appTextMuted} />
       </TouchableOpacity>
 
       {/* ── Saved Ayahs Card ───────────────────────────────────────────── */}
-      <TouchableOpacity
-        style={s.infoCard}
-        onPress={() => setView("words")}
-        activeOpacity={0.88}
-      >
-        <View style={s.iconWrapLight}>
-          <Ionicons name="bookmark-outline" size={22} color={colors.appText} />
+      <View style={s.savedCard}>
+        <View style={s.cardTopRow}>
+          <View style={s.cardTextBlock}>
+            <Text style={s.cardTitle}>Saved Ayahs</Text>
+            <Text style={s.cardDesc}>Used across all quizzes</Text>
+          </View>
+          <View style={s.savedCardBadge}>
+            <Text style={s.cardBadgeNum}>{savedAyahs.length}</Text>
+            <Text style={s.cardBadgeLabel}>ayahs</Text>
+          </View>
         </View>
-        <View style={s.infoTextBlock}>
-          <Text style={s.infoTitle}>Saved Ayahs</Text>
-          <Text style={s.infoDesc}>Used across all quizzes</Text>
-        </View>
-        <View style={s.infoBadge}>
-          <Text style={s.infoBadgeNum}>{savedAyahs.length}</Text>
-          <Text style={s.infoBadgeLabel}>ayahs</Text>
-        </View>
-        <Feather name="chevron-right" size={18} color={colors.appTextMuted} />
-      </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
@@ -867,50 +863,47 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.appBackground,
+      backgroundColor: colors.appLighterBg,
     },
     content: {
-      paddingHorizontal: 16,
+      paddingHorizontal: 20,
       paddingBottom: 48,
+      gap: 16,
     },
 
     // ── Header ───────────────────────────────────────────────────────────
+    headerSection: {
+      gap: 12,
+    },
+    titleBlock: {
+      gap: 2,
+    },
     pageTitle: {
       fontSize: 28,
       fontWeight: "800",
       color: colors.appText,
       fontFamily: "Inter_700Bold",
-      marginBottom: 2,
     },
     pageSubtitle: {
       fontSize: 14,
       color: colors.appTextMuted,
       fontFamily: "Inter_400Regular",
-      marginBottom: 20,
     },
 
-    // ── Streak Widget ─────────────────────────────────────────────────────
+    // ── Streak Card ───────────────────────────────────────────────────────
     streakCard: {
-      backgroundColor: colors.appCard,
-      borderRadius: 16,
+      backgroundColor: colors.appStone,
+      borderRadius: 12,
       paddingVertical: 16,
       paddingHorizontal: 16,
+    },
+    streakContent: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      borderWidth: 1,
-      borderColor: colors.appBorderLight,
-      shadowColor: colors.appBlack,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 4,
-      elevation: 1,
-      marginBottom: 10,
     },
     streakLeft: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
+      gap: 2,
     },
     streakTitle: {
       fontSize: 15,
@@ -922,16 +915,16 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
       fontSize: 12,
       color: colors.appTextMuted,
       fontFamily: "Inter_400Regular",
-      marginTop: 2,
     },
     weekDotsRow: {
       flexDirection: "row",
-      gap: 5,
+      gap: 4,
     },
     dot: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
+      width: 20,
+      paddingHorizontal: 4,
+      paddingVertical: 1,
+      borderRadius: 999,
       backgroundColor: colors.appLightGray,
       alignItems: "center",
       justifyContent: "center",
@@ -949,219 +942,95 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
       color: colors.appWhite,
     },
 
-    // ── Shared quiz card top row ──────────────────────────────────────────
-    quizCardTopRow: {
+    // ── Swipe hint ────────────────────────────────────────────────────────
+    swipeHint: {
+      textAlign: "center",
+      fontSize: 12,
+      fontFamily: "Inter_400Regular",
+      color: colors.appTextMuted,
+    },
+
+    // ── Quiz / Info Cards (white bg) ──────────────────────────────────────
+    quizCard: {
+      backgroundColor: colors.appCard,
+      borderRadius: 12,
+      paddingTop: 16,
+      paddingBottom: 16,
+      gap: 14,
+      borderWidth: 1,
+      borderColor: colors.appBorderAccent,
+    },
+    cardTopRow: {
+      paddingHorizontal: 16,
       flexDirection: "row",
       alignItems: "flex-start",
-      gap: 12,
-      marginBottom: 16,
+      gap: 44,
     },
-    quizCardTextBlock: {
+    cardTextBlock: {
       flex: 1,
+      gap: 4,
     },
-
-    // ── Memorization Quiz Card ────────────────────────────────────────────
-    quizCardDark: {
-      backgroundColor: colors.appText,
-      borderRadius: 18,
-      padding: 16,
-      marginBottom: 10,
-      shadowColor: colors.appBlack,
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.1,
-      shadowRadius: 10,
-      elevation: 3,
-    },
-    iconWrapDark: {
-      width: 46,
-      height: 46,
-      borderRadius: 14,
-      backgroundColor: "rgba(255,255,255,0.15)",
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: 0,
-    },
-    quizTitleDark: {
-      fontSize: 18,
-      fontWeight: "800",
-      color: colors.appWhite,
-      fontFamily: "Inter_700Bold",
-      marginBottom: 4,
-    },
-    quizDescDark: {
-      fontSize: 13,
-      color: "rgba(255,255,255,0.6)",
-      fontFamily: "Inter_400Regular",
-      lineHeight: 18,
-    },
-    badgeDark: {
-      backgroundColor: "rgba(255,255,255,0.15)",
-      borderRadius: 10,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      alignItems: "center",
-      minWidth: 52,
-      flexShrink: 0,
-    },
-    badgeNumDark: {
-      fontSize: 18,
-      fontWeight: "800",
-      color: colors.appWhite,
-      fontFamily: "Inter_700Bold",
-    },
-    badgeLabelDark: {
-      fontSize: 10,
-      color: "rgba(255,255,255,0.6)",
-      fontFamily: "Inter_400Regular",
-    },
-    startRowDark: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      backgroundColor: "rgba(255,255,255,0.12)",
-      borderRadius: 12,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-    },
-    startTextDark: {
-      fontSize: 14,
-      fontWeight: "700",
-      color: "rgba(255,255,255,0.85)",
-      fontFamily: "Inter_700Bold",
-    },
-
-    // ── Words Quiz Card ───────────────────────────────────────────────────
-    quizCardLight: {
-      backgroundColor: colors.appCard,
-      borderRadius: 18,
-      padding: 16,
-      marginBottom: 10,
-      borderWidth: 1,
-      borderColor: colors.appBorderLight,
-      shadowColor: colors.appBlack,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
-      elevation: 2,
-    },
-    iconWrapLight: {
-      width: 46,
-      height: 46,
-      borderRadius: 14,
-      backgroundColor: colors.appLightGray,
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: 0,
-    },
-    quizTitleLight: {
-      fontSize: 18,
-      fontWeight: "800",
-      color: colors.appText,
-      fontFamily: "Inter_700Bold",
-      marginBottom: 4,
-    },
-    quizDescLight: {
-      fontSize: 13,
-      color: colors.appTextMuted,
-      fontFamily: "Inter_400Regular",
-      lineHeight: 18,
-    },
-    badgeLight: {
-      backgroundColor: colors.appLightGray,
-      borderRadius: 10,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      alignItems: "center",
-      minWidth: 52,
-      flexShrink: 0,
-    },
-    badgeNumLight: {
-      fontSize: 18,
-      fontWeight: "800",
-      color: colors.appText,
-      fontFamily: "Inter_700Bold",
-    },
-    badgeLabelLight: {
-      fontSize: 10,
-      color: colors.appTextMuted,
-      fontFamily: "Inter_400Regular",
-    },
-    startRowLight: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      backgroundColor: colors.appLightGray,
-      borderRadius: 12,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-    },
-    startTextLight: {
-      fontSize: 14,
-      fontWeight: "700",
-      color: colors.appText,
-      fontFamily: "Inter_700Bold",
-    },
-
-    // ── Info Cards (Certifications, Saved Ayahs) ──────────────────────────
-    infoCard: {
-      backgroundColor: colors.appCard,
-      borderRadius: 18,
-      paddingVertical: 16,
-      paddingHorizontal: 16,
-      marginBottom: 10,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 12,
-      borderWidth: 1,
-      borderColor: colors.appBorderLight,
-      shadowColor: colors.appBlack,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
-      elevation: 2,
-    },
-    iconWrapGold: {
-      width: 46,
-      height: 46,
-      borderRadius: 14,
-      backgroundColor: colors.appGoldSurface,
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: 0,
-    },
-    infoTextBlock: {
-      flex: 1,
-    },
-    infoTitle: {
+    cardTitle: {
       fontSize: 16,
-      fontWeight: "700",
-      color: colors.appText,
-      fontFamily: "Inter_700Bold",
-    },
-    infoDesc: {
-      fontSize: 12,
-      color: colors.appTextMuted,
-      fontFamily: "Inter_400Regular",
-      marginTop: 2,
-    },
-    infoBadge: {
-      backgroundColor: colors.appLightGray,
-      borderRadius: 10,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      alignItems: "center",
-      minWidth: 60,
-      flexShrink: 0,
-    },
-    infoBadgeNum: {
-      fontSize: 14,
       fontWeight: "800",
       color: colors.appText,
       fontFamily: "Inter_700Bold",
     },
-    infoBadgeLabel: {
+    cardDesc: {
+      fontSize: 13,
+      color: colors.appTextMuted,
+      fontFamily: "Inter_400Regular",
+      lineHeight: 18,
+    },
+    cardBadge: {
+      paddingHorizontal: 28,
+      paddingVertical: 8,
+      backgroundColor: colors.appStone,
+      borderRadius: 8,
+      alignItems: "center",
+      flexShrink: 0,
+    },
+    cardBadgeNum: {
+      fontSize: 18,
+      fontWeight: "800",
+      color: colors.appText,
+      fontFamily: "Inter_700Bold",
+    },
+    cardBadgeLabel: {
       fontSize: 10,
       color: colors.appTextMuted,
       fontFamily: "Inter_400Regular",
+    },
+    cardDivider: {
+      height: 1,
+      backgroundColor: colors.appBlack,
+    },
+    startRow: {
+      paddingHorizontal: 16,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    startText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: colors.appText,
+      fontFamily: "Inter_700Bold",
+    },
+
+    // ── Saved Ayahs Card (stone bg, no divider/action) ────────────────────
+    savedCard: {
+      backgroundColor: colors.appStone,
+      borderRadius: 12,
+      paddingTop: 16,
+      paddingBottom: 16,
+    },
+    savedCardBadge: {
+      paddingHorizontal: 28,
+      paddingVertical: 8,
+      backgroundColor: colors.appStone,
+      borderRadius: 8,
+      alignItems: "center",
+      flexShrink: 0,
     },
   });
