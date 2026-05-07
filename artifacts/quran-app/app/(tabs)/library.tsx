@@ -545,6 +545,7 @@ const wordsViewStyles = StyleSheet.create({
 
 export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
+  const { memorizedAyahKeys } = useQuran();
   const [view, setView] = useState<"select" | "words">("select");
   const topPad = insets.top;
 
@@ -552,46 +553,72 @@ export default function LibraryScreen() {
     return <WordsQuizView onBack={() => setView("select")} />;
   }
 
-  const CARD_SIZE = SCREEN_WIDTH - 32;
+  const totalAyahs = 6236;
+  const memorizedCount = memorizedAyahKeys.length;
+  const certificationPercent = Math.min(100, Math.round((memorizedCount / totalAyahs) * 100));
 
   return (
     <ScrollView style={selStyles.container} contentContainerStyle={{ paddingTop: topPad + 8, paddingBottom: 40, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
-      <Text style={selStyles.pageTitle}>Select Quiz</Text>
+      <Text style={selStyles.pageTitle}>Madrasa</Text>
 
       <View style={selStyles.cardsRow}>
         <TouchableOpacity
-          style={[selStyles.card, selStyles.cardDark, { height: CARD_SIZE * 0.85 }]}
+          style={[selStyles.card, selStyles.cardDark]}
           onPress={() => router.push("/memorization-quiz")}
           activeOpacity={0.88}
         >
-          <View style={selStyles.iconWrapDark}>
-            <Ionicons name="bulb" size={32} color="#FFFFFF" />
-          </View>
-          <View style={{ flex: 1, justifyContent: "center" }}>
-            <Text style={selStyles.cardTitleDark}>Memorization{"\n"}Quiz</Text>
-            <Text style={selStyles.cardDescDark}>Challenge your memory of the ayahs you have learned.</Text>
+          <View style={selStyles.cardTopRow}>
+            <View style={selStyles.iconWrapDark}>
+              <Ionicons name="bulb" size={22} color="#FFFFFF" />
+            </View>
+            <View style={selStyles.cardTextBlock}>
+              <Text style={selStyles.cardTitleDark}>Memorization Quiz</Text>
+              <Text style={selStyles.cardDescDark}>Test ayah order, blanks, and meanings.</Text>
+            </View>
           </View>
           <View style={selStyles.selectBtnDark}>
-            <Text style={selStyles.selectBtnTextDark}>Select This Quiz</Text>
-            <Feather name="arrow-right" size={16} color="rgba(255,255,255,0.8)" />
+            <Text style={selStyles.selectBtnTextDark}>Start Quiz</Text>
+            <Feather name="arrow-right" size={14} color="rgba(255,255,255,0.8)" />
           </View>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[selStyles.card, selStyles.cardLight, { height: CARD_SIZE * 0.85 }]}
+          style={[selStyles.card, selStyles.cardLight]}
           onPress={() => setView("words")}
           activeOpacity={0.88}
         >
-          <View style={selStyles.iconWrapLight}>
-            <Ionicons name="book" size={32} color="#1A1A1A" />
-          </View>
-          <View style={{ flex: 1, justifyContent: "center" }}>
-            <Text style={selStyles.cardTitleLight}>Words{"\n"}Quiz</Text>
-            <Text style={selStyles.cardDescLight}>Challenge your vocabulary of the words you have saved.</Text>
+          <View style={selStyles.cardTopRow}>
+            <View style={selStyles.iconWrapLight}>
+              <Ionicons name="book" size={22} color="#1A1A1A" />
+            </View>
+            <View style={selStyles.cardTextBlock}>
+              <Text style={selStyles.cardTitleLight}>Words Quiz</Text>
+              <Text style={selStyles.cardDescLight}>Review saved vocabulary and meanings.</Text>
+            </View>
           </View>
           <View style={selStyles.selectBtnLight}>
-            <Text style={selStyles.selectBtnTextLight}>Select This Quiz</Text>
-            <Feather name="arrow-right" size={16} color="#6B6B6B" />
+            <Text style={selStyles.selectBtnTextLight}>Open Words</Text>
+            <Feather name="arrow-right" size={14} color="#6B6B6B" />
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[selStyles.card, selStyles.cardGold]}
+          onPress={() => router.push("/certifications")}
+          activeOpacity={0.88}
+        >
+          <View style={selStyles.cardTopRow}>
+            <View style={selStyles.iconWrapGold}>
+              <Ionicons name="ribbon" size={22} color="#1A1A1A" />
+            </View>
+            <View style={selStyles.cardTextBlock}>
+              <Text style={selStyles.cardTitleLight}>Certifications</Text>
+              <Text style={selStyles.cardDescLight}>{memorizedCount}/{totalAyahs} ayahs memorized · {certificationPercent}%</Text>
+            </View>
+          </View>
+          <View style={selStyles.selectBtnGold}>
+            <Text style={selStyles.selectBtnTextLight}>View Progress</Text>
+            <Feather name="arrow-right" size={14} color="#6B6B6B" />
           </View>
         </TouchableOpacity>
       </View>
@@ -605,25 +632,26 @@ const selStyles = StyleSheet.create({
     backgroundColor: "#F4F4F6",
   },
   pageTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "800",
     color: "#1A1A1A",
     fontFamily: "Inter_700Bold",
-    marginBottom: 20,
+    marginBottom: 14,
   },
   cardsRow: {
-    gap: 16,
+    gap: 10,
     paddingBottom: 16,
   },
   card: {
-    borderRadius: 28,
-    padding: 24,
+    borderRadius: 18,
+    padding: 16,
     justifyContent: "space-between",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+    minHeight: 152,
   },
   cardDark: {
     backgroundColor: "#1A1A1A",
@@ -633,60 +661,78 @@ const selStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#EBEBEB",
   },
+  cardGold: {
+    backgroundColor: "#FFF8E6",
+    borderWidth: 1,
+    borderColor: "#EEDFAF",
+  },
+  cardTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  cardTextBlock: { flex: 1 },
   iconWrapDark: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
   },
   iconWrapLight: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     backgroundColor: "#F0F0F0",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
+  },
+  iconWrapGold: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: "#F1D887",
+    alignItems: "center",
+    justifyContent: "center",
   },
   cardTitleDark: {
-    fontSize: 26,
+    fontSize: 19,
     fontWeight: "800",
     color: "#FFFFFF",
     fontFamily: "Inter_700Bold",
-    lineHeight: 32,
-    marginBottom: 8,
+    lineHeight: 22,
+    marginBottom: 3,
   },
   cardTitleLight: {
-    fontSize: 26,
+    fontSize: 19,
     fontWeight: "800",
     color: "#1A1A1A",
     fontFamily: "Inter_700Bold",
-    lineHeight: 32,
-    marginBottom: 8,
+    lineHeight: 22,
+    marginBottom: 3,
   },
   cardDescDark: {
-    fontSize: 14,
+    fontSize: 12,
     color: "rgba(255,255,255,0.6)",
     fontFamily: "Inter_400Regular",
-    lineHeight: 20,
+    lineHeight: 17,
   },
   cardDescLight: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#9A9A9A",
     fontFamily: "Inter_400Regular",
-    lineHeight: 20,
+    lineHeight: 17,
   },
   selectBtnDark: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     alignSelf: "stretch",
   },
   selectBtnLight: {
@@ -694,21 +740,31 @@ const selStyles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     backgroundColor: "#F0F0F0",
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignSelf: "stretch",
+  },
+  selectBtnGold: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(255,255,255,0.65)",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     alignSelf: "stretch",
   },
   selectBtnTextDark: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "700",
     color: "rgba(255,255,255,0.85)",
     fontFamily: "Inter_700Bold",
   },
   selectBtnTextLight: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "700",
     color: "#3A3A3A",
     fontFamily: "Inter_700Bold",

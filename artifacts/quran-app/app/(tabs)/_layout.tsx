@@ -19,7 +19,7 @@ function NativeTabLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="library">
         <Icon sf={{ default: "graduationcap", selected: "graduationcap.fill" }} />
-        <Label>Quiz</Label>
+        <Label>Madrasa</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -28,7 +28,7 @@ function NativeTabLayout() {
 const TAB_DEFS = [
   { name: "index", icon: "home" as const, label: "Home", iconLib: "feather" as const },
   { name: "quran", icon: "book-open" as const, label: "Quran", iconLib: "feather" as const },
-  { name: "library", icon: "school-outline" as const, label: "Quiz", iconLib: "ionicons" as const },
+  { name: "library", icon: "school-outline" as const, label: "Madrasa", iconLib: "ionicons" as const },
 ];
 
 function FixedTabBar(props: any) {
