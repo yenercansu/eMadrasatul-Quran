@@ -7,6 +7,7 @@ import {
   ScrollView,
   Platform,
   Alert,
+  TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
@@ -90,6 +91,11 @@ const DEFAULT_SURAHS: { number: number; name: string; englishName: string; ayahs
     ],
   },
 ];
+
+const MEDINAN_SURAHS = new Set([
+  2, 3, 4, 5, 8, 9, 13, 22, 24, 33, 47, 48, 49, 55, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 76, 98, 99, 110,
+]);
+const SURAHS_PER_PAGE = 20;
 
 type QuizSurahFormat = typeof DEFAULT_SURAHS[0];
 
@@ -629,6 +635,8 @@ export default function MemorizationQuizScreen() {
   const [selectedSurahNum, setSelectedSurahNum] = useState<number | null>(null);
   const [selectedAyahIds, setSelectedAyahIds] = useState<Set<string>>(() => new Set(savedAyahs.map(a => a.id)));
   const [excludedAyahIds, setExcludedAyahIds] = useState<Set<string>>(new Set());
+  const [surahSearchQuery, setSurahSearchQuery] = useState("");
+  const [surahPage, setSurahPage] = useState(0);
 
   useEffect(() => {
     setSelectedAyahIds(prev => {
@@ -685,6 +693,49 @@ export default function MemorizationQuizScreen() {
   const quizDataset = useMemo(() => {
     return savedAyahs.filter(ayah => selectedAyahIds.has(ayah.id) && !excludedAyahIds.has(ayah.id));
   }, [savedAyahs, selectedAyahIds, excludedAyahIds]);
+
+  const allFilteredSurahs = useMemo(() => {
+    let surahs = SURAH_DATA as typeof SURAH_DATA;
+    if (surahSearchQuery.trim()) {
+      const q = surahSearchQuery.toLowerCase();
+      surahs = surahs.filter(s => s.englishName.toLowerCase().includes(q) || s.name.includes(q));
+    }
+    if (tagFilter === "selected") {
+      const savedMap = new Map(surahGroups.map(g => [g.surahNumber, g.ayahs]));
+      surahs = surahs.filter(s => savedMap.get(s.number)?.some(a => selectedAyahIds.has(a.id) && !excludedAyahIds.has(a.id)));
+    }
+    if (tagFilter === "excluded") {
+      const savedMap = new Map(surahGroups.map(g => [g.surahNumber, g.ayahs]));
+      surahs = surahs.filter(s => savedMap.get(s.number)?.some(a => excludedAyahIds.has(a.id)));
+    }
+    return surahs;
+  }, [surahSearchQuery, tagFilter, surahGroups, selectedAyahIds, excludedAyahIds]);
+
+  const totalSurahPages = Math.max(1, Math.ceil(allFilteredSurahs.length / SURAHS_PER_PAGE));
+
+  const pagedSurahs = useMemo(() => {
+    const start = surahPage * SURAHS_PER_PAGE;
+    return allFilteredSurahs.slice(start, start + SURAHS_PER_PAGE);
+  }, [allFilteredSurahs, surahPage]);
+
+  const selectedSurahCount = useMemo(() => {
+    const nums = new Set<number>();
+    for (const a of savedAyahs) {
+      if (selectedAyahIds.has(a.id) && !excludedAyahIds.has(a.id)) nums.add(a.surahNumber);
+    }
+    return nums.size;
+  }, [savedAyahs, selectedAyahIds, excludedAyahIds]);
+
+  const ayahsByJuz = useMemo(() => {
+    const result: { juz: number; ayahs: SavedAyah[] }[] = [];
+    for (const ayah of visibleAyahs) {
+      const juz = SURAH_DATA[ayah.surahNumber - 1]?.juz ?? 1;
+      const last = result[result.length - 1];
+      if (!last || last.juz !== juz) result.push({ juz, ayahs: [ayah] });
+      else last.ayahs.push(ayah);
+    }
+    return result;
+  }, [visibleAyahs]);
 
   const startQuiz = useCallback(() => {
     if (!mode) return;
@@ -756,6 +807,48 @@ export default function MemorizationQuizScreen() {
     setQuestions([]);
   }, [phase]);
 
+  const isSurahSelected = useCallback((surahNum: number): boolean => {
+    const group = surahGroups.find(g => g.surahNumber === surahNum);
+    if (!group || group.ayahs.length === 0) return false;
+    return group.ayahs.every(a => selectedAyahIds.has(a.id) && !excludedAyahIds.has(a.id));
+  }, [surahGroups, selectedAyahIds, excludedAyahIds]);
+
+  const toggleSurah = useCallback((surahNum: number) => {
+    const group = surahGroups.find(g => g.surahNumber === surahNum);
+    if (!group || group.ayahs.length === 0) return;
+    const allSel = group.ayahs.every(a => selectedAyahIds.has(a.id) && !excludedAyahIds.has(a.id));
+    setSelectedAyahIds(prev => {
+      const n = new Set(prev);
+      group.ayahs.forEach(a => allSel ? n.delete(a.id) : n.add(a.id));
+      return n;
+    });
+    setExcludedAyahIds(prev => {
+      const n = new Set(prev);
+      group.ayahs.forEach(a => allSel ? n.add(a.id) : n.delete(a.id));
+      return n;
+    });
+  }, [surahGroups, selectedAyahIds, excludedAyahIds]);
+
+  const handleSelectAll = useCallback(() => {
+    const idsToAdd: string[] = [];
+    for (const surahMeta of allFilteredSurahs) {
+      const group = surahGroups.find(g => g.surahNumber === surahMeta.number);
+      if (group) group.ayahs.forEach(a => idsToAdd.push(a.id));
+    }
+    setSelectedAyahIds(prev => { const n = new Set(prev); idsToAdd.forEach(id => n.add(id)); return n; });
+    setExcludedAyahIds(prev => { const n = new Set(prev); idsToAdd.forEach(id => n.delete(id)); return n; });
+  }, [allFilteredSurahs, surahGroups]);
+
+  const handleClearAll = useCallback(() => {
+    const idsToClear: string[] = [];
+    for (const surahMeta of allFilteredSurahs) {
+      const group = surahGroups.find(g => g.surahNumber === surahMeta.number);
+      if (group) group.ayahs.forEach(a => idsToClear.push(a.id));
+    }
+    setSelectedAyahIds(prev => { const n = new Set(prev); idsToClear.forEach(id => n.delete(id)); return n; });
+    setExcludedAyahIds(prev => { const n = new Set(prev); idsToClear.forEach(id => n.add(id)); return n; });
+  }, [allFilteredSurahs, surahGroups]);
+
   const renderAyahRow = (ayah: SavedAyah) => {
     const checked = selectedAyahIds.has(ayah.id);
     const excluded = excludedAyahIds.has(ayah.id);
@@ -784,20 +877,34 @@ export default function MemorizationQuizScreen() {
 
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
-      <View style={[s.header, { paddingTop: topPad + 8, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => { if (phase !== "type") handleBack(); else router.back(); }} style={s.backBtn} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={22} color={colors.foreground} />
-        </TouchableOpacity>
-        <View style={s.headerCenter}>
-          <Text style={[s.headerTitle, { color: colors.foreground }]}>Memorization Quiz</Text>
-          {mode && <Text style={[s.headerSub, { color: colors.mutedForeground }]}>
-            {mode === "follow-up" ? "Follow-Up Ayah"
-              : mode === "fill-blank" ? "Fill in the Blank"
-              : "Match the Meaning"}
-          </Text>}
+      {phase === "selection" ? (
+        <View style={[s.selectionPageHeader, { paddingTop: topPad + 12, backgroundColor: colors.background }]}>
+          <View style={s.selectionHeaderTopRow}>
+            <TouchableOpacity onPress={handleBack} style={[s.circleBackBtn, { borderColor: colors.border }]} activeOpacity={0.7}>
+              <Feather name="chevron-left" size={18} color={colors.foreground} />
+            </TouchableOpacity>
+            <Text style={[s.selectionModeLabelText, { color: colors.mutedForeground }]}>
+              {mode === "follow-up" ? "FOLLOW-UP AYAH" : mode === "fill-blank" ? "FILL IN THE BLANK" : "MATCH THE MEANING"}
+            </Text>
+          </View>
+          <Text style={[s.selectionPageTitle, { color: colors.foreground }]}>Select Ayahs</Text>
         </View>
-        <View style={{ width: 38 }} />
-      </View>
+      ) : (
+        <View style={[s.header, { paddingTop: topPad + 8, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => { if (phase !== "type") handleBack(); else router.back(); }} style={s.backBtn} activeOpacity={0.7}>
+            <Feather name="arrow-left" size={22} color={colors.foreground} />
+          </TouchableOpacity>
+          <View style={s.headerCenter}>
+            <Text style={[s.headerTitle, { color: colors.foreground }]}>Memorization Quiz</Text>
+            {mode && <Text style={[s.headerSub, { color: colors.mutedForeground }]}>
+              {mode === "follow-up" ? "Follow-Up Ayah"
+                : mode === "fill-blank" ? "Fill in the Blank"
+                : "Match the Meaning"}
+            </Text>}
+          </View>
+          <View style={{ width: 38 }} />
+        </View>
+      )}
 
       {phase === "type" && (
         <ScrollView contentContainerStyle={s.menuContent} showsVerticalScrollIndicator={false}>
@@ -841,89 +948,189 @@ export default function MemorizationQuizScreen() {
 
       {phase === "selection" && (
         <View style={s.selectionWrap}>
-          <View style={s.filterRow}>
-            {[
-              { key: "by-surah", label: "By Surah" },
-              { key: "by-ayah", label: "By Ayah" },
-            ].map(item => (
-              <TouchableOpacity
-                key={item.key}
-                style={[s.filterChip, filterMode === item.key && s.filterChipActive]}
-                onPress={() => { setFilterMode(item.key as AyahFilterMode); setSelectedSurahNum(null); }}
-                activeOpacity={0.8}
-              >
-                <Text style={[s.filterChipText, filterMode === item.key && s.filterChipTextActive]}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
+          {/* Segmented toggle */}
+          <View style={s.segmentWrapper}>
+            <View style={[s.segmentContainer, { borderColor: colors.border }]}>
+              {([{ key: "by-surah", label: "By Surah" }, { key: "by-ayah", label: "By Ayah" }] as const).map(item => (
+                <TouchableOpacity
+                  key={item.key}
+                  style={[s.segmentBtn, filterMode === item.key && s.segmentBtnActive]}
+                  onPress={() => { setFilterMode(item.key); setSelectedSurahNum(null); setSurahPage(0); }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[s.segmentText, filterMode === item.key && s.segmentTextActive]}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
-          <View style={s.tagRow}>
-            {[
-              { key: "all", label: "All" },
-              { key: "selected", label: "Selected" },
-              { key: "excluded", label: "Excluded" },
-            ].map(item => (
-              <TouchableOpacity
-                key={item.key}
-                style={[s.tagChip, tagFilter === item.key && s.tagChipActive]}
-                onPress={() => { setTagFilter(item.key as AyahTagFilter); setSelectedSurahNum(null); }}
-                activeOpacity={0.8}
-              >
-                <Text style={[s.tagText, tagFilter === item.key && s.tagTextActive]}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
+          {/* Search bar (By Surah only) */}
+          {filterMode === "by-surah" && (
+            <View style={s.searchWrapper}>
+              <View style={[s.searchContainer, { backgroundColor: colors.muted }]}>
+                <Feather name="search" size={15} color={colors.mutedForeground} />
+                <TextInput
+                  style={[s.searchInput, { color: colors.foreground }]}
+                  placeholder="Search surah name..."
+                  placeholderTextColor={colors.mutedForeground}
+                  value={surahSearchQuery}
+                  onChangeText={text => { setSurahSearchQuery(text); setSurahPage(0); }}
+                />
+              </View>
+            </View>
+          )}
+
+          {/* Tag filter row */}
+          <View style={s.tagRow2}>
+            <View style={s.tagChipsRow}>
+              {([{ key: "all", label: "All" }, { key: "selected", label: "Selected" }, { key: "excluded", label: "Excluded" }] as const).map(item => (
+                <TouchableOpacity
+                  key={item.key}
+                  style={[s.tagChip2, tagFilter === item.key && s.tagChip2Active]}
+                  onPress={() => { setTagFilter(item.key); setSelectedSurahNum(null); setSurahPage(0); }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[s.tagText2, tagFilter === item.key && s.tagText2Active]}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {filterMode === "by-surah" && (
+              <View style={s.tagActions}>
+                <TouchableOpacity onPress={handleSelectAll} activeOpacity={0.7}>
+                  <Text style={[s.tagActionText, { color: colors.foreground }]}>Select All</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleClearAll} activeOpacity={0.7}>
+                  <Text style={[s.tagActionText, { color: colors.foreground }]}>Clear</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
-          {filterMode === "by-surah" && selectedSurahNum === null ? (
-            <ScrollView style={{ flex: 1 }} contentContainerStyle={s.selectionContent} showsVerticalScrollIndicator={false}>
-              {filteredSurahGroups.length === 0 ? (
+          {/* List */}
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={s.selectionContent2} showsVerticalScrollIndicator={false}>
+            {filterMode === "by-surah" ? (
+              pagedSurahs.length === 0 ? (
+                <View style={s.infoBox}>
+                  <Ionicons name="information-circle-outline" size={18} color="#9A9A9A" />
+                  <Text style={s.infoText}>No surahs match this filter.</Text>
+                </View>
+              ) : (() => {
+                const byJuz: { juz: number; surahs: typeof SURAH_DATA }[] = [];
+                for (const surah of pagedSurahs) {
+                  const last = byJuz[byJuz.length - 1];
+                  if (!last || last.juz !== surah.juz) byJuz.push({ juz: surah.juz, surahs: [surah] });
+                  else last.surahs.push(surah);
+                }
+                return byJuz.map(group => (
+                  <View key={group.juz}>
+                    <Text style={[s.juzHeader, { color: colors.mutedForeground }]}>JUZ {group.juz}</Text>
+                    {group.surahs.map(surah => {
+                      const savedGroup = surahGroups.find(g => g.surahNumber === surah.number);
+                      const savedCount = savedGroup?.ayahs.length ?? 0;
+                      const selected = savedCount > 0 && isSurahSelected(surah.number);
+                      const origin = MEDINAN_SURAHS.has(surah.number) ? "Medinan" : "Meccan";
+                      return (
+                        <TouchableOpacity
+                          key={surah.number}
+                          style={[s.surahCard2, { backgroundColor: colors.card, borderColor: selected ? colors.foreground : colors.border }]}
+                          onPress={() => { if (savedCount > 0) toggleSurah(surah.number); }}
+                          activeOpacity={0.8}
+                        >
+                          <View style={[s.surahBadge2, selected ? { backgroundColor: colors.foreground, borderColor: colors.foreground } : { borderColor: colors.border }]}>
+                            {selected
+                              ? <Feather name="check" size={14} color={colors.primaryForeground} />
+                              : <Text style={[s.surahBadge2Text, { color: colors.mutedForeground }]}>{surah.number}</Text>
+                            }
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[s.surahCard2Name, { color: colors.foreground }]}>{surah.englishName}</Text>
+                            <Text style={[s.surahCard2Meta, { color: colors.mutedForeground }]}>{savedCount} saved · {surah.ayahCount} ayahs · {origin}</Text>
+                          </View>
+                          <Text style={[s.surahCard2Arabic, { color: colors.mutedForeground }]}>{surah.name}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                ));
+              })()
+            ) : (
+              ayahsByJuz.length === 0 ? (
                 <View style={s.infoBox}>
                   <Ionicons name="information-circle-outline" size={18} color="#9A9A9A" />
                   <Text style={s.infoText}>{tagFilter === "all" ? "No saved ayahs yet. Save ayahs from the reader to build your quiz pool." : "No ayahs match this filter."}</Text>
                 </View>
-              ) : filteredSurahGroups.map(group => (
-                <TouchableOpacity
-                  key={group.surahNumber}
-                  style={s.surahSelectRow}
-                  onPress={() => setSelectedSurahNum(group.surahNumber)}
-                  activeOpacity={0.8}
-                >
-                  <View style={s.surahBadge}><Text style={s.surahBadgeText}>{group.surahNumber}</Text></View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.surahSelectName}>{group.surahName}</Text>
-                    <Text style={s.surahSelectMeta}>{group.ayahs.length} saved ayah{group.ayahs.length !== 1 ? "s" : ""}</Text>
-                  </View>
-                  <Feather name="chevron-right" size={18} color="#B0B0B0" />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          ) : (
-            <ScrollView style={{ flex: 1 }} contentContainerStyle={s.selectionContent} showsVerticalScrollIndicator={false}>
-              {filterMode === "by-surah" && selectedSurahNum !== null && (
-                <TouchableOpacity style={s.drillBack} onPress={() => setSelectedSurahNum(null)} activeOpacity={0.7}>
-                  <Feather name="arrow-left" size={16} color="#1A1A1A" />
-                  <Text style={s.drillBackText}>All Surahs</Text>
-                </TouchableOpacity>
-              )}
-              {visibleAyahs.length === 0 ? (
-                <View style={s.infoBox}>
-                  <Ionicons name="information-circle-outline" size={18} color="#9A9A9A" />
-                  <Text style={s.infoText}>No ayahs match this filter.</Text>
+              ) : ayahsByJuz.map(group => (
+                <View key={group.juz}>
+                  <Text style={[s.juzHeader, { color: colors.mutedForeground }]}>JUZ {group.juz}</Text>
+                  {group.ayahs.map(ayah => {
+                    const checked = selectedAyahIds.has(ayah.id);
+                    const juz = SURAH_DATA[ayah.surahNumber - 1]?.juz ?? 1;
+                    return (
+                      <TouchableOpacity
+                        key={ayah.id}
+                        style={[s.ayahCard2, { backgroundColor: colors.card, borderColor: checked ? colors.foreground : colors.border }]}
+                        onPress={() => toggleSelected(ayah.id)}
+                        activeOpacity={0.8}
+                      >
+                        <View style={[s.ayahBadge2, checked ? { backgroundColor: colors.foreground, borderColor: colors.foreground } : { borderColor: colors.border }]}>
+                          {checked
+                            ? <Feather name="check" size={12} color={colors.primaryForeground} />
+                            : <Text style={[s.ayahBadge2Text, { color: colors.mutedForeground }]}>{ayah.ayahNumber}</Text>
+                          }
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <View style={s.ayahCard2Header}>
+                            <Text style={[s.ayahCard2Meta, { color: colors.mutedForeground }]}>{ayah.surahName.toUpperCase()} · {ayah.ayahNumber}</Text>
+                            <Text style={[s.ayahCard2Meta, { color: colors.mutedForeground }]}>JUZ {juz}</Text>
+                          </View>
+                          <Text style={[s.ayahCard2Arabic, { color: colors.foreground }]}>{ayah.arabicText}</Text>
+                          <Text style={[s.ayahCard2Translation, { color: colors.mutedForeground }]} numberOfLines={2}>{ayah.translationText || "No translation saved"}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
-              ) : visibleAyahs.map(renderAyahRow)}
-            </ScrollView>
-          )}
+              ))
+            )}
+          </ScrollView>
 
-          <View style={[s.startPanel, { paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }]}>
-            <Text style={s.startSummary}>{quizDataset.length} ayah{quizDataset.length !== 1 ? "s" : ""} selected</Text>
+          {/* Bottom panel */}
+          <View style={[s.startPanel2, { paddingBottom: insets.bottom > 0 ? insets.bottom : 16, backgroundColor: colors.background, borderTopColor: colors.border }]}>
+            <View style={s.startStats}>
+              <Text style={[s.startStatText, { color: colors.mutedForeground }]}>{quizDataset.length} ayah{quizDataset.length !== 1 ? "s" : ""} selected</Text>
+              {filterMode === "by-surah"
+                ? <Text style={[s.startStatText, { color: colors.mutedForeground }]}>{selectedSurahCount} surah{selectedSurahCount !== 1 ? "s" : ""} chosen</Text>
+                : <Text style={[s.startStatText, { color: colors.mutedForeground }]}>from {selectedSurahCount} surah{selectedSurahCount !== 1 ? "s" : ""}</Text>
+              }
+            </View>
+            {filterMode === "by-surah" && (
+              <View style={s.paginationRow}>
+                <TouchableOpacity
+                  onPress={() => setSurahPage(p => Math.max(0, p - 1))}
+                  disabled={surahPage === 0}
+                  style={s.paginationBtn}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[s.paginationBtnText, { color: colors.foreground, opacity: surahPage === 0 ? 0.3 : 1 }]}>‹ Prev</Text>
+                </TouchableOpacity>
+                <Text style={[s.paginationLabel, { color: colors.mutedForeground }]}>Page {surahPage + 1} of {totalSurahPages} · {allFilteredSurahs.length} surahs</Text>
+                <TouchableOpacity
+                  onPress={() => setSurahPage(p => Math.min(totalSurahPages - 1, p + 1))}
+                  disabled={surahPage >= totalSurahPages - 1}
+                  style={s.paginationBtn}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[s.paginationBtnText, { color: colors.foreground, opacity: surahPage >= totalSurahPages - 1 ? 0.3 : 1 }]}>Next ›</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             <TouchableOpacity
-              style={[s.startBtn, quizDataset.length < 1 && s.startBtnDisabled]}
+              style={[s.startBtn2, quizDataset.length < 1 && s.startBtnDisabled]}
               onPress={startQuiz}
               disabled={quizDataset.length < 1}
               activeOpacity={0.85}
             >
-              <Text style={s.startBtnText}>Start the Test</Text>
-              <Feather name="arrow-right" size={16} color="#FFFFFF" />
+              <Text style={s.startBtnText2}>Start the Test</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1122,4 +1329,201 @@ const pageStyles = StyleSheet.create({
   savedAyahArabic: { fontSize: 15, color: "#1A1A1A", fontFamily: Platform.OS === "ios" ? "System" : undefined, textAlign: "right", lineHeight: 22 },
   savedAyahMeta: { fontSize: 11, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 4 },
   savedRemoveBtn: { padding: 6 },
+
+  // ── Selection phase header ──
+  selectionPageHeader: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  selectionHeaderTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 6,
+  },
+  circleBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  selectionModeLabelText: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1,
+  },
+  selectionPageTitle: {
+    fontSize: 28,
+    fontFamily: "Inter_700Bold",
+    lineHeight: 34,
+  },
+
+  // ── Segmented toggle ──
+  segmentWrapper: {
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+  },
+  segmentContainer: {
+    flexDirection: "row",
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  segmentBtn: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 12,
+    backgroundColor: "transparent",
+  },
+  segmentBtnActive: { backgroundColor: "#1A1A1A" },
+  segmentText: { fontSize: 14, color: "#6B6B6B", fontFamily: "Inter_700Bold" },
+  segmentTextActive: { color: "#FFFFFF" },
+
+  // ── Search ──
+  searchWrapper: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    padding: 0,
+  },
+
+  // ── Tag filter row ──
+  tagRow2: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+  },
+  tagChipsRow: { flexDirection: "row", gap: 8 },
+  tagChip2: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: "transparent",
+  },
+  tagChip2Active: { backgroundColor: "#1A1A1A" },
+  tagText2: { fontSize: 13, color: "#8E8E93", fontFamily: "Inter_700Bold" },
+  tagText2Active: { color: "#FFFFFF" },
+  tagActions: { flexDirection: "row", gap: 12, alignItems: "center" },
+  tagActionText: { fontSize: 13, fontFamily: "Inter_600SemiBold", textDecorationLine: "underline" },
+
+  // ── JUZ section header ──
+  juzHeader: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+
+  // ── Surah cards (new design) ──
+  surahCard2: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 8,
+  },
+  surahBadge2: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  surahBadge2Text: { fontSize: 13, fontFamily: "Inter_700Bold" },
+  surahCard2Name: { fontSize: 15, fontFamily: "Inter_700Bold", marginBottom: 3 },
+  surahCard2Meta: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  surahCard2Arabic: { fontSize: 14, fontFamily: Platform.OS === "ios" ? "System" : undefined },
+
+  // ── Ayah cards (new design) ──
+  ayahCard2: {
+    flexDirection: "row",
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 8,
+    alignItems: "flex-start",
+  },
+  ayahBadge2: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+    flexShrink: 0,
+  },
+  ayahBadge2Text: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  ayahCard2Header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  ayahCard2Meta: { fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  ayahCard2Arabic: {
+    fontSize: 18,
+    lineHeight: 30,
+    textAlign: "right",
+    writingDirection: "rtl",
+    fontFamily: Platform.OS === "ios" ? "System" : undefined,
+    marginBottom: 6,
+  },
+  ayahCard2Translation: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
+
+  // ── Selection list content ──
+  selectionContent2: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24 },
+
+  // ── Bottom panel (new design) ──
+  startPanel2: {
+    borderTopWidth: 1,
+    padding: 16,
+    paddingTop: 12,
+    gap: 8,
+  },
+  startStats: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  startStatText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  paginationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 2,
+  },
+  paginationBtn: { paddingVertical: 4 },
+  paginationBtnText: { fontSize: 13, fontFamily: "Inter_700Bold" },
+  paginationLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  startBtn2: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#1A1A1A",
+    borderRadius: 14,
+    paddingVertical: 16,
+  },
+  startBtnText2: { fontSize: 15, color: "#FFFFFF", fontFamily: "Inter_700Bold" },
 });
