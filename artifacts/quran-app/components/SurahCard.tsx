@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import type { ApiSurah } from "@/services/quranApi";
@@ -35,9 +35,9 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, isChecked
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Ionicons
-              name={isChecked ? "checkmark-circle" : "checkmark-circle-outline"}
-              size={20}
-              color={isChecked ? colors.appWhite : colors.appLightText}
+              name="checkmark"
+              size={16}
+              color={isChecked ? colors.appWhite : colors.appBorderMid}
             />
           </TouchableOpacity>
         )}
@@ -50,8 +50,8 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, isChecked
           >
             <Ionicons
               name={isSaved ? "bookmark" : "bookmark-outline"}
-              size={18}
-              color={isSaved ? colors.primary : colors.mutedForeground}
+              size={16}
+              color={isSaved ? colors.appText : colors.appBorderMid}
             />
           </TouchableOpacity>
         )}
@@ -83,15 +83,11 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginHorizontal: 16,
       marginBottom: 10,
       backgroundColor: colors.card,
-      borderRadius: colors.radius + 8, // 20px
+      borderRadius: colors.borders.xl,       // rounded-2xl → 16px token
       padding: 18,
       borderWidth: 1,
-      borderColor: colors.border,
-      shadowColor: colors.appBlack,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
-      elevation: 3,
+      borderColor: colors.appDarkerGray,     // stone-600 (#57534E)
+      // no shadow — Figma: shadow-[0px_0px_0px_0px_...]
     },
     topRow: {
       flexDirection: "row",
@@ -102,55 +98,66 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     numberBadge: {
       width: 36,
       height: 36,
-      borderRadius: 12,
-      backgroundColor: colors.primary,
+      borderRadius: 18,                      // rounded-full (half of 36)
+      backgroundColor: colors.appText,       // stone-900
       alignItems: "center",
       justifyContent: "center",
     },
     numberText: {
-      fontSize: 13,
+      fontSize: 12,                          // text-xs
       fontWeight: "700",
       color: colors.appWhite,
       fontFamily: "Inter_700Bold",
     },
     meta: { flex: 1 },
     type: {
-      fontSize: 11,
+      fontSize: 10,                          // text-[10px]
       fontWeight: "600",
-      color: colors.mutedForeground,
+      color: colors.appBorderMid,            // stone-400 (#A8A29E)
       fontFamily: "Inter_600SemiBold",
-      letterSpacing: 0.5,
-      textTransform: "uppercase",
     },
-    saveBtn: { padding: 2 },
+    saveBtn: {
+      width: 28,
+      height: 28,
+      borderRadius: colors.borders.md,       // rounded-md → 8px token
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     checkBtn: {
-      width: 30,
-      height: 30,
-      borderRadius: 15,
-      backgroundColor: colors.appLightBg,
+      width: 28,                             // w-7
+      height: 28,
+      borderRadius: 14,                      // rounded-full (half of 28)
+      backgroundColor: "transparent",
+      borderWidth: 1,
+      borderColor: colors.appBorderMid,      // stone-400
       alignItems: "center",
       justifyContent: "center",
     },
     checkBtnActive: {
-      backgroundColor: colors.appBlack,
+      backgroundColor: colors.appText,       // stone-900
+      borderColor: colors.appText,
     },
     recentDot: {
-      width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary,
+      width: 6,                              // w-1.5
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.appBlack,
     },
     memorizedBadge: {
       alignSelf: "flex-start",
-      backgroundColor: colors.appSuccess,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 8,
+      backgroundColor: colors.appText,       // stone-900 — Figma: bg-stone-900
+      paddingHorizontal: 10,                 // px-2.5
+      paddingVertical: 2,                    // py-0.5
+      borderRadius: 4,                       // rounded
       marginTop: 6,
     },
     memorizedBadgeText: {
-      fontSize: 10,
-      fontWeight: "700",
+      fontSize: 10,                          // text-[10px]
+      fontWeight: "600",                     // font-semibold
       color: colors.appWhite,
-      fontFamily: "Inter_700Bold",
-      letterSpacing: 0.5,
+      fontFamily: "Inter_600SemiBold",
     },
     body: {
       flexDirection: "row",
@@ -159,26 +166,26 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     names: { flex: 1, gap: 2 },
     englishName: {
-      fontSize: 18,
-      fontWeight: "700",
-      color: colors.foreground,
+      fontSize: 16,                          // text-base
+      fontWeight: "800",                     // font-extrabold
+      color: colors.appText,                 // stone-900
       fontFamily: "Inter_700Bold",
     },
     translation: {
-      fontSize: 13,
-      color: colors.mutedForeground,
+      fontSize: 12,                          // text-xs
+      color: colors.appLightText,            // zinc-500 (#71717A)
       fontFamily: "Inter_400Regular",
     },
     ayahCount: {
-      fontSize: 12,
-      color: colors.mutedForeground,
+      fontSize: 12,                          // text-xs
+      color: colors.appLightText,            // zinc-500
       fontFamily: "Inter_400Regular",
       marginTop: 4,
     },
     arabicName: {
-      fontSize: 28,
-      color: colors.primary,
-      fontFamily: "System",
+      fontSize: 20,                          // text-xl
+      color: colors.appText,                 // stone-900
+      fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
       marginLeft: 12,
     },
   });

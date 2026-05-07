@@ -10,9 +10,9 @@ export function useColors() {
 
   const theme = ctx?.accountSettings?.theme ?? "auto";
 
-  if (theme === "dark") return { ...colors.dark, radius: colors.radius };
-  if (theme === "light") return { ...colors.light, radius: colors.radius };
+  if (theme === "dark") return { ...colors.dark, radius: colors.radius, borders: colors.borders };
+  if (theme === "light") return { ...colors.light, radius: colors.radius, borders: colors.borders };
 
   const palette = scheme === "dark" && "dark" in colors ? colors.dark : colors.light;
-  return { ...palette, radius: colors.radius };
+  return { ...palette, radius: colors.radius, borders: colors.borders };
 }

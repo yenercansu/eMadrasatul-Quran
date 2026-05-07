@@ -140,17 +140,17 @@ export default function QuranScreen() {
         </Text>
         <View style={s.searchRow}>
           <View style={s.searchBar}>
-            <Feather name="search" size={16} color={colors.mutedForeground} />
+            <Feather name="search" size={16} color={colors.appBorderMid} />
             <TextInput
               style={s.searchInput}
               placeholder="Search surahs..."
-              placeholderTextColor={colors.mutedForeground}
+              placeholderTextColor={colors.appBorderMid}
               value={search}
               onChangeText={setSearch}
             />
             {search.length > 0 && (
               <TouchableOpacity onPress={() => setSearch("")}>
-                <Feather name="x" size={16} color={colors.mutedForeground} />
+                <Feather name="x" size={16} color={colors.appBorderMid} />
               </TouchableOpacity>
             )}
           </View>
@@ -210,46 +210,71 @@ export default function QuranScreen() {
 
 const styles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
+    container: { flex: 1, backgroundColor: colors.appLighterBg },  // stone-50
     header: {
-      backgroundColor: colors.card,
+      backgroundColor: colors.appLighterBg,                         // stone-50, no card separation
       paddingHorizontal: 16,
       paddingBottom: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      // no border — Figma shows no divider between header and list
     },
-    title: { fontSize: 26, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
-    subtitle: { fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginBottom: 12 },
+    title: {
+      fontSize: 20,                                                  // text-xl
+      fontWeight: "800",                                             // font-extrabold
+      color: colors.appText,                                         // zinc-900
+      fontFamily: "Inter_700Bold",
+    },
+    subtitle: {
+      fontSize: 14,                                                  // text-sm
+      color: colors.appBorderMid,                                    // stone-400
+      fontFamily: "Inter_400Regular",
+      marginBottom: 12,
+    },
     searchRow: { marginBottom: 10 },
     searchBar: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: colors.muted,
-      borderRadius: 10,
+      backgroundColor: colors.appStone,                             // stone-200 (#E7E5E4)
+      borderRadius: colors.borders.lg,                              // rounded-xl → 12px token
       paddingHorizontal: 12,
       height: 40,
       gap: 8,
     },
-    searchInput: { flex: 1, fontSize: 15, color: colors.foreground, fontFamily: "Inter_400Regular" },
+    searchInput: {
+      flex: 1,
+      fontSize: 14,                                                  // text-sm
+      color: colors.appLightText,                                    // zinc-500
+      fontFamily: "Inter_400Regular",
+    },
     filterRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
     filterChip: {
       paddingHorizontal: 16,
       paddingVertical: 8,
-      borderRadius: 20,
-      borderWidth: 1.5,
-      borderColor: colors.border,
-      backgroundColor: colors.card,
+      borderRadius: colors.borders.full,                             // rounded-full
+      borderWidth: 1,
+      borderColor: colors.appBorderMid,                             // stone-400
+      backgroundColor: colors.appLighterBg,                         // matches screen bg
     },
-    filterChipActive: { borderColor: "#1A1A1A", backgroundColor: "#1A1A1A" },
-    filterText: { fontSize: 14, fontWeight: "600", color: "#6B6B6B", fontFamily: "Inter_600SemiBold" },
-    filterTextActive: { color: "#FFFFFF", fontFamily: "Inter_600SemiBold" },
+    filterChipActive: {
+      borderColor: colors.appText,                                   // stone-900
+      backgroundColor: colors.appText,
+    },
+    filterText: {
+      fontSize: 14,                                                  // text-sm
+      fontWeight: "400",                                             // font-normal
+      color: colors.appText,                                         // stone-900
+      fontFamily: "Inter_400Regular",
+    },
+    filterTextActive: {
+      color: colors.appWhite,
+      fontFamily: "Inter_400Regular",
+    },
     swipeAction: {
       width: 90,
       justifyContent: "center",
       alignItems: "center",
       gap: 4,
     },
-    swipeActionText: { fontSize: 12, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+    swipeActionText: { fontSize: 12, fontWeight: "700", color: colors.appWhite, fontFamily: "Inter_700Bold" },
     empty: { alignItems: "center", paddingVertical: 60, gap: 12 },
     emptyText: { fontSize: 16, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
   });
