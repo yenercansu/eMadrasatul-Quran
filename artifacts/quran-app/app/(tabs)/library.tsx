@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -278,50 +278,84 @@ function WordCard({ word, onToggleMemorized }: {
 }) {
   const colors = useColors();
   const [revealed, setRevealed] = useState(false);
-  const isMemorized = !!word.memorized;
+  // Local visual state decoupled from persisted state so the checkmark
+  // fills immediately on tap before the card moves sections.
+  const [localMemorized, setLocalMemorized] = useState(!!word.memorized);
+  const pendingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    return () => {
+      if (pendingRef.current) clearTimeout(pendingRef.current);
+    };
+  }, []);
+
+  const handleToggleMemorized = () => {
+    // Prevent double-tap while transition is already in flight.
+    if (pendingRef.current) return;
+
+    const next = !localMemorized;
+    setLocalMemorized(next); // immediate visual feedback
+
+    // After a short pause, fade the card out then commit the state change.
+    pendingRef.current = setTimeout(() => {
+      pendingRef.current = null;
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }).start(() => {
+        onToggleMemorized();
+        // Reset opacity for when the card appears in the other section.
+        fadeAnim.setValue(1);
+      });
+    }, 420);
+  };
 
   return (
-    <TouchableOpacity
-      onPress={() => setRevealed(prev => !prev)}
-      style={[wordCardStyles.card, { backgroundColor: colors.card, borderColor: colors.appDarkerGray }]}
-      activeOpacity={0.85}
-    >
-      <View style={wordCardStyles.cardTop}>
-        <Text style={[wordCardStyles.arabic, { color: colors.appText }]}>
-          {word.arabic}
-        </Text>
-        <TouchableOpacity
-          style={[
-            wordCardStyles.checkCircle,
-            {
-              borderColor: isMemorized ? colors.appText : colors.appBorderMid,
-              backgroundColor: isMemorized ? colors.appText : "transparent",
-            },
-          ]}
-          onPress={onToggleMemorized}
-          activeOpacity={0.7}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Feather
-            name="check"
-            size={14}
-            color={isMemorized ? colors.card : colors.appBorderMid}
-          />
-        </TouchableOpacity>
-      </View>
-      <View style={[wordCardStyles.divider, { backgroundColor: colors.appStone }]} />
-      <View style={wordCardStyles.cardBottom}>
-        {revealed ? (
-          <Text style={[wordCardStyles.translationText, { color: colors.appText }]}>
-            {word.translation || word.arabic}
+    <Animated.View style={{ opacity: fadeAnim }}>
+      <TouchableOpacity
+        onPress={() => setRevealed(prev => !prev)}
+        style={[wordCardStyles.card, { backgroundColor: colors.card, borderColor: colors.appDarkerGray }]}
+        activeOpacity={0.85}
+      >
+        <View style={wordCardStyles.cardTop}>
+          <Text style={[wordCardStyles.arabic, { color: colors.appText }]}>
+            {word.arabic}
           </Text>
-        ) : (
-          <Text style={[wordCardStyles.tapToReveal, { color: colors.appBorderMid }]}>
-            tap to reveal
-          </Text>
-        )}
-      </View>
-    </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              wordCardStyles.checkCircle,
+              {
+                borderColor: localMemorized ? colors.appText : colors.appBorderMid,
+                backgroundColor: localMemorized ? colors.appText : "transparent",
+              },
+            ]}
+            onPress={handleToggleMemorized}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather
+              name="check"
+              size={14}
+              color={localMemorized ? colors.card : colors.appBorderMid}
+            />
+          </TouchableOpacity>
+        </View>
+        <View style={[wordCardStyles.divider, { backgroundColor: colors.appStone }]} />
+        <View style={wordCardStyles.cardBottom}>
+          {revealed ? (
+            <Text style={[wordCardStyles.translationText, { color: colors.appText }]}>
+              {word.translation || word.arabic}
+            </Text>
+          ) : (
+            <Text style={[wordCardStyles.tapToReveal, { color: colors.appBorderMid }]}>
+              tap to reveal
+            </Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
