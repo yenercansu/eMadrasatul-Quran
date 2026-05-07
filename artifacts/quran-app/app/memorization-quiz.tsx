@@ -750,51 +750,20 @@ export default function MemorizationQuizScreen() {
 
   const startQuiz = useCallback(() => {
     if (!mode) return;
-    if (quizDataset.length < 1) {
-      Alert.alert("No Ayahs Selected", "Choose at least one saved ayah before starting the test.");
-      return;
-    }
-    const surahs = savedAyahsToSurahFormat(quizDataset);
+    const useDefault = quizDataset.length < 4;
+    const surahs = useDefault ? DEFAULT_SURAHS : savedAyahsToSurahFormat(quizDataset);
     let qs: Question[] = [];
     if (mode === "follow-up") {
-      if (quizDataset.length < 4) {
-        Alert.alert(
-          "More Ayahs Needed",
-          "Follow-Up Ayah requires at least 4 saved ayahs. Save more sequential ayahs from the Quran reader to use this quiz type."
-        );
-        return;
-      }
       qs = buildFollowUpQuestions(5, surahs);
-      if (qs.length === 0) {
-        Alert.alert(
-          "No Consecutive Ayahs",
-          "Follow-Up Ayah needs ayahs that appear consecutively within a surah. Try saving more sequential ayahs from the same surah."
-        );
-        return;
-      }
+      if (qs.length === 0) qs = buildFollowUpQuestions(5, DEFAULT_SURAHS);
     } else if (mode === "fill-blank") {
       qs = buildFillBlankQuestions(5, surahs);
-      if (qs.length === 0) {
-        Alert.alert("Not Enough Data", "Select more saved ayahs for the Fill in the Blank quiz.");
-        return;
-      }
+      if (qs.length === 0) qs = buildFillBlankQuestions(5, DEFAULT_SURAHS);
     } else {
-      if (quizDataset.length < 4) {
-        Alert.alert(
-          "More Ayahs Needed",
-          "Match the Meaning requires at least 4 saved ayahs with translations. Save more ayahs to use this quiz type."
-        );
-        return;
-      }
       qs = buildTafsirMatchQuestions(5, surahs);
-      if (qs.length === 0) {
-        Alert.alert(
-          "Not Enough Translations",
-          "Match the Meaning needs ayahs with saved translations. Make sure your selected ayahs have English translations."
-        );
-        return;
-      }
+      if (qs.length === 0) qs = buildTafsirMatchQuestions(5, DEFAULT_SURAHS);
     }
+    if (qs.length === 0) return;
     setQuestions(qs);
     setPhase("quiz");
     setFinalScore(0);
@@ -1227,9 +1196,8 @@ export default function MemorizationQuizScreen() {
               </View>
             )}
             <TouchableOpacity
-              style={[s.startBtn2, quizDataset.length < 1 && s.startBtnDisabled]}
+              style={s.startBtn2}
               onPress={startQuiz}
-              disabled={quizDataset.length < 1}
               activeOpacity={0.85}
             >
               <Text style={s.startBtnText2}>Start the Test</Text>
