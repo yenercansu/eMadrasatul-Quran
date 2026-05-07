@@ -771,7 +771,7 @@ export default function LibraryScreen() {
         </View>
       </View>
 
-      <Text style={s.swipeHint}>← swipe left to remove · swipe right to open →</Text>
+      <View style={s.swipeHintSpacer} />
 
       {/* ── Memorization Quiz Card ─────────────────────────────────────── */}
       <TouchableOpacity
@@ -942,12 +942,9 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
       color: colors.appWhite,
     },
 
-    // ── Swipe hint ────────────────────────────────────────────────────────
-    swipeHint: {
-      textAlign: "center",
-      fontSize: 12,
-      fontFamily: "Inter_400Regular",
-      color: colors.appTextMuted,
+    // ── Swipe hint spacer (text removed, spacing preserved) ──────────────
+    swipeHintSpacer: {
+      height: 20,
     },
 
     // ── Quiz / Info Cards (white bg) ──────────────────────────────────────
