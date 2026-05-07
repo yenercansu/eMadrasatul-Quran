@@ -153,9 +153,9 @@ const cardStyles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Inter_400Regular",
     },
     linkBtn: {
-      width: 32,
-      height: 32,
-      borderRadius: 8,
+      width: 36,
+      height: 24,
+      borderRadius: 6,
       borderWidth: 1,
       alignItems: "center",
       justifyContent: "center",
@@ -390,7 +390,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
         {showDrillDown ? (
           <View style={wvs.topRow}>
             <TouchableOpacity onPress={() => setSelectedSurahNum(null)} style={wvs.backBtn} activeOpacity={0.7}>
-              <Feather name="arrow-left" size={20} color={colors.foreground} />
+              <Feather name="chevron-left" size={22} color={colors.foreground} />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
               <Text style={[wvs.title, { color: colors.foreground }]}>{selectedSurahName}</Text>
@@ -400,7 +400,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
         ) : (
           <View style={wvs.topRow}>
             <TouchableOpacity onPress={onBack} style={wvs.backBtn} activeOpacity={0.7}>
-              <Feather name="arrow-left" size={20} color={colors.foreground} />
+              <Feather name="chevron-left" size={22} color={colors.foreground} />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
               <Text style={[wvs.title, { color: colors.foreground }]}>
