@@ -220,7 +220,7 @@ export default function HomeScreen() {
     <>
       <StatusBar barStyle="dark-content" />
        <LinearGradient
-         colors={[colors.appLightBg, colors.appWhite]}
+         colors={[colors.appLighterBg, colors.appLightGray]}
          locations={[0, 1]}
          style={s.container}
        >
@@ -680,7 +680,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderRadius: 20,
       gap: 8,
       borderWidth: 1,
-      borderColor: colors.appWarning,
+      borderColor: colors.appWarningLight,
     },
     badgeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.appWarning },
     badgeText: { fontSize: 10, fontWeight: "700", color: colors.appWarning, fontFamily: "Inter_700Bold" },
@@ -698,7 +698,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       shadowRadius: 2,
       elevation: 1,
       borderWidth: 1,
-      borderColor: colors.appBorderLight,
+      borderColor: colors.appStone,
     },
 
     // ── Audio Card ─────────────────────────────────────────────────────────────
@@ -712,7 +712,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: "row",
       alignItems: "center",
       borderWidth: 1,
-      borderColor: colors.appBorderLight,
+      borderColor: colors.appDarkerGray,
       shadowColor: colors.appBlack,
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.05,
@@ -763,11 +763,11 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     widgetCard: {
       marginHorizontal: 16,
       marginTop: 12,
-      backgroundColor: colors.appWhite,
+      backgroundColor: colors.appLighterBg,
       borderRadius: 10,
       padding: 16,
       borderWidth: 1,
-      borderColor: colors.appBorderLight,
+      borderColor: colors.appDarkerGray,
       shadowColor: colors.appBlack,
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.05,
@@ -780,7 +780,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderRadius: 10,
       backgroundColor: colors.appLighterBg,
       borderWidth: 1,
-      borderColor: colors.appBorderLight,
+      borderColor: colors.appDarkerGray,
       shadowColor: colors.appBlack,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.03,
@@ -795,7 +795,9 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     widgetCardContent: { padding: 16 },
 
     attachedCta: {
-      backgroundColor: colors.appLightBg,
+      backgroundColor: colors.appOrangeSurface,
+      borderTopWidth: 1,
+      borderTopColor: colors.appDarkerGray,
       paddingVertical: 18,
       flexDirection: "row",
       alignItems: "center",
@@ -805,7 +807,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     attachedCtaText: {
       fontSize: 16,
       fontWeight: "600",
-      color: colors.appDarkerGray,
+      color: colors.appBlack,
       fontFamily: "Inter_600SemiBold",
     },
     topBanner: {
@@ -855,20 +857,21 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     stepDivider: {
       width: 0.5,
       height: 32,
-      backgroundColor: colors.appLightBg,
+      backgroundColor: colors.appBorderLight,
       marginHorizontal: 14,
     },
     stepNumCircle: {
       width: 32, height: 32, borderRadius: 16,
-      backgroundColor: colors.appLightBg,
+      backgroundColor: colors.appNeutralDark,
       alignItems: "center", justifyContent: "center", flexShrink: 0,
     },
-    stepNumText: { fontSize: 16, fontWeight: "400", color: colors.appBlack, fontFamily: "Inter_400Regular" },
+    stepNumText: { fontSize: 16, fontWeight: "400", color: colors.appWhite, fontFamily: "Inter_400Regular" },
     stepStepText: {
       flex: 1,
-      color: colors.appDarkerGray,
+      fontSize: 14,
+      color: colors.appBlack,
       fontFamily: "Inter_600SemiBold",
-      lineHeight: 17,
+      lineHeight: 16,
     },
     widgetCardHeader: {
       flexDirection: "row",
@@ -1022,7 +1025,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     quizCta: {
       marginHorizontal: 16,
       marginTop: 12,
-      backgroundColor: colors.appLightBg,
+      backgroundColor: colors.appStone,
       borderRadius: 10,
       paddingHorizontal: 16,
       paddingVertical: 16,
@@ -1030,11 +1033,11 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       gap: 12,
       borderWidth: 1,
-      borderColor: colors.appBorderLight,
+      borderColor: colors.appBorderMid,
       shadowColor: colors.appBlack,
       shadowOffset: { width: 0, height: 1.5 },
-      shadowOpacity: 0.15,
-      shadowRadius: 3,
+      shadowOpacity: 0.25,
+      shadowRadius: 4.5,
       elevation: 2,
     },
     quizCtaTitle: { fontSize: 16, fontWeight: "700", color: colors.appBlack, fontFamily: "Inter_700Bold" },
@@ -1157,7 +1160,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingBottom: 10,
     },
     juzHeader: {
-      backgroundColor: colors.appLightBg,
+      backgroundColor: colors.appStone,
       paddingHorizontal: 20,
       paddingVertical: 6,
     },
@@ -1175,7 +1178,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: 20,
       paddingVertical: 12,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.appBorderLighter,
+      borderBottomColor: colors.appSeparator,
       gap: 16,
     },
     surahRowLast: { borderBottomWidth: 0 },

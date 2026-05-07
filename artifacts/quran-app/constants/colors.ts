@@ -57,6 +57,11 @@ const colors = {
     appGoldSurface: "#F1D887",
     appStone: "#E7E5E4",
     appBorderAccent: "#5D4A37",
+    appWarningLight: "#FCD34D",
+    appNeutralDark: "#404040",
+    appOrangeSurface: "#FFEDD5",
+    appBorderMid: "#A8A29E",
+    appSeparator: "#F9FAFB",
   },
 
   dark: {
@@ -117,6 +122,11 @@ const colors = {
     appGoldSurface: "#3D2800",
     appStone: "#2C2C2C",
     appBorderAccent: "#5D4A37",
+    appWarningLight: "#B8922A",
+    appNeutralDark: "#7A7A7A",
+    appOrangeSurface: "#3D1E0A",
+    appBorderMid: "#6B6460",
+    appSeparator: "#252525",
   },
 
   radius: 12,
