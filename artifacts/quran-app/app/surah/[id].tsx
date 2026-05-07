@@ -121,6 +121,7 @@ function SwipeableAyahCard({
   const pan = useRef(new Animated.Value(0)).current;
   const swipeOpenRef = useRef(false);
   const gestureStarted = useRef(false);
+  const suppressTapUntilRef = useRef(0);
   const [, force] = useState(0);
   const [savedFlash, setSavedFlash] = useState(false);
   const savedOpacity = useRef(new Animated.Value(0)).current;
@@ -143,11 +144,11 @@ function SwipeableAyahCard({
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-      // Higher thresholds: clearly horizontal (ratio 2:1) and at least 14px — prevents tap/scroll conflict
+      // Responsive thresholds: mild horizontal bias catches fast swipes without stealing scrolls
       onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-        Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 12,
+        Math.abs(dx) > Math.abs(dy) * 1.2 && Math.abs(dx) > 5,
       onMoveShouldSetPanResponderCapture: (_, { dx, dy }) =>
-        Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(dx) > 16,
+        Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 10,
       onPanResponderGrant: () => {
         gestureStarted.current = true;
       },
@@ -160,8 +161,9 @@ function SwipeableAyahCard({
         }
       },
       onPanResponderRelease: (_, { dx, vx }) => {
-        // Longer suppression for real swipe gestures (>8px) to prevent tap from firing after swipe
-        const wasSignificantGesture = Math.abs(dx) > 8;
+        const wasSignificantGesture = Math.abs(dx) > TAP_THRESHOLD;
+        // Suppress tap from firing after any real swipe gesture
+        if (wasSignificantGesture) suppressTapUntilRef.current = Date.now() + 350;
         setTimeout(() => { gestureStarted.current = false; }, wasSignificantGesture ? 300 : 60);
         if (swipeOpenRef.current) {
           if (dx < -20) {
@@ -171,12 +173,12 @@ function SwipeableAyahCard({
           }
           return;
         }
-        if (dx > 35 || vx > 0.3) {
+        if (dx > 20 || vx > 0.3) {
           Animated.spring(pan, { toValue: REPEAT_SWIPE_OPEN, useNativeDriver: true, tension: 80 }).start();
           swipeOpenRef.current = true;
           force(v => v + 1);
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        } else if (dx < -35 || vx < -0.3) {
+        } else if (dx < -20 || vx < -0.3) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           flashSaved();
           Animated.sequence([
@@ -192,14 +194,16 @@ function SwipeableAyahCard({
         }
       },
       onPanResponderTerminate: () => {
+        suppressTapUntilRef.current = Date.now() + 350;
         setTimeout(() => { gestureStarted.current = false; }, 300);
         Animated.spring(pan, { toValue: swipeOpenRef.current ? REPEAT_SWIPE_OPEN : 0, useNativeDriver: true }).start();
       },
     })
   ).current;
 
-  // Press handler — only fires when no swipe gesture occurred
+  // Press handler — blocked after any swipe gesture to prevent accidental menu toggle
   const handlePress = useCallback(() => {
+    if (Date.now() < suppressTapUntilRef.current) return;
     if (gestureStarted.current) return;
     if (swipeOpenRef.current) {
       close();
@@ -227,6 +231,12 @@ function SwipeableAyahCard({
             <Text style={cs.repeatBtnText}>{count === 0 ? "∞" : `${count}x`}</Text>
           </TouchableOpacity>
         ))}
+      </View>
+
+      {/* Save reveal panel — full-height, visible as card slides left */}
+      <View style={cs.saveReveal}>
+        <Ionicons name="bookmark-outline" size={22} color="#FFFFFF" />
+        <Text style={cs.saveRevealText}>SAVE</Text>
       </View>
 
       {/* SAVED feedback pill — fades in/out during swipe-left */}
@@ -345,6 +355,25 @@ const cs = StyleSheet.create({
     justifyContent: "space-around",
     gap: 4,
     zIndex: 0,
+  },
+  saveReveal: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 88,
+    backgroundColor: "#16A34A",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    zIndex: 0,
+  },
+  saveRevealText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.8,
   },
   repeatBtn: {
     backgroundColor: "#FFFFFF",
@@ -1591,11 +1620,16 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             }}
             scrollEventThrottle={32}
             ListFooterComponent={
-              !menuVisible ? (
-                <PageEndNav onPrev={goToPrevSurah} onNext={goToNextSurah} />
-              ) : (
-                <View style={{ height: 12 }} />
-              )
+              <View>
+                {!menuVisible ? (
+                  <PageEndNav onPrev={goToPrevSurah} onNext={goToNextSurah} />
+                ) : (
+                  <View style={{ height: 12 }} />
+                )}
+                <View style={scr.swipeHintBar}>
+                  <Text style={scr.swipeHintText}>← swipe left to save to quizzes · swipe right to play in 10x 20x or infinite repetition →</Text>
+                </View>
+              </View>
             }
             renderItem={({ item }) => {
               const isPlaying = audioState.currentSurah === surahNum && audioState.currentAyah === item.numberInSurah;
@@ -1869,5 +1903,18 @@ const scr = StyleSheet.create({
   mushafSplitText: {
     flex: 1, fontSize: 14, lineHeight: 22,
     color: "#2C2C2C", fontFamily: "Inter_400Regular",
+  },
+  swipeHintBar: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  swipeHintText: {
+    fontSize: 11,
+    color: "#AAAAAA",
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 16,
+    letterSpacing: 0.1,
   },
 });

@@ -69,6 +69,7 @@ export function AyahItem({
   const swipeRef = useRef<Swipeable>(null);
   const [savePulse, setSavePulse] = useState(false);
   const [selectRangeVisible, setSelectRangeVisible] = useState(false);
+  const [rowHeight, setRowHeight] = useState(0);
 
   const isCurrentlyPlaying =
     audioState.currentSurah === surahNumber &&
@@ -107,9 +108,9 @@ export function AyahItem({
   const renderRightActions = (progress: Animated.AnimatedInterpolation<number>) => {
     const trans = progress.interpolate({ inputRange: [0, 1], outputRange: [80, 0] });
     return (
-      <Animated.View style={[s.rightAction, { transform: [{ translateX: trans }] }]}>
+      <Animated.View style={[s.rightAction, rowHeight > 0 && { height: rowHeight }, { transform: [{ translateX: trans }] }]}>
         <TouchableOpacity style={s.saveActionInner} onPress={handleSave} activeOpacity={0.85}>
-           <Ionicons name="bookmark" size={22} color={colors.appWhite} />
+          <Ionicons name="bookmark" size={22} color={colors.appWhite} />
           <Text style={s.saveActionText}>Save{"\n"}Ayah</Text>
         </TouchableOpacity>
       </Animated.View>
@@ -118,7 +119,7 @@ export function AyahItem({
 
   const renderLeftActions = () => {
     return (
-      <View style={s.leftActions}>
+      <View style={[s.leftActions, rowHeight > 0 && { height: rowHeight }]}>
         <Text style={s.repeatLabel}>Repeat:</Text>
         <View style={s.repeatRow}>
           {REPEAT_OPTIONS.map((count) => {
@@ -144,13 +145,16 @@ export function AyahItem({
       ref={swipeRef}
       renderRightActions={renderRightActions}
       renderLeftActions={renderLeftActions}
-      rightThreshold={60}
-      leftThreshold={80}
+      rightThreshold={40}
+      leftThreshold={50}
       overshootRight={false}
       overshootLeft={false}
-      friction={2}
+      friction={1.5}
     >
-      <View style={[s.container, isActive && s.activeContainer, savePulse && s.savedPulse]}>
+      <View
+        style={[s.container, isActive && s.activeContainer, savePulse && s.savedPulse]}
+        onLayout={(e) => setRowHeight(e.nativeEvent.layout.height)}
+      >
         <View style={s.swipeHintLeft} />
         <View style={s.swipeHintRight} />
 
