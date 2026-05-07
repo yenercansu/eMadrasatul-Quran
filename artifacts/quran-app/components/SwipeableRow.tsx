@@ -23,9 +23,9 @@ export function SwipeableRow({ onDelete, onOpen, children }: SwipeableRowProps) 
   const renderRightActions = (progress: Animated.AnimatedInterpolation<number>) => {
     const trans = progress.interpolate({ inputRange: [0, 1], outputRange: [80, 0] });
     return (
-      <Animated.View style={[s.actionOuter, { transform: [{ translateX: trans }] }]}>
+      <Animated.View style={[s.actionOuter, { backgroundColor: c.destructive, borderRadius: c.radius, transform: [{ translateX: trans }] }]}>
         <TouchableOpacity
-          style={[s.actionBtn, { backgroundColor: c.destructive, borderRadius: c.radius }]}
+          style={s.actionBtn}
           onPress={() => {
             if (openSideRef.current !== "right") return;
             openSideRef.current = null;
@@ -44,9 +44,9 @@ export function SwipeableRow({ onDelete, onOpen, children }: SwipeableRowProps) 
   const renderLeftActions = (progress: Animated.AnimatedInterpolation<number>) => {
     const trans = progress.interpolate({ inputRange: [0, 1], outputRange: [-80, 0] });
     return (
-      <Animated.View style={[s.leftActionOuter, { transform: [{ translateX: trans }] }]}>
+      <Animated.View style={[s.leftActionOuter, { backgroundColor: c.foreground, borderRadius: c.radius, transform: [{ translateX: trans }] }]}>
         <TouchableOpacity
-          style={[s.leftActionBtn, { backgroundColor: c.foreground, borderRadius: c.radius }]}
+          style={s.leftActionBtn}
           onPress={() => {
             if (openSideRef.current !== "left") return;
             openSideRef.current = null;
@@ -89,23 +89,29 @@ export function SwipeableRow({ onDelete, onOpen, children }: SwipeableRowProps) 
 const s = StyleSheet.create({
   actionOuter: {
     width: 80,
-    paddingLeft: 8,
+    marginLeft: 8,
+    overflow: "hidden",
     justifyContent: "center",
-    alignItems: "stretch",
+    alignItems: "center",
+    alignSelf: "stretch",
   },
   actionBtn: {
     flex: 1,
+    alignSelf: "stretch",
     justifyContent: "center",
     alignItems: "center",
   },
   leftActionOuter: {
     width: 80,
-    paddingRight: 8,
+    marginRight: 8,
+    overflow: "hidden",
     justifyContent: "center",
-    alignItems: "stretch",
+    alignItems: "center",
+    alignSelf: "stretch",
   },
   leftActionBtn: {
     flex: 1,
+    alignSelf: "stretch",
     justifyContent: "center",
     alignItems: "center",
   },
