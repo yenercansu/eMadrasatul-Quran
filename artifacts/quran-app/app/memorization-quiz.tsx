@@ -877,21 +877,31 @@ export default function MemorizationQuizScreen() {
 
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
-      {phase === "selection" ? (
+      {(phase === "type" || phase === "selection") ? (
         <View style={[s.selectionPageHeader, { paddingTop: topPad + 12, backgroundColor: colors.background }]}>
           <View style={s.selectionHeaderTopRow}>
-            <TouchableOpacity onPress={handleBack} style={[s.circleBackBtn, { borderColor: colors.border }]} activeOpacity={0.7}>
+            <TouchableOpacity
+              onPress={() => { if (phase === "selection") handleBack(); else router.back(); }}
+              style={[s.circleBackBtn, { borderColor: colors.border }]}
+              activeOpacity={0.7}
+            >
               <Feather name="chevron-left" size={18} color={colors.foreground} />
             </TouchableOpacity>
             <Text style={[s.selectionModeLabelText, { color: colors.mutedForeground }]}>
-              {mode === "follow-up" ? "FOLLOW-UP AYAH" : mode === "fill-blank" ? "FILL IN THE BLANK" : "MATCH THE MEANING"}
+              {phase === "type"
+                ? "MEMORIZATION QUIZ"
+                : mode === "follow-up" ? "FOLLOW-UP AYAH"
+                : mode === "fill-blank" ? "FILL IN THE BLANK"
+                : "MATCH THE MEANING"}
             </Text>
           </View>
-          <Text style={[s.selectionPageTitle, { color: colors.foreground }]}>Select Ayahs</Text>
+          <Text style={[s.selectionPageTitle, { color: colors.foreground }]}>
+            {phase === "type" ? "Choose a Quiz Type" : "Select Ayahs"}
+          </Text>
         </View>
       ) : (
         <View style={[s.header, { paddingTop: topPad + 8, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => { if (phase !== "type") handleBack(); else router.back(); }} style={s.backBtn} activeOpacity={0.7}>
+          <TouchableOpacity onPress={handleBack} style={s.backBtn} activeOpacity={0.7}>
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
           <View style={s.headerCenter}>
@@ -907,42 +917,50 @@ export default function MemorizationQuizScreen() {
       )}
 
       {phase === "type" && (
-        <ScrollView contentContainerStyle={s.menuContent} showsVerticalScrollIndicator={false}>
-          <Text style={[s.menuTitle, { color: colors.foreground }]}>Choose a Quiz Type</Text>
-          <Text style={[s.menuSub, { color: colors.mutedForeground }]}>Select the test format first, then build your ayah set.</Text>
+        <ScrollView contentContainerStyle={s.typeContent} showsVerticalScrollIndicator={false}>
+          <Text style={[s.typeSub, { color: colors.mutedForeground }]}>Select the test format first, then build your ayah set.</Text>
 
-          <TouchableOpacity style={s.modeCard} onPress={() => chooseMode("follow-up")} activeOpacity={0.85}>
-            <View style={s.modeIcon}>
-              <Ionicons name="arrow-forward-circle" size={28} color="#FFFFFF" />
-            </View>
-            <View style={s.modeInfo}>
-              <Text style={s.modeName}>Follow-Up Ayah</Text>
-              <Text style={s.modeDesc}>An ayah is shown — can you identify the one that comes before or after it?</Text>
-            </View>
-            <Feather name="chevron-right" size={20} color="#9A9A9A" />
-          </TouchableOpacity>
+          {[
+            {
+              num: "1", mode: "follow-up" as const,
+              title: "Follow-Up Ayah",
+              desc: "An ayah is shown — can you identify the one that comes before or after it?",
+              tag: "Sequence",
+            },
+            {
+              num: "2", mode: "fill-blank" as const,
+              title: "Fill in the Blank",
+              desc: "An ayah with a missing word — tap the correct word to complete it.",
+              tag: "Recall",
+            },
+            {
+              num: "3", mode: "tafsir-match" as const,
+              title: "Match the Meaning",
+              desc: "An Arabic ayah is shown — pick the correct English translation from four choices.",
+              tag: "Translation",
+            },
+          ].map(item => (
+            <TouchableOpacity
+              key={item.mode}
+              style={[s.modeCard2, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => chooseMode(item.mode)}
+              activeOpacity={0.85}
+            >
+              <View style={[s.modeBadge, { backgroundColor: colors.foreground }]}>
+                <Text style={[s.modeBadgeText, { color: colors.primaryForeground }]}>{item.num}</Text>
+              </View>
+              <View style={s.modeInfo2}>
+                <Text style={[s.modeName2, { color: colors.foreground }]}>{item.title}</Text>
+                <Text style={[s.modeDesc2, { color: colors.mutedForeground }]}>{item.desc}</Text>
+                <View style={[s.modeTag, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+                  <Text style={[s.modeTagText, { color: colors.mutedForeground }]}>{item.tag}</Text>
+                </View>
+              </View>
+              <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          ))}
 
-          <TouchableOpacity style={[s.modeCard, { borderColor: colors.border, backgroundColor: colors.surface }]} onPress={() => chooseMode("fill-blank")} activeOpacity={0.85}>
-            <View style={[s.modeIcon, { backgroundColor: colors.primary }]}>
-              <Ionicons name="text" size={24} color="#FFFFFF" />
-            </View>
-            <View style={s.modeInfo}>
-              <Text style={s.modeName}>Fill in the Blank</Text>
-              <Text style={s.modeDesc}>An ayah with a missing word — tap the correct word to complete it.</Text>
-            </View>
-            <Feather name="chevron-right" size={20} color="#9A9A9A" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[s.modeCard, { borderColor: colors.border, backgroundColor: colors.surface }]} onPress={() => chooseMode("tafsir-match")} activeOpacity={0.85}>
-            <View style={[s.modeIcon, { backgroundColor: colors.accent }]}>
-              <Ionicons name="language" size={24} color="#FFFFFF" />
-            </View>
-            <View style={s.modeInfo}>
-              <Text style={s.modeName}>Match the Meaning</Text>
-              <Text style={s.modeDesc}>An Arabic ayah is shown — pick the correct English translation from four choices.</Text>
-            </View>
-            <Feather name="chevron-right" size={20} color="#9A9A9A" />
-          </TouchableOpacity>
+          <Text style={[s.typeFooter, { color: colors.mutedForeground }]}>Tap a quiz type to continue →</Text>
         </ScrollView>
       )}
 
@@ -1329,6 +1347,45 @@ const pageStyles = StyleSheet.create({
   savedAyahArabic: { fontSize: 15, color: "#1A1A1A", fontFamily: Platform.OS === "ios" ? "System" : undefined, textAlign: "right", lineHeight: 22 },
   savedAyahMeta: { fontSize: 11, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 4 },
   savedRemoveBtn: { padding: 6 },
+
+  // ── Type phase content ──
+  typeContent: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 40, gap: 12 },
+  typeSub: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20, marginBottom: 4 },
+  modeCard2: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 18,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  modeBadge: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  modeBadgeText: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  modeInfo2: { flex: 1, gap: 6 },
+  modeName2: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  modeDesc2: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
+  modeTag: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginTop: 2,
+  },
+  modeTagText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  typeFooter: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 8 },
 
   // ── Selection phase header ──
   selectionPageHeader: {
