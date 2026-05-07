@@ -12,6 +12,7 @@ import {
   ScrollView,
 } from "react-native";
 import Swipeable from "react-native-gesture-handler/Swipeable";
+import { TouchableOpacity as GHTouchable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -39,13 +40,26 @@ function AyahCard({
   const colors = useColors();
   const s = cardStyles(colors);
   const swipeRef = useRef<Swipeable>(null);
+  const openSideRef = useRef<"right" | "left" | null>(null);
 
   const renderRightActions = (progress: Animated.AnimatedInterpolation<number>) => {
     const trans = progress.interpolate({ inputRange: [0, 1], outputRange: [80, 0] });
     return (
       <Animated.View style={[s.swipeAction, { transform: [{ translateX: trans }] }]}>
-        <Feather name="trash-2" size={20} color="#FFFFFF" />
-        <Text style={s.swipeActionText}>Remove</Text>
+        <GHTouchable
+          style={s.swipeActionBtn}
+          onPress={() => {
+            if (openSideRef.current !== "right") return;
+            openSideRef.current = null;
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            swipeRef.current?.close();
+            onRemove(ayah.id);
+          }}
+          activeOpacity={0.8}
+        >
+          <Feather name="trash-2" size={20} color="#FFFFFF" />
+          <Text style={s.swipeActionText}>Remove</Text>
+        </GHTouchable>
       </Animated.View>
     );
   };
@@ -54,8 +68,20 @@ function AyahCard({
     const trans = progress.interpolate({ inputRange: [0, 1], outputRange: [-80, 0] });
     return (
       <Animated.View style={[s.swipeActionLeft, { backgroundColor: colors.foreground, transform: [{ translateX: trans }] }]}>
-        <Feather name="book-open" size={20} color={colors.primaryForeground} />
-        <Text style={s.swipeActionText}>Go to</Text>
+        <GHTouchable
+          style={s.swipeActionBtn}
+          onPress={() => {
+            if (openSideRef.current !== "left") return;
+            openSideRef.current = null;
+            try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
+            swipeRef.current?.close();
+            router.push(`/surah/${ayah.surahNumber}?ayah=${ayah.ayahNumber}`);
+          }}
+          activeOpacity={0.8}
+        >
+          <Feather name="book-open" size={20} color={colors.primaryForeground} />
+          <Text style={s.swipeActionText}>Go to</Text>
+        </GHTouchable>
       </Animated.View>
     );
   };
@@ -99,14 +125,10 @@ function AyahCard({
       overshootLeft={false}
       friction={2}
       onSwipeableOpen={(direction) => {
-        if (direction === "left") {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-          onRemove(ayah.id);
-        } else {
-          try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
-          swipeRef.current?.close();
-          router.push(`/surah/${ayah.surahNumber}?ayah=${ayah.ayahNumber}`);
-        }
+        openSideRef.current = direction === "right" ? "right" : "left";
+      }}
+      onSwipeableClose={() => {
+        openSideRef.current = null;
       }}
     >
       {card}
@@ -164,17 +186,23 @@ const cardStyles = (colors: ReturnType<typeof useColors>) =>
       width: 80,
       backgroundColor: "#D9534F",
       borderRadius: 16,
+      marginLeft: 8,
+      overflow: "hidden",
       justifyContent: "center",
       alignItems: "center",
-      marginLeft: 8,
-      gap: 4,
     },
     swipeActionLeft: {
       width: 80,
       borderRadius: 16,
+      marginRight: 8,
+      overflow: "hidden",
       justifyContent: "center",
       alignItems: "center",
-      marginRight: 8,
+    },
+    swipeActionBtn: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
       gap: 4,
     },
     swipeActionText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#FFFFFF" },

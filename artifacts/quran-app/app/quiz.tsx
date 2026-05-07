@@ -10,6 +10,8 @@ import {
   FlatList,
   Share,
   ActivityIndicator,
+  TextInput,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
@@ -18,6 +20,7 @@ import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useQuran, type SavedWord } from "@/contexts/QuranContext";
 import { SURAH_DATA } from "@/constants/surahData";
+import { SwipeableRow } from "@/components/SwipeableRow";
 
 type QuizMode = "word-meaning" | "fill-blank";
 type QuizState = "loading" | "answering" | "answered" | "finished" | "no-words";
@@ -186,6 +189,61 @@ function WordsManagerModal({
 }) {
   const s = styles(colors);
   const insets = useSafeAreaInsets();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!visible) {
+      setSearchQuery("");
+      setSelectedIds(new Set());
+    }
+  }, [visible]);
+
+  const filteredWords = useMemo(() => {
+    if (!searchQuery.trim()) return words;
+    const q = searchQuery.toLowerCase();
+    return words.filter(w =>
+      w.arabic.includes(searchQuery) ||
+      (w.translation && w.translation.toLowerCase().includes(q)) ||
+      (SURAH_DATA[w.surahNumber - 1]?.englishName || "").toLowerCase().includes(q)
+    );
+  }, [words, searchQuery]);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    setSelectedIds(new Set(filteredWords.map(w => w.id)));
+  }, [filteredWords]);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleBulkDelete = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    Alert.alert(
+      "Delete Selected Words",
+      `Remove ${selectedIds.size} word${selectedIds.size !== 1 ? "s" : ""} from your library?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            selectedIds.forEach(id => onRemove(id));
+            setSelectedIds(new Set());
+          },
+        },
+      ]
+    );
+  }, [selectedIds, onRemove]);
+
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
       <View style={[s.container, { paddingTop: insets.top + 8 }]}>
@@ -196,26 +254,85 @@ function WordsManagerModal({
           <Text style={s.headerTitle}>Manage Words</Text>
           <View style={{ width: 38 }} />
         </View>
-        <Text style={s.wordsManagerSub}>{words.length} words in quiz pool — tap trash to remove</Text>
+
+        {/* Search bar */}
+        <View style={s.wmSearchWrapper}>
+          <View style={[s.wmSearchContainer, { backgroundColor: colors.muted }]}>
+            <Feather name="search" size={15} color={colors.mutedForeground} />
+            <TextInput
+              style={[s.wmSearchInput, { color: colors.foreground }]}
+              placeholder="Search words..."
+              placeholderTextColor={colors.mutedForeground}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery ? (
+              <TouchableOpacity onPress={() => setSearchQuery("")} activeOpacity={0.7}>
+                <Feather name="x" size={15} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
+
+        {/* Actions row */}
+        <View style={s.wmActionsRow}>
+          <Text style={s.wordsManagerSub}>
+            {filteredWords.length} word{filteredWords.length !== 1 ? "s" : ""}{searchQuery ? " found" : ""}
+            {selectedIds.size > 0 ? ` · ${selectedIds.size} selected` : ""}
+          </Text>
+          <View style={s.wmActions}>
+            <TouchableOpacity onPress={handleSelectAll} activeOpacity={0.7}>
+              <Text style={[s.wmActionText, { color: colors.foreground }]}>Select All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleClearSelection} activeOpacity={0.7}>
+              <Text style={[s.wmActionText, { color: colors.foreground }]}>Clear</Text>
+            </TouchableOpacity>
+            {selectedIds.size > 0 && (
+              <TouchableOpacity onPress={handleBulkDelete} activeOpacity={0.7} style={[s.wmDeleteBtn, { backgroundColor: colors.destructive + "18" }]}>
+                <Feather name="trash-2" size={15} color={colors.destructive} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
         <FlatList
-          data={words}
+          data={filteredWords}
           keyExtractor={item => item.id}
           contentContainerStyle={{ paddingBottom: 40 }}
-          renderItem={({ item }) => (
-            <View style={s.wordManagerRow}>
-              <View style={s.wordManagerInfo}>
-                <Text style={s.wordManagerArabic}>{item.arabic}</Text>
-                <Text style={s.wordManagerTrans}>{item.translation}</Text>
-                <Text style={s.wordManagerMeta}>Surah {item.surahNumber} : Ayah {item.ayahNumber}</Text>
+          ListHeaderComponent={
+            filteredWords.length > 0 ? (
+              <View style={s.wmSwipeHintRow}>
+                <Feather name="arrow-left" size={11} color={colors.mutedForeground} />
+                <Text style={[s.wmSwipeHint, { color: colors.mutedForeground }]}>Swipe left to erase</Text>
               </View>
-              <TouchableOpacity onPress={() => onRemove(item.id)} style={s.wordManagerRemove} activeOpacity={0.7}>
-                <Feather name="trash-2" size={16} color={colors.destructive} />
-              </TouchableOpacity>
-            </View>
-          )}
+            ) : null
+          }
+          renderItem={({ item }) => {
+            const isSelected = selectedIds.has(item.id);
+            return (
+              <SwipeableRow onDelete={() => onRemove(item.id)}>
+                <View style={s.wordManagerRow}>
+                  <TouchableOpacity
+                    onPress={() => toggleSelect(item.id)}
+                    style={[s.wmCheckbox, isSelected && s.wmCheckboxActive]}
+                    activeOpacity={0.7}
+                  >
+                    {isSelected && <Feather name="check" size={12} color={colors.primaryForeground} />}
+                  </TouchableOpacity>
+                  <View style={s.wordManagerInfo}>
+                    <Text style={s.wordManagerArabic}>{item.arabic}</Text>
+                    <Text style={s.wordManagerTrans}>{item.translation}</Text>
+                    <Text style={s.wordManagerMeta}>Surah {item.surahNumber} : Ayah {item.ayahNumber}</Text>
+                  </View>
+                </View>
+              </SwipeableRow>
+            );
+          }}
           ListEmptyComponent={
             <View style={s.wordManagerEmpty}>
-              <Text style={s.wordManagerEmptyText}>No words yet — go read and save some!</Text>
+              <Text style={s.wordManagerEmptyText}>
+                {searchQuery ? "No words match your search." : "No words yet — go read and save some!"}
+              </Text>
             </View>
           }
         />
@@ -679,7 +796,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     howToText: { flex: 1, fontSize: 14, color: colors.foreground, fontFamily: "Inter_400Regular" },
     goReadBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.primary, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 14, width: "100%" },
     goReadBtnText: { fontSize: 16, fontWeight: "700", color: colors.primaryForeground, fontFamily: "Inter_700Bold" },
-    wordsManagerSub: { fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.border },
+    wordsManagerSub: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     wordManagerRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -693,8 +810,43 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     wordManagerArabic: { fontSize: 20, color: colors.primary, fontFamily: "System" },
     wordManagerTrans: { fontSize: 14, color: colors.foreground, fontFamily: "Inter_400Regular", marginTop: 2 },
     wordManagerMeta: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
-    wordManagerRemove: { padding: 10, borderRadius: 10, backgroundColor: "#FFF0F0" },
     wordManagerEmpty: { padding: 40, alignItems: "center" },
+    wmSwipeHintRow: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 16, paddingVertical: 8 },
+    wmSwipeHint: { fontSize: 11, fontFamily: "Inter_400Regular" },
     wordManagerEmptyText: { fontSize: 14, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center" },
-    destructive: { color: "#E53E3E" },
+    // WordsManagerModal new styles
+    wmSearchWrapper: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6 },
+    wmSearchContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 11,
+    },
+    wmSearchInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", padding: 0 },
+    wmActionsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    wmActions: { flexDirection: "row", alignItems: "center", gap: 10 },
+    wmActionText: { fontSize: 12, fontFamily: "Inter_600SemiBold", textDecorationLine: "underline" },
+    wmDeleteBtn: { padding: 5, borderRadius: 7 },
+    wmCheckbox: {
+      width: 22,
+      height: 22,
+      borderRadius: 6,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 10,
+      flexShrink: 0,
+    },
+    wmCheckboxActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   });
