@@ -881,7 +881,6 @@ function EditSheet({
 
           {[
             { icon: "scissors" as const, label: "Repeat Section", desc: "select an Ayah, edit to listen to a smaller part on repeat", onPress: () => { onClose(); onRepeatSection(); } },
-            { icon: "book" as const, label: "Word dictionary", desc: "select a word, view root, meaning & add word to quiz", onPress: onClose },
             { icon: "play-circle" as const, label: "Play Within Range", desc: "select two ayahs, play only the selected range", onPress: () => { onClose(); onPlayRange(); } },
             { icon: "download" as const, label: "Download", desc: "download full Quran from the latest reciter to listen offline", onPress: onClose },
           ].map((b) => (
