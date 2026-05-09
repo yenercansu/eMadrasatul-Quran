@@ -157,7 +157,7 @@ export default function SettingsScreen() {
     <View style={s.root}>
       <View style={[s.header, { paddingTop: topPad + 8 }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Feather name="arrow-left" size={22} color={colors.foreground} />
+          <Feather name="arrow-left" size={22} color={colors.appText} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Settings</Text>
         <View style={{ width: 38 }} />

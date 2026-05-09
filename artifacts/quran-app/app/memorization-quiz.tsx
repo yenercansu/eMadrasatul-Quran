@@ -906,10 +906,10 @@ export default function MemorizationQuizScreen() {
           <View style={s.selectionHeaderTopRow}>
             <TouchableOpacity
               onPress={() => { if (phase === "selection") handleBack(); else router.back(); }}
-              style={[s.circleBackBtn, { borderColor: colors.border }]}
+              style={s.circleBackBtn}
               activeOpacity={0.7}
             >
-              <Feather name="chevron-left" size={18} color={colors.foreground} />
+              <Feather name="arrow-left" size={22} color={colors.appText} />
             </TouchableOpacity>
             <Text style={[s.selectionModeLabelText, { color: colors.mutedForeground }]}>
               {phase === "type"
@@ -926,7 +926,7 @@ export default function MemorizationQuizScreen() {
       ) : (
         <View style={[s.header, { paddingTop: topPad + 8, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={handleBack} style={s.backBtn} activeOpacity={0.7}>
-            <Feather name="arrow-left" size={22} color={colors.foreground} />
+            <Feather name="arrow-left" size={22} color={colors.appText} />
           </TouchableOpacity>
           <View style={s.headerCenter}>
             <Text style={[s.headerTitle, { color: colors.foreground }]}>Memorization Quiz</Text>
@@ -1444,8 +1444,6 @@ const pageStyles = StyleSheet.create({
   circleBackBtn: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -1491,7 +1491,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       {menuVisible && (
         <View style={[scr.header, { paddingTop: topPad + 8 }]}>
           <TouchableOpacity onPress={() => router.back()} style={scr.headerBtn} activeOpacity={0.7}>
-            <Feather name="arrow-left" size={22} color="#1A1A1A" />
+            <Feather name="arrow-left" size={22} color={colors.appText} />
           </TouchableOpacity>
           <View style={scr.headerCenter}>
             {arabic && (

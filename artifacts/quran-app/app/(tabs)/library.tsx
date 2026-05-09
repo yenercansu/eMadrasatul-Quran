@@ -502,7 +502,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
         {showDrillDown ? (
           <View style={wvs.topRow}>
             <TouchableOpacity onPress={() => setSelectedSurahNum(null)} style={wvs.backBtn} activeOpacity={0.7}>
-              <Feather name="chevron-left" size={22} color={colors.foreground} />
+              <Feather name="arrow-left" size={22} color={colors.appText} />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
               <Text style={[wvs.title, { color: colors.foreground }]}>{selectedSurahName}</Text>
@@ -512,7 +512,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
         ) : (
           <View style={wvs.topRow}>
             <TouchableOpacity onPress={onBack} style={wvs.backBtn} activeOpacity={0.7}>
-              <Feather name="chevron-left" size={22} color={colors.foreground} />
+              <Feather name="arrow-left" size={22} color={colors.appText} />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
               <Text style={[wvs.title, { color: colors.foreground }]}>

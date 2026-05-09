@@ -110,7 +110,7 @@ function NoWordsScreen({ colors, topPad }: { colors: ReturnType<typeof useColors
     <View style={[s.container, { paddingTop: topPad }]}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={22} color={colors.foreground} />
+          <Feather name="arrow-left" size={22} color={colors.appText} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Test Yourself!</Text>
         <View style={{ width: 38 }} />
@@ -434,7 +434,7 @@ export default function QuizScreen() {
       <View style={[s.container, { paddingTop: topPad }]}>
         <View style={s.header}>
           <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.7}>
-            <Feather name="arrow-left" size={22} color={colors.foreground} />
+            <Feather name="arrow-left" size={22} color={colors.appText} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>Results</Text>
           <TouchableOpacity onPress={handleShare} style={s.backBtn} activeOpacity={0.7}>
@@ -471,7 +471,7 @@ export default function QuizScreen() {
     <View style={[s.container, { paddingTop: topPad }]}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={22} color={colors.foreground} />
+          <Feather name="arrow-left" size={22} color={colors.appText} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>{currentIndex + 1} / {questions.length}</Text>
         <TouchableOpacity onPress={() => setWordsManagerVisible(true)} style={s.backBtn} activeOpacity={0.7}>
