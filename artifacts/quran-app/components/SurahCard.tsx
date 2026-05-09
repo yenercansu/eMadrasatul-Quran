@@ -76,13 +76,12 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     card: {
       marginHorizontal: 16,
       marginBottom: 10,
-      backgroundColor: colors.card,
-      borderRadius: colors.borders.xl,       // rounded-2xl → 16px token
-      paddingHorizontal: 14,
-      paddingVertical: 10,
+      backgroundColor: colors.appLighterBg,
+      borderRadius: 10,
+      padding: 16,
       borderWidth: 1,
-      borderColor: colors.appDarkerGray,     // stone-600 (#57534E)
-      // no shadow — Figma: shadow-[0px_0px_0px_0px_...]
+      borderColor: colors.appDarkerGray,
+      ...colors.shadows.warmWidgetLift,
     },
     topRow: {
       flexDirection: "row",
@@ -94,7 +93,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     type: {
       fontSize: 12,
       fontWeight: "600",
-      color: colors.appBorderMid,            // stone-400 (#A8A29E)
+      color: colors.appBorderMid,
       fontFamily: "Inter_600SemiBold",
     },
     saveBtn: {
@@ -158,8 +157,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginTop: 4,
     },
     arabicName: {
-      fontSize: 20,                          // text-xl
-      color: colors.appText,                 // stone-900
+      fontSize: 20,
+      color: colors.appText,
       fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
       marginLeft: 12,
     },

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Animated,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import Swipeable from "react-native-gesture-handler/Swipeable";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
@@ -133,7 +134,11 @@ export default function QuranScreen() {
   ];
 
   return (
-    <View style={s.container}>
+    <LinearGradient
+      colors={[colors.appLighterBg, colors.appLightGray]}
+      locations={[0, 1]}
+      style={s.container}
+    >
       <View style={[s.header, { paddingTop: topPad + 8 }]}>
         <PageTitle>Al-Quran</PageTitle>
         <Text style={s.subtitle}>
@@ -205,18 +210,17 @@ export default function QuranScreen() {
           }
         />
       )}
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.appLighterBg },  // stone-50
+    container: { flex: 1 },
     header: {
-      backgroundColor: colors.appLighterBg,                         // stone-50, no card separation
+      backgroundColor: "transparent",
       paddingHorizontal: 16,
       paddingBottom: 12,
-      // no border — Figma shows no divider between header and list
     },
     subtitle: {
       fontSize: 14,                                                  // text-sm
