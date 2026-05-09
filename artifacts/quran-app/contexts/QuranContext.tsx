@@ -220,7 +220,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const [goal, setGoalState] = useState<Goal | null>(null);
   const [memorizationGoal, setMemorizationGoalState] = useState<MemorizationGoal | null>(null);
   const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
-  const [onlineUsers] = useState(() => Math.floor(12000 + Math.random() * 4000));
+  const [onlineUsers] = useState(0);
   const [quranPosition, setQuranPosition] = useState(0);
   const [surahPositions, setSurahPositions] = useState<Record<number, number>>({});
   const [checkedSurahs, setCheckedSurahs] = useState<number[]>([]);
@@ -442,7 +442,17 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       AsyncStorage.setItem("quran_checked_surahs", JSON.stringify(next));
       return next;
     });
+
+    // Keep memorizedAyahKeys in sync so Certifications reflects the same state
+    const ayahKeys = Array.from({ length: ayahCount }, (_, i) => `${surahNum}:${i + 1}`);
     if (!wasChecked) {
+      setMemorizedAyahKeys((prev) => {
+        const newKeys = ayahKeys.filter(k => !prev.includes(k));
+        if (newKeys.length === 0) return prev;
+        const next = [...prev, ...newKeys];
+        AsyncStorage.setItem("quran_memorized_ayahs", JSON.stringify(next));
+        return next;
+      });
       const today = getTodayStr();
       const isKahf = surahNum === 18 && isFriday();
       const increment = Math.min(ayahCount, 10);
@@ -452,6 +462,13 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         if (idx >= 0) { next = de.map((e, i) => i === idx ? { ...e, ayahsRead: e.ayahsRead + increment, kahfCompleted: e.kahfCompleted || isKahf } : e); }
         else { next = [{ date: today, ayahsRead: increment, kahfCompleted: isKahf }, ...de].slice(0, 365); }
         AsyncStorage.setItem("quran_daily_entries", JSON.stringify(next));
+        return next;
+      });
+    } else {
+      setMemorizedAyahKeys((prev) => {
+        const keySet = new Set(ayahKeys);
+        const next = prev.filter(k => !keySet.has(k));
+        AsyncStorage.setItem("quran_memorized_ayahs", JSON.stringify(next));
         return next;
       });
     }

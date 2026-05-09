@@ -156,9 +156,6 @@ function NoWordsScreen({ colors, topPad }: { colors: ReturnType<typeof useColors
             { num: "4", icon: "zap" as const, text: "Come back here to test yourself!" },
           ].map(step => (
             <View key={step.num} style={s.howToStep}>
-              <View style={s.howToNum}>
-                <Text style={s.howToNumText}>{step.num}</Text>
-              </View>
               <Feather name={step.icon} size={18} color={colors.primary} style={s.howToIcon} />
               <Text style={s.howToText}>{step.text}</Text>
             </View>

@@ -239,7 +239,7 @@ export default function HomeScreen() {
           <View style={s.headerRow}>
             <View style={s.badge}>
               <View style={s.badgeDot} />
-              <Text style={s.badgeText}>{onlineUsers.toLocaleString()} memorizing</Text>
+              <Text style={s.badgeText}>{onlineUsers > 0 ? `${onlineUsers.toLocaleString()} memorizing` : "No active listeners"}</Text>
             </View>
             {/* FIX #2: gear icon wrapped in white rounded container */}
             <TouchableOpacity

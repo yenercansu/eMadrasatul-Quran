@@ -262,9 +262,9 @@ const chipStyle = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: "#F6F2EA",
     borderWidth: 1.5,
-    borderColor: "#E0E0E0",
+    borderColor: "#E7E5DB",
     margin: 4,
     zIndex: 10,
   },
@@ -335,8 +335,8 @@ function FollowUpQuizScreen({ questions, onFinish }: { questions: FollowUpQuesti
 
       <View style={s.optionsContainer}>
         {q.options.map((opt, i) => {
-          let bg = "#FFFFFF";
-          let border = "#E8E8E8";
+          let bg = "#FDFBF7";
+          let border = "#D6D3D1";
           let textColor = "#1A1A1A";
           if (chosen) {
             if (opt === q.correctAnswer) { bg = "#DCFCE7"; border = "#16A34A"; textColor = "#166534"; }
@@ -362,22 +362,22 @@ function FollowUpQuizScreen({ questions, onFinish }: { questions: FollowUpQuesti
 const followUpStyle = StyleSheet.create({
   container: { padding: 16, gap: 12, paddingBottom: 40 },
   progressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  progressTrack: { flex: 1, height: 3, backgroundColor: "#F0F0F0", borderRadius: 2, overflow: "hidden" },
+  progressTrack: { flex: 1, height: 3, backgroundColor: "#E7E5DB", borderRadius: 2, overflow: "hidden" },
   progressBar: { height: "100%", backgroundColor: "#1A1A1A", borderRadius: 2 },
-  progressLabel: { fontSize: 11, color: "#9A9A9A", fontFamily: "Inter_400Regular" },
+  progressLabel: { fontSize: 11, color: "#A8A29E", fontFamily: "Inter_400Regular" },
   card: {
-    backgroundColor: "#FFFFFF", borderRadius: 16, padding: 20, gap: 10,
+    backgroundColor: "#FDFBF7", borderRadius: 16, padding: 20, gap: 10,
     shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 10,
-    elevation: 3, borderWidth: 1, borderColor: "#F0F0F0",
+    elevation: 3, borderWidth: 1, borderColor: "#E7E5DB",
   },
-  surahLabel: { fontSize: 10, color: "#9A9A9A", fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
+  surahLabel: { fontSize: 10, color: "#A8A29E", fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
   ayahText: {
     fontSize: 22, lineHeight: 36, color: "#1A1A1A",
     textAlign: "right", writingDirection: "rtl",
     fontFamily: Platform.OS === "ios" ? "System" : undefined,
   },
-  divider: { height: 1, backgroundColor: "#F0F0F0" },
-  questionText: { fontSize: 14, color: "#4A4A4A", fontFamily: "Inter_400Regular", lineHeight: 20 },
+  divider: { height: 1, backgroundColor: "#E7E5DB" },
+  questionText: { fontSize: 14, color: "#44403C", fontFamily: "Inter_400Regular", lineHeight: 20 },
   questionBold: { fontFamily: "Inter_700Bold", color: "#1A1A1A" },
   optionsContainer: { gap: 8 },
   optionBtn: {
@@ -480,32 +480,32 @@ function FillBlankQuizScreen({ questions, onFinish }: { questions: FillBlankQues
 const fillStyle = StyleSheet.create({
   container: { padding: 16, gap: 10, paddingBottom: 60 },
   progressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  progressTrack: { flex: 1, height: 3, backgroundColor: "#F0F0F0", borderRadius: 2, overflow: "hidden" },
+  progressTrack: { flex: 1, height: 3, backgroundColor: "#E7E5DB", borderRadius: 2, overflow: "hidden" },
   progressBar: { height: "100%", backgroundColor: "#1A1A1A", borderRadius: 2 },
-  progressLabel: { fontSize: 11, color: "#9A9A9A", fontFamily: "Inter_400Regular" },
-  surahLabel: { fontSize: 11, color: "#9A9A9A", fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
-  instruction: { fontSize: 12, color: "#6B6B6B", fontFamily: "Inter_400Regular" },
+  progressLabel: { fontSize: 11, color: "#A8A29E", fontFamily: "Inter_400Regular" },
+  surahLabel: { fontSize: 11, color: "#A8A29E", fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
+  instruction: { fontSize: 12, color: "#78716C", fontFamily: "Inter_400Regular" },
   blankSlot: {
-    borderRadius: 14, borderWidth: 1.5, borderColor: "#D0D0D0", borderStyle: "dashed",
-    padding: 12, alignItems: "center", justifyContent: "center", minHeight: 48, backgroundColor: "#FAFAFA",
+    borderRadius: 14, borderWidth: 1.5, borderColor: "#D6D3D1", borderStyle: "dashed",
+    padding: 12, alignItems: "center", justifyContent: "center", minHeight: 48, backgroundColor: "#F6F2EA",
   },
   blankSlotCorrect: { borderColor: "#16A34A", backgroundColor: "#F0FDF4" },
   blankSlotWrong: { borderColor: "#DC2626", backgroundColor: "#FFF5F5" },
   blankFilled: { fontSize: 20, color: "#1A1A1A", fontFamily: Platform.OS === "ios" ? "System" : undefined },
   blankFilledCorrect: { color: "#166534" },
   blankFilledWrong: { color: "#991B1B" },
-  blankPlaceholder: { fontSize: 12, color: "#B0B0B0", fontFamily: "Inter_400Regular" },
+  blankPlaceholder: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular" },
   ayahCard: {
-    backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16,
+    backgroundColor: "#FDFBF7", borderRadius: 16, padding: 16,
     shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 10,
-    elevation: 3, borderWidth: 1, borderColor: "#F0F0F0",
+    elevation: 3, borderWidth: 1, borderColor: "#E7E5DB",
   },
   ayahText: {
     fontSize: 20, lineHeight: 34, color: "#1A1A1A", textAlign: "right", writingDirection: "rtl",
     fontFamily: Platform.OS === "ios" ? "System" : undefined,
   },
   blankInText: { color: "#4F46E5", fontFamily: "Inter_700Bold", fontSize: 18 },
-  dragHint: { fontSize: 11, color: "#9A9A9A", fontFamily: "Inter_400Regular", textAlign: "center" },
+  dragHint: { fontSize: 11, color: "#A8A29E", fontFamily: "Inter_400Regular", textAlign: "center" },
   chipsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center" },
 });
 
@@ -554,8 +554,8 @@ function TafsirMatchQuizScreen({ questions, onFinish }: { questions: TafsirMatch
 
       <View style={s.optionsContainer}>
         {q.options.map((opt, i) => {
-          let bg = "#FFFFFF";
-          let border = "#E8E8E8";
+          let bg = "#FDFBF7";
+          let border = "#D6D3D1";
           let textColor = "#1A1A1A";
           if (chosen) {
             if (opt === q.correctTranslation) { bg = "#DCFCE7"; border = "#16A34A"; textColor = "#166534"; }
@@ -608,13 +608,13 @@ const scoreStyle = StyleSheet.create({
   container: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40, gap: 12 },
   emoji: { fontSize: 56 },
   score: { fontSize: 52, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  pct: { fontSize: 22, color: "#9A9A9A", fontFamily: "Inter_400Regular" },
+  pct: { fontSize: 22, color: "#A8A29E", fontFamily: "Inter_400Regular" },
   label: { fontSize: 18, color: "#1A1A1A", fontFamily: "Inter_600SemiBold", marginBottom: 20 },
   btnRow: { gap: 12, width: "100%" },
   retryBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#1A1A1A", borderRadius: 14, paddingVertical: 14 },
   retryText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
   backBtn: { alignItems: "center", paddingVertical: 12 },
-  backText: { fontSize: 15, color: "#9A9A9A", fontFamily: "Inter_400Regular" },
+  backText: { fontSize: 15, color: "#A8A29E", fontFamily: "Inter_400Regular" },
 });
 
 type QuizMode = null | "follow-up" | "fill-blank" | "tafsir-match";
@@ -1067,7 +1067,7 @@ export default function MemorizationQuizScreen() {
             {filterMode === "by-surah" ? (
               pagedSurahs.length === 0 ? (
                 <View style={s.infoBox}>
-                  <Ionicons name="information-circle-outline" size={18} color="#9A9A9A" />
+                  <Ionicons name="information-circle-outline" size={18} color="#A8A29E" />
                   <Text style={s.infoText}>{surahGroups.length === 0 ? "No saved ayahs yet. Save ayahs from the reader to build your quiz pool." : surahSearchQuery.trim() ? "No surahs match your search." : "No surahs match this filter."}</Text>
                 </View>
               ) : (() => {
@@ -1093,10 +1093,7 @@ export default function MemorizationQuizScreen() {
                           activeOpacity={0.8}
                         >
                           <View style={[s.surahBadge2, selected ? { backgroundColor: colors.foreground, borderColor: colors.foreground } : { borderColor: colors.border }]}>
-                            {selected
-                              ? <Feather name="check" size={14} color={colors.primaryForeground} />
-                              : <Text style={[s.surahBadge2Text, { color: colors.mutedForeground }]}>{surah.number}</Text>
-                            }
+                            {selected && <Feather name="check" size={14} color={colors.primaryForeground} />}
                           </View>
                           <View style={{ flex: 1 }}>
                             <Text style={[s.surahCard2Name, { color: colors.foreground }]}>{surah.englishName}</Text>
@@ -1112,7 +1109,7 @@ export default function MemorizationQuizScreen() {
             ) : (
               ayahsByJuz.length === 0 ? (
                 <View style={s.infoBox}>
-                  <Ionicons name="information-circle-outline" size={18} color="#9A9A9A" />
+                  <Ionicons name="information-circle-outline" size={18} color="#A8A29E" />
                   <Text style={s.infoText}>{ayahSearchQuery.trim() ? "No ayahs match your search." : tagFilter === "all" ? "No saved ayahs yet. Save ayahs from the reader to build your quiz pool." : "No ayahs match this filter."}</Text>
                 </View>
               ) : (
@@ -1141,10 +1138,7 @@ export default function MemorizationQuizScreen() {
                             onPress={() => toggleSelected(ayah.id)}
                             activeOpacity={0.75}
                           >
-                            {checked
-                              ? <Feather name="check" size={12} color={colors.primaryForeground} />
-                              : <Text style={[s.ayahBadge2Text, { color: colors.mutedForeground }]}>{ayah.ayahNumber}</Text>
-                            }
+                            {checked && <Feather name="check" size={12} color={colors.primaryForeground} />}
                           </TouchableOpacity>
                           <TouchableOpacity style={{ flex: 1 }} onPress={() => toggleSelected(ayah.id)} activeOpacity={0.75}>
                             <View style={s.ayahCard2Header}>
@@ -1244,7 +1238,7 @@ const pageStyles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingBottom: 10,
-    backgroundColor: "#FFFFFF", borderBottomWidth: 1, borderBottomColor: "#F0F0F0",
+    backgroundColor: "#FDFBF7", borderBottomWidth: 1, borderBottomColor: "#E7E5DB",
   },
   backBtn: { padding: 8 },
   headerCenter: { flex: 1, alignItems: "center" },
@@ -1255,8 +1249,8 @@ const pageStyles = StyleSheet.create({
   menuSub: { fontSize: 14, fontFamily: "Inter_400Regular", marginBottom: 6 },
   modeCard: {
     flexDirection: "row", alignItems: "center", gap: 14,
-    backgroundColor: "#FAFAFA", borderRadius: 20, padding: 18,
-    borderWidth: 1, borderColor: "#E8E8E8",
+    backgroundColor: "#F6F2EA", borderRadius: 20, padding: 18,
+    borderWidth: 1, borderColor: "#D6D3D1",
     shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.06, shadowRadius: 10,
     elevation: 3,
   },
@@ -1266,11 +1260,11 @@ const pageStyles = StyleSheet.create({
   },
   modeInfo: { flex: 1 },
   modeName: { fontSize: 16, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", marginBottom: 4 },
-  modeDesc: { fontSize: 13, color: "#6B6B6B", fontFamily: "Inter_400Regular", lineHeight: 19 },
+  modeDesc: { fontSize: 13, color: "#78716C", fontFamily: "Inter_400Regular", lineHeight: 19 },
   infoBox: {
-    flexDirection: "row", gap: 10, backgroundColor: "#F5F5F5", borderRadius: 14, padding: 14, alignItems: "flex-start",
+    flexDirection: "row", gap: 10, backgroundColor: "#F6F2EA", borderRadius: 14, padding: 14, alignItems: "flex-start",
   },
-  infoText: { flex: 1, fontSize: 13, color: "#6B6B6B", fontFamily: "Inter_400Regular", lineHeight: 20 },
+  infoText: { flex: 1, fontSize: 13, color: "#78716C", fontFamily: "Inter_400Regular", lineHeight: 20 },
   selectionWrap: { flex: 1, flexDirection: "column" },
   filterRow: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
   filterChip: {
@@ -1278,50 +1272,50 @@ const pageStyles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 9,
     borderRadius: 12,
-    backgroundColor: "#F2F2F7",
+    backgroundColor: "#F6F2EA",
     borderWidth: 1,
-    borderColor: "#E8E8ED",
+    borderColor: "#D6D3D1",
   },
   filterChipActive: { backgroundColor: "#1A1A1A", borderColor: "#1A1A1A" },
-  filterChipText: { fontSize: 12, color: "#6B6B6B", fontFamily: "Inter_700Bold" },
+  filterChipText: { fontSize: 12, color: "#78716C", fontFamily: "Inter_700Bold" },
   filterChipTextActive: { color: "#FFFFFF" },
   tagRow: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingBottom: 8 },
   tagChip: {
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FDFBF7",
     borderWidth: 1,
-    borderColor: "#E8E8ED",
+    borderColor: "#D6D3D1",
   },
-  tagChipActive: { backgroundColor: "#EDEAE5", borderColor: "#D5CEC3" },
-  tagText: { fontSize: 12, color: "#8E8E93", fontFamily: "Inter_700Bold" },
+  tagChipActive: { backgroundColor: "#EEE8DF", borderColor: "#D6D3D1" },
+  tagText: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_700Bold" },
   tagTextActive: { color: "#1A1A1A" },
   selectionContent: { padding: 16, paddingTop: 8, gap: 10, paddingBottom: 24 },
   selectionAyahCard: {
     flexDirection: "row",
     gap: 10,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FDFBF7",
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#ECECEC",
+    borderColor: "#E7E5DB",
     padding: 12,
     alignItems: "flex-start",
   },
-  selectionAyahCardExcluded: { opacity: 0.62, backgroundColor: "#FAFAFA" },
+  selectionAyahCardExcluded: { opacity: 0.62, backgroundColor: "#F6F2EA" },
   checkbox: {
     width: 24,
     height: 24,
     borderRadius: 7,
     borderWidth: 1.5,
-    borderColor: "#C8C8C8",
+    borderColor: "#D6D3D1",
     alignItems: "center",
     justifyContent: "center",
     marginTop: 2,
   },
   checkboxActive: { backgroundColor: "#1A1A1A", borderColor: "#1A1A1A" },
   selectionAyahInfo: { flex: 1 },
-  selectionMeta: { fontSize: 12, color: "#8E8E93", fontFamily: "Inter_700Bold", marginBottom: 4 },
+  selectionMeta: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_700Bold", marginBottom: 4 },
   selectionArabic: {
     fontSize: 16,
     lineHeight: 24,
@@ -1331,27 +1325,27 @@ const pageStyles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "System" : undefined,
     marginBottom: 3,
   },
-  selectionTranslation: { fontSize: 12, color: "#6B6B6B", fontFamily: "Inter_400Regular", marginBottom: 8 },
+  selectionTranslation: { fontSize: 12, color: "#78716C", fontFamily: "Inter_400Regular", marginBottom: 8 },
   excludeRow: { flexDirection: "row", alignItems: "center", gap: 7 },
   excludeToggle: {
     width: 24,
     height: 14,
     borderRadius: 7,
-    backgroundColor: "#DADADA",
+    backgroundColor: "#D6D3D1",
     justifyContent: "center",
     paddingHorizontal: 2,
   },
   excludeToggleActive: { backgroundColor: "#1A1A1A", alignItems: "flex-end" },
   excludeDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#FFFFFF" },
-  excludeText: { fontSize: 11, color: "#8E8E93", fontFamily: "Inter_400Regular" },
+  excludeText: { fontSize: 11, color: "#A8A29E", fontFamily: "Inter_400Regular" },
   surahSelectRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FDFBF7",
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#ECECEC",
+    borderColor: "#E7E5DB",
     padding: 14,
   },
   surahBadge: {
@@ -1364,18 +1358,18 @@ const pageStyles = StyleSheet.create({
   },
   surahBadgeText: { fontSize: 12, color: "#FFFFFF", fontFamily: "Inter_700Bold" },
   surahSelectName: { fontSize: 14, color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  surahSelectMeta: { fontSize: 12, color: "#8E8E93", fontFamily: "Inter_400Regular", marginTop: 2 },
+  surahSelectMeta: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular", marginTop: 2 },
   drillBack: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
   drillBackText: { fontSize: 13, color: "#1A1A1A", fontFamily: "Inter_700Bold" },
   startPanel: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FDFBF7",
     borderTopWidth: 1,
-    borderTopColor: "#ECECEC",
+    borderTopColor: "#E7E5DB",
     padding: 16,
     paddingTop: 12,
     gap: 8,
   },
-  startSummary: { fontSize: 12, color: "#8E8E93", fontFamily: "Inter_700Bold", textAlign: "center" },
+  startSummary: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_700Bold", textAlign: "center" },
   startBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -1389,15 +1383,15 @@ const pageStyles = StyleSheet.create({
   startBtnText: { fontSize: 15, color: "#FFFFFF", fontFamily: "Inter_700Bold" },
   savedSection: { marginTop: 4, gap: 8 },
   savedSectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 },
-  savedSectionTitle: { fontSize: 12, fontWeight: "700", color: "#9A9A9A", fontFamily: "Inter_700Bold", letterSpacing: 0.8, textTransform: "uppercase" },
+  savedSectionTitle: { fontSize: 12, fontWeight: "700", color: "#A8A29E", fontFamily: "Inter_700Bold", letterSpacing: 0.8, textTransform: "uppercase" },
   savedAyahRow: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: "#FAFAFA", borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: "#EEEEEE",
+    backgroundColor: "#F6F2EA", borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: "#E7E5DB",
   },
   savedAyahInfo: { flex: 1 },
   savedAyahArabic: { fontSize: 15, color: "#1A1A1A", fontFamily: Platform.OS === "ios" ? "System" : undefined, textAlign: "right", lineHeight: 22 },
-  savedAyahMeta: { fontSize: 11, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 4 },
+  savedAyahMeta: { fontSize: 11, color: "#A8A29E", fontFamily: "Inter_400Regular", marginTop: 4 },
   savedRemoveBtn: { padding: 6 },
 
   // ── Type phase content ──
@@ -1487,7 +1481,7 @@ const pageStyles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   segmentBtnActive: { backgroundColor: "#1A1A1A" },
-  segmentText: { fontSize: 14, color: "#6B6B6B", fontFamily: "Inter_700Bold" },
+  segmentText: { fontSize: 14, color: "#78716C", fontFamily: "Inter_700Bold" },
   segmentTextActive: { color: "#FFFFFF" },
 
   // ── Search ──
@@ -1526,7 +1520,7 @@ const pageStyles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   tagChip2Active: { backgroundColor: "#1A1A1A" },
-  tagText2: { fontSize: 13, color: "#8E8E93", fontFamily: "Inter_700Bold" },
+  tagText2: { fontSize: 13, color: "#A8A29E", fontFamily: "Inter_700Bold" },
   tagText2Active: { color: "#FFFFFF" },
   tagActions: { flexDirection: "row", gap: 10, alignItems: "center" },
   tagActionText: { fontSize: 13, fontFamily: "Inter_600SemiBold", textDecorationLine: "underline" },
@@ -1637,3 +1631,4 @@ const pageStyles = StyleSheet.create({
   },
   startBtnText2: { fontSize: 15, color: "#FFFFFF", fontFamily: "Inter_700Bold" },
 });
+

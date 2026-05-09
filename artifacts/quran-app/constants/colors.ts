@@ -6,17 +6,17 @@ const colors = {
     background: "#FDFBF7",
     foreground: "#1A1A1A",
 
-    card: "#FFFFFF",
+    card: "#FDFBF7",
     cardForeground: "#1A1A1A",
 
     primary: "#1A1A1A",
     primaryForeground: "#FFFFFF",
 
-    secondary: "#F2F2F7",
+    secondary: "#F6F2EA",
     secondaryForeground: "#1A1A1A",
 
-    muted: "#F2F2F7",
-    mutedForeground: "#8E8E93",
+    muted: "#F6F2EA",
+    mutedForeground: "#78716C",
 
     accent: "#F9E79F",
     accentForeground: "#1A1A1A",
@@ -24,18 +24,18 @@ const colors = {
     destructive: "#D9534F",
     destructiveForeground: "#FFFFFF",
 
-    border: "#E8E8ED",
-    input: "#E8E8ED",
+    border: "#D6D3D1",
+    input: "#D6D3D1",
 
     surface: "#FDFBF7",
-    surfaceAlt: "#F2F2F7",
+    surfaceAlt: "#F6F2EA",
 
     // Design Tokens - Semantic Colors
     appBackground: "#FDFBF7",
-    appCard: "#FFFFFF",
-    appBorder: "#E8E8ED",
+    appCard: "#FDFBF7",
+    appBorder: "#D6D3D1",
     appText: "#1A1A1A",
-    appTextMuted: "#8E8E93",
+    appTextMuted: "#78716C",
     appPrimary: "#1A1A1A",
     appSuccess: "#4CAF50",
     appWarning: "#EAB308",
