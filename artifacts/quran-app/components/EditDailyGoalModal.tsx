@@ -166,7 +166,8 @@ export function EditDailyGoalModal({
               <View style={s.handle} />
 
               {step === 1 ? (
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.stepPad}>
+                <>
+                <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={s.stepPad}>
                   <View style={s.stepHeader}>
                     <Text style={s.title}>Starting Ayah</Text>
                     <TouchableOpacity onPress={onClose} style={s.closeBtn} activeOpacity={0.7}>
@@ -223,6 +224,8 @@ export function EditDailyGoalModal({
                     </Text>
                   </View>
 
+                </ScrollView>
+                <View style={s.pinnedCta}>
                   <TouchableOpacity
                     style={s.primaryBtn}
                     onPress={() => {
@@ -235,9 +238,11 @@ export function EditDailyGoalModal({
                     <Feather name="arrow-right" size={17} color="#FFFFFF" />
                   </TouchableOpacity>
                   <Text style={s.stepLabel}>STEP 1 OF 2</Text>
-                </ScrollView>
+                </View>
+                </>
               ) : (
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.stepPad}>
+                <>
+                <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={s.stepPad}>
                   <View style={s.stepHeader}>
                     <TouchableOpacity onPress={() => setStep(1)} style={s.backBtn} activeOpacity={0.7}>
                       <Feather name="chevron-left" size={22} color="#1A1A1A" />
@@ -298,6 +303,8 @@ export function EditDailyGoalModal({
                     </View>
                   </View>
 
+                </ScrollView>
+                <View style={s.pinnedCta}>
                   <TouchableOpacity
                     style={s.primaryBtn}
                     onPress={() => {
@@ -311,7 +318,8 @@ export function EditDailyGoalModal({
                     <Feather name="check" size={17} color="#FFFFFF" />
                   </TouchableOpacity>
                   <Text style={s.stepLabel}>STEP 2 OF 2</Text>
-                </ScrollView>
+                </View>
+                </>
               )}
             </View>
           </TouchableWithoutFeedback>
@@ -444,6 +452,12 @@ const s = StyleSheet.create({
   },
   summaryValueBold: { color: "#16A34A" },
   summaryDivider: { height: 1, backgroundColor: "#E8E8ED", marginVertical: 10 },
+  pinnedCta: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 32,
+    backgroundColor: "#FFFFFF",
+  },
   primaryBtn: {
     backgroundColor: "#1A1A1A",
     borderRadius: 16, paddingVertical: 18,

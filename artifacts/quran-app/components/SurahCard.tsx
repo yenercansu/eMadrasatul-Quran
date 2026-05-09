@@ -21,9 +21,6 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, isChecked
   return (
     <TouchableOpacity onPress={onPress} style={s.card} activeOpacity={0.75}>
       <View style={s.topRow}>
-        <View style={s.numberBadge}>
-          <Text style={s.numberText}>{surah.number}</Text>
-        </View>
         <View style={s.meta}>
           <Text style={s.type}>{surah.revelationType}</Text>
         </View>
@@ -54,9 +51,6 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, isChecked
               color={isSaved ? colors.appText : colors.appBorderMid}
             />
           </TouchableOpacity>
-        )}
-        {isRecent && (
-          <View style={s.recentDot} />
         )}
       </View>
 
@@ -92,22 +86,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     topRow: {
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: 12,
+      marginBottom: 4,
       gap: 8,
-    },
-    numberBadge: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,                      // rounded-full (half of 36)
-      backgroundColor: colors.appText,       // stone-900
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    numberText: {
-      fontSize: 12,                          // text-xs
-      fontWeight: "700",
-      color: colors.appWhite,
-      fontFamily: "Inter_700Bold",
     },
     meta: { flex: 1 },
     type: {
@@ -138,12 +118,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     checkBtnActive: {
       backgroundColor: colors.appText,       // stone-900
       borderColor: colors.appText,
-    },
-    recentDot: {
-      width: 6,                              // w-1.5
-      height: 6,
-      borderRadius: 3,
-      backgroundColor: colors.appBlack,
     },
     memorizedBadge: {
       alignSelf: "flex-start",

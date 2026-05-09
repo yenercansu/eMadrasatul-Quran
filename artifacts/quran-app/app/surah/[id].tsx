@@ -729,7 +729,7 @@ function FloatingTopNav({
   return (
     <View style={[fn.wrap, { top: topInset + 8 }]}>
       <TouchableOpacity style={fn.pillBtn} onPress={onNext} activeOpacity={0.75}>
-        <Feather name="arrow-left" size={14} color="#1A1A1A" />
+        <Feather name="chevron-left" size={14} color="#1A1A1A" />
         <Text style={fn.pillBtnText}>Next</Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -743,7 +743,7 @@ function FloatingTopNav({
       </TouchableOpacity>
       <TouchableOpacity style={fn.pillBtn} onPress={onPrev} activeOpacity={0.75}>
         <Text style={fn.pillBtnText}>Back</Text>
-        <Feather name="arrow-right" size={14} color="#1A1A1A" />
+        <Feather name="chevron-right" size={14} color="#1A1A1A" />
       </TouchableOpacity>
     </View>
   );
@@ -766,7 +766,7 @@ const fn = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.96)",
     borderRadius: 20,
     paddingHorizontal: 12,
-    paddingVertical: 9,
+    paddingVertical: 16,
     gap: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -777,7 +777,7 @@ const fn = StyleSheet.create({
   pillBtnText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
   titlePill: {
     flex: 1,
-    backgroundColor: "#DCFCE7",
+    backgroundColor: "#F5EDD6",
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -788,8 +788,8 @@ const fn = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  titleText: { fontSize: 14, fontWeight: "700", color: "#166534", fontFamily: "Inter_700Bold" },
-  hintText: { fontSize: 10, color: "#166534", fontFamily: "Inter_400Regular", marginTop: 1, opacity: 0.85 },
+  titleText: { fontSize: 14, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  hintText: { fontSize: 10, color: "#5D4A37", fontFamily: "Inter_400Regular", marginTop: 1, opacity: 0.85 },
 });
 
 // ─── Inline page-end nav (only at end of page) ────────────────────────────────
@@ -798,10 +798,10 @@ function PageEndNav({ onPrev, onNext }: { onPrev: () => void; onNext: () => void
   return (
     <View style={fbn.wrap}>
       <TouchableOpacity style={fbn.btn} onPress={onNext} activeOpacity={0.75}>
-        <Feather name="arrow-left" size={20} color="#1A1A1A" />
+        <Feather name="chevron-left" size={20} color="#1A1A1A" />
       </TouchableOpacity>
       <TouchableOpacity style={fbn.btn} onPress={onPrev} activeOpacity={0.75}>
-        <Feather name="arrow-right" size={20} color="#1A1A1A" />
+        <Feather name="chevron-right" size={20} color="#1A1A1A" />
       </TouchableOpacity>
     </View>
   );
@@ -950,8 +950,8 @@ function EditSheet({
 }
 
 const es = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
-  sheet: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, maxHeight: "85%" },
+  backdrop: { height: 0 },
+  sheet: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, flex: 1 },
   handle: { width: 40, height: 4, backgroundColor: "#DEDEDE", borderRadius: 2, alignSelf: "center", marginBottom: 12 },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
   title: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },

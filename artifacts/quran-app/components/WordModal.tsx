@@ -121,16 +121,6 @@ export function WordModal({
                     {alreadySaved ? "Saved" : "Save"}
                   </Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.iconBtn} onPress={handleHighlight} activeOpacity={0.7}>
-                  <Feather
-                    name="edit-2"
-                    size={20}
-                    color={highlighted ? "#E8507A" : "#1A1A1A"}
-                  />
-                  <Text style={[s.iconLabel, highlighted && { color: "#E8507A" }]}>
-                    {highlighted ? "Marked" : "Mark"}
-                  </Text>
-                </TouchableOpacity>
               </View>
 
               <View style={s.divider} />

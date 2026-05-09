@@ -226,7 +226,8 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
 
               {/* ── STEP 1: Memorization Mode ───────────────────────────────── */}
               {step === 1 && (
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.stepPad}>
+                <>
+                <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={s.stepPad}>
                   <View style={s.handle} />
                   <Text style={s.bigTitle}>Choose Path</Text>
                   <Text style={s.bigSub}>
@@ -266,6 +267,8 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                     ))}
                   </View>
 
+                </ScrollView>
+                <View style={s.pinnedCta}>
                   <TouchableOpacity
                     style={[s.primaryBtn, !path && { opacity: 0.4 }]}
                     disabled={!path}
@@ -279,7 +282,8 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                     <Feather name="arrow-right" size={17} color="#FFFFFF" />
                   </TouchableOpacity>
                   <Text style={s.stepLabel}>STEP 1 OF 4</Text>
-                </ScrollView>
+                </View>
+                </>
               )}
 
               {/* ── STEP 2: Select Surah ────────────────────────────────────── */}
@@ -454,7 +458,8 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
 
               {/* ── STEP 3: Starting Ayah (with visual memory) ──────────────── */}
               {step === 3 && (
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.stepPad}>
+                <>
+                <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={s.stepPad}>
                   <View style={s.stepHeader}>
                     <TouchableOpacity onPress={() => setStep(2)} style={s.backBtn} activeOpacity={0.7}>
                       <Feather name="chevron-left" size={22} color="#1A1A1A" />
@@ -555,6 +560,8 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                     </Text>
                   </View>
 
+                </ScrollView>
+                <View style={s.pinnedCta}>
                   <TouchableOpacity
                     style={s.primaryBtn}
                     onPress={() => {
@@ -567,12 +574,14 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                     <Feather name="arrow-right" size={17} color="#FFFFFF" />
                   </TouchableOpacity>
                   <Text style={s.stepLabel}>STEP 3 OF 4</Text>
-                </ScrollView>
+                </View>
+                </>
               )}
 
               {/* ── STEP 4: Weekly Quantity (dynamic limit) ─────────────────── */}
               {step === 4 && (
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.stepPad}>
+                <>
+                <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={s.stepPad}>
                   <View style={s.stepHeader}>
                     <TouchableOpacity onPress={() => setStep(3)} style={s.backBtn} activeOpacity={0.7}>
                       <Feather name="chevron-left" size={22} color="#1A1A1A" />
@@ -644,12 +653,15 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                     </View>
                   </View>
 
+                </ScrollView>
+                <View style={s.pinnedCta}>
                   <TouchableOpacity style={s.primaryBtn} onPress={handleComplete} activeOpacity={0.85}>
                     <Text style={s.primaryBtnText}>Start Learning</Text>
                     <Feather name="check" size={17} color="#FFFFFF" />
                   </TouchableOpacity>
                   <Text style={s.stepLabel}>STEP 4 OF 4</Text>
-                </ScrollView>
+                </View>
+                </>
               )}
 
             </View>
@@ -703,6 +715,12 @@ const s = StyleSheet.create({
     backgroundColor: "#1A1A1A", alignItems: "center", justifyContent: "center", marginLeft: 12,
   },
 
+  pinnedCta: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 32,
+    backgroundColor: "#FAFAFA",
+  },
   primaryBtn: {
     backgroundColor: "#1A1A1A", borderRadius: 16, paddingVertical: 18,
     flexDirection: "row", alignItems: "center", justifyContent: "center",

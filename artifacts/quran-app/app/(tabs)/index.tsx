@@ -516,12 +516,6 @@ export default function HomeScreen() {
                       <View style={s.lvProgressRail}>
                         <View style={[s.lvProgressFill, { width: `${pct}%` as any }]} />
                       </View>
-                      <View style={s.lvFooter}>
-                        <Text style={s.lvPct}>{pct}%</Text>
-                        <View style={s.lvPlayBtn}>
-                           <Ionicons name="play" size={9} color={colors.appWhite} style={{ marginLeft: 1 }} />
-                        </View>
-                      </View>
                     </TouchableOpacity>
                   );
                 })}
@@ -534,7 +528,7 @@ export default function HomeScreen() {
             <View style={s.listSection}>
               <View style={s.listSectionHeader}>
                 <Text style={s.listSectionTitle}>Saved Surahs</Text>
-                <TouchableOpacity activeOpacity={0.7}>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => router.push("/saved-surahs")}>
                   <Text style={s.viewAllText}>View All</Text>
                 </TouchableOpacity>
               </View>
@@ -544,7 +538,7 @@ export default function HomeScreen() {
                   return (
                     <TouchableOpacity
                       key={meta.number}
-                      style={[s.savedRow, i === savedSurahsMeta.slice(0, 3).length - 1 && s.savedRowLast]}
+                      style={[s.savedRow, i === savedSurahsMeta.slice(0, 3).length - 1 && savedSurahsMeta.length <= 3 && s.savedRowLast]}
                       onPress={() => router.push(`/surah/${meta.number}`)}
                       activeOpacity={0.7}
                     >
@@ -559,6 +553,18 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                   );
                 })}
+                {savedSurahsMeta.length > 3 && (
+                  <TouchableOpacity
+                    style={[s.savedRow, s.savedRowLast]}
+                    onPress={() => router.push("/saved-surahs")}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.savedMeta, { flex: 1 }]}>
+                      {savedSurahsMeta.length - 3} more saved surahs
+                    </Text>
+                    <Feather name="chevron-right" size={16} color={colors.appLightText} />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           )}
@@ -1046,15 +1052,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       backgroundColor: colors.appBorderLighter,
       borderRadius: 1,
       overflow: "hidden",
-      marginBottom: 8,
     },
     lvProgressFill: { height: "100%" as any, backgroundColor: colors.appBlack, borderRadius: 1 },
-    lvFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-    lvPct: { fontSize: 11, fontWeight: "600", color: colors.appBlack, fontFamily: "Inter_600SemiBold" },
-    lvPlayBtn: {
-      width: 22, height: 22, borderRadius: 11,
-      backgroundColor: colors.appBlack, alignItems: "center", justifyContent: "center",
-    },
 
     // ── Saved Surahs ───────────────────────────────────────────────────────────
     savedCard: {
