@@ -8,6 +8,7 @@ import {
   PanResponder,
   TouchableWithoutFeedback,
   ScrollView,
+  useWindowDimensions,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -115,7 +116,11 @@ export function EditDailyGoalModal({
   onClose,
 }: Props) {
   const { removeMemorizedAyahKeys } = useQuran();
+  const { width: windowWidth } = useWindowDimensions();
+  const infoPageWidth = windowWidth - 48;
+
   const [step, setStep] = useState<1 | 2>(1);
+  const [infoPage, setInfoPage] = useState(0);
   const [startSurahNumber, setStartSurahNumber] = useState(surahNumber);
   const [startAyahNumber, setStartAyahNumber] = useState(currentStartAyah);
   const [ayahsPerWeek, setAyahsPerWeek] = useState(currentAyahsPerWeek);
@@ -316,31 +321,6 @@ export function EditDailyGoalModal({
                       ))}
                     </View>
 
-                    <View style={s.infoCard}>
-                      <Text style={s.infoCardTitle}>SUSTAINABLE PACE</Text>
-                      <Text style={s.infoCardText}>
-                        3 to 10 Ayahs daily is considered a sustainable memorization pace and may lead to completing the Quran in approximately 2 to 6 years.
-                      </Text>
-                    </View>
-
-                    <View style={s.infoCard}>
-                      <Text style={s.infoCardTitle}>WEEKLY MAXIMUM</Text>
-                      <Text style={s.infoCardText}>
-                        We recommend a maximum of <Text style={s.infoCardBold}>70 Ayahs per week</Text>. If you want to learn more, you can always come back and set a new goal upon completion.
-                      </Text>
-                    </View>
-
-                    <View style={s.estimateCard}>
-                      <Text style={s.estimateLabel}>YOUR COMPLETION ESTIMATE</Text>
-                      <Text style={s.estimateText}>
-                        At <Text style={s.estimateBold}>{ayahsPerWeek} Ayahs per week</Text>, you will finish memorizing the Quran in{" "}
-                        <Text style={s.estimateBold}>{estimateCompletion(TOTAL_AYAHS - memorizedAyahKeys.length, ayahsPerWeek)}</Text>.
-                      </Text>
-                      {memorizedAyahKeys.length > 0 && (
-                        <Text style={s.estimateSub}>{memorizedAyahKeys.length} of {TOTAL_AYAHS} Ayahs already memorized.</Text>
-                      )}
-                    </View>
-
                     <View style={s.summaryCard}>
                       <View style={s.summaryRow}>
                         <Text style={s.summaryLabel}>{targetPath === "juz" ? "Juz" : "Surah"}</Text>
@@ -361,6 +341,47 @@ export function EditDailyGoalModal({
                         <Text style={s.summaryLabel}>Weekly Goal</Text>
                         <Text style={[s.summaryValue, s.summaryValueBold]}>{ayahsPerWeek} Ayahs</Text>
                       </View>
+                    </View>
+
+                    {/* Info pager: SUSTAINABLE PACE / WEEKLY MAXIMUM */}
+                    <View style={s.infoPager}>
+                      <ScrollView
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        onMomentumScrollEnd={(e) =>
+                          setInfoPage(Math.round(e.nativeEvent.contentOffset.x / infoPageWidth))
+                        }
+                      >
+                        <View style={[s.infoCard, { width: infoPageWidth }]}>
+                          <Text style={s.infoCardTitle}>SUSTAINABLE PACE</Text>
+                          <Text style={s.infoCardText}>
+                            3 to 10 Ayahs daily is considered a sustainable memorization pace and may lead to completing the Quran in approximately 2 to 6 years.
+                          </Text>
+                        </View>
+                        <View style={[s.infoCard, { width: infoPageWidth }]}>
+                          <Text style={s.infoCardTitle}>WEEKLY MAXIMUM</Text>
+                          <Text style={s.infoCardText}>
+                            We recommend a maximum of <Text style={s.infoCardBold}>70 Ayahs per week</Text>. If you want to learn more, you can always come back and set a new goal upon completion.
+                          </Text>
+                        </View>
+                      </ScrollView>
+                      <View style={s.infoPagerDots}>
+                        {[0, 1].map((i) => (
+                          <View key={i} style={[s.infoPagerDot, i === infoPage && s.infoPagerDotActive]} />
+                        ))}
+                      </View>
+                    </View>
+
+                    <View style={s.estimateCard}>
+                      <Text style={s.estimateLabel}>YOUR COMPLETION ESTIMATE</Text>
+                      <Text style={s.estimateText}>
+                        At <Text style={s.estimateBold}>{ayahsPerWeek} Ayahs per week</Text>, you will finish memorizing the Quran in{" "}
+                        <Text style={s.estimateBold}>{estimateCompletion(TOTAL_AYAHS - memorizedAyahKeys.length, ayahsPerWeek)}</Text>.
+                      </Text>
+                      {memorizedAyahKeys.length > 0 && (
+                        <Text style={s.estimateSub}>{memorizedAyahKeys.length} of {TOTAL_AYAHS} Ayahs already memorized.</Text>
+                      )}
                     </View>
 
                   </ScrollView>
@@ -512,11 +533,29 @@ const s = StyleSheet.create({
   dots: { flexDirection: "row", gap: 7, justifyContent: "center", marginTop: 8, marginBottom: 22 },
   dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: "#D6D3D1" },
   dotFilled: { backgroundColor: "#1A1A1A" },
+  infoPager: {
+    marginBottom: sp.md,
+    overflow: "hidden",
+  },
+  infoPagerDots: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 5,
+    marginTop: sp.sm,
+  },
+  infoPagerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#D6D3D1",
+  },
+  infoPagerDotActive: {
+    backgroundColor: "#1A1A1A",
+  },
   infoCard: {
     backgroundColor: "#F6F2EA",
     borderRadius: br.lg,
     padding: sp.lg,
-    marginBottom: sp.md,
   },
   infoCardTitle: {
     fontSize: ty.fontSize.xs,
