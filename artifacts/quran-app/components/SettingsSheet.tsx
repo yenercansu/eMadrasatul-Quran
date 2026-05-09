@@ -5,8 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Modal,
-  ScrollView,
-  TouchableWithoutFeedback,
   FlatList,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
@@ -14,6 +12,7 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
 import { RECITERS } from "@/contexts/AudioContext";
+import { FullScreenPage } from "@/components/FullScreenPage";
 
 export const TAFSIR_EDITIONS = [
   { id: "en.maarifulquran", name: "Maariful Quran", author: "Mufti Shafi Usmani" },
@@ -69,50 +68,38 @@ function ReciterSheet({
   const colors = useColors();
   const rs = makeRsStyles(colors);
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={rs.overlay}>
-          <TouchableWithoutFeedback>
-            <View style={rs.sheet}>
-              <View style={rs.handle} />
-              <View style={rs.header}>
-                <Text style={rs.title}>Select Reciter</Text>
-                <TouchableOpacity onPress={onClose} style={rs.closeBtn}>
-                  <Feather name="x" size={20} color={colors.mutedForeground} />
-                </TouchableOpacity>
-              </View>
-              <FlatList
-                data={RECITERS}
-                keyExtractor={(item) => item.id}
-                showsVerticalScrollIndicator={false}
-                renderItem={({ item }) => {
-                  const active = item.id === selected;
-                  return (
-                    <TouchableOpacity
-                      style={[rs.row, active && rs.rowActive]}
-                      activeOpacity={0.75}
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        onSelect(item.id);
-                        onClose();
-                      }}
-                    >
-                      <View style={[rs.avatar, active && rs.avatarActive]}>
-                        <Ionicons name="mic" size={18} color={active ? colors.primaryForeground : colors.mutedForeground} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[rs.name, active && rs.nameActive]}>{item.name}</Text>
-                        <Text style={rs.style}>{item.style}</Text>
-                      </View>
-                      {active && <Ionicons name="checkmark-circle" size={22} color={colors.foreground} />}
-                    </TouchableOpacity>
-                  );
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <FullScreenPage title="Select Reciter" onClose={onClose} scrollable={false}>
+        <FlatList
+          data={RECITERS}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40 }}
+          renderItem={({ item }) => {
+            const active = item.id === selected;
+            return (
+              <TouchableOpacity
+                style={[rs.row, active && rs.rowActive]}
+                activeOpacity={0.75}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  onSelect(item.id);
+                  onClose();
                 }}
-              />
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
+              >
+                <View style={[rs.avatar, active && rs.avatarActive]}>
+                  <Ionicons name="mic" size={18} color={active ? colors.primaryForeground : colors.mutedForeground} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[rs.name, active && rs.nameActive]}>{item.name}</Text>
+                  <Text style={rs.style}>{item.style}</Text>
+                </View>
+                {active && <Ionicons name="checkmark-circle" size={22} color={colors.foreground} />}
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </FullScreenPage>
     </Modal>
   );
 }
@@ -140,105 +127,91 @@ export function SettingsSheet({ visible, onClose }: Props) {
 
   return (
     <>
-      <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View style={s.overlay}>
-            <TouchableWithoutFeedback>
-              <View style={s.sheet}>
-                <View style={s.handle} />
-                <View style={s.sheetHeader}>
-                  <Text style={s.title}>Reader Settings</Text>
-                  <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-                    <Feather name="x" size={20} color={colors.mutedForeground} />
-                  </TouchableOpacity>
-                </View>
+      <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+        <FullScreenPage title="Reader Settings" onClose={onClose}>
+          <View style={s.scrollContent}>
+            <Text style={s.sectionLabel}>Theme</Text>
+            <View style={s.themeRow}>
+              {THEMES.map(t => (
+                <TouchableOpacity
+                  key={t.key}
+                  style={[s.themeChip, accountSettings.theme === t.key && s.themeChipActive]}
+                  onPress={() => { toggle(() => updateAccountSettings({ theme: t.key })); }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[s.themeChipText, accountSettings.theme === t.key && s.themeChipTextActive]}>
+                    {t.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
-                  <Text style={s.sectionLabel}>Theme</Text>
-                  <View style={s.themeRow}>
-                    {THEMES.map(t => (
-                      <TouchableOpacity
-                        key={t.key}
-                        style={[s.themeChip, accountSettings.theme === t.key && s.themeChipActive]}
-                        onPress={() => { toggle(() => updateAccountSettings({ theme: t.key })); }}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={[s.themeChipText, accountSettings.theme === t.key && s.themeChipTextActive]}>
-                          {t.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+            <FontSizeBar
+              label="Arabic Font Size"
+              value={arabicSize}
+              onChange={(v) => updateAccountSettings({ fontSize: v })}
+              min={20}
+              max={48}
+              sample="بِسْمِ"
+              sampleStyle={s.fontSizeArabic}
+            />
 
-                  <FontSizeBar
-                    label="Arabic Font Size"
-                    value={arabicSize}
-                    onChange={(v) => updateAccountSettings({ fontSize: v })}
-                    min={20}
-                    max={48}
-                    sample="بِسْمِ"
-                    sampleStyle={s.fontSizeArabic}
-                  />
+            <FontSizeBar
+              label="Romanization Font Size"
+              value={romanSize}
+              onChange={(v) => updateAccountSettings({ romanFontSize: v })}
+              min={10}
+              max={24}
+              sample="Bismillah"
+              sampleStyle={s.fontSizeRoman}
+            />
 
-                  <FontSizeBar
-                    label="Romanization Font Size"
-                    value={romanSize}
-                    onChange={(v) => updateAccountSettings({ romanFontSize: v })}
-                    min={10}
-                    max={24}
-                    sample="Bismillah"
-                    sampleStyle={s.fontSizeRoman}
-                  />
-
-                  <Text style={s.sectionLabel}>Reciter</Text>
-                  <TouchableOpacity
-                    style={s.reciterRow}
-                    onPress={() => setReciterSheetVisible(true)}
-                    activeOpacity={0.75}
-                  >
-                    <View style={s.reciterAvatar}>
-                      <Ionicons name="mic" size={20} color={colors.foreground} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.reciterName}>{currentReciter?.name}</Text>
-                      <Text style={s.reciterStyle}>{currentReciter?.style}</Text>
-                    </View>
-                    <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-                  </TouchableOpacity>
-
-                  <Text style={s.sectionLabel}>Auto-pause Timer</Text>
-                  <View style={s.autoPauseRow}>
-                    {[
-                      { mins: null, label: "Off" },
-                      { mins: 5, label: "5m" },
-                      { mins: 15, label: "15m" },
-                      { mins: 30, label: "30m" },
-                      { mins: 60, label: "1h" },
-                    ].map((opt) => {
-                      const active = settings.autoPauseMinutes === opt.mins;
-                      return (
-                        <TouchableOpacity
-                          key={opt.label}
-                          style={[s.autoPauseChip, active && s.autoPauseChipActive]}
-                          activeOpacity={0.8}
-                          onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            updateSettings({ autoPauseMinutes: opt.mins });
-                          }}
-                        >
-                          <Text style={[s.autoPauseChipText, active && s.autoPauseChipTextActive]}>
-                            {opt.label}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                  <Text style={s.autoPauseHint}>Audio will automatically pause after the selected duration.</Text>
-                </ScrollView>
+            <Text style={s.sectionLabel}>Reciter</Text>
+            <TouchableOpacity
+              style={s.reciterRow}
+              onPress={() => setReciterSheetVisible(true)}
+              activeOpacity={0.75}
+            >
+              <View style={s.reciterAvatar}>
+                <Ionicons name="mic" size={20} color={colors.foreground} />
               </View>
-            </TouchableWithoutFeedback>
+              <View style={{ flex: 1 }}>
+                <Text style={s.reciterName}>{currentReciter?.name}</Text>
+                <Text style={s.reciterStyle}>{currentReciter?.style}</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+            </TouchableOpacity>
+
+            <Text style={s.sectionLabel}>Auto-pause Timer</Text>
+            <View style={s.autoPauseRow}>
+              {[
+                { mins: null, label: "Off" },
+                { mins: 5, label: "5m" },
+                { mins: 15, label: "15m" },
+                { mins: 30, label: "30m" },
+                { mins: 60, label: "1h" },
+              ].map((opt) => {
+                const active = settings.autoPauseMinutes === opt.mins;
+                return (
+                  <TouchableOpacity
+                    key={opt.label}
+                    style={[s.autoPauseChip, active && s.autoPauseChipActive]}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      updateSettings({ autoPauseMinutes: opt.mins });
+                    }}
+                  >
+                    <Text style={[s.autoPauseChipText, active && s.autoPauseChipTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={s.autoPauseHint}>Audio will automatically pause after the selected duration.</Text>
           </View>
-        </TouchableWithoutFeedback>
+        </FullScreenPage>
       </Modal>
 
       <ReciterSheet
@@ -253,21 +226,7 @@ export function SettingsSheet({ visible, onClose }: Props) {
 
 const makeStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.35)", justifyContent: "flex-end" },
-    sheet: {
-      backgroundColor: colors.background,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      paddingHorizontal: 20,
-      paddingTop: 12,
-      paddingBottom: 40,
-      maxHeight: "85%",
-    },
-    handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: 16 },
-    sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-    title: { fontSize: 17, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
-    closeBtn: { padding: 4 },
-    scrollContent: { gap: 4, paddingBottom: 20 },
+    scrollContent: { paddingHorizontal: 20, gap: 4 },
     sectionLabel: {
       fontSize: 11,
       fontWeight: "700",
@@ -349,20 +308,6 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
 
 const makeRsStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
-    sheet: {
-      backgroundColor: colors.background,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 32,
-      height: "75%",
-    },
-    handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: 16 },
-    header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12, paddingHorizontal: 4 },
-    title: { fontSize: 17, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
-    closeBtn: { padding: 4 },
     row: {
       flexDirection: "row",
       alignItems: "center",

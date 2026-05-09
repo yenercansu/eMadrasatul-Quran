@@ -213,6 +213,7 @@ const AYAH_PAGE_SIZE = 10;
 
 function AyahListView({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: string) => void }) {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const [page, setPage] = useState(0);
 
   useEffect(() => { setPage(0); }, [ayahs.length]);
@@ -223,23 +224,11 @@ function AyahListView({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: 
     [ayahs, page]
   );
 
-  const footer = (
-    <View style={{ gap: 8, marginTop: 4 }}>
-      {ayahs.length > 0 && (
-        <Pagination
-          page={page}
-          totalPages={totalPages}
-          totalItems={ayahs.length}
-          itemLabel="ayah"
-          onPrev={() => setPage(p => Math.max(0, p - 1))}
-          onNext={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-        />
-      )}
-      <InfoBox
-        title="Save words as you read"
-        description="Tap any word in the Quran reader to save it here for review."
-      />
-    </View>
+  const infoBoxFooter = (
+    <InfoBox
+      title="Save words as you read"
+      description="Tap any word in the Quran reader to save it here for review."
+    />
   );
 
   const hint = (
@@ -250,29 +239,50 @@ function AyahListView({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: 
 
   if (ayahs.length === 0) {
     return (
-      <ScrollView contentContainerStyle={listViewStyles.emptyContent} showsVerticalScrollIndicator={false}>
-        {hint}
-        <View style={listViewStyles.empty}>
-          <Text style={[listViewStyles.emptyTitle, { color: colors.foreground }]}>No saved ayahs</Text>
-          <Text style={[listViewStyles.emptySubtitle, { color: colors.mutedForeground }]}>
-            Swipe right on any ayah while reading to save it here
-          </Text>
-        </View>
-        {footer}
-      </ScrollView>
+      <View style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={listViewStyles.emptyContent} showsVerticalScrollIndicator={false}>
+          {hint}
+          <View style={listViewStyles.empty}>
+            <Text style={[listViewStyles.emptyTitle, { color: colors.foreground }]}>No saved ayahs</Text>
+            <Text style={[listViewStyles.emptySubtitle, { color: colors.mutedForeground }]}>
+              Swipe right on any ayah while reading to save it here
+            </Text>
+          </View>
+          {infoBoxFooter}
+        </ScrollView>
+      </View>
     );
   }
 
   return (
-    <FlatList
-      data={pagedAyahs}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item }) => <AyahCard ayah={item} onRemove={onRemove} isTop={true} />}
-      contentContainerStyle={listViewStyles.listContent}
-      showsVerticalScrollIndicator={false}
-      ListHeaderComponent={hint}
-      ListFooterComponent={footer}
-    />
+    <View style={{ flex: 1 }}>
+      <FlatList
+        data={pagedAyahs}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => <AyahCard ayah={item} onRemove={onRemove} isTop={true} />}
+        contentContainerStyle={listViewStyles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={hint}
+        ListFooterComponent={infoBoxFooter}
+      />
+      <View style={{
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        paddingBottom: insets.bottom + 8,
+        backgroundColor: colors.background,
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
+      }}>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={ayahs.length}
+          itemLabel="ayah"
+          onPrev={() => setPage(p => Math.max(0, p - 1))}
+          onNext={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+        />
+      </View>
+    </View>
   );
 }
 
@@ -601,69 +611,83 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
         <AyahListView ayahs={savedAyahs} onRemove={removeAyah} />
 
       ) : showSurahList ? (
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={wvs.surahListContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {surahGroups.length === 0 ? (
-            <>
-              <View style={wvs.empty}>
-                <Text style={[wvs.emptyTitle, { color: colors.foreground }]}>No words saved yet</Text>
-                <Text style={[wvs.emptySubtitle, { color: colors.mutedForeground }]}>
-                  Save words while reading to organize them by surah
-                </Text>
-              </View>
-              {ctaCard}
-            </>
-          ) : (
-            <>
-              {(() => {
-                const byJuz: { juz: number; groups: typeof surahGroups }[] = [];
-                for (const g of pagedSurahGroups) {
-                  const last = byJuz[byJuz.length - 1];
-                  if (!last || last.juz !== g.juz) byJuz.push({ juz: g.juz, groups: [g] });
-                  else last.groups.push(g);
-                }
-                return byJuz.map(juzGroup => (
-                  <View key={juzGroup.juz}>
-                    <Text style={[wvs.juzHeader, { color: colors.mutedForeground }]}>
-                      JUZ {juzGroup.juz}
-                    </Text>
-                    {juzGroup.groups.map(item => {
-                      const origin = MEDINAN_SURAHS_LIB.has(item.surahNumber) ? "Medinan" : "Meccan";
-                      const progress = Math.min(1, item.wordCount / item.ayahCount);
-                      return (
-                        <TouchableOpacity
-                          key={item.surahNumber}
-                          style={[wvs.surahCard, { backgroundColor: colors.appLighterBg, borderColor: colors.appDarkerGray }]}
-                          onPress={() => setSelectedSurahNum(item.surahNumber)}
-                          activeOpacity={0.8}
-                        >
-                          <View style={[wvs.surahBadge, { borderColor: colors.border }]}>
-                            <Text style={[wvs.surahBadgeNum, { color: colors.mutedForeground }]}>
-                              {item.surahNumber}
-                            </Text>
-                          </View>
-                          <View style={wvs.surahCardInfo}>
-                            <Text style={[wvs.surahCardName, { color: colors.foreground }]}>{item.surahName}</Text>
-                            <Text style={[wvs.surahCardMeta, { color: colors.mutedForeground }]}>
-                              {item.wordCount} word{item.wordCount !== 1 ? "s" : ""} saved · {origin}
-                            </Text>
-                            <View style={[wvs.progressTrack, { backgroundColor: colors.border }]}>
-                              <View style={[wvs.progressFill, { width: `${progress * 100}%` as any, backgroundColor: colors.foreground }]} />
+        <View style={{ flex: 1 }}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={wvs.surahListContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {surahGroups.length === 0 ? (
+              <>
+                <View style={wvs.empty}>
+                  <Text style={[wvs.emptyTitle, { color: colors.foreground }]}>No words saved yet</Text>
+                  <Text style={[wvs.emptySubtitle, { color: colors.mutedForeground }]}>
+                    Save words while reading to organize them by surah
+                  </Text>
+                </View>
+                {ctaCard}
+              </>
+            ) : (
+              <>
+                {(() => {
+                  const byJuz: { juz: number; groups: typeof surahGroups }[] = [];
+                  for (const g of pagedSurahGroups) {
+                    const last = byJuz[byJuz.length - 1];
+                    if (!last || last.juz !== g.juz) byJuz.push({ juz: g.juz, groups: [g] });
+                    else last.groups.push(g);
+                  }
+                  return byJuz.map(juzGroup => (
+                    <View key={juzGroup.juz}>
+                      <Text style={[wvs.juzHeader, { color: colors.mutedForeground }]}>
+                        JUZ {juzGroup.juz}
+                      </Text>
+                      {juzGroup.groups.map(item => {
+                        const origin = MEDINAN_SURAHS_LIB.has(item.surahNumber) ? "Medinan" : "Meccan";
+                        const progress = Math.min(1, item.wordCount / item.ayahCount);
+                        return (
+                          <TouchableOpacity
+                            key={item.surahNumber}
+                            style={[wvs.surahCard, { backgroundColor: colors.appLighterBg, borderColor: colors.appDarkerGray }]}
+                            onPress={() => setSelectedSurahNum(item.surahNumber)}
+                            activeOpacity={0.8}
+                          >
+                            <View style={[wvs.surahBadge, { borderColor: colors.border }]}>
+                              <Text style={[wvs.surahBadgeNum, { color: colors.mutedForeground }]}>
+                                {item.surahNumber}
+                              </Text>
                             </View>
-                          </View>
-                          <Text style={[wvs.surahArabicName, { color: colors.mutedForeground }]}>
-                            {item.arabicName}
-                          </Text>
-                          <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                ));
-              })()}
+                            <View style={wvs.surahCardInfo}>
+                              <Text style={[wvs.surahCardName, { color: colors.foreground }]}>{item.surahName}</Text>
+                              <Text style={[wvs.surahCardMeta, { color: colors.mutedForeground }]}>
+                                {item.wordCount} word{item.wordCount !== 1 ? "s" : ""} saved · {origin}
+                              </Text>
+                              <View style={[wvs.progressTrack, { backgroundColor: colors.border }]}>
+                                <View style={[wvs.progressFill, { width: `${progress * 100}%` as any, backgroundColor: colors.foreground }]} />
+                              </View>
+                            </View>
+                            <Text style={[wvs.surahArabicName, { color: colors.mutedForeground }]}>
+                              {item.arabicName}
+                            </Text>
+                            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  ));
+                })()}
+                {ctaCard}
+              </>
+            )}
+          </ScrollView>
+          {surahGroups.length > 0 && (
+            <View style={{
+              paddingHorizontal: 16,
+              paddingTop: 12,
+              paddingBottom: insets.bottom + 8,
+              backgroundColor: colors.background,
+              borderTopWidth: 1,
+              borderTopColor: colors.border,
+            }}>
               <Pagination
                 page={surahListPage}
                 totalPages={totalSurahListPages}
@@ -672,10 +696,9 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
                 onPrev={() => setSurahListPage(p => Math.max(0, p - 1))}
                 onNext={() => setSurahListPage(p => Math.min(totalSurahListPages - 1, p + 1))}
               />
-              {ctaCard}
-            </>
+            </View>
           )}
-        </ScrollView>
+        </View>
 
       ) : showDrillDown ? (
         <FlatList

@@ -1426,12 +1426,17 @@ const [settingsVisible, setSettingsVisible] = useState(false);
    const handleMeaningTranslationToggle = useCallback((id: string) => {
      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
      setSelectedTranslations(prev => {
-       const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+       let next: string[];
+       if (settings.mushafMode) {
+         next = prev.includes(id) ? [] : [id];
+       } else {
+         next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+       }
        updateSettings({ showTranslation: next.length > 0 });
        AsyncStorage.setItem("quran_selected_translations", JSON.stringify(next)).catch(() => {});
        return next;
      });
-   }, [updateSettings]);
+   }, [settings.mushafMode, updateSettings]);
 
   const totalPages = arabic ? Math.ceil(arabic.ayahs.length / AYAHS_PER_PAGE) : 1;
   const pageAyahs = useMemo(() => {
