@@ -16,6 +16,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { SurahCard } from "@/components/SurahCard";
+import { PageTitle } from "@/components/Typography";
 import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
 import { useQuran } from "@/contexts/QuranContext";
 
@@ -134,7 +135,7 @@ export default function QuranScreen() {
   return (
     <View style={s.container}>
       <View style={[s.header, { paddingTop: topPad + 8 }]}>
-        <Text style={s.title}>Al-Quran</Text>
+        <PageTitle>Al-Quran</PageTitle>
         <Text style={s.subtitle}>
           114 Surahs — swipe ← to save/unsave
         </Text>
@@ -216,12 +217,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: 16,
       paddingBottom: 12,
       // no border — Figma shows no divider between header and list
-    },
-    title: {
-      fontSize: 20,                                                  // text-xl
-      fontWeight: "800",                                             // font-extrabold
-      color: colors.appText,                                         // zinc-900
-      fontFamily: "Inter_700Bold",
     },
     subtitle: {
       fontSize: 14,                                                  // text-sm

@@ -21,6 +21,7 @@ import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
 import { getJuzAyahs, SURAH_DATA } from "@/constants/surahData";
 import { GoalSetupModal } from "@/components/GoalSetupModal";
 import { EditDailyGoalModal } from "@/components/EditDailyGoalModal";
+import { SubSectionTitle } from "@/components/Typography";
 
 const TOTAL_AYAHS = 6236;
 
@@ -485,7 +486,7 @@ export default function HomeScreen() {
           {recentProgress.length > 0 && (
             <View style={s.listSection}>
               <View style={s.listSectionHeader}>
-                <Text style={s.listSectionTitle}>Last Visited</Text>
+                <SubSectionTitle>Last Visited</SubSectionTitle>
                 <TouchableOpacity activeOpacity={0.7}>
                   <Text style={s.viewAllText}>View All</Text>
                 </TouchableOpacity>
@@ -521,53 +522,51 @@ export default function HomeScreen() {
 
           {/* ── Saved Surahs ──────────────────────────────────────────────── */}
           {savedSurahsMeta.length > 0 && (
-            <View style={s.listSection}>
+            <View style={s.surahSection}>
               <View style={s.listSectionHeader}>
-                <Text style={s.listSectionTitle}>Saved Surahs</Text>
+                <SubSectionTitle>Saved Surahs</SubSectionTitle>
                 <TouchableOpacity activeOpacity={0.7} onPress={() => router.push("/saved-surahs")}>
                   <Text style={s.viewAllText}>View All</Text>
                 </TouchableOpacity>
               </View>
-              <View style={s.savedCard}>
-                {savedSurahsMeta.slice(0, 3).map((meta, i) => {
-                  const apiSurah = surahs.find(s => s.number === meta.number);
-                  return (
-                    <TouchableOpacity
-                      key={meta.number}
-                      style={[s.savedRow, i === savedSurahsMeta.slice(0, 3).length - 1 && savedSurahsMeta.length <= 3 && s.savedRowLast]}
-                      onPress={() => router.push(`/surah/${meta.number}`)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={s.savedInfo}>
-                        <Text style={s.savedName}>{meta.englishName}</Text>
-                        <Text style={s.savedMeta}>
-                          {meta.ayahCount} Ayahs{apiSurah?.revelationType ? ` • ${apiSurah.revelationType}` : ""}
-                        </Text>
-                      </View>
-                      <Text style={s.savedArabic}>{meta.name}</Text>
-                       <Ionicons name="bookmark" size={18} color={colors.appBlack} />
-                    </TouchableOpacity>
-                  );
-                })}
-                {savedSurahsMeta.length > 3 && (
+              {savedSurahsMeta.slice(0, 3).map((meta, i) => {
+                const apiSurah = surahs.find(s => s.number === meta.number);
+                return (
                   <TouchableOpacity
-                    style={[s.savedRow, s.savedRowLast]}
-                    onPress={() => router.push("/saved-surahs")}
-                    activeOpacity={0.7}
+                    key={meta.number}
+                    style={[s.surahRow, i === savedSurahsMeta.slice(0, 3).length - 1 && savedSurahsMeta.length <= 3 && s.surahRowLast]}
+                    onPress={() => router.push(`/surah/${meta.number}`)}
+                    activeOpacity={0.65}
                   >
-                    <Text style={[s.savedMeta, { flex: 1 }]}>
-                      {savedSurahsMeta.length - 3} more saved surahs
-                    </Text>
-                    <Feather name="chevron-right" size={16} color={colors.appLightText} />
+                    <View style={s.surahInfo}>
+                      <Text style={s.surahName}>{meta.englishName}</Text>
+                      <Text style={s.surahMeta}>
+                        {meta.ayahCount} Ayahs{apiSurah?.revelationType ? ` • ${apiSurah.revelationType}` : ""}
+                      </Text>
+                    </View>
+                    <Text style={s.surahArabic}>{meta.name}</Text>
+                    <Ionicons name="bookmark" size={18} color={colors.appBlack} />
                   </TouchableOpacity>
-                )}
-              </View>
+                );
+              })}
+              {savedSurahsMeta.length > 3 && (
+                <TouchableOpacity
+                  style={[s.surahRow, s.surahRowLast]}
+                  onPress={() => router.push("/saved-surahs")}
+                  activeOpacity={0.65}
+                >
+                  <Text style={[s.surahMeta, { flex: 1 }]}>
+                    {savedSurahsMeta.length - 3} more saved surahs
+                  </Text>
+                  <Feather name="chevron-right" size={16} color={colors.appLightText} />
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
           {/* ── All Surahs by Juz ─────────────────────────────────────────── */}
           <View style={s.surahSection}>
-            <Text style={s.sectionTitle}>All Surahs by Juz</Text>
+            <SubSectionTitle style={{ paddingHorizontal: 20, paddingBottom: 10 }}>All Surahs by Juz</SubSectionTitle>
             {loading ? (
               <ActivityIndicator color={colors.appLightText} style={{ paddingVertical: 28 }} />
             ) : (
@@ -981,34 +980,24 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     goalBtnText: { fontSize: 16, fontWeight: "700", color: colors.appWhite, fontFamily: "Inter_700Bold", letterSpacing: 0.2 },
     // ── List Sections (Last Visited / Saved Surahs) ────────────────────────────
-    listSection: { marginTop: 28, paddingHorizontal: 16 },
+    listSection: { marginTop: 28 },
     listSectionHeader: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       marginBottom: 14,
-    },
-    listSectionTitle: {
-      fontSize: 18,
-      fontWeight: "700",
-      color: colors.appBlack,
-      fontFamily: "Inter_700Bold",
-      letterSpacing: -0.3,
+      paddingHorizontal: 20,
     },
     viewAllText: { fontSize: 13, color: colors.appLightText, fontFamily: "Inter_400Regular" },
-    lvScroll: { gap: 10, paddingRight: 16, paddingLeft: 2 },
+    lvScroll: { gap: 10, paddingRight: 20, paddingLeft: 20 },
     lvCard: {
       width: 136,
-      backgroundColor: colors.appWhite,
-      borderRadius: 16,
+      backgroundColor: colors.appLighterBg,
+      borderRadius: 10,
       padding: 14,
-      borderWidth: 0.5,
-      borderColor: colors.appBorderLighter,
-      shadowColor: colors.appBlack,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
-      shadowRadius: 5,
-      elevation: 1,
+      borderWidth: 1,
+      borderColor: colors.appDarkerGray,
+      ...colors.shadows.warmWidgetLift,
     },
     lvArabic: {
       fontSize: 26,
@@ -1040,56 +1029,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     lvProgressFill: { height: "100%" as any, backgroundColor: colors.appBlack, borderRadius: 1 },
 
-    // ── Saved Surahs ───────────────────────────────────────────────────────────
-    savedCard: {
-      backgroundColor: colors.appWhite,
-      borderRadius: 16,
-      overflow: "hidden",
-      borderWidth: 0.5,
-      borderColor: colors.appBorderLighter,
-      shadowColor: colors.appBlack,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
-      shadowRadius: 5,
-      elevation: 1,
-    },
-    savedRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.appBorderLighter,
-      gap: 12,
-    },
-    savedRowLast: { borderBottomWidth: 0 },
-    savedNumBubble: {
-      width: 36, height: 36, borderRadius: 18,
-      backgroundColor: colors.appLightGray,
-      alignItems: "center", justifyContent: "center",
-    },
-    savedNumText: { fontSize: 13, fontWeight: "700", color: colors.appBlack, fontFamily: "Inter_700Bold" },
-    savedInfo: { flex: 1 },
-    savedName: {
-      fontSize: 15,
-      fontWeight: "600",
-      color: colors.appBlack,
-      fontFamily: "Inter_600SemiBold",
-      marginBottom: 2,
-    },
-    savedArabic: { fontSize: 17, color: colors.appBlack },
-    savedMeta: { fontSize: 11, color: colors.appLightText, fontFamily: "Inter_400Regular" },
-
     // ── All Surahs by Juz ──────────────────────────────────────────────────────
     surahSection: { marginTop: 28 },
-    sectionTitle: {
-      fontSize: 18,
-      fontWeight: "700",
-      color: colors.appBlack,
-      fontFamily: "Inter_700Bold",
-      paddingHorizontal: 20,
-      paddingBottom: 10,
-    },
     juzHeader: {
       backgroundColor: colors.appStone,
       paddingHorizontal: 20,

@@ -18,6 +18,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useQuran, type SavedWord, type SavedAyah } from "@/contexts/QuranContext";
+import { PageTitle } from "@/components/Typography";
 import { SURAH_DATA } from "@/constants/surahData";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -857,7 +858,7 @@ export default function LibraryScreen() {
       {/* ── Header + Streak ────────────────────────────────────────────── */}
       <View style={s.headerSection}>
         <View style={s.titleBlock}>
-          <Text style={s.pageTitle}>Madrasa</Text>
+          <PageTitle>Madrasa</PageTitle>
           <Text style={s.pageSubtitle}>Qur'an Learning Hub</Text>
         </View>
         <View style={s.streakCard}>
@@ -983,12 +984,6 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
     },
     titleBlock: {
       gap: 2,
-    },
-    pageTitle: {
-      fontSize: 28,
-      fontWeight: "800",
-      color: colors.appText,
-      fontFamily: "Inter_700Bold",
     },
     pageSubtitle: {
       fontSize: 14,

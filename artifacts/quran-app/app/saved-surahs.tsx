@@ -1,11 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-} from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -13,6 +7,7 @@ import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
 import { SURAH_DATA } from "@/constants/surahData";
 import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
+import { SurahListRow } from "@/components/SurahListRow";
 
 export default function SavedSurahsScreen() {
   const colors = useColors();
@@ -58,22 +53,16 @@ export default function SavedSurahsScreen() {
         }
         renderItem={({ item, index }) => {
           const apiSurah = apiSurahs.find(a => a.number === item.number);
-          const isLast = index === savedSurahsMeta.length - 1;
           return (
-            <TouchableOpacity
-              style={[s.savedRow, isLast && s.savedRowLast]}
+            <SurahListRow
+              englishName={item.englishName}
+              arabicName={item.name}
+              ayahCount={item.ayahCount}
+              revelationType={apiSurah?.revelationType}
+              isLast={index === savedSurahsMeta.length - 1}
               onPress={() => router.push(`/surah/${item.number}`)}
-              activeOpacity={0.7}
-            >
-              <View style={s.savedInfo}>
-                <Text style={s.savedName}>{item.englishName}</Text>
-                <Text style={s.savedMeta}>
-                  {item.ayahCount} Ayahs{apiSurah?.revelationType ? ` • ${apiSurah.revelationType}` : ""}
-                </Text>
-              </View>
-              <Text style={s.savedArabic}>{item.name}</Text>
-              <Ionicons name="bookmark" size={18} color={colors.appBlack} />
-            </TouchableOpacity>
+              right={<Ionicons name="bookmark" size={18} color={colors.appBlack} />}
+            />
           );
         }}
       />
@@ -105,46 +94,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       color: colors.appBlack,
       fontFamily: "Inter_700Bold",
     },
-    listContent: {
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 120,
-    },
-    savedCard: {
-      backgroundColor: colors.appWhite,
-      borderRadius: 16,
-      overflow: "hidden",
-      borderWidth: 0.5,
-      borderColor: colors.appBorderLighter,
-      shadowColor: colors.appBlack,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
-      shadowRadius: 5,
-      elevation: 1,
-    },
-    savedRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.appBorderLighter,
-      gap: 12,
-      backgroundColor: colors.appWhite,
-      borderRadius: 12,
-      marginBottom: 8,
-    },
-    savedRowLast: { marginBottom: 0 },
-    savedInfo: { flex: 1 },
-    savedName: {
-      fontSize: 15,
-      fontWeight: "600",
-      color: colors.appBlack,
-      fontFamily: "Inter_600SemiBold",
-      marginBottom: 2,
-    },
-    savedArabic: { fontSize: 17, color: colors.appBlack },
-    savedMeta: { fontSize: 11, color: colors.appLightText, fontFamily: "Inter_400Regular" },
+    listContent: { paddingBottom: 120 },
     empty: { alignItems: "center", paddingVertical: 60, gap: 8 },
     emptyText: { fontSize: 16, color: colors.appBorderMid, fontFamily: "Inter_400Regular" },
     emptyHint: { fontSize: 13, color: colors.appBorderMid, fontFamily: "Inter_400Regular" },
