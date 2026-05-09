@@ -450,10 +450,14 @@ export default function HomeScreen() {
                       <View style={s.streakRow}>
                          <Feather name="zap" size={13} color={colors.appGold} />
                         <Text style={s.streakText}>{streakDays} Day Streak</Text>
-                        <View style={s.detailsBtn}>
+                        <TouchableOpacity
+                          style={s.detailsBtn}
+                          onPress={() => router.push("/streak-calendar")}
+                          activeOpacity={0.7}
+                        >
                           <Text style={s.detailsLink}>DETAILS</Text>
                            <Feather name="chevron-right" size={11} color={colors.appLightText} />
-                        </View>
+                        </TouchableOpacity>
                       </View>
                     </View>
                   </View>

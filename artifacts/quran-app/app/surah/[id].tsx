@@ -252,7 +252,7 @@ function SwipeableAyahCard({
             </View>
             {showMemorizedToggle && (
               <TouchableOpacity
-                style={[cs.memorizedRadio, isMemorized && cs.memorizedRadioChecked]}
+                style={cs.memorizedCheckBtn}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   onToggleMemorized(ayah);
@@ -262,7 +262,11 @@ function SwipeableAyahCard({
                 accessibilityState={{ checked: isMemorized }}
                 accessibilityLabel={`Mark ayah ${ayah.numberInSurah} memorized`}
               >
-                {isMemorized && <View style={cs.memorizedRadioDot} />}
+                <Ionicons
+                  name={isMemorized ? "checkmark-circle" : "checkmark-circle-outline"}
+                  size={24}
+                  color={isMemorized ? "#1A1A1A" : "#B8B1A8"}
+                />
               </TouchableOpacity>
             )}
           </View>
@@ -379,24 +383,11 @@ const cs = StyleSheet.create({
     paddingVertical: 3,
   },
   numText: { fontSize: 11, fontWeight: "700", color: "#6B6B6B", fontFamily: "Inter_700Bold" },
-  memorizedRadio: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#B8B1A8",
+  memorizedCheckBtn: {
+    width: 32,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-  },
-  memorizedRadioChecked: {
-    borderColor: "#16A34A",
-  },
-  memorizedRadioDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#16A34A",
   },
   basmala: {
     fontSize: 22,
