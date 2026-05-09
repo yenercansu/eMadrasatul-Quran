@@ -982,12 +982,8 @@ function MeaningPanel({ visible, onClose, selected, onToggle, onPlay }: {
 }) {
   const insets = useSafeAreaInsets();
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={mp.backdrop} />
-      </TouchableWithoutFeedback>
-      <View style={[mp.sheet, { paddingBottom: insets.bottom + 24 }]}>
-        <View style={mp.handle} />
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={[mp.container, { paddingTop: insets.top }]}>
         <View style={mp.header}>
           <TouchableOpacity onPress={onPlay} style={mp.iconBtn} activeOpacity={0.7}>
             <Ionicons name="play" size={22} color="#1A1A1A" />
@@ -1024,13 +1020,11 @@ function MeaningPanel({ visible, onClose, selected, onToggle, onPlay }: {
 }
 
 const mp = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.35)" },
-  sheet: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20 },
-  handle: { width: 40, height: 4, backgroundColor: "#DEDEDE", borderRadius: 2, alignSelf: "center", marginBottom: 12 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
-  iconBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 12, borderBottomWidth: 1, borderBottomColor: "#F0F0F0", marginBottom: 8 },
+  iconBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   title: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, marginHorizontal: 20, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
   rowLabel: { fontSize: 15, fontWeight: "500", color: "#1A1A1A", fontFamily: "Inter_400Regular" },
 });
 
