@@ -970,9 +970,6 @@ export default function MemorizationQuizScreen() {
               onPress={() => chooseMode(item.mode)}
               activeOpacity={0.85}
             >
-              <View style={[s.modeBadge, { backgroundColor: colors.foreground }]}>
-                <Text style={[s.modeBadgeText, { color: colors.primaryForeground }]}>{item.num}</Text>
-              </View>
               <View style={s.modeInfo2}>
                 <Text style={[s.modeName2, { color: colors.foreground }]}>{item.title}</Text>
                 <Text style={[s.modeDesc2, { color: colors.mutedForeground }]}>{item.desc}</Text>
