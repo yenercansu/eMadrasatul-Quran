@@ -16,6 +16,7 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
+import { Tag } from "@/components/Tag";
 import { SurahCard } from "@/components/SurahCard";
 import { PageTitle } from "@/components/Typography";
 import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
@@ -163,16 +164,7 @@ export default function QuranScreen() {
         </View>
         <View style={s.filterRow}>
           {FILTERS.map(({ key, label }) => (
-            <TouchableOpacity
-              key={key}
-              style={[s.filterChip, filterType === key && s.filterChipActive]}
-              onPress={() => setFilterType(key)}
-              activeOpacity={0.8}
-            >
-              <Text style={[s.filterText, filterType === key && s.filterTextActive]}>
-                {label}
-              </Text>
-            </TouchableOpacity>
+            <Tag key={key} label={label} selected={filterType === key} onPress={() => setFilterType(key)} />
           ))}
         </View>
       </View>
@@ -245,28 +237,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Inter_400Regular",
     },
     filterRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-    filterChip: {
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderRadius: colors.borders.full,                             // rounded-full
-      borderWidth: 1,
-      borderColor: colors.appBorderMid,                             // stone-400
-      backgroundColor: colors.appLighterBg,                         // matches screen bg
-    },
-    filterChipActive: {
-      borderColor: colors.appText,                                   // stone-900
-      backgroundColor: colors.appText,
-    },
-    filterText: {
-      fontSize: 14,                                                  // text-sm
-      fontWeight: "400",                                             // font-normal
-      color: colors.appText,                                         // stone-900
-      fontFamily: "Inter_400Regular",
-    },
-    filterTextActive: {
-      color: colors.appWhite,
-      fontFamily: "Inter_400Regular",
-    },
     swipeAction: {
       width: 90,
       justifyContent: "center",

@@ -16,6 +16,7 @@ import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
+import { BackButton } from "@/components/BackButton";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   const colors = useColors();
@@ -156,9 +157,7 @@ export default function SettingsScreen() {
   return (
     <View style={s.root}>
       <View style={[s.header, { paddingTop: topPad + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Feather name="arrow-left" size={22} color={colors.appText} />
-        </TouchableOpacity>
+        <BackButton onPress={() => router.back()} />
         <Text style={s.headerTitle}>Settings</Text>
         <View style={{ width: 38 }} />
       </View>
@@ -308,14 +307,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
       gap: 10,
-    },
-    backBtn: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: colors.secondary,
-      alignItems: "center",
-      justifyContent: "center",
     },
     headerTitle: { flex: 1, fontSize: 20, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold", textAlign: "center" },
     scroll: { flex: 1 },

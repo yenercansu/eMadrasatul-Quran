@@ -17,6 +17,8 @@ import { useColors } from "@/hooks/useColors";
 import { useQuran, type SavedAyah } from "@/contexts/QuranContext";
 import { SURAH_DATA } from "@/constants/surahData";
 import { SwipeableRow } from "@/components/SwipeableRow";
+import { Pagination } from "@/components/Pagination";
+import { Tag } from "@/components/Tag";
 
 const DEFAULT_SURAHS: { number: number; name: string; englishName: string; ayahs: string[]; translations: string[] }[] = [
   {
@@ -97,6 +99,7 @@ const MEDINAN_SURAHS = new Set([
   2, 3, 4, 5, 8, 9, 13, 22, 24, 33, 47, 48, 49, 55, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 76, 98, 99, 110,
 ]);
 const SURAHS_PER_PAGE = 20;
+const AYAHS_PER_PAGE = 20;
 
 type QuizSurahFormat = typeof DEFAULT_SURAHS[0];
 
@@ -639,6 +642,7 @@ export default function MemorizationQuizScreen() {
   const [surahSearchQuery, setSurahSearchQuery] = useState("");
   const [ayahSearchQuery, setAyahSearchQuery] = useState("");
   const [surahPage, setSurahPage] = useState(0);
+  const [ayahPage, setAyahPage] = useState(0);
 
   useEffect(() => {
     setSelectedAyahIds(prev => {
@@ -737,16 +741,23 @@ export default function MemorizationQuizScreen() {
     return nums.size;
   }, [savedAyahs, selectedAyahIds, excludedAyahIds]);
 
+  const totalAyahPages = Math.max(1, Math.ceil(visibleAyahs.length / AYAHS_PER_PAGE));
+
+  const pagedVisibleAyahs = useMemo(() => {
+    const start = ayahPage * AYAHS_PER_PAGE;
+    return visibleAyahs.slice(start, start + AYAHS_PER_PAGE);
+  }, [visibleAyahs, ayahPage]);
+
   const ayahsByJuz = useMemo(() => {
     const result: { juz: number; ayahs: SavedAyah[] }[] = [];
-    for (const ayah of visibleAyahs) {
+    for (const ayah of pagedVisibleAyahs) {
       const juz = SURAH_DATA[ayah.surahNumber - 1]?.juz ?? 1;
       const last = result[result.length - 1];
       if (!last || last.juz !== juz) result.push({ juz, ayahs: [ayah] });
       else last.ayahs.push(ayah);
     }
     return result;
-  }, [visibleAyahs]);
+  }, [pagedVisibleAyahs]);
 
   const startQuiz = useCallback(() => {
     if (!mode) return;
@@ -878,7 +889,7 @@ export default function MemorizationQuizScreen() {
     const checked = selectedAyahIds.has(ayah.id);
     const excluded = excludedAyahIds.has(ayah.id);
     return (
-      <View key={ayah.id} style={[s.selectionAyahCard, excluded && s.selectionAyahCardExcluded]}>
+      <View key={ayah.id} style={[s.selectionAyahCard, colors.cardStyle, excluded && s.selectionAyahCardExcluded]}>
         <TouchableOpacity
           style={[s.checkbox, checked && s.checkboxActive]}
           onPress={() => toggleSelected(ayah.id)}
@@ -967,7 +978,7 @@ export default function MemorizationQuizScreen() {
           ].map(item => (
             <TouchableOpacity
               key={item.mode}
-              style={[s.modeCard2, { backgroundColor: colors.card, borderColor: colors.border }]}
+              style={[s.modeCard2, colors.cardStyle]}
               onPress={() => chooseMode(item.mode)}
               activeOpacity={0.85}
             >
@@ -995,7 +1006,7 @@ export default function MemorizationQuizScreen() {
                 <TouchableOpacity
                   key={item.key}
                   style={[s.segmentBtn, filterMode === item.key && s.segmentBtnActive]}
-                  onPress={() => { setFilterMode(item.key); setSelectedSurahNum(null); setSurahPage(0); setSurahSearchQuery(""); setAyahSearchQuery(""); }}
+                  onPress={() => { setFilterMode(item.key); setSelectedSurahNum(null); setSurahPage(0); setAyahPage(0); setSurahSearchQuery(""); setAyahSearchQuery(""); }}
                   activeOpacity={0.8}
                 >
                   <Text style={[s.segmentText, filterMode === item.key && s.segmentTextActive]}>{item.label}</Text>
@@ -1022,7 +1033,7 @@ export default function MemorizationQuizScreen() {
                   placeholder="Search ayahs..."
                   placeholderTextColor={colors.mutedForeground}
                   value={ayahSearchQuery}
-                  onChangeText={setAyahSearchQuery}
+                  onChangeText={text => { setAyahSearchQuery(text); setAyahPage(0); }}
                 />
               )}
               {(filterMode === "by-surah" ? surahSearchQuery : ayahSearchQuery) ? (
@@ -1040,14 +1051,12 @@ export default function MemorizationQuizScreen() {
           <View style={s.tagRow2}>
             <View style={s.tagChipsRow}>
               {([{ key: "all", label: "All" }, { key: "selected", label: "Selected" }, { key: "excluded", label: "Excluded" }] as const).map(item => (
-                <TouchableOpacity
+                <Tag
                   key={item.key}
-                  style={[s.tagChip2, tagFilter === item.key && s.tagChip2Active]}
-                  onPress={() => { setTagFilter(item.key); setSelectedSurahNum(null); setSurahPage(0); }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[s.tagText2, tagFilter === item.key && s.tagText2Active]}>{item.label}</Text>
-                </TouchableOpacity>
+                  label={item.label}
+                  selected={tagFilter === item.key}
+                  onPress={() => { setTagFilter(item.key); setSelectedSurahNum(null); setSurahPage(0); setAyahPage(0); }}
+                />
               ))}
             </View>
             <View style={s.tagActions}>
@@ -1086,7 +1095,7 @@ export default function MemorizationQuizScreen() {
                       return (
                         <TouchableOpacity
                           key={surah.number}
-                          style={[s.surahCard2, { backgroundColor: colors.card, borderColor: selected ? colors.foreground : colors.border }]}
+                          style={[s.surahCard2, colors.cardStyle, selected && { borderColor: colors.foreground }]}
                           onPress={() => { if (savedCount > 0) toggleSurah(surah.number); }}
                           activeOpacity={0.8}
                         >
@@ -1129,7 +1138,7 @@ export default function MemorizationQuizScreen() {
                         }}
                       >
                         <View
-                          style={[s.ayahCard2, { backgroundColor: colors.card, borderColor: checked ? colors.foreground : colors.border }]}
+                          style={[s.ayahCard2, colors.cardStyle, checked && { borderColor: colors.foreground }]}
                         >
                           <TouchableOpacity
                             style={[s.ayahBadge2, checked ? { backgroundColor: colors.foreground, borderColor: colors.foreground } : { borderColor: colors.border }]}
@@ -1166,26 +1175,24 @@ export default function MemorizationQuizScreen() {
                 : <Text style={[s.startStatText, { color: colors.mutedForeground }]}>from {selectedSurahCount} surah{selectedSurahCount !== 1 ? "s" : ""}</Text>
               }
             </View>
-            {filterMode === "by-surah" && (
-              <View style={s.paginationRow}>
-                <TouchableOpacity
-                  onPress={() => setSurahPage(p => Math.max(0, p - 1))}
-                  disabled={surahPage === 0}
-                  style={s.paginationBtn}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[s.paginationBtnText, { color: colors.foreground, opacity: surahPage === 0 ? 0.3 : 1 }]}>‹ Prev</Text>
-                </TouchableOpacity>
-                <Text style={[s.paginationLabel, { color: colors.mutedForeground }]}>Page {surahPage + 1} of {totalSurahPages} · {allFilteredSurahs.length} surahs</Text>
-                <TouchableOpacity
-                  onPress={() => setSurahPage(p => Math.min(totalSurahPages - 1, p + 1))}
-                  disabled={surahPage >= totalSurahPages - 1}
-                  style={s.paginationBtn}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[s.paginationBtnText, { color: colors.foreground, opacity: surahPage >= totalSurahPages - 1 ? 0.3 : 1 }]}>Next ›</Text>
-                </TouchableOpacity>
-              </View>
+            {filterMode === "by-surah" ? (
+              <Pagination
+                page={surahPage}
+                totalPages={totalSurahPages}
+                totalItems={allFilteredSurahs.length}
+                itemLabel="surah"
+                onPrev={() => setSurahPage(p => Math.max(0, p - 1))}
+                onNext={() => setSurahPage(p => Math.min(totalSurahPages - 1, p + 1))}
+              />
+            ) : (
+              <Pagination
+                page={ayahPage}
+                totalPages={totalAyahPages}
+                totalItems={visibleAyahs.length}
+                itemLabel="ayah"
+                onPrev={() => setAyahPage(p => Math.max(0, p - 1))}
+                onNext={() => setAyahPage(p => Math.min(totalAyahPages - 1, p + 1))}
+              />
             )}
             <TouchableOpacity
               style={s.startBtn2}
@@ -1293,10 +1300,6 @@ const pageStyles = StyleSheet.create({
   selectionAyahCard: {
     flexDirection: "row",
     gap: 10,
-    backgroundColor: "#FDFBF7",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E7E5DB",
     padding: 12,
     alignItems: "flex-start",
   },
@@ -1399,14 +1402,7 @@ const pageStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
-    borderRadius: 16,
-    borderWidth: 1,
     padding: 18,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
   },
   modeBadge: {
     width: 52,
@@ -1509,15 +1505,6 @@ const pageStyles = StyleSheet.create({
     paddingBottom: 10,
   },
   tagChipsRow: { flexDirection: "row", gap: 8 },
-  tagChip2: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 999,
-    backgroundColor: "transparent",
-  },
-  tagChip2Active: { backgroundColor: "#1A1A1A" },
-  tagText2: { fontSize: 13, color: "#A8A29E", fontFamily: "Inter_700Bold" },
-  tagText2Active: { color: "#FFFFFF" },
   tagActions: { flexDirection: "row", gap: 10, alignItems: "center" },
   tagActionText: { fontSize: 13, fontFamily: "Inter_600SemiBold", textDecorationLine: "underline" },
   swipeHint: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 6, marginTop: 4 },
@@ -1537,8 +1524,6 @@ const pageStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    borderRadius: 14,
-    borderWidth: 1,
     padding: 16,
     marginBottom: 8,
   },
@@ -1559,8 +1544,6 @@ const pageStyles = StyleSheet.create({
   ayahCard2: {
     flexDirection: "row",
     gap: 12,
-    borderRadius: 14,
-    borderWidth: 1,
     padding: 14,
     marginBottom: 8,
     alignItems: "flex-start",
@@ -1609,15 +1592,6 @@ const pageStyles = StyleSheet.create({
     alignItems: "center",
   },
   startStatText: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  paginationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 2,
-  },
-  paginationBtn: { paddingVertical: 4 },
-  paginationBtnText: { fontSize: 13, fontFamily: "Inter_700Bold" },
-  paginationLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
   startBtn2: {
     alignItems: "center",
     justifyContent: "center",

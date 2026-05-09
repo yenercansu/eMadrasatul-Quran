@@ -19,6 +19,9 @@ import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useQuran, type SavedWord, type SavedAyah } from "@/contexts/QuranContext";
 import { PageTitle } from "@/components/Typography";
+import { InfoBox } from "@/components/InfoBox";
+import { Tag } from "@/components/Tag";
+import { Pagination } from "@/components/Pagination";
 import { SURAH_DATA } from "@/constants/surahData";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -206,15 +209,36 @@ const cardStyles = (colors: ReturnType<typeof useColors>) =>
     swipeActionText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
   });
 
+const AYAH_PAGE_SIZE = 10;
+
 function AyahListView({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: string) => void }) {
   const colors = useColors();
+  const [page, setPage] = useState(0);
 
-  const ctaFooter = (
-    <View style={[listViewStyles.ctaCard, { backgroundColor: colors.appLighterBg, borderColor: colors.appDarkerGray }]}>
-      <Text style={[listViewStyles.ctaTitle, { color: colors.foreground }]}>Save words as you read</Text>
-      <Text style={[listViewStyles.ctaSubtitle, { color: colors.mutedForeground }]}>
-        Tap any word in the Quran reader to save it here for review.
-      </Text>
+  useEffect(() => { setPage(0); }, [ayahs.length]);
+
+  const totalPages = Math.max(1, Math.ceil(ayahs.length / AYAH_PAGE_SIZE));
+  const pagedAyahs = useMemo(
+    () => ayahs.slice(page * AYAH_PAGE_SIZE, (page + 1) * AYAH_PAGE_SIZE),
+    [ayahs, page]
+  );
+
+  const footer = (
+    <View style={{ gap: 8, marginTop: 4 }}>
+      {ayahs.length > 0 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={ayahs.length}
+          itemLabel="ayah"
+          onPrev={() => setPage(p => Math.max(0, p - 1))}
+          onNext={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+        />
+      )}
+      <InfoBox
+        title="Save words as you read"
+        description="Tap any word in the Quran reader to save it here for review."
+      />
     </View>
   );
 
@@ -234,20 +258,20 @@ function AyahListView({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: 
             Swipe right on any ayah while reading to save it here
           </Text>
         </View>
-        {ctaFooter}
+        {footer}
       </ScrollView>
     );
   }
 
   return (
     <FlatList
-      data={ayahs}
+      data={pagedAyahs}
       keyExtractor={(item) => item.id}
       renderItem={({ item }) => <AyahCard ayah={item} onRemove={onRemove} isTop={true} />}
       contentContainerStyle={listViewStyles.listContent}
       showsVerticalScrollIndicator={false}
       ListHeaderComponent={hint}
-      ListFooterComponent={ctaFooter}
+      ListFooterComponent={footer}
     />
   );
 }
@@ -259,21 +283,6 @@ const listViewStyles = StyleSheet.create({
   empty: { alignItems: "center", paddingVertical: 48, paddingHorizontal: 24, gap: 8 },
   emptyTitle: { fontSize: 18, fontFamily: "Inter_700Bold", textAlign: "center" },
   emptySubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
-  ctaCard: {
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: 24,
-    marginTop: 8,
-    alignItems: "center",
-    gap: 8,
-    shadowColor: "#5D4A37",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
-    elevation: 3,
-  },
-  ctaTitle: { fontSize: 16, fontFamily: "Inter_700Bold", textAlign: "center" },
-  ctaSubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
 });
 
 function WordCard({ word, onToggleMemorized }: {
@@ -436,6 +445,8 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
   const [filterMode, setFilterMode] = useState<FilterMode>("ayah");
   const [selectedSurahNum, setSelectedSurahNum] = useState<number | null>(null);
   const [wordTab, setWordTab] = useState<"active" | "memorized">("active");
+  const [surahListPage, setSurahListPage] = useState(0);
+  const SURAH_PAGE_SIZE = 10;
   const topPad = insets.top;
 
   const surahGroups = useMemo(() => {
@@ -457,6 +468,12 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
         };
       });
   }, [savedWords]);
+
+  const totalSurahListPages = Math.max(1, Math.ceil(surahGroups.length / SURAH_PAGE_SIZE));
+  const pagedSurahGroups = useMemo(
+    () => surahGroups.slice(surahListPage * SURAH_PAGE_SIZE, (surahListPage + 1) * SURAH_PAGE_SIZE),
+    [surahGroups, surahListPage]
+  );
 
   const filteredWords = useMemo(() => {
     if (filterMode === "by-surah" && selectedSurahNum !== null) {
@@ -487,12 +504,10 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
   const wvs = wordsViewStyles;
 
   const ctaCard = (
-    <View style={[wvs.ctaCard, { backgroundColor: colors.appLighterBg, borderColor: colors.appDarkerGray }]}>
-      <Text style={[wvs.ctaTitle, { color: colors.foreground }]}>Save words as you read</Text>
-      <Text style={[wvs.ctaSubtitle, { color: colors.mutedForeground }]}>
-        Tap any word in the Quran reader to save it here for review.
-      </Text>
-    </View>
+    <InfoBox
+      title="Save words as you read"
+      description="Tap any word in the Quran reader to save it here for review."
+    />
   );
 
   const emptyWords = (
@@ -539,24 +554,12 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
         {!showDrillDown && (
           <View style={wvs.filterRow}>
             {FILTERS.map(({ key, label }) => (
-              <TouchableOpacity
+              <Tag
                 key={key}
-                style={[
-                  wvs.filterChip,
-                  { borderColor: colors.border, backgroundColor: colors.muted },
-                  filterMode === key && { backgroundColor: colors.foreground, borderColor: colors.foreground },
-                ]}
-                onPress={() => { setFilterMode(key as FilterMode); setSelectedSurahNum(null); }}
-                activeOpacity={0.8}
-              >
-                <Text style={[
-                  wvs.filterText,
-                  { color: colors.mutedForeground },
-                  filterMode === key && { color: colors.primaryForeground },
-                ]}>
-                  {label}
-                </Text>
-              </TouchableOpacity>
+                label={label}
+                selected={filterMode === key}
+                onPress={() => { setFilterMode(key as FilterMode); setSelectedSurahNum(null); setSurahListPage(0); }}
+              />
             ))}
           </View>
         )}
@@ -617,7 +620,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
             <>
               {(() => {
                 const byJuz: { juz: number; groups: typeof surahGroups }[] = [];
-                for (const g of surahGroups) {
+                for (const g of pagedSurahGroups) {
                   const last = byJuz[byJuz.length - 1];
                   if (!last || last.juz !== g.juz) byJuz.push({ juz: g.juz, groups: [g] });
                   else last.groups.push(g);
@@ -661,6 +664,14 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
                   </View>
                 ));
               })()}
+              <Pagination
+                page={surahListPage}
+                totalPages={totalSurahListPages}
+                totalItems={surahGroups.length}
+                itemLabel="surah"
+                onPrev={() => setSurahListPage(p => Math.max(0, p - 1))}
+                onNext={() => setSurahListPage(p => Math.min(totalSurahListPages - 1, p + 1))}
+              />
               {ctaCard}
             </>
           )}
@@ -717,13 +728,6 @@ const wordsViewStyles = StyleSheet.create({
 
   // Filter chips
   filterRow: { flexDirection: "row", gap: 8 },
-  filterChip: {
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-    borderRadius: 999,
-    borderWidth: 1.5,
-  },
-  filterText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 
   // Active / Memorized segmented control
   segmentedControl: {
@@ -796,23 +800,6 @@ const wordsViewStyles = StyleSheet.create({
   empty: { alignItems: "center", paddingVertical: 48, paddingHorizontal: 24, gap: 8 },
   emptyTitle: { fontSize: 18, fontFamily: "Inter_700Bold", textAlign: "center" },
   emptySubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
-
-  // CTA footer card
-  ctaCard: {
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: 24,
-    marginTop: 8,
-    alignItems: "center",
-    gap: 8,
-    shadowColor: "#5D4A37",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
-    elevation: 3,
-  },
-  ctaTitle: { fontSize: 16, fontFamily: "Inter_700Bold", textAlign: "center" },
-  ctaSubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
 
 });
 
@@ -964,18 +951,16 @@ export default function LibraryScreen() {
       </TouchableOpacity>
 
       {/* ── Saved Ayahs Card ───────────────────────────────────────────── */}
-      <View style={s.savedCard}>
-        <View style={s.cardTopRow}>
-          <View style={s.cardTextBlock}>
-            <Text style={s.cardTitle}>Saved Ayahs</Text>
-            <Text style={s.cardDesc}>Used across all quizzes</Text>
-          </View>
+      <InfoBox
+        title="Saved Ayahs"
+        description="Used across all quizzes"
+        rightContent={
           <View style={s.savedCardBadge}>
             <Text style={s.cardBadgeNum}>{savedAyahs.length}</Text>
             <Text style={s.cardBadgeLabel}>ayahs</Text>
           </View>
-        </View>
-      </View>
+        }
+      />
     </ScrollView>
   );
 }
@@ -1130,13 +1115,7 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Inter_700Bold",
     },
 
-    // ── Saved Ayahs Card (stone bg, no border/shadow — not clickable) ─────
-    savedCard: {
-      backgroundColor: colors.appStone,
-      borderRadius: 12,
-      paddingTop: 16,
-      paddingBottom: 16,
-    },
+    // ── Saved Ayahs badge ─────────────────────────────────────────────────
     savedCardBadge: {
       paddingHorizontal: 28,
       paddingVertical: 8,

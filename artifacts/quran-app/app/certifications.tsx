@@ -13,7 +13,6 @@ const TOTAL_AYAHS = 6236;
 const sp = colors.spacing;
 const ty = colors.typography;
 const br = colors.borders;
-const sh = colors.shadows;
 
 function CircularProgress({ percent, c }: { percent: number; c: ReturnType<typeof useColors> }) {
   const size = 168;
@@ -99,7 +98,7 @@ export default function CertificationsScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: sp.lg, paddingBottom: 40, gap: 14 }}>
 
         {/* ── Hero Card ──────────────────────────────────────────── */}
-        <View style={{ backgroundColor: c.appCard, borderRadius: 18, padding: 18, alignItems: "center", borderWidth: 1, borderColor: c.appBorder, ...sh.sm }}>
+        <View style={{ ...c.cardStyle, padding: 18, alignItems: "center" }}>
           <CircularProgress percent={stats.percent} c={c} />
           <View style={{ flexDirection: "row", gap: sp.sm, alignSelf: "stretch" }}>
             <View style={{ flex: 1, backgroundColor: c.appLightGray, borderRadius: br.lg, paddingVertical: sp.sm + 2, alignItems: "center" }}>
@@ -119,7 +118,7 @@ export default function CertificationsScreen() {
         </View>
 
         {/* ── Rank / Progression Card ────────────────────────────── */}
-        <View style={{ backgroundColor: c.appLightBg, borderRadius: 18, padding: sp.lg, borderWidth: 1, borderColor: c.appBorderLight, gap: sp.sm + 2, ...sh.sm }}>
+        <View style={{ ...c.cardStyle, padding: sp.lg, gap: sp.sm + 2 }}>
           <Text style={{ fontSize: ty.fontSize.xs, fontWeight: "800", color: c.appDarkGray, letterSpacing: 0.9, fontFamily: "Inter_700Bold", textTransform: "uppercase" }}>
             Your Rank
           </Text>
@@ -153,7 +152,7 @@ export default function CertificationsScreen() {
         </View>
 
         {/* ── Completed Surahs Card ──────────────────────────────── */}
-        <View style={{ backgroundColor: c.appCard, borderRadius: br["2xl"], padding: sp.lg, borderWidth: 1, borderColor: c.appBorder, ...sh.sm }}>
+        <View style={{ ...c.cardStyle, padding: sp.lg }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: stats.completed.length > 0 ? sp.md : 0 }}>
             <Text style={{ fontSize: ty.fontSize.lg, fontWeight: "800", color: c.appText, fontFamily: "Inter_700Bold" }}>Completed Surahs</Text>
             <View style={{
@@ -195,7 +194,7 @@ export default function CertificationsScreen() {
         </View>
 
         {/* ── Partial Surahs Card ────────────────────────────────── */}
-        <View style={{ backgroundColor: c.appCard, borderRadius: br["2xl"], padding: sp.lg, borderWidth: 1, borderColor: c.appBorder, ...sh.sm }}>
+        <View style={{ ...c.cardStyle, padding: sp.lg }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: stats.partial.length > 0 ? sp.md : 0 }}>
             <Text style={{ fontSize: ty.fontSize.lg, fontWeight: "800", color: c.appText, fontFamily: "Inter_700Bold" }}>Partial Surahs</Text>
             <View style={{
@@ -254,7 +253,7 @@ export default function CertificationsScreen() {
 
         <View style={{ gap: sp.sm }}>
           {stats.surahs.map((surah) => (
-            <View key={surah.number} style={{ backgroundColor: c.appCard, borderRadius: br.lg, padding: sp.md, borderWidth: 1, borderColor: c.appBorder }}>
+            <View key={surah.number} style={{ ...c.cardStyle, padding: sp.md }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", gap: sp.md, marginBottom: sp.sm }}>
                 <View>
                   <Text style={{ fontSize: ty.fontSize.base, fontWeight: "800", color: c.appText, fontFamily: "Inter_700Bold" }}>{surah.englishName}</Text>
