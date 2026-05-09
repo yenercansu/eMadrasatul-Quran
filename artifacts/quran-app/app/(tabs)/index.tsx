@@ -271,7 +271,7 @@ export default function HomeScreen() {
               </View>
             </View>
             <View style={s.playBtn}>
-              <Ionicons name="play" size={22} color={colors.appBlack} />
+              <Ionicons name="play" size={32} color={colors.appBlack} />
             </View>
           </TouchableOpacity>
 
@@ -441,12 +441,6 @@ export default function HomeScreen() {
                     ))}
 
                     <View style={s.dailyCardFooter}>
-                      <View style={s.remainingLabelRow}>
-                        <Text style={s.remainingLabel}>THIS WEEK'S REMAINING</Text>
-                        <Text style={s.remainingShowing}>
-                          showing {Math.min(2, remainingAyahGroups.length)}/{remainingAyahGroups.length}
-                        </Text>
-                      </View>
                       <View style={s.streakRow}>
                          <Feather name="zap" size={13} color={colors.appGold} />
                         <Text style={s.streakText}>{streakDays} Day Streak</Text>
@@ -734,10 +728,11 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       ...colors.shadows.goldGlow,
     },
     playBtn: {
-      width: 48,
-      height: 48,
+      width: 52,
+      height: 52,
       alignItems: "center",
       justifyContent: "center",
+      paddingLeft: 3,
     },
 
     // ── Goal Widget Cards ───────────────────────────────────────────────────────
