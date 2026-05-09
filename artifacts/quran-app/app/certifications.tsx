@@ -10,6 +10,16 @@ import { useColors } from "@/hooks/useColors";
 import colors from "@/constants/colors";
 
 const TOTAL_AYAHS = 6236;
+
+function estimateCompletion(remaining: number, weeklyGoal: number): string {
+  if (weeklyGoal <= 0 || remaining <= 0) return "completed";
+  const days = Math.ceil(remaining / weeklyGoal) * 7;
+  if (days >= 730) return `approximately ${Math.round(days / 365)} years`;
+  if (days >= 365) return "approximately 1 year";
+  if (days >= 60) return `approximately ${Math.round(days / 30)} months`;
+  if (days >= 30) return "approximately 1 month";
+  return `approximately ${days} days`;
+}
 const sp = colors.spacing;
 const ty = colors.typography;
 const br = colors.borders;
@@ -56,7 +66,7 @@ function getLevel(percent: number) {
 
 export default function CertificationsScreen() {
   const insets = useSafeAreaInsets();
-  const { memorizedAyahKeys } = useQuran();
+  const { memorizedAyahKeys, goal } = useQuran();
   const c = useColors();
 
   const stats = useMemo(() => {
@@ -115,6 +125,18 @@ export default function CertificationsScreen() {
             </View>
           </View>
           <Text style={{ fontSize: ty.fontSize.sm, color: c.appTextMuted, fontFamily: "Inter_700Bold", marginTop: sp.md }}>{100 - stats.percent}% remaining</Text>
+        </View>
+
+        {/* ── Completion Estimate Card ───────────────────────────── */}
+        <View style={{ ...c.cardStyle, padding: sp.lg, gap: sp.xs }}>
+          <Text style={{ fontSize: ty.fontSize.xs, fontWeight: "800", color: c.appDarkGray, letterSpacing: 0.9, fontFamily: "Inter_700Bold", textTransform: "uppercase" }}>
+            YOUR COMPLETION ESTIMATE
+          </Text>
+          <Text style={{ fontSize: ty.fontSize.base, color: c.appText, fontFamily: "Inter_400Regular", lineHeight: 22 }}>
+            {goal && goal.ayahsPerWeek > 0
+              ? `At ${goal.ayahsPerWeek} Ayahs per week, you will finish memorizing the Quran in ${estimateCompletion(stats.remaining, goal.ayahsPerWeek)}.`
+              : "Set a weekly goal to see your estimated completion time."}
+          </Text>
         </View>
 
         {/* ── Rank / Progression Card ────────────────────────────── */}

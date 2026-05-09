@@ -416,15 +416,11 @@ export default function HomeScreen() {
                       </TouchableOpacity>
                     </View>
 
-                    {Array.from({ length: Math.ceil(effectiveGoalCount / 15) }).map((_, rowIdx) => (
-                      <View key={rowIdx} style={s.dotRow}>
-                        {Array.from({ length: 15 }).map((_, colIdx) => {
-                          const i = rowIdx * 15 + colIdx;
-                          if (i >= effectiveGoalCount) return null;
-                          return <View key={i} style={[s.dotGridItem, i < weekGoalProgress && s.dotGridItemFilled]} />;
-                        })}
-                      </View>
-                    ))}
+                    <View style={s.dotGrid}>
+                      {Array.from({ length: effectiveGoalCount }).map((_, i) => (
+                        <View key={i} style={[s.dotGridItem, i < weekGoalProgress && s.dotGridItemFilled]} />
+                      ))}
+                    </View>
 
                     {remainingAyahGroups.slice(0, 2).map((g) => (
                       <View key={g.surahNumber} style={s.remainingRow}>
@@ -930,8 +926,9 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       color: colors.appBlack,
       fontFamily: "Inter_600SemiBold",
     },
-    dotRow: {
+    dotGrid: {
       flexDirection: "row",
+      flexWrap: "wrap",
       gap: 5,
       marginTop: 6,
     },

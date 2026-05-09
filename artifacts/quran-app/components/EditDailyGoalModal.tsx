@@ -13,9 +13,24 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { getJuzAyahs, getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
 import { useQuran } from "@/contexts/QuranContext";
+import colors from "@/constants/colors";
 
-const COMMITMENT_STEPS = [1, 2, 3, 5, 7, 10, 15, 25, 45];
-const MAX_WEEKLY = 45;
+const COMMITMENT_STEPS = [1, 2, 3, 5, 7, 10, 15, 25, 45, 70];
+const MAX_WEEKLY = 70;
+const TOTAL_AYAHS = 6236;
+const sp = colors.spacing;
+const ty = colors.typography;
+const br = colors.borders;
+
+function estimateCompletion(remaining: number, weeklyGoal: number): string {
+  if (weeklyGoal <= 0 || remaining <= 0) return "completed";
+  const days = Math.ceil(remaining / weeklyGoal) * 7;
+  if (days >= 730) return `approximately ${Math.round(days / 365)} years`;
+  if (days >= 365) return "approximately 1 year";
+  if (days >= 60) return `approximately ${Math.round(days / 30)} months`;
+  if (days >= 30) return "approximately 1 month";
+  return `approximately ${days} days`;
+}
 
 function AyahSlider({ value, onChange, max }: { value: number; onChange: (v: number) => void; max: number }) {
   const trackWidthRef = useRef(0);
@@ -301,6 +316,31 @@ export function EditDailyGoalModal({
                       ))}
                     </View>
 
+                    <View style={s.infoCard}>
+                      <Text style={s.infoCardTitle}>SUSTAINABLE PACE</Text>
+                      <Text style={s.infoCardText}>
+                        3 to 10 Ayahs daily is considered a sustainable memorization pace and may lead to completing the Quran in approximately 2 to 6 years.
+                      </Text>
+                    </View>
+
+                    <View style={s.infoCard}>
+                      <Text style={s.infoCardTitle}>WEEKLY MAXIMUM</Text>
+                      <Text style={s.infoCardText}>
+                        We recommend a maximum of <Text style={s.infoCardBold}>70 Ayahs per week</Text>. If you want to learn more, you can always come back and set a new goal upon completion.
+                      </Text>
+                    </View>
+
+                    <View style={s.estimateCard}>
+                      <Text style={s.estimateLabel}>YOUR COMPLETION ESTIMATE</Text>
+                      <Text style={s.estimateText}>
+                        At <Text style={s.estimateBold}>{ayahsPerWeek} Ayahs per week</Text>, you will finish memorizing the Quran in{" "}
+                        <Text style={s.estimateBold}>{estimateCompletion(TOTAL_AYAHS - memorizedAyahKeys.length, ayahsPerWeek)}</Text>.
+                      </Text>
+                      {memorizedAyahKeys.length > 0 && (
+                        <Text style={s.estimateSub}>{memorizedAyahKeys.length} of {TOTAL_AYAHS} Ayahs already memorized.</Text>
+                      )}
+                    </View>
+
                     <View style={s.summaryCard}>
                       <View style={s.summaryRow}>
                         <Text style={s.summaryLabel}>{targetPath === "juz" ? "Juz" : "Surah"}</Text>
@@ -472,6 +512,62 @@ const s = StyleSheet.create({
   dots: { flexDirection: "row", gap: 7, justifyContent: "center", marginTop: 8, marginBottom: 22 },
   dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: "#D6D3D1" },
   dotFilled: { backgroundColor: "#1A1A1A" },
+  infoCard: {
+    backgroundColor: "#F6F2EA",
+    borderRadius: br.lg,
+    padding: sp.lg,
+    marginBottom: sp.md,
+  },
+  infoCardTitle: {
+    fontSize: ty.fontSize.xs,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.8,
+    textTransform: "uppercase" as const,
+    marginBottom: sp.xs,
+  },
+  infoCardText: {
+    fontSize: ty.fontSize.sm,
+    color: "#71717A",
+    fontFamily: "Inter_400Regular",
+    lineHeight: 20,
+  },
+  infoCardBold: {
+    fontFamily: "Inter_700Bold",
+    color: "#1A1A1A",
+  },
+  estimateCard: {
+    backgroundColor: "#1A1A1A",
+    borderRadius: br.lg,
+    padding: sp.lg,
+    marginBottom: sp.lg,
+    gap: sp.xs,
+  },
+  estimateLabel: {
+    fontSize: ty.fontSize.xs,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.55)",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.8,
+    textTransform: "uppercase" as const,
+  },
+  estimateText: {
+    fontSize: ty.fontSize.base,
+    color: "#FFFFFF",
+    fontFamily: "Inter_400Regular",
+    lineHeight: 22,
+  },
+  estimateBold: {
+    fontFamily: "Inter_700Bold",
+    color: "#FFFFFF",
+  },
+  estimateSub: {
+    fontSize: ty.fontSize.xs,
+    color: "rgba(255,255,255,0.55)",
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
   summaryCard: {
     backgroundColor: "#F6F2EA",
     borderRadius: 16,
