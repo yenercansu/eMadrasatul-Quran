@@ -394,10 +394,6 @@ export default function HomeScreen() {
                       <View style={s.headerPill}>
                         <Text style={s.headerPillText}>WEEKLY TARGET</Text>
                       </View>
-                      <View style={[
-                        s.dailyCompleteCircle,
-                        weekPercent >= 100 && s.dailyCompleteCircleFilled,
-                      ]} />
                     </View>
                     <View style={s.widgetCardBody}>
                        <CircularRing percent={weekPercent} size={64} strokeWidth={5} color={colors.appGold} trackColor={colors.appLighterBg} />
@@ -913,17 +909,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       justifyContent: "space-between",
       marginBottom: 16,
-    },
-    dailyCompleteCircle: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      borderWidth: 1.5,
-      borderColor: colors.appBorderLighter,
-    },
-    dailyCompleteCircleFilled: {
-      borderColor: colors.appSuccess,
-      backgroundColor: colors.appSuccess,
     },
     dailyProgressText: {
       fontSize: 14,

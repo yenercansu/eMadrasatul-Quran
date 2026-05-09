@@ -181,21 +181,21 @@ export function EditDailyGoalModal({
                   <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={s.stepPad}>
                     <View style={s.stepHeader}>
                       <Text style={s.title}>Starting Ayah</Text>
-                      <View style={s.headerRight}>
-                        <TouchableOpacity
-                          style={s.resetBtn}
-                          onPress={() => setResetVisible(true)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={s.resetBtnText}>Reset</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={onClose} style={s.closeBtn} activeOpacity={0.7}>
-                          <Feather name="x" size={20} color="#1A1A1A" />
-                        </TouchableOpacity>
-                      </View>
+                      <TouchableOpacity onPress={onClose} style={s.closeBtn} activeOpacity={0.7}>
+                        <Feather name="x" size={20} color="#1A1A1A" />
+                      </TouchableOpacity>
                     </View>
                     <ProgressBar step={1} />
-                    <Text style={s.sub}>{targetPath === "juz" && targetJuz ? `Juz ${targetJuz}` : surahName}</Text>
+                    <View style={s.subRow}>
+                      <Text style={s.sub}>{targetPath === "juz" && targetJuz ? `Juz ${targetJuz}` : surahName}</Text>
+                      <TouchableOpacity
+                        style={s.resetBtn}
+                        onPress={() => setResetVisible(true)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={s.resetBtnText}>Reset</Text>
+                      </TouchableOpacity>
+                    </View>
                     <Text style={s.ayahGridLabel}>SELECT STARTING AYAH</Text>
 
                     {targetGroups.map((group) => (
@@ -372,12 +372,12 @@ export function EditDailyGoalModal({
 }
 
 const s = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
+  overlay: { flex: 1 },
   sheet: {
+    flex: 1,
     backgroundColor: "#FDFBF7",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    maxHeight: "92%",
     paddingTop: 12,
   },
   stepPad: { paddingHorizontal: 24, paddingBottom: 44 },
@@ -391,16 +391,19 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 14,
   },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 6 },
   backBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   closeBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   title: {
     fontSize: 22, fontWeight: "700", color: "#1A1A1A",
     fontFamily: "Inter_700Bold", textAlign: "center", flex: 1,
   },
+  subRow: {
+    flexDirection: "row", alignItems: "center",
+    justifyContent: "space-between", marginBottom: 18,
+  },
   sub: {
-    fontSize: 14, color: "#78716C", fontFamily: "Inter_400Regular",
-    textAlign: "center", lineHeight: 20, marginBottom: 18,
+    flex: 1, fontSize: 14, color: "#78716C",
+    fontFamily: "Inter_400Regular", lineHeight: 20,
   },
   progressBar: { flexDirection: "row", gap: 4, marginBottom: 18 },
   progressSegment: { flex: 1, height: 3, borderRadius: 2, backgroundColor: "#E7E5DB" },

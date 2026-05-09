@@ -215,14 +215,12 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
     onClose();
   };
 
-  const sheetHeight = step === 1 ? "68%" : "92%";
-
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={step === 1 ? onClose : undefined}>
         <View style={s.overlay}>
           <TouchableWithoutFeedback>
-            <View style={[s.sheet, { height: sheetHeight as any }]}>
+            <View style={s.sheet}>
 
               {/* ── STEP 1: Memorization Mode ───────────────────────────────── */}
               {step === 1 && (
@@ -673,8 +671,9 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
 }
 
 const s = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
+  overlay: { flex: 1 },
   sheet: {
+    flex: 1,
     backgroundColor: "#FDFBF7",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
