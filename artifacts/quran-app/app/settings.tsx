@@ -206,7 +206,7 @@ export default function SettingsScreen() {
             </View>
             <Text style={s.settingLabel}>Reading Theme</Text>
             <View style={s.themeRow}>
-              {(["auto", "light"] as const).map(theme => (
+              {(["light", "dark", "auto"] as const).map(theme => (
                 <TouchableOpacity
                   key={theme}
                   style={[s.themeChip, accountSettings.theme === theme && s.themeChipActive]}
@@ -214,13 +214,10 @@ export default function SettingsScreen() {
                   activeOpacity={0.8}
                 >
                   <Text style={[s.themeChipText, accountSettings.theme === theme && s.themeChipTextActive]}>
-                    {theme === "auto" ? "Auto" : "Light"}
+                    {theme === "light" ? "Light" : theme === "dark" ? "Dark" : "Auto"}
                   </Text>
                 </TouchableOpacity>
               ))}
-              <View style={[s.themeChip, s.themeChipDisabled]}>
-                <Text style={s.themeChipTextDisabled}>Dark</Text>
-              </View>
             </View>
           </View>
         </Section>
@@ -349,10 +346,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     themeRow: { flexDirection: "row", gap: 6 },
     themeChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background },
     themeChipActive: { borderColor: colors.primary, backgroundColor: colors.primary },
-    themeChipDisabled: { opacity: 0.35 },
     themeChipText: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     themeChipTextActive: { color: colors.primaryForeground, fontFamily: "Inter_600SemiBold" },
-    themeChipTextDisabled: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     editOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center", padding: 24 },
     editCard: { backgroundColor: colors.card, borderRadius: 16, padding: 20, width: "100%", shadowColor: colors.appBlack, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 12 },
     editTitle: { fontSize: 17, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold", marginBottom: 12 },

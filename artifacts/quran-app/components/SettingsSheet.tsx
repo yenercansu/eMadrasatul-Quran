@@ -31,27 +31,29 @@ function FontSizeBar({
   label: string; value: number; onChange: (v: number) => void;
   min: number; max: number; sample: string; sampleStyle: any;
 }) {
+  const colors = useColors();
+  const s = makeStyles(colors);
   return (
     <>
-      <Text style={styles.sectionLabel}>{label}</Text>
-      <View style={styles.fontSizeRow}>
+      <Text style={s.sectionLabel}>{label}</Text>
+      <View style={s.fontSizeRow}>
         <TouchableOpacity
-          style={styles.fontSizeBtn}
+          style={s.fontSizeBtn}
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onChange(Math.max(min, value - 1)); }}
           activeOpacity={0.75}
         >
-          <Feather name="minus" size={18} color="#3A3A3A" />
+          <Feather name="minus" size={18} color={colors.foreground} />
         </TouchableOpacity>
-        <View style={styles.fontSizePreview}>
+        <View style={s.fontSizePreview}>
           <Text style={[sampleStyle, { fontSize: value }]} numberOfLines={1}>{sample}</Text>
-          <Text style={styles.fontSizeValue}>{value}px</Text>
+          <Text style={s.fontSizeValue}>{value}px</Text>
         </View>
         <TouchableOpacity
-          style={styles.fontSizeBtn}
+          style={s.fontSizeBtn}
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onChange(Math.min(max, value + 1)); }}
           activeOpacity={0.75}
         >
-          <Feather name="plus" size={18} color="#3A3A3A" />
+          <Feather name="plus" size={18} color={colors.foreground} />
         </TouchableOpacity>
       </View>
     </>
@@ -64,6 +66,8 @@ function ReciterSheet({
   visible: boolean; onClose: () => void;
   selected: string; onSelect: (id: string) => void;
 }) {
+  const colors = useColors();
+  const rs = makeRsStyles(colors);
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
@@ -74,7 +78,7 @@ function ReciterSheet({
               <View style={rs.header}>
                 <Text style={rs.title}>Select Reciter</Text>
                 <TouchableOpacity onPress={onClose} style={rs.closeBtn}>
-                  <Feather name="x" size={20} color="#9A9A9A" />
+                  <Feather name="x" size={20} color={colors.mutedForeground} />
                 </TouchableOpacity>
               </View>
               <FlatList
@@ -94,13 +98,13 @@ function ReciterSheet({
                       }}
                     >
                       <View style={[rs.avatar, active && rs.avatarActive]}>
-                        <Ionicons name="mic" size={18} color={active ? "#FFFFFF" : "#6B6B6B"} />
+                        <Ionicons name="mic" size={18} color={active ? colors.primaryForeground : colors.mutedForeground} />
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={[rs.name, active && rs.nameActive]}>{item.name}</Text>
                         <Text style={rs.style}>{item.style}</Text>
                       </View>
-                      {active && <Ionicons name="checkmark-circle" size={22} color="#1A1A1A" />}
+                      {active && <Ionicons name="checkmark-circle" size={22} color={colors.foreground} />}
                     </TouchableOpacity>
                   );
                 }}
@@ -113,44 +117,9 @@ function ReciterSheet({
   );
 }
 
-const rs = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
-  sheet: {
-    backgroundColor: "#FAFAFA",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 32,
-    height: "75%",
-  },
-  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: "#E0E0E0", alignSelf: "center", marginBottom: 16 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12, paddingHorizontal: 4 },
-  title: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  closeBtn: { padding: 4 },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    marginBottom: 4,
-  },
-  rowActive: { backgroundColor: "#F0F0F0" },
-  avatar: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: "#EAEAEA", alignItems: "center", justifyContent: "center",
-  },
-  avatarActive: { backgroundColor: "#1A1A1A" },
-  name: { fontSize: 14, fontWeight: "600", color: "#3A3A3A", fontFamily: "Inter_600SemiBold" },
-  nameActive: { color: "#1A1A1A" },
-  style: { fontSize: 11, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 2 },
-});
-
 export function SettingsSheet({ visible, onClose }: Props) {
   const colors = useColors();
-  const s = styles;
+  const s = makeStyles(colors);
   const { settings, updateSettings, accountSettings, updateAccountSettings } = useQuran();
   const [reciterSheetVisible, setReciterSheetVisible] = useState(false);
 
@@ -180,7 +149,7 @@ export function SettingsSheet({ visible, onClose }: Props) {
                 <View style={s.sheetHeader}>
                   <Text style={s.title}>Reader Settings</Text>
                   <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-                    <Feather name="x" size={20} color="#9A9A9A" />
+                    <Feather name="x" size={20} color={colors.mutedForeground} />
                   </TouchableOpacity>
                 </View>
 
@@ -190,32 +159,14 @@ export function SettingsSheet({ visible, onClose }: Props) {
                     {THEMES.map(t => (
                       <TouchableOpacity
                         key={t.key}
-                        style={[
-                          s.themeCircle,
-                          t.key === "light" && { backgroundColor: "#FFFFFF", borderColor: "#E0E0E0" },
-                          t.key === "dark" && { backgroundColor: "#1A1A1A", borderColor: "#333" },
-                          t.key === "auto" && s.themeCircleAuto,
-                          accountSettings.theme === t.key && s.themeCircleSelected,
-                        ]}
+                        style={[s.themeChip, accountSettings.theme === t.key && s.themeChipActive]}
                         onPress={() => { toggle(() => updateAccountSettings({ theme: t.key })); }}
                         activeOpacity={0.8}
                       >
-                        {accountSettings.theme === t.key && (
-                          <View style={s.themeCheckmark}>
-                            <Ionicons name="checkmark" size={14} color={t.key === "dark" ? "#FFF" : "#1A1A1A"} />
-                          </View>
-                        )}
+                        <Text style={[s.themeChipText, accountSettings.theme === t.key && s.themeChipTextActive]}>
+                          {t.label}
+                        </Text>
                       </TouchableOpacity>
-                    ))}
-                  </View>
-                  <View style={s.themeLabelRow}>
-                    {THEMES.map(t => (
-                      <Text
-                        key={t.key}
-                        style={[s.themeLabel, accountSettings.theme === t.key && s.themeLabelActive]}
-                      >
-                        {t.label}
-                      </Text>
                     ))}
                   </View>
 
@@ -246,13 +197,13 @@ export function SettingsSheet({ visible, onClose }: Props) {
                     activeOpacity={0.75}
                   >
                     <View style={s.reciterAvatar}>
-                      <Ionicons name="mic" size={20} color="#1A1A1A" />
+                      <Ionicons name="mic" size={20} color={colors.foreground} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={s.reciterName}>{currentReciter?.name}</Text>
                       <Text style={s.reciterStyle}>{currentReciter?.style}</Text>
                     </View>
-                    <Feather name="chevron-right" size={20} color="#9A9A9A" />
+                    <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
                   </TouchableOpacity>
 
                   <Text style={s.sectionLabel}>Auto-pause Timer</Text>
@@ -300,103 +251,134 @@ export function SettingsSheet({ visible, onClose }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.35)", justifyContent: "flex-end" },
-  sheet: {
-    backgroundColor: "#FAFAFA",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 40,
-    maxHeight: "85%",
-  },
-  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: "#E0E0E0", alignSelf: "center", marginBottom: 16 },
-  sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  title: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  closeBtn: { padding: 4 },
-  scrollContent: { gap: 4, paddingBottom: 20 },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#9A9A9A",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    fontFamily: "Inter_700Bold",
-    marginTop: 22,
-    marginBottom: 10,
-  },
-  themeRow: { flexDirection: "row", gap: 16, marginBottom: 6 },
-  themeCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: "#E0E0E0",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  themeCircleAuto: { backgroundColor: "#D0D0D0", borderColor: "#C0C0C0" },
-  themeCircleSelected: { borderColor: "#1A1A1A", borderWidth: 2.5 },
-  themeCheckmark: {
-    width: 20, height: 20, borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    alignItems: "center", justifyContent: "center",
-  },
-  themeLabelRow: { flexDirection: "row", gap: 16 },
-  themeLabel: { width: 44, fontSize: 11, color: "#9A9A9A", fontFamily: "Inter_400Regular", textAlign: "center" },
-  themeLabelActive: { color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
-  fontSizeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F0F0F0",
-    borderRadius: 16,
-    padding: 12,
-    gap: 16,
-  },
-  fontSizeBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  fontSizePreview: { flex: 1, alignItems: "center", gap: 4 },
-  fontSizeArabic: { color: "#1A1A1A", lineHeight: 56 },
-  fontSizeRoman: { color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
-  fontSizeValue: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular" },
-  reciterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    backgroundColor: "#F0F0F0",
-    padding: 14,
-    borderRadius: 16,
-  },
-  reciterAvatar: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center",
-  },
-  reciterName: { fontSize: 15, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
-  reciterStyle: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 2 },
-  autoPauseRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  autoPauseChip: {
-    minWidth: 56,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    backgroundColor: "#F0F0F0",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  autoPauseChipActive: { backgroundColor: "#1A1A1A" },
-  autoPauseChipText: { fontSize: 13, fontWeight: "600", color: "#3A3A3A", fontFamily: "Inter_600SemiBold" },
-  autoPauseChipTextActive: { color: "#FFFFFF" },
-  autoPauseHint: { fontSize: 11, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 8, paddingHorizontal: 4 },
-});
+const makeStyles = (colors: ReturnType<typeof useColors>) =>
+  StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.35)", justifyContent: "flex-end" },
+    sheet: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingHorizontal: 20,
+      paddingTop: 12,
+      paddingBottom: 40,
+      maxHeight: "85%",
+    },
+    handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: 16 },
+    sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+    title: { fontSize: 17, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
+    closeBtn: { padding: 4 },
+    scrollContent: { gap: 4, paddingBottom: 20 },
+    sectionLabel: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: colors.mutedForeground,
+      letterSpacing: 1.2,
+      textTransform: "uppercase",
+      fontFamily: "Inter_700Bold",
+      marginTop: 22,
+      marginBottom: 10,
+    },
+    themeRow: { flexDirection: "row", gap: 8, marginBottom: 6 },
+    themeChip: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.secondary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    themeChipActive: { borderColor: colors.primary, backgroundColor: colors.primary },
+    themeChipText: { fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
+    themeChipTextActive: { color: colors.primaryForeground, fontFamily: "Inter_600SemiBold" },
+    fontSizeRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.secondary,
+      borderRadius: 16,
+      padding: 12,
+      gap: 16,
+    },
+    fontSizeBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: colors.card,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: colors.appBlack,
+      shadowOpacity: 0.06,
+      shadowOffset: { width: 0, height: 2 },
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    fontSizePreview: { flex: 1, alignItems: "center", gap: 4 },
+    fontSizeArabic: { color: colors.foreground, lineHeight: 56 },
+    fontSizeRoman: { color: colors.foreground, fontFamily: "Inter_600SemiBold" },
+    fontSizeValue: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
+    reciterRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      backgroundColor: colors.secondary,
+      padding: 14,
+      borderRadius: 16,
+    },
+    reciterAvatar: {
+      width: 44, height: 44, borderRadius: 22,
+      backgroundColor: colors.card, alignItems: "center", justifyContent: "center",
+    },
+    reciterName: { fontSize: 15, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
+    reciterStyle: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
+    autoPauseRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+    autoPauseChip: {
+      minWidth: 56,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderRadius: 14,
+      backgroundColor: colors.secondary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    autoPauseChipActive: { backgroundColor: colors.primary },
+    autoPauseChipText: { fontSize: 13, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
+    autoPauseChipTextActive: { color: colors.primaryForeground },
+    autoPauseHint: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 8, paddingHorizontal: 4 },
+  });
+
+const makeRsStyles = (colors: ReturnType<typeof useColors>) =>
+  StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
+    sheet: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 32,
+      height: "75%",
+    },
+    handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: 16 },
+    header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12, paddingHorizontal: 4 },
+    title: { fontSize: 17, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
+    closeBtn: { padding: 4 },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 12,
+      borderRadius: 14,
+      marginBottom: 4,
+    },
+    rowActive: { backgroundColor: colors.secondary },
+    avatar: {
+      width: 40, height: 40, borderRadius: 20,
+      backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center",
+    },
+    avatarActive: { backgroundColor: colors.primary },
+    name: { fontSize: 14, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
+    nameActive: { color: colors.foreground },
+    style: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
+  });

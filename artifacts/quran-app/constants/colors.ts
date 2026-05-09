@@ -67,7 +67,7 @@ const colors = {
     appBubbleBorder: "#E5E7EB",
     appProgressGlowColor: "rgb(212,175,55)",
     appProgressRail: "#E7E5DB",
-    appWarmBorder: "#A97B4E",
+    appWarmBorder: "#A97C4E",
     appSecondarySurface: "#EAE4DA",
   },
 
@@ -219,10 +219,10 @@ const colors = {
       elevation: 2,
     },
     warmCardLift: {
-      shadowColor: "#A97B4E",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.22,
-      shadowRadius: 20,
+      shadowColor: "#A97C4E",
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 1,
+      shadowRadius: 5,
       elevation: 4,
     },
     warmWidgetLift: {

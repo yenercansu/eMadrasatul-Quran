@@ -259,6 +259,13 @@ export default function HomeScreen() {
             onPress={() => router.push(isFirstListen ? "/surah/1" : `/surah/${lastListened!.surahNumber}?ayah=${lastListened!.ayahNumberInSurah}`)}
             activeOpacity={0.88}
           >
+            <View pointerEvents="none" style={s.audioCardOverlayWrap}>
+              <View style={[s.audioCardOverlayRing, { width: 160, height: 160, borderRadius: 80, opacity: 0.10 }]} />
+              <View style={[s.audioCardOverlayRing, { width: 124, height: 124, borderRadius: 62, opacity: 0.15 }]} />
+              <View style={[s.audioCardOverlayRing, { width: 92, height: 92, borderRadius: 46, opacity: 0.20 }]} />
+              <View style={[s.audioCardOverlayRing, { width: 64, height: 64, borderRadius: 32, opacity: 0.28 }]} />
+              <View style={[s.audioCardOverlayRing, { width: 40, height: 40, borderRadius: 20, opacity: 0.38 }]} />
+            </View>
             <View style={s.audioCardLeft}>
               <Text style={s.audioLabel}>{isFirstListen ? "START LISTENING" : "CONTINUE LISTENING"}</Text>
               <Text style={s.audioTitle}>{isFirstListen ? "Al-Faatiha" : lastListened!.surahName}</Text>
@@ -689,9 +696,23 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: 24,
       flexDirection: "row",
       alignItems: "center",
-      borderWidth: 1,
+      borderWidth: 2,
       borderColor: colors.appWarmBorder,
+      overflow: "hidden",
       ...colors.shadows.warmCardLift,
+    },
+    audioCardOverlayWrap: {
+      position: "absolute",
+      top: -18,
+      left: -30,
+      width: 160,
+      height: 160,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    audioCardOverlayRing: {
+      position: "absolute",
+      backgroundColor: colors.appStone,
     },
     audioCardLeft: { flex: 1, marginRight: 14 },
     audioLabel: {
