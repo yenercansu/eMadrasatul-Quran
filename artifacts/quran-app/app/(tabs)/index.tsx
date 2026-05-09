@@ -485,20 +485,6 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* ── Test Yourself CTA ─────────────────────────────────────────── */}
-          {/* FIX #5: warm cream, not yellow */}
-          <TouchableOpacity
-            style={s.quizCta}
-            onPress={() => router.push("/(tabs)/library")}
-            activeOpacity={0.85}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={s.quizCtaTitle}>Test Yourself!</Text>
-              <Text style={s.quizCtaSub}>With the Saved Surahs, Ayahs & Words</Text>
-            </View>
-             <Feather name="chevron-right" size={20} color={colors.appBlack} />
-          </TouchableOpacity>
-
           {/* ── Last Visited ──────────────────────────────────────────────── */}
           {recentProgress.length > 0 && (
             <View style={s.listSection}>
@@ -562,9 +548,6 @@ export default function HomeScreen() {
                       onPress={() => router.push(`/surah/${meta.number}`)}
                       activeOpacity={0.7}
                     >
-                      <View style={s.savedNumBubble}>
-                        <Text style={s.savedNumText}>{meta.number}</Text>
-                      </View>
                       <View style={s.savedInfo}>
                         <Text style={s.savedName}>{meta.englishName}</Text>
                         <Text style={s.savedMeta}>
@@ -601,9 +584,6 @@ export default function HomeScreen() {
                         onPress={() => router.push(`/surah/${surah.number}`)}
                         activeOpacity={0.65}
                       >
-                        <View style={s.surahNumBubble}>
-                          <Text style={s.surahNum}>{surah.number}</Text>
-                        </View>
                         <View style={s.surahInfo}>
                           <Text style={s.surahName}>{surah.englishName}</Text>
                           <Text style={s.surahMeta}>{surah.numberOfAyahs} Ayahs • {surah.revelationType}</Text>
@@ -688,7 +668,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: colors.appWhite,
+      backgroundColor: "transparent",
       alignItems: "center",
       justifyContent: "center",
       shadowColor: colors.appBlack,
@@ -711,12 +691,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: "row",
       alignItems: "center",
       borderWidth: 1,
-      borderColor: colors.appDarkerGray,
-      shadowColor: colors.appBlack,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 1,
+      borderColor: colors.appWarmBorder,
+      ...colors.shadows.warmCardLift,
     },
     audioCardLeft: { flex: 1, marginRight: 14 },
     audioLabel: {
@@ -742,7 +718,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     audioProgressRail: {
       height: 8,
-      backgroundColor: colors.appLightGray,
+      backgroundColor: colors.appProgressRail,
       borderRadius: 4,
       overflow: "hidden",
     },
@@ -768,11 +744,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       padding: 16,
       borderWidth: 1,
       borderColor: colors.appDarkerGray,
-      shadowColor: colors.appBlack,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 1,
+      ...colors.shadows.warmWidgetLift,
     },
     ctaCardShadow: {
       marginHorizontal: 16,
@@ -781,11 +753,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       backgroundColor: colors.appLighterBg,
       borderWidth: 1,
       borderColor: colors.appDarkerGray,
-      shadowColor: colors.appBlack,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.03,
-      shadowRadius: 20,
-      elevation: 1,
+      ...colors.shadows.warmWidgetLift,
     },
     ctaCardClip: {
       borderRadius: 10,
@@ -795,7 +763,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     widgetCardContent: { padding: 16 },
 
     attachedCta: {
-      backgroundColor: colors.appStone,
+      backgroundColor: colors.appSecondarySurface,
       borderTopWidth: 1,
       borderTopColor: colors.appDarkerGray,
       paddingVertical: 18,
@@ -1021,27 +989,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       justifyContent: "space-between",
     },
     goalBtnText: { fontSize: 16, fontWeight: "700", color: colors.appWhite, fontFamily: "Inter_700Bold", letterSpacing: 0.2 },
-    // ── Quiz CTA Banner ────────────────────────────────────────────────────────
-    quizCta: {
-      marginHorizontal: 16,
-      marginTop: 12,
-      backgroundColor: colors.appStone,
-      borderRadius: 10,
-      paddingHorizontal: 16,
-      paddingVertical: 16,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 12,
-      borderWidth: 1,
-      borderColor: colors.appBorderMid,
-      shadowColor: colors.appBlack,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.25,
-      shadowRadius: 4.5,
-      elevation: 2,
-    },
-    quizCtaTitle: { fontSize: 16, fontWeight: "700", color: colors.appBlack, fontFamily: "Inter_700Bold" },
-    quizCtaSub: { fontSize: 10, color: colors.appBlack, fontFamily: "Inter_400Regular", marginTop: 2 },
     // ── List Sections (Last Visited / Saved Surahs) ────────────────────────────
     listSection: { marginTop: 28, paddingHorizontal: 16 },
     listSectionHeader: {
@@ -1198,7 +1145,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       color: colors.appTextPrimary,
       fontFamily: "Inter_600SemiBold",
     },
-    surahInfo: { flex: 1 },
+    surahInfo: { flex: 1, justifyContent: "center" },
     surahName: { fontSize: 14, fontWeight: "700", color: colors.appTextPrimary, fontFamily: "Inter_700Bold" },
     surahMeta: { fontSize: 12, color: colors.appLightText, fontFamily: "Inter_400Regular", marginTop: 2 },
     surahArabic: {
