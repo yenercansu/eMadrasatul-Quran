@@ -675,7 +675,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
 const s = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
   sheet: {
-    backgroundColor: "#FAFAFA",
+    backgroundColor: "#FDFBF7",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     overflow: "hidden",
@@ -683,7 +683,7 @@ const s = StyleSheet.create({
   stepPad: { paddingHorizontal: 20, paddingBottom: 16 },
   handle: {
     width: 36, height: 4, borderRadius: 2,
-    backgroundColor: "#E0E0E0", alignSelf: "center",
+    backgroundColor: "#E7E5DB", alignSelf: "center",
     marginTop: 12, marginBottom: 24,
   },
 
@@ -692,7 +692,7 @@ const s = StyleSheet.create({
     fontFamily: "Inter_700Bold", textAlign: "center", marginBottom: 8,
   },
   bigSub: {
-    fontSize: 14, color: "#8E8E93", fontFamily: "Inter_400Regular",
+    fontSize: 14, color: "#78716C", fontFamily: "Inter_400Regular",
     textAlign: "center", lineHeight: 21, marginBottom: 28,
   },
 
@@ -700,7 +700,7 @@ const s = StyleSheet.create({
   pathCard: {
     flexDirection: "row", alignItems: "flex-start",
     backgroundColor: "#FFFFFF", borderRadius: 16,
-    borderWidth: 1.5, borderColor: "#E8E8ED",
+    borderWidth: 1.5, borderColor: "#D6D3D1",
     padding: 20, minHeight: 84,
   },
   pathCardSelected: { borderColor: "#1A1A1A" },
@@ -709,7 +709,7 @@ const s = StyleSheet.create({
     fontSize: 17, fontWeight: "700", color: "#1A1A1A",
     fontFamily: "Inter_700Bold", marginBottom: 5,
   },
-  pathCardSub: { fontSize: 13, color: "#8E8E93", fontFamily: "Inter_400Regular" },
+  pathCardSub: { fontSize: 13, color: "#78716C", fontFamily: "Inter_400Regular" },
   pathCheck: {
     width: 28, height: 28, borderRadius: 14,
     backgroundColor: "#1A1A1A", alignItems: "center", justifyContent: "center", marginLeft: 12,
@@ -719,7 +719,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 32,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: "#FDFBF7",
   },
   primaryBtn: {
     backgroundColor: "#1A1A1A", borderRadius: 16, paddingVertical: 18,
@@ -728,7 +728,7 @@ const s = StyleSheet.create({
   },
   primaryBtnText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
   stepLabel: {
-    textAlign: "center", fontSize: 11, color: "#C0C0C0",
+    textAlign: "center", fontSize: 11, color: "#A8A29E",
     fontFamily: "Inter_400Regular", letterSpacing: 0.5, marginBottom: 4,
   },
 
@@ -740,54 +740,54 @@ const s = StyleSheet.create({
   stepTitle: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
 
   progressBar: { flexDirection: "row", gap: 4, marginBottom: 20 },
-  progressSegment: { flex: 1, height: 3, borderRadius: 2, backgroundColor: "#E0E0E0" },
+  progressSegment: { flex: 1, height: 3, borderRadius: 2, backgroundColor: "#E7E5DB" },
   progressSegmentFilled: { backgroundColor: "#1A1A1A" },
 
   searchBar: {
-    flexDirection: "row", alignItems: "center", backgroundColor: "#F2F2F7",
+    flexDirection: "row", alignItems: "center", backgroundColor: "#F6F2EA",
     borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, gap: 8, marginBottom: 8,
   },
   searchInput: { flex: 1, fontSize: 15, color: "#1A1A1A", fontFamily: "Inter_400Regular" },
 
   surahRow: {
     flexDirection: "row", alignItems: "center", paddingVertical: 12, gap: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#E8E8ED",
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#D6D3D1",
   },
   surahNumBubble: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: "#F2F2F7", alignItems: "center", justifyContent: "center",
+    backgroundColor: "#EEE8DF", alignItems: "center", justifyContent: "center",
   },
   surahNumBubbleActive: { backgroundColor: "#1A1A1A" },
   surahNumText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
   surahNumTextActive: { color: "#FFFFFF" },
   surahInfo: { flex: 1 },
   surahName: { fontSize: 15, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
-  surahMeta: { fontSize: 12, color: "#8E8E93", fontFamily: "Inter_400Regular", marginTop: 2 },
+  surahMeta: { fontSize: 12, color: "#78716C", fontFamily: "Inter_400Regular", marginTop: 2 },
 
   juzHeader: {
     paddingVertical: 12, marginTop: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#E8E8ED",
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#D6D3D1",
   },
   juzHeaderText: {
     fontSize: 15, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", marginBottom: 4,
   },
-  juzHeaderSub: { fontSize: 12, color: "#8E8E93", fontFamily: "Inter_400Regular" },
+  juzHeaderSub: { fontSize: 12, color: "#78716C", fontFamily: "Inter_400Regular" },
 
   // ── Step 3: Ayah grid ────────────────────────────────────────────────────
   juzAyahGroup: { marginBottom: 12 },
   ayahGridLabel: {
-    fontSize: 11, fontWeight: "700", color: "#8E8E93",
+    fontSize: 11, fontWeight: "700", color: "#78716C",
     letterSpacing: 1.2, fontFamily: "Inter_700Bold",
     textTransform: "uppercase", marginBottom: 4,
   },
   ayahGridSub: {
-    fontSize: 13, color: "#8E8E93", fontFamily: "Inter_400Regular",
+    fontSize: 13, color: "#78716C", fontFamily: "Inter_400Regular",
     lineHeight: 18, marginBottom: 16,
   },
   ayahGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 },
   ayahBubble: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: "#F2F2F7", alignItems: "center", justifyContent: "center",
+    backgroundColor: "#EEE8DF", alignItems: "center", justifyContent: "center",
   },
   ayahBubbleMemorized: { backgroundColor: "#16A34A" },
   ayahBubbleSelected: { backgroundColor: "#1A1A1A" },
@@ -798,15 +798,15 @@ const s = StyleSheet.create({
 
   availabilityChip: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: "#F2F2F7", borderRadius: 12,
+    backgroundColor: "#F6F2EA", borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 10, marginBottom: 20,
   },
-  availabilityText: { flex: 1, fontSize: 13, color: "#5A5A5A", fontFamily: "Inter_400Regular" },
+  availabilityText: { flex: 1, fontSize: 13, color: "#71717A", fontFamily: "Inter_400Regular" },
   availabilityBold: { fontFamily: "Inter_700Bold", color: "#1A1A1A" },
 
   // ── Step 4: Quantity slider ───────────────────────────────────────────────
   targetLabel: {
-    fontSize: 11, fontWeight: "700", color: "#8E8E93",
+    fontSize: 11, fontWeight: "700", color: "#78716C",
     letterSpacing: 1.5, fontFamily: "Inter_700Bold",
     textTransform: "uppercase", textAlign: "center", marginBottom: 6,
   },
@@ -815,23 +815,23 @@ const s = StyleSheet.create({
     fontFamily: "Inter_700Bold", textAlign: "center", lineHeight: 90,
   },
   targetUnit: {
-    fontSize: 15, color: "#8E8E93", fontFamily: "Inter_400Regular",
+    fontSize: 15, color: "#78716C", fontFamily: "Inter_400Regular",
     textAlign: "center", marginBottom: 10,
   },
 
   dynamicLimitChip: {
     flexDirection: "row", alignItems: "flex-start", gap: 7,
-    backgroundColor: "#F2F2F7", borderRadius: 10,
+    backgroundColor: "#F6F2EA", borderRadius: 10,
     paddingHorizontal: 12, paddingVertical: 9, marginBottom: 14,
   },
-  dynamicLimitText: { flex: 1, fontSize: 12, color: "#8E8E93", fontFamily: "Inter_400Regular", lineHeight: 17 },
+  dynamicLimitText: { flex: 1, fontSize: 12, color: "#78716C", fontFamily: "Inter_400Regular", lineHeight: 17 },
   dynamicLimitBold: { fontFamily: "Inter_700Bold", color: "#1A1A1A" },
 
   sliderRangeRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 2 },
-  sliderRangeText: { fontSize: 12, color: "#C0C0C0", fontFamily: "Inter_400Regular" },
+  sliderRangeText: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular" },
 
   sliderContainer: { height: 44, justifyContent: "center", marginBottom: 4 },
-  sliderTrack: { height: 3, backgroundColor: "#E0E0E0", borderRadius: 2 },
+  sliderTrack: { height: 3, backgroundColor: "#E7E5DB", borderRadius: 2 },
   sliderFill: { position: "absolute", height: 3, backgroundColor: "#1A1A1A", borderRadius: 2 },
   sliderThumb: {
     position: "absolute", top: -11.5,
@@ -842,37 +842,37 @@ const s = StyleSheet.create({
   },
 
   commitmentLabel: {
-    fontSize: 11, fontWeight: "700", color: "#8E8E93", letterSpacing: 1.2,
+    fontSize: 11, fontWeight: "700", color: "#78716C", letterSpacing: 1.2,
     fontFamily: "Inter_700Bold", textTransform: "uppercase",
     textAlign: "center", marginTop: 12, marginBottom: 10,
   },
   dots: { flexDirection: "row", gap: 7, justifyContent: "center", marginBottom: 22 },
-  dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: "#E0E0E0" },
+  dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: "#D6D3D1" },
   dotFilled: { backgroundColor: "#1A1A1A" },
 
   consistencyCard: {
-    backgroundColor: "#F2F2F7", borderRadius: 14, padding: 16, marginBottom: 16,
+    backgroundColor: "#F6F2EA", borderRadius: 14, padding: 16, marginBottom: 16,
   },
   consistencyTitle: {
     fontSize: 12, fontWeight: "700", color: "#1A1A1A",
     fontFamily: "Inter_700Bold", letterSpacing: 0.5, marginBottom: 6,
   },
   consistencyText: {
-    fontSize: 13, color: "#5A5A5A", fontFamily: "Inter_400Regular", lineHeight: 19,
+    fontSize: 13, color: "#71717A", fontFamily: "Inter_400Regular", lineHeight: 19,
   },
 
   // Summary card at bottom of step 4
   summaryCard: {
-    backgroundColor: "#FFFFFF", borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: "#E8E8ED",
+    backgroundColor: "#FDFBF7", borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: "#D6D3D1",
     paddingHorizontal: 16, marginBottom: 20,
   },
   summaryRow: {
     flexDirection: "row", alignItems: "center",
     justifyContent: "space-between", paddingVertical: 12,
   },
-  summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: "#E8E8ED" },
-  summaryLabel: { fontSize: 13, color: "#8E8E93", fontFamily: "Inter_400Regular" },
+  summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: "#D6D3D1" },
+  summaryLabel: { fontSize: 13, color: "#78716C", fontFamily: "Inter_400Regular" },
   summaryValue: { fontSize: 13, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
   summaryValueBold: { fontFamily: "Inter_700Bold" },
 });
