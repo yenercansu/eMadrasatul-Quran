@@ -262,11 +262,11 @@ function SwipeableAyahCard({
                 accessibilityState={{ checked: isMemorized }}
                 accessibilityLabel={`Mark ayah ${ayah.numberInSurah} memorized`}
               >
-                <Ionicons
-                  name={isMemorized ? "checkmark-circle" : "checkmark-circle-outline"}
-                  size={24}
-                  color={isMemorized ? "#1A1A1A" : "#B8B1A8"}
-                />
+                {isMemorized ? (
+                  <Ionicons name="checkmark-circle" size={26} color="#1A1A1A" />
+                ) : (
+                  <View style={cs.memorizedCheckCircle} />
+                )}
               </TouchableOpacity>
             )}
           </View>
@@ -388,6 +388,13 @@ const cs = StyleSheet.create({
     height: 32,
     alignItems: "center",
     justifyContent: "center",
+  },
+  memorizedCheckCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: "#B8B1A8",
   },
   basmala: {
     fontSize: 22,

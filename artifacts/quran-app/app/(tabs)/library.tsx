@@ -837,7 +837,8 @@ export default function LibraryScreen() {
       const d = new Date(monday.getTime() + i * 86400000);
       const dateStr = d.toISOString().split("T")[0];
       const entry = dailyEntries.find((e) => e.date === dateStr);
-      return { label, active: !!(entry && entry.ayahsRead > 0) };
+      const attended = !!(entry && (entry.ayahsRead > 0 || entry.kahfCompleted));
+      return { label, active: attended };
     });
   }, [dailyEntries]);
 
@@ -864,7 +865,7 @@ export default function LibraryScreen() {
         <View style={s.streakCard}>
           <View style={s.streakContent}>
             <View style={s.streakLeft}>
-              <Text style={s.streakTitle}>{streakDays}-day attendance</Text>
+              <Text style={s.streakTitle}>Attendance</Text>
               <Text style={s.streakSub}>Keep it up!</Text>
             </View>
             <View style={s.weekDotsRow}>
@@ -1022,10 +1023,9 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
       gap: 4,
     },
     dot: {
-      width: 20,
-      paddingHorizontal: 4,
-      paddingVertical: 1,
-      borderRadius: 999,
+      width: 24,
+      height: 24,
+      borderRadius: 12,
       backgroundColor: colors.appLightGray,
       alignItems: "center",
       justifyContent: "center",
