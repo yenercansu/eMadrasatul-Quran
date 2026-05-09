@@ -490,12 +490,7 @@ export default function HomeScreen() {
           {/* ── Last Visited ──────────────────────────────────────────────── */}
           {recentProgress.length > 0 && (
             <View style={s.listSection}>
-              <View style={s.listSectionHeader}>
-                <SubSectionTitle>Last Visited</SubSectionTitle>
-                <TouchableOpacity activeOpacity={0.7}>
-                  <Text style={s.viewAllText}>View All</Text>
-                </TouchableOpacity>
-              </View>
+              <SubSectionTitle style={{ paddingHorizontal: 20, marginBottom: 14 }}>Last Visited</SubSectionTitle>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
