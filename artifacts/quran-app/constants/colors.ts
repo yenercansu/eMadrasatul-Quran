@@ -62,6 +62,10 @@ const colors = {
     appOrangeSurface: "#FFEDD5",
     appBorderMid: "#A8A29E",
     appSeparator: "#F9FAFB",
+    appTextPrimary: "#18181B",
+    appNeutral950: "#0A0A0A",
+    appBubbleBorder: "#E5E7EB",
+    appProgressGlowColor: "rgb(212,175,55)",
   },
 
   dark: {
@@ -127,6 +131,10 @@ const colors = {
     appOrangeSurface: "#3D1E0A",
     appBorderMid: "#6B6460",
     appSeparator: "#252525",
+    appTextPrimary: "#F4F4F5",
+    appNeutral950: "#FAFAFA",
+    appBubbleBorder: "#3F3F46",
+    appProgressGlowColor: "rgb(212,175,55)",
   },
 
   radius: 12,
@@ -196,6 +204,13 @@ const colors = {
       shadowOpacity: 0.1,
       shadowRadius: 12,
       elevation: 6,
+    },
+    goldGlow: {
+      shadowColor: "rgb(212,175,55)",
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.6,
+      shadowRadius: 8,
+      elevation: 2,
     },
   },
 };

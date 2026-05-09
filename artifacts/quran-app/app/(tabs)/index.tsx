@@ -674,16 +674,15 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     badge: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: colors.appLightBg,
       paddingHorizontal: 12,
       paddingVertical: 4,
       borderRadius: 20,
       gap: 8,
       borderWidth: 1,
-      borderColor: colors.appWarningLight,
+      borderColor: colors.appNeutral950,
     },
-    badgeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.appWarning },
-    badgeText: { fontSize: 10, fontWeight: "700", color: colors.appWarning, fontFamily: "Inter_700Bold" },
+    badgeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.appNeutral950 },
+    badgeText: { fontSize: 10, fontWeight: "700", color: colors.appNeutral950, fontFamily: "Inter_700Bold" },
 
     settingsBtn: {
       width: 40,
@@ -731,7 +730,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     audioTitle: {
       fontSize: 18,
       fontWeight: "700",
-      color: colors.appBlack,
+      color: colors.appTextPrimary,
       fontFamily: "Inter_700Bold",
       marginBottom: 2,
     },
@@ -749,8 +748,9 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     audioProgressFill: {
       height: "100%" as any,
-      backgroundColor: colors.appBlack,
+      backgroundColor: colors.appTextPrimary,
       borderRadius: 4,
+      ...colors.shadows.goldGlow,
     },
     playBtn: {
       width: 48,
@@ -795,7 +795,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     widgetCardContent: { padding: 16 },
 
     attachedCta: {
-      backgroundColor: colors.appOrangeSurface,
+      backgroundColor: colors.appStone,
       borderTopWidth: 1,
       borderTopColor: colors.appDarkerGray,
       paddingVertical: 18,
@@ -916,7 +916,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     widgetCardTitle: {
       fontSize: 18,
       fontWeight: "700",
-      color: colors.appBlack,
+      color: colors.appTextPrimary,
       fontFamily: "Inter_700Bold",
       marginBottom: 3,
       letterSpacing: -0.2,
@@ -1035,7 +1035,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderWidth: 1,
       borderColor: colors.appBorderMid,
       shadowColor: colors.appBlack,
-      shadowOffset: { width: 0, height: 1.5 },
+      shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.25,
       shadowRadius: 4.5,
       elevation: 2,
@@ -1187,7 +1187,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       height: 36,
       borderRadius: 18,
       borderWidth: 1,
-      borderColor: colors.appBorderLighter,
+      borderColor: colors.appBubbleBorder,
       alignItems: "center",
       justifyContent: "center",
       flexShrink: 0,
@@ -1195,15 +1195,15 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     surahNum: {
       fontSize: 12,
       fontWeight: "500",
-      color: colors.appBlack,
+      color: colors.appTextPrimary,
       fontFamily: "Inter_600SemiBold",
     },
     surahInfo: { flex: 1 },
-    surahName: { fontSize: 14, fontWeight: "700", color: colors.appBlack, fontFamily: "Inter_700Bold" },
+    surahName: { fontSize: 14, fontWeight: "700", color: colors.appTextPrimary, fontFamily: "Inter_700Bold" },
     surahMeta: { fontSize: 12, color: colors.appLightText, fontFamily: "Inter_400Regular", marginTop: 2 },
     surahArabic: {
       fontSize: 18,
-      color: colors.appBlack,
+      color: colors.appTextPrimary,
     },
 
     memorizedTag: {
