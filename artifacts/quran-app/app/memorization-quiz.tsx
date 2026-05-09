@@ -1123,7 +1123,7 @@ export default function MemorizationQuizScreen() {
                 <View style={[s.infoBox, { marginBottom: 8 }]}>
                   <Ionicons name="information-circle-outline" size={16} color="#A8A29E" />
                   <Text style={s.infoText}>
-                    Al Falaq, An Nas, and Al Ikhlas are included by default. You can uncheck them at any time to not include them in your tests. These surahs are always treated as full units and are not split into individual ayahs.
+                    You can uncheck them at any time to exclude them from your tests.
                   </Text>
                 </View>
                 {pagedSurahs.length === 0 ? (
