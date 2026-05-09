@@ -78,7 +78,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginBottom: 10,
       backgroundColor: colors.card,
       borderRadius: colors.borders.xl,       // rounded-2xl → 16px token
-      padding: 18,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
       borderWidth: 1,
       borderColor: colors.appDarkerGray,     // stone-600 (#57534E)
       // no shadow — Figma: shadow-[0px_0px_0px_0px_...]
@@ -86,12 +87,12 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     topRow: {
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: 4,
+      marginBottom: 0,
       gap: 8,
     },
     meta: { flex: 1 },
     type: {
-      fontSize: 10,                          // text-[10px]
+      fontSize: 12,
       fontWeight: "600",
       color: colors.appBorderMid,            // stone-400 (#A8A29E)
       fontFamily: "Inter_600SemiBold",
@@ -140,8 +141,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     names: { flex: 1, gap: 2 },
     englishName: {
-      fontSize: 16,                          // text-base
-      fontWeight: "800",                     // font-extrabold
+      fontSize: 16,
+      fontWeight: "800",
       color: colors.appText,                 // stone-900
       fontFamily: "Inter_700Bold",
     },
