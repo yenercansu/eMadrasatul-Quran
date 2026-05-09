@@ -140,6 +140,10 @@ interface QuranContextType {
   toggleCheckedSurah: (surahNum: number, ayahCount: number) => void;
   isSurahChecked: (surahNum: number) => boolean;
   clearCheckedSurahs: () => void;
+  quizSelectedSurahs: number[];
+  setQuizSelectedSurahs: (surahNums: number[]) => void;
+  toggleQuizSurahSelection: (surahNum: number) => void;
+  isQuizSurahSelected: (surahNum: number) => boolean;
   memorizedAyahKeys: string[];
   markAyahsMemorized: (keys: string[]) => void;
   removeMemorizedAyahKeys: (keys: string[]) => void;
@@ -180,6 +184,8 @@ const DEFAULT_ACCOUNT: AccountSettings = {
   dailyNotifications: false,
   notificationTime: "08:00",
 };
+
+const DEFAULT_QUIZ_SELECTED_SURAHS = [1, 112, 113, 114];
 
 function applyTheme(theme: AccountSettings["theme"]) {
   try {
@@ -232,6 +238,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const [quranPosition, setQuranPosition] = useState(0);
   const [surahPositions, setSurahPositions] = useState<Record<number, number>>({});
   const [checkedSurahs, setCheckedSurahs] = useState<number[]>([]);
+  const [quizSelectedSurahs, setQuizSelectedSurahsState] = useState<number[]>(DEFAULT_QUIZ_SELECTED_SURAHS);
   const [memorizedAyahKeys, setMemorizedAyahKeys] = useState<string[]>([]);
 
   useEffect(() => { loadData(); }, []);
@@ -249,6 +256,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         "quran_account", "quran_saved_surahs", "quran_highlighted_words",
         "quran_saved_ayahs", "quran_position", "quran_surah_positions",
         "quran_checked_surahs", "quran_memorization_goal", "quran_memorized_ayahs",
+        "quran_quiz_selected_surahs",
       ];
       const results = await AsyncStorage.multiGet(keys);
       const map = Object.fromEntries(results.map(([k, v]) => [k, v]));
@@ -286,6 +294,11 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       if (map.quran_position) setQuranPosition(JSON.parse(map.quran_position));
       if (map.quran_surah_positions) setSurahPositions(JSON.parse(map.quran_surah_positions));
       if (map.quran_checked_surahs) setCheckedSurahs(JSON.parse(map.quran_checked_surahs));
+      if (map.quran_quiz_selected_surahs) {
+        setQuizSelectedSurahsState(JSON.parse(map.quran_quiz_selected_surahs));
+      } else {
+        await AsyncStorage.setItem("quran_quiz_selected_surahs", JSON.stringify(DEFAULT_QUIZ_SELECTED_SURAHS));
+      }
       if (map.quran_memorized_ayahs) setMemorizedAyahKeys(JSON.parse(map.quran_memorized_ayahs));
     } catch {}
   }
@@ -633,6 +646,22 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem("quran_checked_surahs", JSON.stringify([]));
   }, []);
 
+  const setQuizSelectedSurahs = useCallback((surahNums: number[]) => {
+    const next = Array.from(new Set(surahNums)).sort((a, b) => a - b);
+    setQuizSelectedSurahsState(next);
+    AsyncStorage.setItem("quran_quiz_selected_surahs", JSON.stringify(next));
+  }, []);
+
+  const toggleQuizSurahSelection = useCallback((surahNum: number) => {
+    setQuizSelectedSurahsState((prev) => {
+      const next = prev.includes(surahNum) ? prev.filter(n => n !== surahNum) : [...prev, surahNum].sort((a, b) => a - b);
+      AsyncStorage.setItem("quran_quiz_selected_surahs", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const isQuizSurahSelected = useCallback((surahNum: number) => quizSelectedSurahs.includes(surahNum), [quizSelectedSurahs]);
+
   const recordAyahRead = useCallback((surahNumber: number, ayahNumber?: number) => {
     const today = getTodayStr();
     const isKahf = surahNumber === 18 && isFriday();
@@ -735,6 +764,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       quranPosition, advanceQuranPosition, getWeekGoalAyahs, getWeekGoalProgress,
       surahPositions, saveSurahPosition,
       checkedSurahs, toggleCheckedSurah, isSurahChecked, clearCheckedSurahs,
+      quizSelectedSurahs, setQuizSelectedSurahs, toggleQuizSurahSelection, isQuizSurahSelected,
       memorizedAyahKeys, markAyahsMemorized, removeMemorizedAyahKeys, toggleAyahMemorized, isAyahMemorized,
     }}>
       {children}

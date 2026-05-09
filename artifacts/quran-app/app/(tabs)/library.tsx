@@ -245,7 +245,7 @@ function AyahListView({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: 
           <View style={listViewStyles.empty}>
             <Text style={[listViewStyles.emptyTitle, { color: colors.foreground }]}>No saved ayahs</Text>
             <Text style={[listViewStyles.emptySubtitle, { color: colors.mutedForeground }]}>
-              Swipe right on any ayah while reading to save it here
+              Swipe left on any ayah while reading to save it here
             </Text>
           </View>
           {infoBoxFooter}
@@ -451,17 +451,22 @@ const wordCardStyles = StyleSheet.create({
 function WordsQuizView({ onBack }: { onBack: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { savedWords, savedAyahs, removeAyah, toggleWordMemorized } = useQuran();
+  const { savedWords, savedAyahs, removeAyah, toggleWordMemorized, quizSelectedSurahs } = useQuran();
   const [filterMode, setFilterMode] = useState<FilterMode>("ayah");
   const [selectedSurahNum, setSelectedSurahNum] = useState<number | null>(null);
   const [wordTab, setWordTab] = useState<"active" | "memorized">("active");
   const [surahListPage, setSurahListPage] = useState(0);
   const SURAH_PAGE_SIZE = 10;
   const topPad = insets.top;
+  const selectedQuizSurahSet = useMemo(() => new Set(quizSelectedSurahs), [quizSelectedSurahs]);
+  const quizFilteredWords = useMemo(
+    () => savedWords.filter(w => selectedQuizSurahSet.has(w.surahNumber)),
+    [savedWords, selectedQuizSurahSet]
+  );
 
   const surahGroups = useMemo(() => {
     const map = new Map<number, number>();
-    for (const w of savedWords) {
+    for (const w of quizFilteredWords) {
       map.set(w.surahNumber, (map.get(w.surahNumber) ?? 0) + 1);
     }
     return Array.from(map.entries())
@@ -477,7 +482,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
           juz: meta?.juz ?? 1,
         };
       });
-  }, [savedWords]);
+  }, [quizFilteredWords]);
 
   const totalSurahListPages = Math.max(1, Math.ceil(surahGroups.length / SURAH_PAGE_SIZE));
   const pagedSurahGroups = useMemo(
@@ -487,10 +492,10 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
 
   const filteredWords = useMemo(() => {
     if (filterMode === "by-surah" && selectedSurahNum !== null) {
-      return savedWords.filter(w => w.surahNumber === selectedSurahNum);
+      return quizFilteredWords.filter(w => w.surahNumber === selectedSurahNum);
     }
-    return savedWords;
-  }, [savedWords, filterMode, selectedSurahNum]);
+    return quizFilteredWords;
+  }, [quizFilteredWords, filterMode, selectedSurahNum]);
 
   const activeWordCount = useMemo(() => filteredWords.filter(w => !w.memorized).length, [filteredWords]);
   const memorizedWordCount = useMemo(() => filteredWords.filter(w => !!w.memorized).length, [filteredWords]);
@@ -555,7 +560,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
               <Text style={[wvs.subtitle, { color: colors.mutedForeground }]}>
                 {filterMode === "ayah"
                   ? `${savedAyahs.length} ayah${savedAyahs.length !== 1 ? "s" : ""} saved`
-                  : `${savedWords.length} words saved`}
+                  : `${quizFilteredWords.length} words saved`}
               </Text>
             </View>
           </View>
@@ -617,7 +622,12 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
             contentContainerStyle={wvs.surahListContent}
             showsVerticalScrollIndicator={false}
           >
-            {surahGroups.length === 0 ? (
+            {quizSelectedSurahs.length === 0 ? (
+              <View style={wvs.empty}>
+                <Feather name="info" size={24} color={colors.mutedForeground} />
+                <Text style={[wvs.emptyTitle, { color: colors.foreground }]}>No Surah selected, please select a Surah or Ayah to continue</Text>
+              </View>
+            ) : surahGroups.length === 0 ? (
               <>
                 <View style={wvs.empty}>
                   <Text style={[wvs.emptyTitle, { color: colors.foreground }]}>No words saved yet</Text>
@@ -713,6 +723,12 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
           ListFooterComponent={ctaCard}
         />
       ) : (
+        quizSelectedSurahs.length === 0 ? (
+          <View style={wvs.empty}>
+            <Feather name="info" size={24} color={colors.mutedForeground} />
+            <Text style={[wvs.emptyTitle, { color: colors.foreground }]}>No Surah selected, please select a Surah or Ayah to continue</Text>
+          </View>
+        ) : (
         <FlatList
           data={displayedWords}
           keyExtractor={(item) => item.id}
@@ -733,6 +749,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
           }
           ListFooterComponent={ctaCard}
         />
+        )
       )}
 
     </View>

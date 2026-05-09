@@ -98,8 +98,8 @@ const DEFAULT_SURAHS: { number: number; name: string; englishName: string; ayahs
 const MEDINAN_SURAHS = new Set([
   2, 3, 4, 5, 8, 9, 13, 22, 24, 33, 47, 48, 49, 55, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 76, 98, 99, 110,
 ]);
-// These surahs are always pre-selected in By Surah mode and treated as full units
-const SPECIAL_SURAH_NUMS = new Set([112, 113, 114]);
+// These surahs are available in By Surah mode even before the user saves ayahs.
+const SPECIAL_SURAH_NUMS = new Set([1, 112, 113, 114]);
 const SURAHS_PER_PAGE = 20;
 const AYAHS_PER_PAGE = 20;
 
@@ -638,7 +638,15 @@ type AyahTagFilter = "all" | "selected" | "excluded";
 export default function MemorizationQuizScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
-  const { savedAyahs, removeAyah, recordQuizCompletion } = useQuran();
+  const {
+    savedAyahs,
+    removeAyah,
+    recordQuizCompletion,
+    quizSelectedSurahs,
+    setQuizSelectedSurahs,
+    toggleQuizSurahSelection,
+    isQuizSurahSelected,
+  } = useQuran();
   const topPad = insets.top;
 
   const [mode, setMode] = useState<QuizMode>(null);
@@ -650,8 +658,6 @@ export default function MemorizationQuizScreen() {
   const [selectedSurahNum, setSelectedSurahNum] = useState<number | null>(null);
   const [selectedAyahIds, setSelectedAyahIds] = useState<Set<string>>(() => new Set(savedAyahs.map(a => a.id)));
   const [excludedAyahIds, setExcludedAyahIds] = useState<Set<string>>(new Set());
-  // Tracks which special surahs (112/113/114) the user has manually deselected
-  const [excludedSpecialNums, setExcludedSpecialNums] = useState<Set<number>>(new Set());
   const [surahSearchQuery, setSurahSearchQuery] = useState("");
   const [ayahSearchQuery, setAyahSearchQuery] = useState("");
   const [surahPage, setSurahPage] = useState(0);
@@ -721,6 +727,8 @@ export default function MemorizationQuizScreen() {
     return savedAyahs.filter(ayah => selectedAyahIds.has(ayah.id) && !excludedAyahIds.has(ayah.id));
   }, [savedAyahs, selectedAyahIds, excludedAyahIds]);
 
+  const selectedQuizSurahSet = useMemo(() => new Set(quizSelectedSurahs), [quizSelectedSurahs]);
+
   const allFilteredSurahs = useMemo(() => {
     const savedSurahNums = new Set(surahGroups.map(g => g.surahNumber));
     // Always include special surahs (112/113/114) even if user hasn't saved their ayahs
@@ -732,19 +740,19 @@ export default function MemorizationQuizScreen() {
     if (tagFilter === "selected") {
       const savedMap = new Map(surahGroups.map(g => [g.surahNumber, g.ayahs]));
       surahs = surahs.filter(s => {
-        if (SPECIAL_SURAH_NUMS.has(s.number) && !savedMap.has(s.number)) return !excludedSpecialNums.has(s.number);
-        return savedMap.get(s.number)?.some(a => selectedAyahIds.has(a.id) && !excludedAyahIds.has(a.id));
+        if (SPECIAL_SURAH_NUMS.has(s.number) && !savedMap.has(s.number)) return selectedQuizSurahSet.has(s.number);
+        return selectedQuizSurahSet.has(s.number) && savedMap.get(s.number)?.some(a => selectedAyahIds.has(a.id) && !excludedAyahIds.has(a.id));
       });
     }
     if (tagFilter === "excluded") {
       const savedMap = new Map(surahGroups.map(g => [g.surahNumber, g.ayahs]));
       surahs = surahs.filter(s => {
-        if (SPECIAL_SURAH_NUMS.has(s.number) && !savedMap.has(s.number)) return excludedSpecialNums.has(s.number);
-        return savedMap.get(s.number)?.some(a => excludedAyahIds.has(a.id));
+        if (SPECIAL_SURAH_NUMS.has(s.number) && !savedMap.has(s.number)) return !selectedQuizSurahSet.has(s.number);
+        return !selectedQuizSurahSet.has(s.number) || savedMap.get(s.number)?.some(a => excludedAyahIds.has(a.id));
       });
     }
     return surahs;
-  }, [surahSearchQuery, tagFilter, surahGroups, selectedAyahIds, excludedAyahIds, excludedSpecialNums]);
+  }, [surahSearchQuery, tagFilter, surahGroups, selectedAyahIds, excludedAyahIds, selectedQuizSurahSet]);
 
   const totalSurahPages = Math.max(1, Math.ceil(allFilteredSurahs.length / SURAHS_PER_PAGE));
 
@@ -754,12 +762,18 @@ export default function MemorizationQuizScreen() {
   }, [allFilteredSurahs, surahPage]);
 
   const selectedSurahCount = useMemo(() => {
-    const nums = new Set<number>();
-    for (const a of savedAyahs) {
-      if (selectedAyahIds.has(a.id) && !excludedAyahIds.has(a.id)) nums.add(a.surahNumber);
-    }
-    return nums.size;
-  }, [savedAyahs, selectedAyahIds, excludedAyahIds]);
+    const visibleNums = new Set(allFilteredSurahs.map(s => s.number));
+    return quizSelectedSurahs.filter(n => visibleNums.has(n)).length;
+  }, [allFilteredSurahs, quizSelectedSurahs]);
+
+  const selectedQuizPoolAyahCount = useMemo(() => {
+    const savedNums = new Set(quizDataset.map(a => a.surahNumber));
+    const savedCount = quizDataset.filter(a => selectedQuizSurahSet.has(a.surahNumber)).length;
+    const defaultCount = DEFAULT_SURAHS
+      .filter(s => selectedQuizSurahSet.has(s.number) && !savedNums.has(s.number))
+      .reduce((sum, s) => sum + s.ayahs.length, 0);
+    return savedCount + defaultCount;
+  }, [quizDataset, selectedQuizSurahSet]);
 
   const totalAyahPages = Math.max(1, Math.ceil(visibleAyahs.length / AYAHS_PER_PAGE));
 
@@ -781,32 +795,36 @@ export default function MemorizationQuizScreen() {
 
   const startQuiz = useCallback(() => {
     if (!mode) return;
-    const useDefault = quizDataset.length < 4;
-    let surahs = useDefault ? DEFAULT_SURAHS : savedAyahsToSurahFormat(quizDataset);
-    // Always inject selected special surahs that aren't already covered by savedAyahs
-    if (!useDefault) {
-      const savedNums = new Set(quizDataset.map(a => a.surahNumber));
-      const extraSpecial = DEFAULT_SURAHS.filter(
-        ds => SPECIAL_SURAH_NUMS.has(ds.number) && !excludedSpecialNums.has(ds.number) && !savedNums.has(ds.number)
-      );
-      if (extraSpecial.length > 0) surahs = [...surahs, ...extraSpecial];
+    if (quizSelectedSurahs.length === 0) {
+      setFilterMode("by-surah");
+      setPhase("selection");
+      return;
     }
+    const savedAyahsFromSelectedSurahs = quizDataset.filter(a => selectedQuizSurahSet.has(a.surahNumber));
+    const savedNums = new Set(savedAyahsFromSelectedSurahs.map(a => a.surahNumber));
+    const defaultSurahsFromSelectedSurahs = DEFAULT_SURAHS.filter(
+      ds => selectedQuizSurahSet.has(ds.number) && !savedNums.has(ds.number)
+    );
+    const surahs = [
+      ...savedAyahsToSurahFormat(savedAyahsFromSelectedSurahs),
+      ...defaultSurahsFromSelectedSurahs,
+    ];
     let qs: Question[] = [];
     if (mode === "follow-up") {
       qs = buildFollowUpQuestions(5, surahs);
-      if (qs.length === 0) qs = buildFollowUpQuestions(5, DEFAULT_SURAHS);
     } else if (mode === "fill-blank") {
       qs = buildFillBlankQuestions(5, surahs);
-      if (qs.length === 0) qs = buildFillBlankQuestions(5, DEFAULT_SURAHS);
     } else {
       qs = buildTafsirMatchQuestions(5, surahs);
-      if (qs.length === 0) qs = buildTafsirMatchQuestions(5, DEFAULT_SURAHS);
     }
-    if (qs.length === 0) return;
+    if (qs.length === 0) {
+      Alert.alert("Not enough selected ayahs", "Select more Surahs or Ayahs to build this quiz.");
+      return;
+    }
     setQuestions(qs);
     setPhase("quiz");
     setFinalScore(0);
-  }, [mode, quizDataset, excludedSpecialNums]);
+  }, [mode, quizDataset, quizSelectedSurahs, selectedQuizSurahSet]);
 
   const chooseMode = useCallback((selectedMode: NonNullable<QuizMode>) => {
     setMode(selectedMode);
@@ -864,40 +882,13 @@ export default function MemorizationQuizScreen() {
   }, [phase]);
 
   const isSurahSelected = useCallback((surahNum: number): boolean => {
-    const group = surahGroups.find(g => g.surahNumber === surahNum);
-    // Special surah with no individually saved ayahs: selected unless user excluded it
-    if (SPECIAL_SURAH_NUMS.has(surahNum) && (!group || group.ayahs.length === 0)) {
-      return !excludedSpecialNums.has(surahNum);
-    }
-    if (!group || group.ayahs.length === 0) return false;
-    return group.ayahs.every(a => selectedAyahIds.has(a.id) && !excludedAyahIds.has(a.id));
-  }, [surahGroups, selectedAyahIds, excludedAyahIds, excludedSpecialNums]);
+    return isQuizSurahSelected(surahNum);
+  }, [isQuizSurahSelected]);
 
   const toggleSurah = useCallback((surahNum: number) => {
-    const group = surahGroups.find(g => g.surahNumber === surahNum);
-    // Special surah with no individually saved ayahs: toggle via excludedSpecialNums
-    if (SPECIAL_SURAH_NUMS.has(surahNum) && (!group || group.ayahs.length === 0)) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setExcludedSpecialNums(prev => {
-        const n = new Set(prev);
-        if (n.has(surahNum)) n.delete(surahNum); else n.add(surahNum);
-        return n;
-      });
-      return;
-    }
-    if (!group || group.ayahs.length === 0) return;
-    const allSel = group.ayahs.every(a => selectedAyahIds.has(a.id) && !excludedAyahIds.has(a.id));
-    setSelectedAyahIds(prev => {
-      const n = new Set(prev);
-      group.ayahs.forEach(a => allSel ? n.delete(a.id) : n.add(a.id));
-      return n;
-    });
-    setExcludedAyahIds(prev => {
-      const n = new Set(prev);
-      group.ayahs.forEach(a => allSel ? n.add(a.id) : n.delete(a.id));
-      return n;
-    });
-  }, [surahGroups, selectedAyahIds, excludedAyahIds, excludedSpecialNums]);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    toggleQuizSurahSelection(surahNum);
+  }, [toggleQuizSurahSelection]);
 
   const handleSelectAll = useCallback(() => {
     if (filterMode === "by-ayah") {
@@ -905,15 +896,9 @@ export default function MemorizationQuizScreen() {
       setSelectedAyahIds(prev => { const n = new Set(prev); ids.forEach(id => n.add(id)); return n; });
       setExcludedAyahIds(prev => { const n = new Set(prev); ids.forEach(id => n.delete(id)); return n; });
     } else {
-      const idsToAdd: string[] = [];
-      for (const surahMeta of allFilteredSurahs) {
-        const group = surahGroups.find(g => g.surahNumber === surahMeta.number);
-        if (group) group.ayahs.forEach(a => idsToAdd.push(a.id));
-      }
-      setSelectedAyahIds(prev => { const n = new Set(prev); idsToAdd.forEach(id => n.add(id)); return n; });
-      setExcludedAyahIds(prev => { const n = new Set(prev); idsToAdd.forEach(id => n.delete(id)); return n; });
+      setQuizSelectedSurahs([...quizSelectedSurahs, ...allFilteredSurahs.map(s => s.number)]);
     }
-  }, [filterMode, visibleAyahs, allFilteredSurahs, surahGroups]);
+  }, [filterMode, visibleAyahs, allFilteredSurahs, quizSelectedSurahs, setQuizSelectedSurahs]);
 
   const handleClearAll = useCallback(() => {
     if (filterMode === "by-ayah") {
@@ -921,15 +906,10 @@ export default function MemorizationQuizScreen() {
       setSelectedAyahIds(prev => { const n = new Set(prev); ids.forEach(id => n.delete(id)); return n; });
       setExcludedAyahIds(prev => { const n = new Set(prev); ids.forEach(id => n.add(id)); return n; });
     } else {
-      const idsToClear: string[] = [];
-      for (const surahMeta of allFilteredSurahs) {
-        const group = surahGroups.find(g => g.surahNumber === surahMeta.number);
-        if (group) group.ayahs.forEach(a => idsToClear.push(a.id));
-      }
-      setSelectedAyahIds(prev => { const n = new Set(prev); idsToClear.forEach(id => n.delete(id)); return n; });
-      setExcludedAyahIds(prev => { const n = new Set(prev); idsToClear.forEach(id => n.add(id)); return n; });
+      const visibleNums = new Set(allFilteredSurahs.map(s => s.number));
+      setQuizSelectedSurahs(quizSelectedSurahs.filter(n => !visibleNums.has(n)));
     }
-  }, [filterMode, visibleAyahs, allFilteredSurahs, surahGroups]);
+  }, [filterMode, visibleAyahs, allFilteredSurahs, quizSelectedSurahs, setQuizSelectedSurahs]);
 
   const renderAyahRow = (ayah: SavedAyah) => {
     const checked = selectedAyahIds.has(ayah.id);
@@ -1119,17 +1099,23 @@ export default function MemorizationQuizScreen() {
           <ScrollView style={{ flex: 1 }} contentContainerStyle={s.selectionContent2} showsVerticalScrollIndicator={false}>
             {filterMode === "by-surah" ? (
               <>
+                {quizSelectedSurahs.length === 0 && (
+                  <View style={[s.infoBox, s.emptySelectionBox]}>
+                    <Ionicons name="information-circle-outline" size={18} color="#A8A29E" />
+                    <Text style={s.infoText}>No Surah selected, please select a Surah or Ayah to continue</Text>
+                  </View>
+                )}
                 {/* Info text for special surahs */}
                 <View style={[s.infoBox, { marginBottom: 8 }]}>
                   <Ionicons name="information-circle-outline" size={16} color="#A8A29E" />
                   <Text style={s.infoText}>
-                    You can uncheck them at any time to exclude them from your tests.
+                    Swipe left on any ayah while reading to save it here.
                   </Text>
                 </View>
                 {pagedSurahs.length === 0 ? (
                   <View style={s.infoBox}>
                     <Ionicons name="information-circle-outline" size={18} color="#A8A29E" />
-                    <Text style={s.infoText}>{surahGroups.length === 0 ? "No saved ayahs yet. Save ayahs from the reader to build your quiz pool." : surahSearchQuery.trim() ? "No surahs match your search." : "No surahs match this filter."}</Text>
+                    <Text style={s.infoText}>{surahGroups.length === 0 ? "No saved ayahs. Swipe left on any ayah while reading to save it here." : surahSearchQuery.trim() ? "No surahs match your search." : "No surahs match this filter."}</Text>
                   </View>
                 ) : (() => {
                   const byJuz: { juz: number; surahs: typeof SURAH_DATA }[] = [];
@@ -1147,7 +1133,6 @@ export default function MemorizationQuizScreen() {
                         const isSpecial = SPECIAL_SURAH_NUMS.has(surah.number);
                         const isVirtualSpecial = isSpecial && savedCount === 0;
                         const selected = isSurahSelected(surah.number);
-                        const isInteractive = savedCount > 0 || isVirtualSpecial;
                         const origin = MEDINAN_SURAHS.has(surah.number) ? "Medinan" : "Meccan";
                         const metaText = isVirtualSpecial
                           ? `Default · ${surah.ayahCount} ayahs · ${origin}`
@@ -1156,8 +1141,8 @@ export default function MemorizationQuizScreen() {
                           <TouchableOpacity
                             key={surah.number}
                             style={[s.surahCard2, colors.cardStyle, selected && { borderColor: colors.foreground }]}
-                            onPress={() => { if (isInteractive) toggleSurah(surah.number); }}
-                            activeOpacity={isInteractive ? 0.8 : 1}
+                            onPress={() => toggleSurah(surah.number)}
+                            activeOpacity={0.8}
                           >
                             <View style={[s.surahBadge2, selected ? { backgroundColor: colors.foreground, borderColor: colors.foreground } : { borderColor: colors.border }]}>
                               {selected && <Feather name="check" size={14} color={colors.primaryForeground} />}
@@ -1178,7 +1163,7 @@ export default function MemorizationQuizScreen() {
               ayahsByJuz.length === 0 ? (
                 <View style={s.infoBox}>
                   <Ionicons name="information-circle-outline" size={18} color="#A8A29E" />
-                  <Text style={s.infoText}>{ayahSearchQuery.trim() ? "No ayahs match your search." : tagFilter === "all" ? "No saved ayahs yet. Save ayahs from the reader to build your quiz pool." : "No ayahs match this filter."}</Text>
+                  <Text style={s.infoText}>{ayahSearchQuery.trim() ? "No ayahs match your search." : tagFilter === "all" ? "No saved ayahs. Swipe left on any ayah while reading to save it here." : "No ayahs match this filter."}</Text>
                 </View>
               ) : (
                 <>
@@ -1230,7 +1215,7 @@ export default function MemorizationQuizScreen() {
           {/* Bottom panel */}
           <View style={[s.startPanel2, { paddingBottom: insets.bottom > 0 ? insets.bottom : 16, backgroundColor: colors.background, borderTopColor: colors.border }]}>
             <View style={s.startStats}>
-              <Text style={[s.startStatText, { color: colors.mutedForeground }]}>{quizDataset.length} ayah{quizDataset.length !== 1 ? "s" : ""} selected</Text>
+              <Text style={[s.startStatText, { color: colors.mutedForeground }]}>{selectedQuizPoolAyahCount} ayah{selectedQuizPoolAyahCount !== 1 ? "s" : ""} selected</Text>
               {filterMode === "by-surah"
                 ? <Text style={[s.startStatText, { color: colors.mutedForeground }]}>{selectedSurahCount} surah{selectedSurahCount !== 1 ? "s" : ""} chosen</Text>
                 : <Text style={[s.startStatText, { color: colors.mutedForeground }]}>from {selectedSurahCount} surah{selectedSurahCount !== 1 ? "s" : ""}</Text>
@@ -1256,9 +1241,10 @@ export default function MemorizationQuizScreen() {
               />
             )}
             <TouchableOpacity
-              style={s.startBtn2}
+              style={[s.startBtn2, quizSelectedSurahs.length === 0 && s.startBtn2Disabled]}
               onPress={startQuiz}
               activeOpacity={0.85}
+              disabled={quizSelectedSurahs.length === 0}
             >
               <Text style={s.startBtnText2}>Start the Test</Text>
             </TouchableOpacity>
@@ -1331,6 +1317,7 @@ const pageStyles = StyleSheet.create({
   infoBox: {
     flexDirection: "row", gap: 10, backgroundColor: "#F6F2EA", borderRadius: 14, padding: 14, alignItems: "flex-start",
   },
+  emptySelectionBox: { marginBottom: 8, borderWidth: 1, borderColor: "#D6D3D1" },
   infoText: { flex: 1, fontSize: 13, color: "#78716C", fontFamily: "Inter_400Regular", lineHeight: 20 },
   selectionWrap: { flex: 1, flexDirection: "column" },
   filterRow: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
@@ -1661,6 +1648,6 @@ const pageStyles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 16,
   },
+  startBtn2Disabled: { opacity: 0.45 },
   startBtnText2: { fontSize: 15, color: "#FFFFFF", fontFamily: "Inter_700Bold" },
 });
-

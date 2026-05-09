@@ -23,7 +23,7 @@ import { SURAH_DATA } from "@/constants/surahData";
 import { SwipeableRow } from "@/components/SwipeableRow";
 
 type QuizMode = "word-meaning" | "fill-blank";
-type QuizState = "loading" | "answering" | "answered" | "finished" | "no-words";
+type QuizState = "loading" | "answering" | "answered" | "finished" | "no-words" | "no-surah";
 
 interface QuizOption {
   text: string;
@@ -167,6 +167,29 @@ function NoWordsScreen({ colors, topPad }: { colors: ReturnType<typeof useColors
           <Text style={s.goReadBtnText}>Start Reading</Text>
         </TouchableOpacity>
       </ScrollView>
+    </View>
+  );
+}
+
+function NoSurahSelectedScreen({ colors, topPad }: { colors: ReturnType<typeof useColors>; topPad: number }) {
+  const s = styles(colors);
+  return (
+    <View style={[s.container, { paddingTop: topPad }]}>
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.7}>
+          <Feather name="arrow-left" size={22} color={colors.appText} />
+        </TouchableOpacity>
+        <Text style={s.headerTitle}>Words Quiz</Text>
+        <View style={{ width: 38 }} />
+      </View>
+      <View style={s.emptySelectionContent}>
+        <Ionicons name="information-circle-outline" size={28} color={colors.mutedForeground} />
+        <Text style={s.emptySelectionText}>No Surah selected, please select a Surah or Ayah to continue</Text>
+        <TouchableOpacity style={s.goReadBtn} onPress={() => router.push("/memorization-quiz")} activeOpacity={0.85}>
+          <Ionicons name="options-outline" size={18} color={colors.primaryForeground} />
+          <Text style={s.goReadBtnText}>Open Selection</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -342,8 +365,12 @@ export default function QuizScreen() {
   const colors = useColors();
   const s = styles(colors);
   const insets = useSafeAreaInsets();
-  const { savedWords, removeWord, recordQuizCompletion } = useQuran();
+  const { savedWords, removeWord, recordQuizCompletion, quizSelectedSurahs } = useQuran();
   const topPad = insets.top;
+  const quizWords = useMemo(() => {
+    const selected = new Set(quizSelectedSurahs);
+    return savedWords.filter(w => selected.has(w.surahNumber));
+  }, [savedWords, quizSelectedSurahs]);
 
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -353,6 +380,7 @@ export default function QuizScreen() {
   const [wordsManagerVisible, setWordsManagerVisible] = useState(false);
 
   const initQuiz = useCallback((words: SavedWord[]) => {
+    if (quizSelectedSurahs.length === 0) { setQuizState("no-surah"); return; }
     if (words.length < 2) { setQuizState("no-words"); return; }
     const q = buildQuestions(words);
     if (q.length === 0) { setQuizState("no-words"); return; }
@@ -361,11 +389,11 @@ export default function QuizScreen() {
     setScore(0);
     setSelectedAnswer(null);
     setQuizState("answering");
-  }, []);
+  }, [quizSelectedSurahs.length]);
 
   useEffect(() => {
-    initQuiz(savedWords);
-  }, []);
+    initQuiz(quizWords);
+  }, [initQuiz, quizWords]);
 
   const handleAnswer = useCallback((idx: number) => {
     if (quizState !== "answering") return;
@@ -395,21 +423,21 @@ export default function QuizScreen() {
     const word = questions[currentIndex]?.word;
     if (!word) return;
     removeWord(word.id);
-    const remaining = savedWords.filter(w => w.id !== word.id);
+    const remaining = quizWords.filter(w => w.id !== word.id);
     initQuiz(remaining);
-  }, [questions, currentIndex, savedWords, removeWord]);
+  }, [questions, currentIndex, quizWords, removeWord, initQuiz]);
 
   const handleShare = useCallback(async () => {
-    const wordList = savedWords
+    const wordList = quizWords
       .slice(0, 10)
       .map((w, i) => `${i + 1}. ${w.arabic} — ${w.translation}`)
       .join("\n");
-    const surahName = SURAH_DATA[savedWords[0]?.surahNumber - 1]?.englishName ?? "Al-Faatiha";
+    const surahName = SURAH_DATA[quizWords[0]?.surahNumber - 1]?.englishName ?? "Al-Faatiha";
     await Share.share({
-      message: `📖 Quran Vocabulary Quiz — ${savedWords.length} words\n\nTest yourself on these words:\n${wordList}\n\nStart with Surah ${surahName} and explore more words in Al-Quran app!`,
+      message: `📖 Quran Vocabulary Quiz — ${quizWords.length} words\n\nTest yourself on these words:\n${wordList}\n\nStart with Surah ${surahName} and explore more words in Al-Quran app!`,
       title: "Quran Vocabulary Quiz",
     });
-  }, [savedWords]);
+  }, [quizWords]);
 
   if (quizState === "loading") {
     return (
@@ -422,7 +450,11 @@ export default function QuizScreen() {
     );
   }
 
-  if (quizState === "no-words" || savedWords.length < 2) {
+  if (quizState === "no-surah") {
+    return <NoSurahSelectedScreen colors={colors} topPad={topPad} />;
+  }
+
+  if (quizState === "no-words" || quizWords.length < 2) {
     return <NoWordsScreen colors={colors} topPad={topPad} />;
   }
 
@@ -452,7 +484,7 @@ export default function QuizScreen() {
           </Text>
           <Text style={s.resultsSub}>{score} out of {questions.length} correct</Text>
           <View style={s.resultActions}>
-            <TouchableOpacity style={s.retryBtn} onPress={() => initQuiz(savedWords)} activeOpacity={0.85}>
+            <TouchableOpacity style={s.retryBtn} onPress={() => initQuiz(quizWords)} activeOpacity={0.85}>
               <Ionicons name="refresh" size={18} color={colors.primaryForeground} />
               <Text style={s.retryBtnText}>Try Again</Text>
             </TouchableOpacity>
@@ -579,7 +611,7 @@ export default function QuizScreen() {
 
       <WordsManagerModal
         visible={wordsManagerVisible}
-        words={savedWords}
+        words={quizWords}
         onRemove={removeWord}
         onClose={() => setWordsManagerVisible(false)}
         colors={colors}
@@ -721,6 +753,14 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     doneBtn: { alignItems: "center", padding: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.border },
     doneBtnText: { fontSize: 16, color: colors.foreground, fontFamily: "Inter_400Regular" },
     noWordsContent: { padding: 24, gap: 20, alignItems: "center", paddingBottom: 40 },
+    emptySelectionContent: { flex: 1, padding: 24, gap: 16, alignItems: "center", justifyContent: "center" },
+    emptySelectionText: {
+      fontSize: 16,
+      color: colors.mutedForeground,
+      fontFamily: "Inter_600SemiBold",
+      textAlign: "center",
+      lineHeight: 24,
+    },
     noWordsGraphic: {
       backgroundColor: colors.card,
       borderRadius: 20,
