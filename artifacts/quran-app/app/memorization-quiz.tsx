@@ -624,7 +624,7 @@ type AyahTagFilter = "all" | "selected" | "excluded";
 export default function MemorizationQuizScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
-  const { savedAyahs, removeAyah } = useQuran();
+  const { savedAyahs, removeAyah, recordQuizCompletion } = useQuran();
   const topPad = insets.top;
 
   const [mode, setMode] = useState<QuizMode>(null);
@@ -803,7 +803,8 @@ export default function MemorizationQuizScreen() {
   const handleFinish = useCallback((score: number) => {
     setFinalScore(score);
     setPhase("score");
-  }, []);
+    recordQuizCompletion();
+  }, [recordQuizCompletion]);
 
   const handleRetry = useCallback(() => {
     startQuiz();

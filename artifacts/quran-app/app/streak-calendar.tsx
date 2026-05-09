@@ -35,7 +35,7 @@ export default function StreakCalendarScreen() {
   const completedDays = useMemo(() => {
     const set = new Set<string>();
     for (const e of dailyEntries) {
-      if (e.ayahsRead > 0) set.add(e.date);
+      if (e.ayahsRead > 0 || e.kahfCompleted || e.quizCompleted) set.add(e.date);
     }
     return set;
   }, [dailyEntries]);
@@ -122,7 +122,7 @@ export default function StreakCalendarScreen() {
       {/* Summary */}
       <View style={s.summaryRow}>
         <View style={s.summaryChip}>
-          <View style={[s.summaryDot, { backgroundColor: "#16A34A" }]} />
+          <View style={[s.summaryDot, { backgroundColor: "#1A1A1A" }]} />
           <Text style={s.summaryText}>{completedCount} days memorized</Text>
         </View>
         <View style={s.summaryChip}>
@@ -174,12 +174,12 @@ export default function StreakCalendarScreen() {
       {/* Legend */}
       <View style={s.legend}>
         <View style={s.legendItem}>
-          <View style={[s.legendDot, { backgroundColor: "#16A34A" }]} />
-          <Text style={s.legendText}>Memorized at least 1 ayah</Text>
+          <View style={[s.legendDot, { backgroundColor: "#1A1A1A" }]} />
+          <Text style={s.legendText}>Active day</Text>
         </View>
         <View style={s.legendItem}>
           <View style={[s.legendDot, { backgroundColor: colors.appLightGray, borderWidth: 1, borderColor: colors.appBorderLight }]} />
-          <Text style={s.legendText}>No memorization</Text>
+          <Text style={s.legendText}>Missed day</Text>
         </View>
       </View>
     </View>
@@ -296,7 +296,7 @@ const styles = (colors: ReturnType<typeof import("@/hooks/useColors").useColors>
       backgroundColor: "transparent",
     },
     dayCircleCompleted: {
-      backgroundColor: "#16A34A",
+      backgroundColor: "#1A1A1A",
     },
     dayCircleMissed: {
       backgroundColor: colors.appLightGray,

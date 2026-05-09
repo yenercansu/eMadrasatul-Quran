@@ -342,7 +342,7 @@ export default function QuizScreen() {
   const colors = useColors();
   const s = styles(colors);
   const insets = useSafeAreaInsets();
-  const { savedWords, removeWord } = useQuran();
+  const { savedWords, removeWord, recordQuizCompletion } = useQuran();
   const topPad = insets.top;
 
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -383,6 +383,7 @@ export default function QuizScreen() {
   const handleNext = useCallback(() => {
     if (currentIndex + 1 >= questions.length) {
       setQuizState("finished");
+      recordQuizCompletion();
     } else {
       setCurrentIndex(prev => prev + 1);
       setSelectedAnswer(null);

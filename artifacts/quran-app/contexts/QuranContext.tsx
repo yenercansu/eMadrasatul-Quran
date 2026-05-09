@@ -43,6 +43,7 @@ export interface DailyEntry {
   date: string;
   ayahsRead: number;
   kahfCompleted: boolean;
+  quizCompleted: boolean;
   readAyahKeys?: string[];
 }
 
@@ -124,6 +125,7 @@ interface QuranContextType {
   setMemorizationGoal: (goal: MemorizationGoal | null) => void;
   dailyEntries: DailyEntry[];
   recordAyahRead: (surahNumber: number, ayahNumber?: number) => void;
+  recordQuizCompletion: () => void;
   todayEntry: DailyEntry | null;
   onlineUsers: number;
   quranPosition: number;
@@ -507,6 +509,22 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const recordQuizCompletion = useCallback(() => {
+    const today = getTodayStr();
+    setDailyEntries((prev) => {
+      const idx = prev.findIndex(e => e.date === today);
+      let next: DailyEntry[];
+      if (idx >= 0) {
+        if (prev[idx].quizCompleted) return prev;
+        next = prev.map((e, i) => i === idx ? { ...e, quizCompleted: true } : e);
+      } else {
+        next = [{ date: today, ayahsRead: 0, kahfCompleted: false, quizCompleted: true }, ...prev].slice(0, 365);
+      }
+      AsyncStorage.setItem("quran_daily_entries", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const markAyahsMemorized = useCallback((keys: string[]) => {
     setMemorizedAyahKeys((prev) => {
       const newKeys = keys.filter(k => !prev.includes(k));
@@ -551,7 +569,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       recentProgress, saveProgress, recordVisit, lastListened,
       goal, setGoal,
       memorizationGoal, setMemorizationGoal,
-      dailyEntries, recordAyahRead, todayEntry,
+      dailyEntries, recordAyahRead, recordQuizCompletion, todayEntry,
       onlineUsers,
       quranPosition, advanceQuranPosition, getWeekGoalAyahs, getWeekGoalProgress,
       surahPositions, saveSurahPosition,

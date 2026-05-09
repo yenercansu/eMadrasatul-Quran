@@ -146,7 +146,7 @@ export default function HomeScreen() {
       const d = new Date(today.getTime() - i * 86400000);
       const dateStr = d.toISOString().split("T")[0];
       const entry = dailyEntries.find(e => e.date === dateStr);
-      if (entry && entry.ayahsRead > 0) streak++;
+      if (entry && (entry.ayahsRead > 0 || entry.kahfCompleted || entry.quizCompleted)) streak++;
       else break;
     }
     return streak;
