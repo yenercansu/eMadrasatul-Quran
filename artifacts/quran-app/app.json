@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "quran-app",
+    "scheme": "madeenan",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -24,7 +24,8 @@
       "expo-router",
       "expo-font",
       "expo-web-browser",
-      "expo-av"
+      "expo-av",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

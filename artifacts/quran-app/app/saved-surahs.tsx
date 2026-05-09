@@ -1,5 +1,6 @@
-import React, { useMemo, useState, useEffect } from "react";
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
+import { useQuery } from "@tanstack/react-query";
+import React, { useMemo } from "react";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -14,11 +15,8 @@ export default function SavedSurahsScreen() {
   const s = styles(colors);
   const insets = useSafeAreaInsets();
   const { savedSurahs } = useQuran();
-  const [apiSurahs, setApiSurahs] = useState<ApiSurah[]>([]);
-
-  useEffect(() => {
-    fetchSurahs().then(setApiSurahs).catch(() => {});
-  }, []);
+  const surahsQuery = useQuery({ queryKey: ["chapters"], queryFn: fetchSurahs });
+  const apiSurahs = surahsQuery.data ?? [];
 
   const savedSurahsMeta = useMemo(() => {
     return savedSurahs.map(n => SURAH_DATA[n - 1]).filter(Boolean);
@@ -39,33 +37,43 @@ export default function SavedSurahsScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <FlatList
-        data={savedSurahsMeta}
-        keyExtractor={(item) => String(item.number)}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.listContent}
-        ListEmptyComponent={
-          <View style={s.empty}>
-            <Feather name="bookmark" size={40} color={colors.appBorderMid} />
-            <Text style={s.emptyText}>No saved surahs yet</Text>
-            <Text style={s.emptyHint}>Swipe left on any surah to save it</Text>
-          </View>
-        }
-        renderItem={({ item, index }) => {
-          const apiSurah = apiSurahs.find(a => a.number === item.number);
-          return (
-            <SurahListRow
-              englishName={item.englishName}
-              arabicName={item.name}
-              ayahCount={item.ayahCount}
-              revelationType={apiSurah?.revelationType}
-              isLast={index === savedSurahsMeta.length - 1}
-              onPress={() => router.push(`/surah/${item.number}`)}
-              right={<Ionicons name="bookmark" size={18} color={colors.appBlack} />}
-            />
-          );
-        }}
-      />
+      {surahsQuery.isLoading ? (
+        <ActivityIndicator color={colors.appBlack} style={{ flex: 1 }} />
+      ) : surahsQuery.isError ? (
+        <TouchableOpacity style={s.empty} onPress={() => surahsQuery.refetch()} activeOpacity={0.8}>
+          <Feather name="alert-circle" size={40} color={colors.destructive} />
+          <Text style={s.emptyText}>Could not load saved surah details</Text>
+          <Text style={s.emptyHint}>Tap to retry</Text>
+        </TouchableOpacity>
+      ) : (
+        <FlatList
+          data={savedSurahsMeta}
+          keyExtractor={(item) => String(item.number)}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={s.listContent}
+          ListEmptyComponent={
+            <View style={s.empty}>
+              <Feather name="bookmark" size={40} color={colors.appBorderMid} />
+              <Text style={s.emptyText}>No saved surahs yet</Text>
+              <Text style={s.emptyHint}>Swipe left on any surah to save it</Text>
+            </View>
+          }
+          renderItem={({ item, index }) => {
+            const apiSurah = apiSurahs.find(a => a.number === item.number);
+            return (
+              <SurahListRow
+                englishName={item.englishName}
+                arabicName={item.name}
+                ayahCount={item.ayahCount}
+                revelationType={apiSurah?.revelationType}
+                isLast={index === savedSurahsMeta.length - 1}
+                onPress={() => router.push(`/surah/${item.number}`)}
+                right={<Ionicons name="bookmark" size={18} color={colors.appBlack} />}
+              />
+            );
+          }}
+        />
+      )}
     </View>
   );
 }

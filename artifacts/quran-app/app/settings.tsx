@@ -1,3 +1,6 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
 import {
   View,
@@ -16,7 +19,9 @@ import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { BackButton } from "@/components/BackButton";
+import { getQuranFoundationOAuthStatus, startQuranFoundationOAuth } from "@/services/madeenanApi";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   const colors = useColors();
@@ -132,26 +137,46 @@ export default function SettingsScreen() {
   const s = styles(colors);
   const insets = useSafeAreaInsets();
   const { accountSettings, updateAccountSettings } = useQuran();
+  const { session, signOut } = useAuth();
+  const queryClient = useQueryClient();
   const [editField, setEditField] = useState<"name" | "email" | null>(null);
+  const [linkingQf, setLinkingQf] = useState(false);
   const topPad = insets.top;
+  const qfStatus = useQuery({
+    queryKey: ["quran-foundation-oauth-status"],
+    queryFn: getQuranFoundationOAuthStatus,
+    retry: 1,
+  });
 
   const fontSizes = [20, 24, 28, 32, 36];
 
-  const handleDeleteAccount = () => {
+  const handleSignOut = () => {
     Alert.alert(
-      "Delete Account",
-      "This will permanently delete all your data including saved words, progress, and goals. This cannot be undone.",
+      "Sign Out",
+      "This will remove the Madeenan session from this device. Synced Quran progress stays in your account.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Delete Everything",
+          text: "Sign Out",
           style: "destructive",
-          onPress: () => {
-            Alert.alert("Account Deleted", "All your data has been cleared.");
-          },
+          onPress: () => { signOut().catch(() => {}); },
         },
       ]
     );
+  };
+
+  const handleQuranFoundationLink = async () => {
+    setLinkingQf(true);
+    try {
+      const authorizationUrl = await startQuranFoundationOAuth();
+      const returnUrl = Linking.createURL("oauth/quran-foundation/success", { scheme: "madeenan" });
+      await WebBrowser.openAuthSessionAsync(authorizationUrl, returnUrl);
+      await queryClient.invalidateQueries({ queryKey: ["quran-foundation-oauth-status"] });
+    } catch (error) {
+      Alert.alert("Could not start linking", error instanceof Error ? error.message : "Please try again.");
+    } finally {
+      setLinkingQf(false);
+    }
   };
 
   return (
@@ -165,6 +190,11 @@ export default function SettingsScreen() {
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <Section title="ACCOUNT">
           <SettingRow
+            icon="shield"
+            label="Madeenan Session"
+            value={session?.token ? "Signed in" : "Not signed in"}
+          />
+          <SettingRow
             icon="user"
             label="Name"
             value={accountSettings.name || "Not set"}
@@ -175,6 +205,22 @@ export default function SettingsScreen() {
             label="Email"
             value={accountSettings.email || "Not set"}
             onPress={() => setEditField("email")}
+          />
+        </Section>
+
+        <Section title="QURAN FOUNDATION">
+          <SettingRow
+            icon="link"
+            label="Account Link"
+            value={
+              qfStatus.isLoading
+                ? "Checking..."
+                : qfStatus.data?.linked || qfStatus.data?.connected
+                  ? "Connected"
+                  : "Not connected"
+            }
+            onPress={handleQuranFoundationLink}
+            rightElement={linkingQf ? <Text style={s.settingValue}>Opening...</Text> : undefined}
           />
         </Section>
 
@@ -248,27 +294,27 @@ export default function SettingsScreen() {
           <SettingRow
             icon="shield"
             label="Privacy Policy"
-            onPress={() => Alert.alert("Privacy Policy", "Your data is stored locally on your device. We do not collect or transmit personal information to external servers.")}
+            onPress={() => Alert.alert("Privacy Policy", "Your Quran Madrasa data syncs through Madeenan. Quran Foundation tokens are linked and stored by the backend, not in this mobile app.")}
           />
           <SettingRow
             icon="file-text"
             label="Terms & Conditions"
-            onPress={() => Alert.alert("Terms & Conditions", "This app is provided for educational and religious purposes. The Quran text and audio are provided through open APIs.")}
+            onPress={() => Alert.alert("Terms & Conditions", "This app is provided for educational and religious purposes. Quran content is served through the Madeenan backend.")}
           />
         </Section>
 
         <Section title="ACCOUNT ACTIONS">
           <SettingRow
-            icon="trash-2"
-            label="Delete Account & Data"
-            onPress={handleDeleteAccount}
+            icon="log-out"
+            label="Sign Out"
+            onPress={handleSignOut}
             danger
           />
         </Section>
 
         <View style={s.appInfo}>
-          <Text style={s.appInfoText}>Al-Quran — Version 1.0.0</Text>
-          <Text style={s.appInfoSub}>Content powered by alquran.cloud</Text>
+          <Text style={s.appInfoText}>Quran Madrasa — Version 1.0.0</Text>
+          <Text style={s.appInfoSub}>Content powered by Madeenan</Text>
         </View>
       </ScrollView>
 

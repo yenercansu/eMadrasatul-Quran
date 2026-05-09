@@ -38,12 +38,13 @@ import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchSurahWithTranslations, fetchTafsir, fetchTranslation, fetchWordTranslations, type SurahDetail, type ApiAyah, type WordTranslation } from "@/services/quranApi";
+import { createPlaybackRange } from "@/services/madeenanApi";
 import { getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
 import { RECENT_RECITERS_KEY } from "@/contexts/AudioContext";
 
 const HINTS_STORAGE_KEY = "@squran/surah-hints-seen-v1";
 
-// Strip Arabic diacritics for fuzzy word matching against quran.com API text
+// Strip Arabic diacritics for fuzzy word matching against backend word metadata.
 function normalizeArabic(s: string): string {
   return s.replace(/[ً-ٟؐ-ؚٰۖ-ۭـ]/g, "").trim();
 }
@@ -1142,6 +1143,7 @@ export default function SurahScreen() {
   const [translationsMap, setTranslationsMap] = useState<Record<string, SurahDetail>>({});
   const [tafsirDataMap, setTafsirDataMap] = useState<Record<string, SurahDetail>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [menuVisible, setMenuVisible] = useState(true);
   const [bottomBarHeight, setBottomBarHeight] = useState(160);
   const [editSheetVisible, setEditSheetVisible] = useState(false);
@@ -1303,6 +1305,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
 
   async function loadData() {
     setLoading(true);
+    setLoadError(null);
     try {
       const main = await fetchSurahWithTranslations(surahNum, "en.sahih");
       setArabic(main.arabic);
@@ -1362,6 +1365,8 @@ const [settingsVisible, setSettingsVisible] = useState(false);
           try { listRef.current?.scrollToIndex({ index: initialIndex % AYAHS_PER_PAGE, animated: false }); } catch {}
         }, 300);
       }
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Could not load this Quran page.");
     } finally {
       setLoading(false);
     }
@@ -1540,6 +1545,15 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       {/* ── Content ──────────────────────────────────────────── */}
       {loading ? (
         <ActivityIndicator color="#1A1A1A" style={{ flex: 1 }} size="large" />
+      ) : loadError ? (
+        <View style={scr.errorState}>
+          <Feather name="alert-circle" size={34} color="#B91C1C" />
+          <Text style={scr.errorTitle}>Could not load this surah</Text>
+          <Text style={scr.errorText}>{loadError}</Text>
+          <TouchableOpacity style={scr.errorRetry} onPress={loadData} activeOpacity={0.85}>
+            <Text style={scr.errorRetryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
       ) : settings.mushafMode ? (
         // Split view: TOP fixed Mushaf panel, BOTTOM scrollable translations.
         // If translations are off, the Mushaf takes the full panel and scrolls.
@@ -1750,6 +1764,16 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         onConfirm={(startWordIdx, endWordIdx, totalWords, repeatCount) => {
           const ayahN = repeatSectionInitialAyah ?? currentAyahForRange;
           const total = arabic?.ayahs?.length ?? 0;
+          createPlaybackRange({
+            chapterNumber: surahNum,
+            reciterId: Number(settings.selectedReciter) || 7,
+            startAyah: ayahN,
+            endAyah: ayahN,
+            startWord: startWordIdx + 1,
+            endWord: endWordIdx + 1,
+            repeatCount: String(repeatCount),
+            playbackRate: audioState.playbackRate,
+          }).catch(() => {});
           playAyah(surahNum, ayahN, total, repeatCount, {
             startWordIdx,
             endWordIdx,
@@ -1789,6 +1813,14 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         ayahs={arabic?.ayahs ?? []}
         currentAyah={currentAyahForRange}
         onConfirm={(startA, endA, repeatCount) => {
+          createPlaybackRange({
+            chapterNumber: surahNum,
+            reciterId: Number(settings.selectedReciter) || 7,
+            startAyah: startA,
+            endAyah: endA,
+            repeatCount: String(repeatCount),
+            playbackRate: audioState.playbackRate,
+          }).catch(() => {});
           playRange(
             { startSurah: surahNum, startAyah: startA, endSurah: surahNum, endAyah: endA },
             repeatCount,
@@ -1874,6 +1906,25 @@ const scr = StyleSheet.create({
     borderTopColor: "#E2D9CF",
     zIndex: 50,
   },
+  errorState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+    backgroundColor: "#FAF9F7",
+  },
+  errorTitle: { fontSize: 18, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", marginTop: 14 },
+  errorText: { fontSize: 13, lineHeight: 20, color: "#6B625A", fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 6 },
+  errorRetry: {
+    height: 42,
+    paddingHorizontal: 18,
+    borderRadius: 11,
+    backgroundColor: "#1A1A1A",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 18,
+  },
+  errorRetryText: { fontSize: 13, color: "#FFFFFF", fontFamily: "Inter_700Bold" },
   mushafInfo: { alignItems: "center", paddingVertical: 16, backgroundColor: MUSHAF_BG },
   mushafArabicName: { fontSize: 28, color: "#2C1810", fontFamily: Platform.OS === "ios" ? "System" : undefined, marginBottom: 8 },
   mushafBasmala: { fontSize: 18, color: "#2C1810", fontFamily: Platform.OS === "ios" ? "System" : undefined, textAlign: "center" },

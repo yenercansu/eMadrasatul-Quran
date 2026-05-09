@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -94,15 +95,14 @@ export default function QuranScreen() {
   const colors = useColors();
   const s = styles(colors);
   const insets = useSafeAreaInsets();
-  const [surahs, setSurahs] = useState<ApiSurah[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<FilterType>("all");
   const { recentProgress, saveSurah, removeSavedSurah, isSurahSaved, isSurahChecked, toggleCheckedSurah } = useQuran();
-
-  useEffect(() => {
-    fetchSurahs().then(setSurahs).finally(() => setLoading(false));
-  }, []);
+  const surahsQuery = useQuery({
+    queryKey: ["chapters"],
+    queryFn: fetchSurahs,
+  });
+  const surahs = surahsQuery.data ?? [];
 
   const recentNumbers = useMemo(() => new Set(recentProgress.map(p => p.surahNumber)), [recentProgress]);
 
@@ -169,8 +169,16 @@ export default function QuranScreen() {
         </View>
       </View>
 
-      {loading ? (
+      {surahsQuery.isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
+      ) : surahsQuery.isError ? (
+        <View style={s.empty}>
+          <Feather name="alert-circle" size={40} color={colors.destructive} />
+          <Text style={s.emptyText}>Could not load surahs</Text>
+          <TouchableOpacity onPress={() => surahsQuery.refetch()} style={s.retryBtn} activeOpacity={0.85}>
+            <Text style={s.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <FlatList
           data={filtered}
@@ -246,4 +254,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     swipeActionText: { fontSize: 12, fontWeight: "700", color: colors.appWhite, fontFamily: "Inter_700Bold" },
     empty: { alignItems: "center", paddingVertical: 60, gap: 12 },
     emptyText: { fontSize: 16, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
+    retryBtn: { paddingHorizontal: 16, height: 40, borderRadius: 10, backgroundColor: colors.appBlack, alignItems: "center", justifyContent: "center" },
+    retryText: { fontSize: 13, color: "#FFFFFF", fontFamily: "Inter_700Bold" },
   });

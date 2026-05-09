@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Appearance } from "react-native";
 import { getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
+import { useAuth } from "@/contexts/AuthContext";
+import * as madeenanApi from "@/services/madeenanApi";
 
 export interface SavedWord {
   id: string;
@@ -165,7 +167,7 @@ const DEFAULT_SETTINGS: Settings = {
   tajweedColorCoding: false,
   mushafMode: false,
   repeatCount: 1,
-  selectedReciter: "ar.alafasy",
+  selectedReciter: "7",
   autoPauseMinutes: null,
 };
 
@@ -188,13 +190,15 @@ function applyTheme(theme: AccountSettings["theme"]) {
   } catch {}
 }
 
-const SEED_WORDS: SavedWord[] = [
-  { id: "seed1", arabic: "الرَّحْمَٰنِ", translation: "The Most Gracious", surahNumber: 1, ayahNumber: 1, addedAt: Date.now() - 5000, highlighted: false },
-  { id: "seed2", arabic: "الرَّحِيمِ", translation: "The Most Merciful", surahNumber: 1, ayahNumber: 1, addedAt: Date.now() - 4000, highlighted: true },
-  { id: "seed3", arabic: "الْحَمْدُ", translation: "All praise", surahNumber: 1, ayahNumber: 2, addedAt: Date.now() - 3000, highlighted: false },
-  { id: "seed4", arabic: "الصِّرَاطَ", translation: "The path / The way", surahNumber: 1, ayahNumber: 6, addedAt: Date.now() - 2000, highlighted: false },
-  { id: "seed5", arabic: "الْمُسْتَقِيمَ", translation: "The straight (one)", surahNumber: 1, ayahNumber: 6, addedAt: Date.now() - 1000, highlighted: false },
-];
+const SEED_WORDS: SavedWord[] = [];
+
+function normalizeReciterId(id: unknown): string {
+  if (typeof id === "number") return String(id);
+  if (typeof id !== "string") return DEFAULT_SETTINGS.selectedReciter;
+  if (/^\d+$/.test(id)) return id;
+  if (id === "ar.alafasy") return "7";
+  return DEFAULT_SETTINGS.selectedReciter;
+}
 
 function getTodayStr(): string { return new Date().toISOString().split("T")[0]; }
 function isFriday(): boolean { return new Date().getDay() === 5; }
@@ -211,11 +215,13 @@ function getWeekStartStr(): string {
 export const QuranContext = createContext<QuranContextType | undefined>(undefined);
 
 export function QuranProvider({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [accountSettings, setAccountSettings] = useState<AccountSettings>(DEFAULT_ACCOUNT);
   const [savedWords, setSavedWords] = useState<SavedWord[]>(SEED_WORDS);
   const [savedAyahs, setSavedAyahs] = useState<SavedAyah[]>([]);
   const [savedSurahs, setSavedSurahs] = useState<number[]>([]);
+  const [savedSurahRemoteIds, setSavedSurahRemoteIds] = useState<Record<number, string | number>>({});
   const [highlightedWords, setHighlightedWords] = useState<HighlightedWord[]>([]);
   const [recentProgress, setRecentProgress] = useState<Progress[]>([]);
   const [lastListened, setLastListened] = useState<Progress | null>(null);
@@ -229,6 +235,11 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const [memorizedAyahKeys, setMemorizedAyahKeys] = useState<string[]>([]);
 
   useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    if (isAuthenticated) {
+      hydrateRemoteData().catch(() => {});
+    }
+  }, [isAuthenticated]);
 
   async function loadData() {
     try {
@@ -241,7 +252,11 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       ];
       const results = await AsyncStorage.multiGet(keys);
       const map = Object.fromEntries(results.map(([k, v]) => [k, v]));
-      if (map.quran_settings) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(map.quran_settings) });
+      if (map.quran_settings) {
+        const loaded = { ...DEFAULT_SETTINGS, ...JSON.parse(map.quran_settings) };
+        loaded.selectedReciter = normalizeReciterId(loaded.selectedReciter);
+        setSettings(loaded);
+      }
       if (map.quran_account) {
         const loaded = { ...DEFAULT_ACCOUNT, ...JSON.parse(map.quran_account) };
         if (loaded.theme === "auto") loaded.theme = "light";
@@ -275,6 +290,83 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }
 
+  async function hydrateRemoteData() {
+    const [remoteSavedSurahs, remoteSavedWords, remoteLastVisited, remotePrefs, remoteProgress] =
+      await Promise.allSettled([
+        madeenanApi.getSavedSurahs(),
+        madeenanApi.getSavedWords(),
+        madeenanApi.getLastVisited(),
+        madeenanApi.getReciterPreferences(),
+        madeenanApi.getProgress(),
+      ]);
+
+    if (remoteSavedSurahs.status === "fulfilled" && Array.isArray(remoteSavedSurahs.value)) {
+      const next = remoteSavedSurahs.value.map((item) => Number(item.surahNumber)).filter(Number.isFinite);
+      const ids: Record<number, string | number> = {};
+      for (const item of remoteSavedSurahs.value) ids[Number(item.surahNumber)] = item.id;
+      setSavedSurahs(next);
+      setSavedSurahRemoteIds(ids);
+      AsyncStorage.setItem("quran_saved_surahs", JSON.stringify(next)).catch(() => {});
+    }
+
+    if (remoteSavedWords.status === "fulfilled" && Array.isArray(remoteSavedWords.value)) {
+      const next: SavedWord[] = remoteSavedWords.value.map((word) => ({
+        id: String(word.id),
+        arabic: word.textArabic,
+        translation: word.translation,
+        surahNumber: Number(word.surahNumber),
+        ayahNumber: Number(word.ayahNumber),
+        addedAt: Date.now(),
+        highlighted: false,
+        memorized: (word.masteryLevel ?? 0) > 0,
+      })).filter((word) => word.arabic && word.translation && Number.isFinite(word.surahNumber) && Number.isFinite(word.ayahNumber));
+      setSavedWords(next);
+      AsyncStorage.setItem("quran_saved_words", JSON.stringify(next)).catch(() => {});
+    }
+
+    if (remoteLastVisited.status === "fulfilled" && remoteLastVisited.value) {
+      const item = remoteLastVisited.value;
+      const meta = SURAH_DATA[item.surahNumber - 1];
+      const next: Progress = {
+        surahNumber: item.surahNumber,
+        ayahNumber: item.ayahNumber,
+        ayahNumberInSurah: item.ayahNumber,
+        surahName: meta?.englishName ?? `Surah ${item.surahNumber}`,
+        timestamp: Date.now(),
+      };
+      setLastListened(next);
+      setRecentProgress((prev) => [next, ...prev.filter(p => p.surahNumber !== next.surahNumber)].slice(0, 10));
+      AsyncStorage.setItem("quran_last_listened", JSON.stringify(next)).catch(() => {});
+    }
+
+    if (remotePrefs.status === "fulfilled" && remotePrefs.value) {
+      const prefs = remotePrefs.value;
+      setSettings((prev) => {
+        const next = {
+          ...prev,
+          selectedReciter: String(prefs.defaultReciterId ?? 7),
+          repeatCount: Number(prefs.repeatCount ?? prev.repeatCount) || prev.repeatCount,
+        };
+        AsyncStorage.setItem("quran_settings", JSON.stringify(next)).catch(() => {});
+        return next;
+      });
+    }
+
+    if (remoteProgress.status === "fulfilled" && remoteProgress.value && typeof remoteProgress.value === "object") {
+      const record = remoteProgress.value as Record<string, unknown>;
+      const ayahs = Array.isArray(record.ayahs) ? record.ayahs : Array.isArray(record.progress) ? record.progress : [];
+      const memorized = ayahs
+        .map((item) => item && typeof item === "object" ? item as Record<string, unknown> : null)
+        .filter((item): item is Record<string, unknown> => !!item && item.status === "memorized")
+        .map((item) => `${Number(item.surahNumber)}:${Number(item.ayahNumber)}`)
+        .filter((key) => !key.includes("NaN"));
+      if (memorized.length > 0) {
+        setMemorizedAyahKeys(memorized);
+        AsyncStorage.setItem("quran_memorized_ayahs", JSON.stringify(memorized)).catch(() => {});
+      }
+    }
+  }
+
   const updateSettings = useCallback((partial: Partial<Settings>) => {
     setSettings((prev) => {
       const next = { ...prev, ...partial };
@@ -284,9 +376,20 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       if (partial.colorCoding === true) next.tajweedColorCoding = false;
       if (partial.tajweedColorCoding === true) next.colorCoding = false;
       AsyncStorage.setItem("quran_settings", JSON.stringify(next));
+      if (
+        isAuthenticated &&
+        (partial.selectedReciter !== undefined || partial.repeatCount !== undefined)
+      ) {
+        madeenanApi.updateReciterPreferences({
+          defaultReciterId: Number(next.selectedReciter) || 7,
+          recentReciterIds: [Number(next.selectedReciter) || 7],
+          playbackRate: 1,
+          repeatCount: String(next.repeatCount),
+        }).catch(() => {});
+      }
       return next;
     });
-  }, []);
+  }, [isAuthenticated]);
 
   const updateAccountSettings = useCallback((partial: Partial<AccountSettings>) => {
     setAccountSettings((prev) => {
@@ -302,13 +405,32 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       const exists = prev.find(w => w.arabic === word.arabic && w.surahNumber === word.surahNumber);
       if (exists) return prev;
       const next = [{ ...word, id: Date.now().toString() + Math.random().toString(36).substr(2, 9), addedAt: Date.now() }, ...prev];
-      AsyncStorage.setItem("quran_saved_words", JSON.stringify(next)); return next;
+      AsyncStorage.setItem("quran_saved_words", JSON.stringify(next));
+      if (isAuthenticated) {
+        madeenanApi.saveWord({
+          surahNumber: word.surahNumber,
+          ayahNumber: word.ayahNumber,
+          wordPosition: next.length,
+          verseKey: `${word.surahNumber}:${word.ayahNumber}`,
+          textArabic: word.arabic,
+          translation: word.translation,
+          masteryLevel: word.memorized ? 1 : 0,
+        }).then((remote) => {
+          setSavedWords((current) => current.map((item) => item.id === next[0]?.id ? { ...item, id: String(remote.id) } : item));
+        }).catch(() => {});
+      }
+      return next;
     });
-  }, []);
+  }, [isAuthenticated]);
 
   const removeWord = useCallback((id: string) => {
-    setSavedWords((prev) => { const next = prev.filter(w => w.id !== id); AsyncStorage.setItem("quran_saved_words", JSON.stringify(next)); return next; });
-  }, []);
+    setSavedWords((prev) => {
+      const next = prev.filter(w => w.id !== id);
+      AsyncStorage.setItem("quran_saved_words", JSON.stringify(next));
+      if (isAuthenticated && !id.startsWith("seed")) madeenanApi.deleteSavedWord(id).catch(() => {});
+      return next;
+    });
+  }, [isAuthenticated]);
 
   const toggleHighlight = useCallback((id: string) => {
     setSavedWords((prev) => { const next = prev.map(w => w.id === id ? { ...w, highlighted: !w.highlighted } : w); AsyncStorage.setItem("quran_saved_words", JSON.stringify(next)); return next; });
@@ -332,8 +454,27 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const isAyahSaved = useCallback((surahNumber: number, ayahNumber: number) => savedAyahs.some(a => a.surahNumber === surahNumber && a.ayahNumber === ayahNumber), [savedAyahs]);
-  const saveSurah = useCallback((num: number) => { setSavedSurahs((prev) => { if (prev.includes(num)) return prev; const next = [num, ...prev]; AsyncStorage.setItem("quran_saved_surahs", JSON.stringify(next)); return next; }); }, []);
-  const removeSavedSurah = useCallback((num: number) => { setSavedSurahs((prev) => { const next = prev.filter(n => n !== num); AsyncStorage.setItem("quran_saved_surahs", JSON.stringify(next)); return next; }); }, []);
+  const saveSurah = useCallback((num: number) => { setSavedSurahs((prev) => {
+    if (prev.includes(num)) return prev;
+    const next = [num, ...prev];
+    AsyncStorage.setItem("quran_saved_surahs", JSON.stringify(next));
+    if (isAuthenticated) {
+      madeenanApi.saveSurah({
+        surahNumber: num,
+        name: SURAH_DATA[num - 1]?.englishName ?? `Surah ${num}`,
+      }).then((remote) => {
+        setSavedSurahRemoteIds((ids) => ({ ...ids, [num]: remote.id }));
+      }).catch(() => {});
+    }
+    return next;
+  }); }, [isAuthenticated]);
+  const removeSavedSurah = useCallback((num: number) => { setSavedSurahs((prev) => {
+    const next = prev.filter(n => n !== num);
+    AsyncStorage.setItem("quran_saved_surahs", JSON.stringify(next));
+    const remoteId = savedSurahRemoteIds[num] ?? num;
+    if (isAuthenticated) madeenanApi.deleteSavedSurah(remoteId).catch(() => {});
+    return next;
+  }); }, [isAuthenticated, savedSurahRemoteIds]);
   const isSurahSaved = useCallback((num: number) => savedSurahs.includes(num), [savedSurahs]);
 
   const highlightWord = useCallback((arabic: string, surahNumber: number, ayahNumber: number) => {
@@ -355,7 +496,16 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     setLastListened(full);
     setRecentProgress((prev) => { const filtered = prev.filter(p => p.surahNumber !== progress.surahNumber); const next = [full, ...filtered].slice(0, 10); AsyncStorage.setItem("quran_recent_progress", JSON.stringify(next)); return next; });
     AsyncStorage.setItem("quran_last_listened", JSON.stringify(full));
-  }, []);
+    if (isAuthenticated) {
+      madeenanApi.updateLastVisited({
+        surahNumber: progress.surahNumber,
+        ayahNumber: progress.ayahNumberInSurah,
+        reciterId: Number(settings.selectedReciter) || 7,
+        playbackRate: 1,
+        lastPositionMs: 0,
+      }).catch(() => {});
+    }
+  }, [isAuthenticated, settings.selectedReciter]);
 
   const recordVisit = useCallback((progress: Omit<Progress, "timestamp">) => {
     const full: Progress = { ...progress, timestamp: Date.now() };
@@ -462,7 +612,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         const idx = de.findIndex(e => e.date === today);
         let next: DailyEntry[];
         if (idx >= 0) { next = de.map((e, i) => i === idx ? { ...e, ayahsRead: e.ayahsRead + increment, kahfCompleted: e.kahfCompleted || isKahf } : e); }
-        else { next = [{ date: today, ayahsRead: increment, kahfCompleted: isKahf }, ...de].slice(0, 365); }
+        else { next = [{ date: today, ayahsRead: increment, kahfCompleted: isKahf, quizCompleted: false }, ...de].slice(0, 365); }
         AsyncStorage.setItem("quran_daily_entries", JSON.stringify(next));
         return next;
       });
@@ -502,7 +652,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
           readAyahKeys: key ? [...existingKeys, key] : existingKeys,
         } : e);
       } else {
-        next = [{ date: today, ayahsRead: 1, kahfCompleted: isKahf, readAyahKeys: key ? [key] : [] }, ...prev].slice(0, 365);
+        next = [{ date: today, ayahsRead: 1, kahfCompleted: isKahf, quizCompleted: false, readAyahKeys: key ? [key] : [] }, ...prev].slice(0, 365);
       }
       AsyncStorage.setItem("quran_daily_entries", JSON.stringify(next));
       return next;
@@ -549,9 +699,20 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     setMemorizedAyahKeys((prev) => {
       const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key];
       AsyncStorage.setItem("quran_memorized_ayahs", JSON.stringify(next));
+      if (isAuthenticated && !prev.includes(key)) {
+        madeenanApi.updateProgress({
+          goalDate: getTodayStr(),
+          ayahs: [{
+            surahNumber,
+            ayahNumber,
+            juzNumber: SURAH_DATA[surahNumber - 1]?.juz ?? 1,
+            status: "memorized",
+          }],
+        }).catch(() => {});
+      }
       return next;
     });
-  }, []);
+  }, [isAuthenticated]);
 
   const isAyahMemorized = useCallback((surahNumber: number, ayahNumber: number) =>
     memorizedAyahKeys.includes(`${surahNumber}:${ayahNumber}`), [memorizedAyahKeys]);

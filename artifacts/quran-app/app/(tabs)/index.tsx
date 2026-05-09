@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   View,
   Text,
@@ -74,8 +75,6 @@ export default function HomeScreen() {
     getWeekGoalAyahs, recordAyahRead, isSurahChecked, markAyahsMemorized,
     memorizedAyahKeys,
   } = useQuran();
-  const [surahs, setSurahs] = useState<ApiSurah[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [goalSetupVisible, setGoalSetupVisible] = useState(false);
   const [editDailyGoalVisible, setEditDailyGoalVisible] = useState(false);
@@ -84,18 +83,17 @@ export default function HomeScreen() {
   const prevMemPercentRef = useRef<number | null>(null);
   const prevWeekPercentRef = useRef<number | null>(null);
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
+  const surahsQuery = useQuery({ queryKey: ["chapters"], queryFn: fetchSurahs });
+  const surahs = surahsQuery.data ?? [];
+
+  const load = useCallback(async () => {
+    setRefreshing(true);
     try {
-      const data = await fetchSurahs();
-      setSurahs(data);
+      await surahsQuery.refetch();
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
-  }, []);
-
-  useEffect(() => { load(); }, []);
+  }, [surahsQuery]);
 
   const weekGoalAyahs = useMemo(() => goal ? getWeekGoalAyahs() : [], [goal, getWeekGoalAyahs]);
   const effectiveGoalCount = weekGoalAyahs.length;
@@ -231,7 +229,7 @@ export default function HomeScreen() {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => { setRefreshing(true); load(true); }}
+              onRefresh={load}
                tintColor={colors.appBorderLight}
             />
           }
@@ -449,7 +447,7 @@ export default function HomeScreen() {
                         <Text style={s.streakText}>{streakDays} Day Streak</Text>
                         <TouchableOpacity
                           style={s.detailsBtn}
-                          onPress={() => router.push("/streak-calendar")}
+                          onPress={() => router.push("/streak-calendar" as any)}
                           activeOpacity={0.7}
                         >
                           <Text style={s.detailsLink}>DETAILS</Text>
@@ -521,7 +519,7 @@ export default function HomeScreen() {
             <View style={s.surahSection}>
               <View style={s.listSectionHeader}>
                 <SubSectionTitle>Saved Surahs</SubSectionTitle>
-                <TouchableOpacity activeOpacity={0.7} onPress={() => router.push("/saved-surahs")}>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => router.push("/saved-surahs" as any)}>
                   <Text style={s.viewAllText}>View All</Text>
                 </TouchableOpacity>
               </View>
@@ -548,7 +546,7 @@ export default function HomeScreen() {
               {savedSurahsMeta.length > 3 && (
                 <TouchableOpacity
                   style={[s.surahRow, s.surahRowLast]}
-                  onPress={() => router.push("/saved-surahs")}
+                  onPress={() => router.push("/saved-surahs" as any)}
                   activeOpacity={0.65}
                 >
                   <Text style={[s.surahMeta, { flex: 1 }]}>
@@ -563,8 +561,13 @@ export default function HomeScreen() {
           {/* ── All Surahs by Juz ─────────────────────────────────────────── */}
           <View style={s.surahSection}>
             <SubSectionTitle style={{ paddingHorizontal: 20, paddingBottom: 10 }}>All Surahs by Juz</SubSectionTitle>
-            {loading ? (
+            {surahsQuery.isLoading ? (
               <ActivityIndicator color={colors.appLightText} style={{ paddingVertical: 28 }} />
+            ) : surahsQuery.isError ? (
+              <TouchableOpacity style={s.emptySurahState} onPress={load} activeOpacity={0.8}>
+                <Feather name="alert-circle" size={24} color={colors.destructive} />
+                <Text style={s.emptySurahText}>Could not load surahs. Tap to retry.</Text>
+              </TouchableOpacity>
             ) : (
               juzGroups.map(group => (
                 <View key={group.juz}>
@@ -1043,6 +1046,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
 
     // ── All Surahs by Juz ──────────────────────────────────────────────────────
     surahSection: { marginTop: 28 },
+    emptySurahState: { alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 28 },
+    emptySurahText: { fontSize: 13, color: colors.appLightText, fontFamily: "Inter_400Regular" },
     juzHeader: {
       backgroundColor: colors.appStone,
       paddingHorizontal: 20,

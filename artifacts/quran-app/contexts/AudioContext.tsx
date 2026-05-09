@@ -14,26 +14,13 @@ export interface Reciter {
 }
 
 export const RECITERS: Reciter[] = [
-  { id: "ar.alafasy", name: "Mishary Rashid Alafasy", style: "Murattal" },
-  { id: "ar.abdurrahmaansudais", name: "Abdurrahman Al-Sudais", style: "Murattal" },
-  { id: "ar.abdulbasitmurattal", name: "Abdul Basit Abdul Samad", style: "Murattal" },
-  { id: "ar.abdulsamad", name: "Abdul Basit Abdul Samad", style: "Mujawwad" },
-  { id: "ar.husary", name: "Mahmoud Khalil Al-Husary", style: "Murattal" },
-  { id: "ar.husarymujawwad", name: "Mahmoud Khalil Al-Husary", style: "Mujawwad" },
-  { id: "ar.minshawi", name: "Mohamed Siddiq Al-Minshawi", style: "Murattal" },
-  { id: "ar.minshawimujawwad", name: "Mohamed Siddiq Al-Minshawi", style: "Mujawwad" },
-  { id: "ar.saoodashuraimee", name: "Saud Al-Shuraim", style: "Murattal" },
-  { id: "ar.shaatree", name: "Abu Bakr Al-Shatri", style: "Murattal" },
-  { id: "ar.muhammadayyoob", name: "Muhammad Ayyoob", style: "Murattal" },
-  { id: "ar.muhammadjibreel", name: "Muhammad Jibreel", style: "Murattal" },
-  { id: "ar.hudhaify", name: "Ali Al-Hudhaify", style: "Murattal" },
-  { id: "ar.ahmedajamy", name: "Ahmed ibn Ali al-Ajamy", style: "Murattal" },
-  { id: "ar.aymanswoaid", name: "Ayman Sowaid", style: "Murattal" },
-  { id: "ar.hanirifai", name: "Hani Ar-Rifai", style: "Murattal" },
-  { id: "ar.ibrahimakhbar", name: "Ibrahim Akhdar", style: "Murattal" },
-  { id: "ar.mahermuaiqly", name: "Maher Al-Mueaqly", style: "Murattal" },
-  { id: "ar.muhammadabdulkareem", name: "Muhammad al-Kurdi", style: "Murattal" },
-  { id: "ar.parhizgar", name: "Parhizgar", style: "Murattal" },
+  { id: "7", name: "Mishary Rashid Alafasy", style: "Murattal" },
+  { id: "1", name: "Abdurrahman Al-Sudais", style: "Murattal" },
+  { id: "2", name: "Abdul Basit Abdul Samad", style: "Murattal" },
+  { id: "3", name: "Mahmoud Khalil Al-Husary", style: "Murattal" },
+  { id: "4", name: "Mohamed Siddiq Al-Minshawi", style: "Murattal" },
+  { id: "5", name: "Saud Al-Shuraim", style: "Murattal" },
+  { id: "6", name: "Abu Bakr Al-Shatri", style: "Murattal" },
 ];
 
 export const PLAYBACK_RATES = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
@@ -131,10 +118,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     return () => { soundRef.current?.unloadAsync(); };
   }, []);
 
-  const getAudioUrl = (surahNum: number, ayahNum: number, reciterId: string): string => {
-    return getAudioUrlFromService(surahNum, ayahNum, reciterId);
-  };
-
   const loadAndPlay = useCallback(async (
     surahNum: number,
     ayahNum: number,
@@ -149,7 +132,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         soundRef.current = null;
       }
 
-      const url = getAudioUrl(surahNum, ayahNum, settings.selectedReciter);
+      const url = await getAudioUrlFromService(surahNum, ayahNum, settings.selectedReciter);
       const rate = playbackRateRef.current;
 
       // Track recently used reciters (fire-and-forget, max 3 entries)
