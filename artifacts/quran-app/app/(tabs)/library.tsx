@@ -87,7 +87,7 @@ function AyahCard({
   };
 
   const card = (
-    <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={s.card}>
       <View style={s.cardMeta}>
         <View style={[s.surahBadge, { borderColor: colors.border }]}>
           <Text style={[s.surahBadgeNum, { color: colors.mutedForeground }]}>{ayah.surahNumber}</Text>
@@ -139,15 +139,13 @@ function AyahCard({
 const cardStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     card: {
-      borderRadius: 16,
+      borderRadius: 10,
       padding: 16,
       gap: 10,
       borderWidth: 1,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 4,
-      elevation: 1,
+      backgroundColor: colors.appLighterBg,
+      borderColor: colors.appDarkerGray,
+      ...colors.shadows.warmWidgetLift,
     },
     cardMeta: { flexDirection: "row", alignItems: "center", gap: 10 },
     surahBadge: {
@@ -212,7 +210,7 @@ function AyahListView({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: 
   const colors = useColors();
 
   const ctaFooter = (
-    <View style={[listViewStyles.ctaCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={[listViewStyles.ctaCard, { backgroundColor: colors.appLighterBg, borderColor: colors.appDarkerGray }]}>
       <Text style={[listViewStyles.ctaTitle, { color: colors.foreground }]}>Save words as you read</Text>
       <Text style={[listViewStyles.ctaSubtitle, { color: colors.mutedForeground }]}>
         Tap any word in the Quran reader to save it here for review.
@@ -262,12 +260,17 @@ const listViewStyles = StyleSheet.create({
   emptyTitle: { fontSize: 18, fontFamily: "Inter_700Bold", textAlign: "center" },
   emptySubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
   ctaCard: {
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
     padding: 24,
     marginTop: 8,
     alignItems: "center",
     gap: 8,
+    shadowColor: "#5D4A37",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    elevation: 3,
   },
   ctaTitle: { fontSize: 16, fontFamily: "Inter_700Bold", textAlign: "center" },
   ctaSubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
@@ -317,7 +320,7 @@ function WordCard({ word, onToggleMemorized }: {
     <Animated.View style={{ opacity: fadeAnim }}>
       <TouchableOpacity
         onPress={() => setRevealed(prev => !prev)}
-        style={[wordCardStyles.card, { backgroundColor: colors.card, borderColor: colors.appDarkerGray }]}
+        style={[wordCardStyles.card, { backgroundColor: colors.appLighterBg, borderColor: colors.appDarkerGray }]}
         activeOpacity={0.85}
       >
         <View style={wordCardStyles.cardTop}>
@@ -362,9 +365,14 @@ function WordCard({ word, onToggleMemorized }: {
 
 const wordCardStyles = StyleSheet.create({
   card: {
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     minHeight: 112,
+    shadowColor: "#5D4A37",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    elevation: 3,
   },
   cardTop: {
     flex: 1,
@@ -479,7 +487,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
   const wvs = wordsViewStyles;
 
   const ctaCard = (
-    <View style={[wvs.ctaCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={[wvs.ctaCard, { backgroundColor: colors.appLighterBg, borderColor: colors.appDarkerGray }]}>
       <Text style={[wvs.ctaTitle, { color: colors.foreground }]}>Save words as you read</Text>
       <Text style={[wvs.ctaSubtitle, { color: colors.mutedForeground }]}>
         Tap any word in the Quran reader to save it here for review.
@@ -625,7 +633,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
                       return (
                         <TouchableOpacity
                           key={item.surahNumber}
-                          style={[wvs.surahCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                          style={[wvs.surahCard, { backgroundColor: colors.appLighterBg, borderColor: colors.appDarkerGray }]}
                           onPress={() => setSelectedSurahNum(item.surahNumber)}
                           activeOpacity={0.8}
                         >
@@ -754,15 +762,15 @@ const wordsViewStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
     padding: 16,
     marginBottom: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    shadowColor: "#5D4A37",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    elevation: 3,
   },
   surahBadge: {
     width: 40,
@@ -791,12 +799,17 @@ const wordsViewStyles = StyleSheet.create({
 
   // CTA footer card
   ctaCard: {
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
     padding: 24,
     marginTop: 8,
     alignItems: "center",
     gap: 8,
+    shadowColor: "#5D4A37",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    elevation: 3,
   },
   ctaTitle: { fontSize: 16, fontFamily: "Inter_700Bold", textAlign: "center" },
   ctaSubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
@@ -976,7 +989,7 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
     content: {
       paddingHorizontal: 20,
       paddingBottom: 48,
-      gap: 16,
+      gap: 10,
     },
 
     // ── Header ───────────────────────────────────────────────────────────
@@ -1048,15 +1061,16 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
       height: 20,
     },
 
-    // ── Quiz / Info Cards (white bg) ──────────────────────────────────────
+    // ── Quiz / Info Cards ─────────────────────────────────────────────────
     quizCard: {
-      backgroundColor: colors.appCard,
-      borderRadius: 12,
+      backgroundColor: colors.appLighterBg,
+      borderRadius: 10,
       paddingTop: 16,
       paddingBottom: 16,
       gap: 14,
       borderWidth: 1,
-      borderColor: colors.appBorderAccent,
+      borderColor: colors.appDarkerGray,
+      ...colors.shadows.warmWidgetLift,
     },
     cardTopRow: {
       paddingHorizontal: 16,
@@ -1116,7 +1130,7 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Inter_700Bold",
     },
 
-    // ── Saved Ayahs Card (stone bg, no divider/action) ────────────────────
+    // ── Saved Ayahs Card (stone bg, no border/shadow — not clickable) ─────
     savedCard: {
       backgroundColor: colors.appStone,
       borderRadius: 12,
