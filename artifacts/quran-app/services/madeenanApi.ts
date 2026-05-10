@@ -29,13 +29,29 @@ export class MadeenanApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly data: unknown;
+  readonly method: string;
+  readonly url: string;
+  readonly requestId: string | null;
+  readonly hadAuthToken: boolean;
 
-  constructor(message: string, options: { status: number; code: string; data?: unknown }) {
+  constructor(message: string, options: {
+    status: number;
+    code: string;
+    data?: unknown;
+    method?: string;
+    url?: string;
+    requestId?: string | null;
+    hadAuthToken?: boolean;
+  }) {
     super(message);
     Object.setPrototypeOf(this, new.target.prototype);
     this.status = options.status;
     this.code = options.code;
     this.data = options.data;
+    this.method = options.method ?? "GET";
+    this.url = options.url ?? "";
+    this.requestId = options.requestId ?? null;
+    this.hadAuthToken = options.hadAuthToken ?? false;
   }
 }
 
@@ -124,15 +140,53 @@ export async function apiRequest<T>(
     if (token) headers.set("authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(buildUrl(path, options.query), init);
+  const url = buildUrl(path, options.query);
+  if (__DEV__) {
+    console.info(`[Madeenan API] ${method} ${url} auth=${token ? "yes" : "no"}`);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(url, init);
+  } catch (cause) {
+    if (__DEV__) {
+      console.error(`[Madeenan API] NETWORK_ERROR ${method} ${url}`, cause);
+    }
+    throw new MadeenanApiError("Network request failed. Check connectivity and the Madeenan backend URL.", {
+      status: 0,
+      code: "NETWORK_ERROR",
+      data: cause,
+      method,
+      url,
+      hadAuthToken: !!token,
+    });
+  }
   const parsed = await parseResponse(response);
+  const requestId = response.headers.get("x-request-id");
+
+  if (__DEV__) {
+    console.info(`[Madeenan API] ${response.status} ${method} ${url} requestId=${requestId ?? "none"}`);
+  }
 
   if (!response.ok) {
     const details = getErrorMessage(parsed, `Request failed with HTTP ${response.status}`);
+    if (__DEV__) {
+      console.error(`[Madeenan API] ERROR ${response.status} ${details.code}: ${details.message}`, {
+        method,
+        url,
+        requestId,
+        hadAuthToken: !!token,
+        response: parsed,
+      });
+    }
     const error = new MadeenanApiError(details.message, {
       status: response.status,
       code: response.status === 401 ? "UNAUTHORIZED" : details.code,
       data: parsed,
+      method,
+      url,
+      requestId,
+      hadAuthToken: !!token,
     });
     if (response.status === 401 && token) {
       await unauthorizedHandler?.();
@@ -146,6 +200,10 @@ export async function apiRequest<T>(
       status: response.status,
       code: parsed.error.code,
       data: parsed,
+      method,
+      url,
+      requestId,
+      hadAuthToken: !!token,
     });
   }
 
@@ -357,7 +415,7 @@ export async function signInEmail(body: { email: string; password: string }): Pr
   if (!token) {
     throw new MadeenanApiError(
       "The backend did not return a bearer session token. Mobile protected routes require Authorization: Bearer <session-token>.",
-      { status: 200, code: "SESSION_TOKEN_MISSING", data: raw },
+      { status: 200, code: "SESSION_TOKEN_MISSING", data: raw, method: "POST", url: `${MADEENAN_API_BASE_URL}/auth/sign-in/email` },
     );
   }
   const user = raw && typeof raw === "object" ? ((raw as Record<string, unknown>).user as MadeenanSession["user"]) : null;
@@ -370,7 +428,7 @@ export async function signUpEmail(body: { name?: string; email: string; password
   if (!token) {
     throw new MadeenanApiError(
       "The backend did not return a bearer session token. Mobile protected routes require Authorization: Bearer <session-token>.",
-      { status: 200, code: "SESSION_TOKEN_MISSING", data: raw },
+      { status: 200, code: "SESSION_TOKEN_MISSING", data: raw, method: "POST", url: `${MADEENAN_API_BASE_URL}/auth/sign-up/email` },
     );
   }
   const user = raw && typeof raw === "object" ? ((raw as Record<string, unknown>).user as MadeenanSession["user"]) : null;
@@ -378,8 +436,13 @@ export async function signUpEmail(body: { name?: string; email: string; password
 }
 
 export const signOut = () => apiRequest<unknown>("/auth/sign-out", { method: "POST" });
+export const getAuthSession = () => apiRequest<unknown>("/auth/get-session");
 
-export const getChapters = () => apiRequest<Chapter[]>("/quran/chapters");
+export const getChapters = () =>
+  apiRequest<Chapter[] | { chapters?: Chapter[]; data?: unknown; items?: Chapter[]; results?: Chapter[] }>(
+    "/quran/chapters",
+    { query: { page: 1, perPage: 114 } },
+  );
 export const getChapter = (chapterNumber: number) => apiRequest<Chapter>(`/quran/chapters/${chapterNumber}`);
 export const getChapterInfo = (chapterNumber: number, language = "en") =>
   apiRequest<unknown>(`/quran/chapters/${chapterNumber}/info`, { query: { language } });
@@ -436,6 +499,8 @@ export async function startQuranFoundationOAuth(): Promise<string> {
     status: 200,
     code: "AUTHORIZATION_URL_MISSING",
     data,
+    method: "POST",
+    url: `${MADEENAN_API_BASE_URL}/quran-foundation/oauth/start`,
   });
 }
 

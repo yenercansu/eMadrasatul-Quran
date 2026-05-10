@@ -9,6 +9,7 @@ import {
   setUnauthorizedHandler,
   signInEmail,
   signUpEmail,
+  getAuthSession,
   updateProgress,
   saveSurah as saveRemoteSurah,
   saveWord as saveRemoteWord,
@@ -157,6 +158,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await storeSessionToken(nextSession.token);
     setApiSessionToken(nextSession.token);
     setSession(nextSession);
+    if (__DEV__) {
+      console.info(`[Madeenan Auth] Stored session token length=${nextSession.token.length}`);
+      getAuthSession()
+        .then(() => console.info("[Madeenan Auth] /auth/get-session succeeded with bearer token"))
+        .catch((error) => console.error("[Madeenan Auth] /auth/get-session failed with stored bearer token", error));
+    }
     await migrateLocalDataToBackend();
     queryClient.invalidateQueries();
     router.replace("/(tabs)");

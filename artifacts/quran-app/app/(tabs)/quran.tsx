@@ -21,6 +21,7 @@ import { Tag } from "@/components/Tag";
 import { SurahCard } from "@/components/SurahCard";
 import { PageTitle } from "@/components/Typography";
 import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
+import { MadeenanApiError } from "@/services/madeenanApi";
 import { useQuran } from "@/contexts/QuranContext";
 
 type FilterType = "all" | "meccan" | "medinan" | "alphabetic";
@@ -103,6 +104,8 @@ export default function QuranScreen() {
     queryFn: fetchSurahs,
   });
   const surahs = surahsQuery.data ?? [];
+  const loadError = surahsQuery.error;
+  const madeenanError = loadError instanceof MadeenanApiError ? loadError : null;
 
   const recentNumbers = useMemo(() => new Set(recentProgress.map(p => p.surahNumber)), [recentProgress]);
 
@@ -175,6 +178,11 @@ export default function QuranScreen() {
         <View style={s.empty}>
           <Feather name="alert-circle" size={40} color={colors.destructive} />
           <Text style={s.emptyText}>Could not load surahs</Text>
+          <Text style={s.errorDetail}>
+            {madeenanError
+              ? `${madeenanError.status || "Network"} ${madeenanError.code} · auth=${madeenanError.hadAuthToken ? "yes" : "no"}${madeenanError.requestId ? ` · request ${madeenanError.requestId}` : ""}`
+              : loadError instanceof Error ? loadError.message : "Unknown error"}
+          </Text>
           <TouchableOpacity onPress={() => surahsQuery.refetch()} style={s.retryBtn} activeOpacity={0.85}>
             <Text style={s.retryText}>Retry</Text>
           </TouchableOpacity>
@@ -254,6 +262,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     swipeActionText: { fontSize: 12, fontWeight: "700", color: colors.appWhite, fontFamily: "Inter_700Bold" },
     empty: { alignItems: "center", paddingVertical: 60, gap: 12 },
     emptyText: { fontSize: 16, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
+    errorDetail: { paddingHorizontal: 24, textAlign: "center", fontSize: 12, lineHeight: 18, color: colors.destructive, fontFamily: "Inter_400Regular" },
     retryBtn: { paddingHorizontal: 16, height: 40, borderRadius: 10, backgroundColor: colors.appBlack, alignItems: "center", justifyContent: "center" },
     retryText: { fontSize: 13, color: "#FFFFFF", fontFamily: "Inter_700Bold" },
   });
