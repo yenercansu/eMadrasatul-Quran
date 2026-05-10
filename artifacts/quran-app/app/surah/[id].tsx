@@ -1135,6 +1135,7 @@ const ms = StyleSheet.create({
 export default function SurahScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const bottomInset = Platform.OS === "web" ? 8 : insets.bottom;
   const { id, ayah: ayahParam } = useLocalSearchParams<{ id: string; ayah?: string }>();
   const surahNum = parseInt(id, 10);
 
@@ -1168,15 +1169,6 @@ const [settingsVisible, setSettingsVisible] = useState(false);
   const [ayahRepeatCounts, setAyahRepeatCounts] = useState<Record<number, number>>({});
   const [wordModal, setWordModal] = useState<{ word: string; surah: number; ayah: number; translation: string } | null>(null);
   const [hintsVisible, setHintsVisible] = useState(false);
-
-  // Load persisted translation preferences
-  useEffect(() => {
-    AsyncStorage.getItem("quran_selected_translations").then((v) => {
-      if (v) {
-        try { setSelectedTranslations(JSON.parse(v)); } catch {}
-      }
-    }).catch(() => {});
-  }, []);
 
   // Show onboarding hints once per device
   useEffect(() => {
@@ -1292,6 +1284,15 @@ const [settingsVisible, setSettingsVisible] = useState(false);
   }, [settings.showTafsir, settings.selectedTafsirs, arabic, surahNum]);
 
   useEffect(() => {
+    setSelectedTranslations([]);
+    setTajweedMode(false);
+    updateSettings({
+      showTranslation: false,
+      showTransliteration: false,
+      showTafsir: false,
+      colorCoding: false,
+      tajweedColorCoding: false,
+    });
     loadData();
     return () => setOnNextAyah(null);
   }, [surahNum]);
@@ -1311,18 +1312,6 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       setArabic(main.arabic);
       setTransliteration(main.transliteration);
       setTranslationsMap({ "en.sahih": main.translation });
-
-      // Pre-fetch any other selected translations
-      const others = selectedTranslations.filter(ed => ed !== "en.sahih");
-      if (others.length > 0) {
-        Promise.all(others.map(ed => fetchTranslation(surahNum, ed).catch(() => null))).then(results => {
-          setTranslationsMap(prev => {
-            const next = { ...prev };
-            others.forEach((ed, i) => { if (results[i]) next[ed] = results[i]!; });
-            return next;
-          });
-        });
-      }
 
       setOnNextAyah((surahN, ayahN) => {
         const totalAyahs = SURAH_DATA[surahN - 1]?.ayahCount ?? main.arabic.ayahs.length;
@@ -1582,7 +1571,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
           {settings.showTranslation && (
             <ScrollView
               style={{ flex: 0.45, backgroundColor: "#FFFFFF" }}
-              contentContainerStyle={{ padding: 16, paddingBottom: menuVisible ? (bottomBarHeight + 16) : 40 }}
+              contentContainerStyle={{ padding: 16, paddingBottom: menuVisible ? (bottomBarHeight + 8) : 40 }}
               showsVerticalScrollIndicator={true}
             >
               <Text style={scr.mushafSplitHeader}>Translation</Text>
@@ -1610,7 +1599,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
               paddingTop: menuVisible ? 4 : (insets.top + 64),
-              paddingBottom: menuVisible ? (bottomBarHeight + 16) : 24,
+              paddingBottom: menuVisible ? (bottomBarHeight + 8) : 24,
             }}
             style={{ flex: 1, backgroundColor: "#FAF9F7" }}
             ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: "#EDEAE5" }} />}
@@ -1693,7 +1682,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       {/* ── Player + Content bar ─────────────────────────────── */}
       {menuVisible && (
         <View
-          style={[scr.bottom, { paddingBottom: insets.bottom }]}
+          style={[scr.bottom, { paddingBottom: bottomInset }]}
           onLayout={(e) => {
             const h = Math.round(e.nativeEvent.layout.height);
             if (h > 0 && Math.abs(h - bottomBarHeight) > 4) setBottomBarHeight(h);
@@ -1901,7 +1890,7 @@ const scr = StyleSheet.create({
   bottom: {
     position: "absolute",
     left: 0, right: 0, bottom: 0,
-    backgroundColor: "#F2EDE6",
+    backgroundColor: "#F9F8F6",
     borderTopWidth: 1,
     borderTopColor: "#E2D9CF",
     zIndex: 50,

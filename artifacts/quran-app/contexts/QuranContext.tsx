@@ -163,7 +163,7 @@ export function getAyahAtLinearIndex(index: number): { surahNumber: number; sura
 }
 
 const DEFAULT_SETTINGS: Settings = {
-  showTranslation: true,
+  showTranslation: false,
   showTransliteration: false,
   showTafsir: false,
   selectedTafsirs: ["en.maarifulquran"],
