@@ -23,6 +23,7 @@ import { getJuzAyahs, SURAH_DATA } from "@/constants/surahData";
 import { GoalSetupModal } from "@/components/GoalSetupModal";
 import { EditDailyGoalModal } from "@/components/EditDailyGoalModal";
 import { SubSectionTitle } from "@/components/Typography";
+import { MemorizedBadge } from "@/components/SurahCard";
 
 const TOTAL_AYAHS = 6236;
 
@@ -589,13 +590,9 @@ export default function HomeScreen() {
                       >
                         <View style={s.surahInfo}>
                           <Text style={s.surahName}>{surah.englishName}</Text>
+                          {memorized && <MemorizedBadge />}
                           <Text style={s.surahMeta}>{surah.numberOfAyahs} Ayahs • {surah.revelationType}</Text>
                         </View>
-                        {memorized && (
-                          <View style={s.memorizedTag}>
-                            <Text style={s.memorizedTagText}>MEMORIZED</Text>
-                          </View>
-                        )}
                         <Text style={s.surahArabic}>{compactArabicName}</Text>
                       </TouchableOpacity>
                     );
@@ -1129,26 +1126,11 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       color: colors.appTextPrimary,
       fontFamily: "Inter_600SemiBold",
     },
-    surahInfo: { flex: 1, justifyContent: "center" },
+    surahInfo: { flex: 1, justifyContent: "center", alignItems: "flex-start" },
     surahName: { fontSize: 14, fontWeight: "700", color: colors.appTextPrimary, fontFamily: "Inter_700Bold" },
     surahMeta: { fontSize: 12, color: colors.appLightText, fontFamily: "Inter_400Regular", marginTop: 2 },
     surahArabic: {
       fontSize: 18,
       color: colors.appTextPrimary,
-    },
-
-    memorizedTag: {
-      backgroundColor: colors.appSuccess,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 8,
-      marginRight: 6,
-    },
-    memorizedTagText: {
-      fontSize: 10,
-      fontWeight: "700",
-      color: colors.appWhite,
-      fontFamily: "Inter_700Bold",
-      letterSpacing: 0.3,
     },
   });

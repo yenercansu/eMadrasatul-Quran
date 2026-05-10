@@ -14,6 +14,17 @@ interface Props {
   onCheck?: () => void;
 }
 
+export function MemorizedBadge() {
+  const colors = useColors();
+  const s = styles(colors);
+
+  return (
+    <View style={s.memorizedBadge}>
+      <Text style={s.memorizedBadgeText}>MEMORIZED</Text>
+    </View>
+  );
+}
+
 export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, isChecked, onCheck }: Props) {
   const colors = useColors();
   const s = styles(colors);
@@ -59,11 +70,7 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, isChecked
           <Text style={s.englishName}>{surah.englishName}</Text>
           <Text style={s.translation}>{surah.englishNameTranslation}</Text>
           <Text style={s.ayahCount}>{surah.numberOfAyahs} ayahs</Text>
-          {isChecked && (
-            <View style={s.memorizedBadge}>
-              <Text style={s.memorizedBadgeText}>MEMORIZED</Text>
-            </View>
-          )}
+          {isChecked && <MemorizedBadge />}
         </View>
         <Text style={s.arabicName}>{surah.name}</Text>
       </View>

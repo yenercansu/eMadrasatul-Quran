@@ -65,6 +65,33 @@ export interface WordTranslation {
   audioSegmentEndMs?: number;
 }
 
+const MEDINAN_SURAHS = new Set([
+  2, 3, 4, 5, 8, 9, 13, 22, 24, 33, 47, 48, 49, 55, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 76, 98, 99, 110,
+]);
+
+const SURAH_TRANSLATION_FALLBACKS = [
+  "The Opening", "The Cow", "The Family of Imran", "The Women", "The Table Spread", "The Cattle", "The Heights", "The Spoils of War", "The Repentance", "Jonah",
+  "Hud", "Joseph", "The Thunder", "Abraham", "The Rocky Tract", "The Bee", "The Night Journey", "The Cave", "Mary", "Ta-Ha",
+  "The Prophets", "The Pilgrimage", "The Believers", "The Light", "The Criterion", "The Poets", "The Ant", "The Stories", "The Spider", "The Romans",
+  "Luqman", "The Prostration", "The Confederates", "Sheba", "The Originator", "Ya-Sin", "Those Who Set the Ranks", "The Letter Sad", "The Troops", "The Forgiver",
+  "Explained in Detail", "The Consultation", "The Ornaments of Gold", "The Smoke", "The Crouching", "The Wind-Curved Sandhills", "Muhammad", "The Victory", "The Rooms", "The Letter Qaf",
+  "The Winnowing Winds", "The Mount", "The Star", "The Moon", "The Most Merciful", "The Inevitable", "The Iron", "The Pleading Woman", "The Exile", "The Woman to be Examined",
+  "The Ranks", "Friday", "The Hypocrites", "Mutual Disillusion", "Divorce", "The Prohibition", "The Sovereignty", "The Pen", "The Reality", "The Ascending Stairways",
+  "Noah", "The Jinn", "The Enshrouded One", "The Cloaked One", "The Resurrection", "Man", "The Emissaries", "The Tidings", "Those Who Drag Forth", "He Frowned",
+  "The Overthrowing", "The Cleaving", "The Defrauding", "The Sundering", "The Mansions of the Stars", "The Nightcomer", "The Most High", "The Overwhelming", "The Dawn", "The City",
+  "The Sun", "The Night", "The Morning Hours", "The Relief", "The Fig", "The Clot", "The Power", "The Clear Proof", "The Earthquake", "The Chargers",
+  "The Calamity", "Rivalry in World Increase", "The Declining Day", "The Traducer", "The Elephant", "Quraysh", "Small Kindnesses", "Abundance", "The Disbelievers", "The Divine Support",
+  "The Palm Fiber", "Sincerity", "The Daybreak", "Mankind",
+];
+
+function fallbackRevelationType(chapterNumber: number): string {
+  return MEDINAN_SURAHS.has(chapterNumber) ? "Medinan" : "Meccan";
+}
+
+function fallbackTranslation(chapterNumber: number): string {
+  return SURAH_TRANSLATION_FALLBACKS[chapterNumber - 1] ?? "";
+}
+
 function getString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
@@ -131,9 +158,9 @@ function bundledSurah(chapterNumber: number): ApiSurah {
     number: meta?.number ?? chapterNumber,
     name: meta?.name ?? "",
     englishName: meta?.englishName ?? `Surah ${chapterNumber}`,
-    englishNameTranslation: "",
+    englishNameTranslation: fallbackTranslation(chapterNumber),
     numberOfAyahs: meta?.ayahCount ?? 0,
-    revelationType: "",
+    revelationType: fallbackRevelationType(chapterNumber),
   };
 }
 
@@ -369,7 +396,9 @@ export async function fetchSurahs(): Promise<ApiSurah[]> {
     number: meta.number,
     name: remoteByNumber.get(meta.number)?.name || meta.name,
     englishName: remoteByNumber.get(meta.number)?.englishName || meta.englishName,
+    englishNameTranslation: remoteByNumber.get(meta.number)?.englishNameTranslation || fallbackTranslation(meta.number),
     numberOfAyahs: remoteByNumber.get(meta.number)?.numberOfAyahs || meta.ayahCount,
+    revelationType: remoteByNumber.get(meta.number)?.revelationType || fallbackRevelationType(meta.number),
   }));
   if (__DEV__) {
     console.info("[Madeenan Quran Mapper] chapters", {
