@@ -252,33 +252,36 @@ export default function HomeScreen() {
           </View>
 
           {/* ── Continue / Start Listening Card ─────────────────────────── */}
-          <TouchableOpacity
-            style={s.audioCard}
-            onPress={() => router.push(isFirstListen ? "/surah/1" : `/surah/${lastListened!.surahNumber}?ayah=${lastListened!.ayahNumberInSurah}`)}
-            activeOpacity={0.88}
-          >
-            <View pointerEvents="none" style={s.audioCardOverlayWrap}>
-              <View style={[s.audioCardOverlayRing, { width: 160, height: 160, borderRadius: 80, opacity: 0.10 }]} />
-              <View style={[s.audioCardOverlayRing, { width: 124, height: 124, borderRadius: 62, opacity: 0.15 }]} />
-              <View style={[s.audioCardOverlayRing, { width: 92, height: 92, borderRadius: 46, opacity: 0.20 }]} />
-              <View style={[s.audioCardOverlayRing, { width: 64, height: 64, borderRadius: 32, opacity: 0.28 }]} />
-              <View style={[s.audioCardOverlayRing, { width: 40, height: 40, borderRadius: 20, opacity: 0.38 }]} />
-            </View>
-            <View style={s.audioCardLeft}>
-              <Text style={s.audioLabel}>{isFirstListen ? "START LISTENING" : "CONTINUE LISTENING"}</Text>
-              <Text style={s.audioTitle}>{isFirstListen ? "Al-Faatiha" : lastListened!.surahName}</Text>
-              <Text style={s.audioSub}>
-                {isFirstListen ? "Ayah 1" : `Ayah ${lastListened!.ayahNumberInSurah}`}
-                {" "}• Reciter: Al-Afasy
-              </Text>
-              <View style={s.audioProgressRail}>
-                <View style={[s.audioProgressFill, { width: `${audioProgressPct}%` as any }]} />
+          <View style={[s.audioCardGlowWrap, s.audioCardOffset]}>
+            <TouchableOpacity
+              style={s.audioCard}
+              onPress={() => router.push(isFirstListen ? "/surah/1" : `/surah/${lastListened!.surahNumber}?ayah=${lastListened!.ayahNumberInSurah}`)}
+              activeOpacity={0.88}
+            >
+              <View pointerEvents="none" style={s.audioCardStrokeGlow} />
+              <View pointerEvents="none" style={s.audioCardOverlayWrap}>
+                <View style={[s.audioCardOverlayRing, { width: 160, height: 160, borderRadius: 80, opacity: 0.10 }]} />
+                <View style={[s.audioCardOverlayRing, { width: 124, height: 124, borderRadius: 62, opacity: 0.15 }]} />
+                <View style={[s.audioCardOverlayRing, { width: 92, height: 92, borderRadius: 46, opacity: 0.20 }]} />
+                <View style={[s.audioCardOverlayRing, { width: 64, height: 64, borderRadius: 32, opacity: 0.28 }]} />
+                <View style={[s.audioCardOverlayRing, { width: 40, height: 40, borderRadius: 20, opacity: 0.38 }]} />
               </View>
-            </View>
-            <View style={s.playBtn}>
-              <Ionicons name="play" size={32} color={colors.appBlack} />
-            </View>
-          </TouchableOpacity>
+              <View style={s.audioCardLeft}>
+                <Text style={s.audioLabel}>{isFirstListen ? "START LISTENING" : "CONTINUE LISTENING"}</Text>
+                <Text style={s.audioTitle}>{isFirstListen ? "Al-Faatiha" : lastListened!.surahName}</Text>
+                <Text style={s.audioSub}>
+                  {isFirstListen ? "Ayah 1" : `Ayah ${lastListened!.ayahNumberInSurah}`}
+                  {" "}• Reciter: Al-Afasy
+                </Text>
+                <View style={s.audioProgressRail}>
+                  <View style={[s.audioProgressFill, { width: `${audioProgressPct}%` as any }]} />
+                </View>
+              </View>
+              <View style={s.playBtn}>
+                <Ionicons name="play" size={32} color={colors.appBlack} />
+              </View>
+            </TouchableOpacity>
+          </View>
 
           {/* ── Goal Widgets ─────────────────────────────────────────────── */}
           {hasMemorizationGoal ? (
@@ -681,19 +684,51 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
 
     // ── Audio Card ─────────────────────────────────────────────────────────────
-    audioCard: {
+    audioCardGlowWrap: {
       marginHorizontal: 16,
-      backgroundColor: colors.appLighterBg,
+      borderRadius: 10,
+      backgroundColor: "#FDFBF7",
+      shadowColor: "#A97B4E",
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.85,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    audioCardOffset: {
+      marginTop: 36,
+    },
+    audioCard: {
+      backgroundColor: "#FDFBF7",
       borderRadius: 10,
       paddingTop: 28,
-      paddingBottom: 20,
+      paddingBottom: 24,
       paddingHorizontal: 24,
+      minHeight: 112,
       flexDirection: "row",
       alignItems: "center",
-      borderWidth: 2,
-      borderColor: colors.appWarmBorder,
+      borderWidth: 1,
+      borderColor: "#A97B4E",
       overflow: "hidden",
-      ...colors.shadows.warmCardLift,
+      shadowColor: "#A97B4E",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 1,
+      shadowRadius: 5,
+      elevation: 4,
+    },
+    audioCardStrokeGlow: {
+      position: "absolute",
+      top: -1,
+      left: -1,
+      right: -1,
+      bottom: -1,
+      borderRadius: 11,
+      borderWidth: 1,
+      borderColor: "#A97B4E",
+      shadowColor: "#A97B4E",
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 1,
+      shadowRadius: 10,
+      elevation: 8,
     },
     audioCardOverlayWrap: {
       position: "absolute",
@@ -711,36 +746,43 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     audioCardLeft: { flex: 1, marginRight: 14 },
     audioLabel: {
       fontSize: 10,
-      letterSpacing: 1.2,
-      color: colors.appDarkGray,
+      lineHeight: 16,
+      letterSpacing: 1,
+      color: "#71717A",
       fontFamily: "Inter_700Bold",
       textTransform: "uppercase",
-      marginBottom: 4,
+      marginBottom: 0,
     },
     audioTitle: {
       fontSize: 18,
+      lineHeight: 28,
       fontWeight: "700",
-      color: colors.appTextPrimary,
+      color: "#18181B",
       fontFamily: "Inter_700Bold",
-      marginBottom: 2,
+      marginBottom: 0,
     },
     audioSub: {
       fontSize: 12,
-      color: colors.appLightText,
+      lineHeight: 16,
+      color: "#71717A",
       fontFamily: "Inter_400Regular",
-      marginBottom: 14,
+      marginBottom: 16,
     },
     audioProgressRail: {
       height: 8,
-      backgroundColor: colors.appProgressRail,
+      backgroundColor: "#E7E5DB",
       borderRadius: 4,
       overflow: "hidden",
     },
     audioProgressFill: {
       height: "100%" as any,
-      backgroundColor: colors.appTextPrimary,
+      backgroundColor: "#18181B",
       borderRadius: 4,
-      ...colors.shadows.goldGlow,
+      shadowColor: "#D47637",
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.6,
+      shadowRadius: 8,
+      elevation: 4,
     },
     playBtn: {
       width: 52,
