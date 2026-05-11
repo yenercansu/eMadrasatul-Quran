@@ -31,6 +31,7 @@ function RootLayoutNav() {
       <Stack.Screen name="surah/[id]" options={{ headerShown: false, animation: "slide_from_right" }} />
       <Stack.Screen name="oauth/quran-foundation/success" options={{ headerShown: false }} />
       <Stack.Screen name="oauth/quran-foundation/error" options={{ headerShown: false }} />
+      <Stack.Screen name="oauth/google/callback" options={{ headerShown: false }} />
       <Stack.Screen name="quiz" options={{ headerShown: false, animation: "slide_from_bottom" }} />
       <Stack.Screen name="settings" options={{ headerShown: false, animation: "slide_from_bottom" }} />
       <Stack.Screen name="streak-calendar" options={{ headerShown: false, animation: "slide_from_bottom" }} />

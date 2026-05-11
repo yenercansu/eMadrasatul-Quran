@@ -62,6 +62,10 @@ export function setApiSessionToken(token: string | null): void {
   inMemorySessionToken = token;
 }
 
+export function getApiSessionToken(): string | null {
+  return inMemorySessionToken;
+}
+
 export function setUnauthorizedHandler(handler: (() => void | Promise<void>) | null): void {
   unauthorizedHandler = handler;
 }
@@ -142,7 +146,8 @@ export async function apiRequest<T>(
 
   const url = buildUrl(path, options.query);
   if (__DEV__) {
-    console.info(`[Madeenan API] ${method} ${url} auth=${token ? "yes" : "no"}`);
+    const tokenPreview = token ? `${token.slice(0, 10)}...${token.slice(-6)}` : "none";
+    console.info(`[Madeenan API] ${method} ${url} auth=${token ? `yes(${tokenPreview})` : "no"}`);
   }
 
   let response: Response;
@@ -208,33 +213,6 @@ export async function apiRequest<T>(
   }
 
   return parsed as T;
-}
-
-function searchForToken(value: unknown): string | null {
-  if (!value || typeof value !== "object") return null;
-  const record = value as Record<string, unknown>;
-  const keys = [
-    "token",
-    "sessionToken",
-    "session_token",
-    "accessToken",
-    "access_token",
-    "bearerToken",
-    "jwt",
-  ];
-  for (const key of keys) {
-    const candidate = record[key];
-    if (typeof candidate === "string" && candidate.length > 12) return candidate;
-  }
-  for (const nestedKey of ["session", "data", "user"]) {
-    const nested = searchForToken(record[nestedKey]);
-    if (nested) return nested;
-  }
-  return null;
-}
-
-export function extractSessionToken(authResponse: unknown): string | null {
-  return searchForToken(authResponse);
 }
 
 export interface HealthData {
@@ -409,35 +387,6 @@ export interface QuranPageParams {
 export const healthCheck = () => apiRequest<HealthData>("/health", { auth: false });
 export const getMeta = () => apiRequest<MetaData>("/meta", { auth: false });
 
-export async function signInEmail(body: { email: string; password: string }): Promise<MadeenanSession> {
-  const raw = await apiRequest<unknown>("/auth/sign-in/email", { method: "POST", body, auth: false });
-  const token = extractSessionToken(raw);
-  if (!token) {
-    throw new MadeenanApiError(
-      "The backend did not return a bearer session token. Mobile protected routes require Authorization: Bearer <session-token>.",
-      { status: 200, code: "SESSION_TOKEN_MISSING", data: raw, method: "POST", url: `${MADEENAN_API_BASE_URL}/auth/sign-in/email` },
-    );
-  }
-  const user = raw && typeof raw === "object" ? ((raw as Record<string, unknown>).user as MadeenanSession["user"]) : null;
-  return { token, user, raw };
-}
-
-export async function signUpEmail(body: { name?: string; email: string; password: string }): Promise<MadeenanSession> {
-  const raw = await apiRequest<unknown>("/auth/sign-up/email", { method: "POST", body, auth: false });
-  const token = extractSessionToken(raw);
-  if (!token) {
-    throw new MadeenanApiError(
-      "The backend did not return a bearer session token. Mobile protected routes require Authorization: Bearer <session-token>.",
-      { status: 200, code: "SESSION_TOKEN_MISSING", data: raw, method: "POST", url: `${MADEENAN_API_BASE_URL}/auth/sign-up/email` },
-    );
-  }
-  const user = raw && typeof raw === "object" ? ((raw as Record<string, unknown>).user as MadeenanSession["user"]) : null;
-  return { token, user, raw };
-}
-
-export const signOut = () => apiRequest<unknown>("/auth/sign-out", { method: "POST" });
-export const getAuthSession = () => apiRequest<unknown>("/auth/get-session");
-
 export const getChapters = () =>
   apiRequest<Chapter[] | { chapters?: Chapter[]; data?: unknown; items?: Chapter[]; results?: Chapter[] }>(
     "/quran/chapters",
@@ -485,6 +434,42 @@ export const createOfflinePackage = (body: OfflinePackageBody) =>
 export const getOfflinePackage = (id: string | number) => apiRequest<unknown>(`/quran/offline-packages/${id}`);
 export const deleteOfflinePackage = (id: string | number) =>
   apiRequest<unknown>(`/quran/offline-packages/${id}`, { method: "DELETE" });
+
+export function buildGoogleOAuthUrl(callbackUrl: string): string {
+  const params = new URLSearchParams({
+    provider: "google",
+    callbackURL: callbackUrl,
+    responseMode: "query",
+  });
+  return `${MADEENAN_API_BASE_URL}/auth/sign-in/social?${params.toString()}`;
+}
+
+export function extractTokenFromCallbackUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const sessionJson = parsed.searchParams.get("session");
+    if (sessionJson) {
+      const session = JSON.parse(sessionJson);
+      if (session && typeof session === "object") {
+        const record = session as Record<string, unknown>;
+        const raw =
+          (typeof record.token === "string" && record.token) ||
+          (typeof record.sessionToken === "string" && record.sessionToken) ||
+          null;
+        if (raw) {
+          try { return decodeURIComponent(raw); } catch { return raw; }
+        }
+      }
+    }
+    const raw = parsed.searchParams.get("token") ?? parsed.searchParams.get("session_token") ?? null;
+    if (raw) {
+      try { return decodeURIComponent(raw); } catch { return raw; }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export async function startQuranFoundationOAuth(): Promise<string> {
   const data = await apiRequest<unknown>("/quran-foundation/oauth/start", { method: "POST" });

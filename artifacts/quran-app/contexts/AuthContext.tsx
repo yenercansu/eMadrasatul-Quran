@@ -1,18 +1,15 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQueryClient } from "@tanstack/react-query";
+import * as Linking from "expo-linking";
 import { router } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import {
   MadeenanApiError,
   setApiSessionToken,
   setUnauthorizedHandler,
-  signInEmail,
-  signUpEmail,
-  getAuthSession,
-  updateProgress,
-  saveSurah as saveRemoteSurah,
-  saveWord as saveRemoteWord,
+  buildGoogleOAuthUrl,
+  extractTokenFromCallbackUrl,
   type MadeenanSession,
 } from "@/services/madeenanApi";
 import {
@@ -20,93 +17,18 @@ import {
   getStoredSessionToken,
   storeSessionToken,
 } from "@/services/sessionStore";
-import { SURAH_DATA } from "@/constants/surahData";
-
-const MIGRATION_FLAG = "madeenan:local-data-migrated-v1";
 
 interface AuthContextType {
   session: MadeenanSession | null;
   isAuthenticated: boolean;
   isBootstrapping: boolean;
   authError: string | null;
-  signIn: (input: { email: string; password: string }) => Promise<void>;
-  signUp: (input: { name?: string; email: string; password: string }) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   clearAuthError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-function getDateOnly(): string {
-  return new Date().toISOString().split("T")[0] ?? "";
-}
-
-async function migrateLocalDataToBackend(): Promise<void> {
-  const alreadyMigrated = await AsyncStorage.getItem(MIGRATION_FLAG);
-  if (alreadyMigrated === "1") return;
-
-  const results = await AsyncStorage.multiGet([
-    "quran_saved_surahs",
-    "quran_saved_words",
-    "quran_memorized_ayahs",
-    "quran_goal",
-    "quran_memorization_goal",
-  ]);
-  const map = Object.fromEntries(results.map(([key, value]) => [key, value]));
-
-  try {
-    const savedSurahs: number[] = map.quran_saved_surahs ? JSON.parse(map.quran_saved_surahs) : [];
-    for (const surahNumber of savedSurahs) {
-      const meta = SURAH_DATA[surahNumber - 1];
-      if (!meta) continue;
-      await saveRemoteSurah({ surahNumber, name: meta.englishName }).catch(() => {});
-    }
-
-    const savedWords: Array<{
-      id?: string;
-      arabic?: string;
-      translation?: string;
-      surahNumber?: number;
-      ayahNumber?: number;
-    }> = map.quran_saved_words ? JSON.parse(map.quran_saved_words) : [];
-    for (const [index, word] of savedWords.entries()) {
-      if (!word.arabic || !word.translation || !word.surahNumber || !word.ayahNumber) continue;
-      if (typeof word.id === "string" && word.id.startsWith("seed")) continue;
-      await saveRemoteWord({
-        surahNumber: word.surahNumber,
-        ayahNumber: word.ayahNumber,
-        wordPosition: index + 1,
-        verseKey: `${word.surahNumber}:${word.ayahNumber}`,
-        textArabic: word.arabic,
-        translation: word.translation,
-        masteryLevel: 0,
-      }).catch(() => {});
-    }
-
-    const memorizedAyahKeys: string[] = map.quran_memorized_ayahs ? JSON.parse(map.quran_memorized_ayahs) : [];
-    if (memorizedAyahKeys.length > 0) {
-      await updateProgress({
-        goalDate: getDateOnly(),
-        ayahs: memorizedAyahKeys
-          .map((key) => {
-            const [surahRaw, ayahRaw] = key.split(":");
-            const surahNumber = Number(surahRaw);
-            const ayahNumber = Number(ayahRaw);
-            if (!Number.isFinite(surahNumber) || !Number.isFinite(ayahNumber)) return null;
-            return {
-              surahNumber,
-              ayahNumber,
-              juzNumber: SURAH_DATA[surahNumber - 1]?.juz ?? 1,
-              status: "memorized",
-            };
-          })
-          .filter((item): item is { surahNumber: number; ayahNumber: number; juzNumber: number; status: "memorized" } => !!item),
-      }).catch(() => {});
-    }
-  } finally {
-    await AsyncStorage.setItem(MIGRATION_FLAG, "1");
-  }
-}
 
 function messageFromError(error: unknown): string {
   if (error instanceof MadeenanApiError) return error.message;
@@ -121,13 +43,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null);
 
   const signOut = useCallback(async () => {
-    const hadToken = !!session?.token || !!(await getStoredSessionToken());
     setSession(null);
     setApiSessionToken(null);
     await clearStoredSessionToken();
     queryClient.clear();
     router.replace("/auth" as any);
-  }, [queryClient, session?.token]);
+  }, [queryClient]);
 
   useEffect(() => {
     setUnauthorizedHandler(session?.token ? signOut : null);
@@ -136,55 +57,72 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    const devToken = process.env.EXPO_PUBLIC_MADEENAN_SESSION_TOKEN;
     getStoredSessionToken()
       .then((token) => {
         if (!mounted) return;
-        const restoredToken = token || devToken;
-        if (restoredToken) {
-          setApiSessionToken(restoredToken);
-          setSession({ token: restoredToken });
+        if (token) {
+          setApiSessionToken(token);
+          setSession({ token });
         }
       })
       .finally(() => {
         if (mounted) setIsBootstrapping(false);
       });
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
   const persistSession = useCallback(async (nextSession: MadeenanSession) => {
+    setUnauthorizedHandler(null);
     await storeSessionToken(nextSession.token);
     setApiSessionToken(nextSession.token);
     setSession(nextSession);
-    if (__DEV__) {
-      console.info(`[Madeenan Auth] Stored session token length=${nextSession.token.length}`);
-      getAuthSession()
-        .then(() => console.info("[Madeenan Auth] /auth/get-session succeeded with bearer token"))
-        .catch((error) => console.error("[Madeenan Auth] /auth/get-session failed with stored bearer token", error));
-    }
-    await migrateLocalDataToBackend();
     queryClient.invalidateQueries();
     router.replace("/(tabs)");
   }, [queryClient]);
 
-  const signIn = useCallback(async (input: { email: string; password: string }) => {
+  const signInWithGoogle = useCallback(async () => {
     setAuthError(null);
     try {
-      await persistSession(await signInEmail(input));
-    } catch (error) {
-      setAuthError(messageFromError(error));
-      throw error;
-    }
-  }, [persistSession]);
+      const returnUrl = Linking.createURL("oauth/google/callback", { scheme: "madeenan" });
+      const authUrl = buildGoogleOAuthUrl(returnUrl);
 
-  const signUp = useCallback(async (input: { name?: string; email: string; password: string }) => {
-    setAuthError(null);
-    try {
-      await persistSession(await signUpEmail(input));
+      if (__DEV__) console.info("[Google Auth] Opening", { authUrl, returnUrl });
+
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl);
+
+      if (__DEV__) console.info("[Google Auth] Browser result", { type: result.type, url: result.type === "success" ? result.url.slice(0, 200) : "none" });
+
+      if (result.type === "success" && result.url) {
+        const token = extractTokenFromCallbackUrl(result.url);
+        if (__DEV__) console.info("[Google Auth] Inline extracted token", { length: token?.length ?? 0, prefix: token?.slice(0, 12), suffix: token?.slice(-10) });
+        if (token) {
+          await persistSession({ token });
+          return;
+        }
+      }
+
+      if (result.type === "cancel") {
+        throw new MadeenanApiError("Sign-in was cancelled.", {
+          status: 0, code: "USER_CANCELLED", method: "GET", url: authUrl,
+        });
+      }
+
+      // dismiss = callback route handles it; wait a moment then check if we got redirected
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const storedToken = await getStoredSessionToken();
+      if (!storedToken) {
+        throw new MadeenanApiError(
+          "Could not complete Google sign-in.",
+          { status: 0, code: "OAUTH_FAILED", method: "GET", url: authUrl },
+        );
+      }
     } catch (error) {
-      setAuthError(messageFromError(error));
+      if (error instanceof MadeenanApiError) {
+        setAuthError(error.message);
+        throw error;
+      }
+      const msg = messageFromError(error);
+      setAuthError(msg);
       throw error;
     }
   }, [persistSession]);
@@ -194,11 +132,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: !!session?.token,
     isBootstrapping,
     authError,
-    signIn,
-    signUp,
+    signInWithGoogle,
     signOut,
     clearAuthError: () => setAuthError(null),
-  }), [authError, isBootstrapping, session, signIn, signOut, signUp]);
+  }), [authError, isBootstrapping, session, signInWithGoogle, signOut]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

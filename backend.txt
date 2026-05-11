@@ -1,0 +1,249 @@
+You are working on the Quran Madrasa mobile app frontend. Wire it to the deployed Madeenan backend.
+
+Backend base URL:
+https://hackathon.madeenan.com
+
+Use this as the single API base URL. Do not call Quran Foundation directly from the mobile app. All Quran content, progress, saved words, playback helpers, and Quran Foundation OAuth linking must go through the backend.
+
+Core rules:
+- All requests go to https://hackathon.madeenan.com
+- Protected routes must send the Madeenan session token:
+  Authorization: Bearer <session-token>
+- Store the session token securely using the platform’s secure storage/keychain.
+- Do not store Quran Foundation access tokens in the mobile app.
+- Quran Foundation OAuth starts from the backend and returns through the callback/deep-link flow.
+- Handle backend success shape:
+  { success: true, data: ... }
+- Handle backend error shape:
+  { success: false, error: { code, message } }
+
+Health check:
+GET /health
+
+Expected:
+{ success: true, data: { status: "ok", service: "madeenan-api" } }
+
+Meta:
+GET /meta
+
+Expected:
+{ success: true, data: { name, service, version, modules } }
+
+Authentication:
+Use the backend Better Auth endpoints under:
+
+/auth/*
+
+After login/signup, persist the session token or cookie according to the auth response. For protected API calls, prefer:
+
+Authorization: Bearer <session-token>
+
+Quran Foundation OAuth linking:
+1. User must already be signed into Madeenan.
+2. Call:
+
+POST /quran-foundation/oauth/start
+
+Headers:
+Authorization: Bearer <session-token>
+
+3. Read returned authorization URL from response data.
+4. Open that URL using the mobile browser/auth-session flow.
+5. Quran Foundation redirects to:
+
+https://hackathon.madeenan.com/api/auth/callback/google
+
+6. Backend redirects to:
+
+madeenan://oauth/quran-foundation/success
+
+or:
+
+madeenan://oauth/quran-foundation/error
+
+7. Configure the app to handle these deep links.
+8. After success, call:
+
+GET /quran-foundation/oauth/status
+
+to confirm the account is linked.
+
+Quran content endpoints:
+GET /quran/chapters
+
+GET /quran/chapters/:chapterNumber
+
+GET /quran/chapters/:chapterNumber/info?language=en
+
+GET /quran/chapters/:chapterNumber/verses?page=1&perPage=10&words=true&translations=131
+
+GET /quran/verses/:verseKey
+
+GET /quran/page?chapterNumber=1&page=1&perPage=10&translations=131&reciterId=7
+
+Use /quran/page as the main reading screen endpoint because it returns coordinated Arabic text, transliteration, translations, tafsir if requested, word metadata, audio metadata, and color-coding segment IDs.
+
+Audio/playback:
+GET /quran/audio/segments?chapterNumber=1&reciterId=7
+
+POST /quran/playback/range
+Body:
+{
+  "chapterNumber": 1,
+  "reciterId": 7,
+  "startAyah": 1,
+  "endAyah": 3,
+  "startWord": 1,
+  "endWord": 5,
+  "repeatCount": "5",
+  "playbackRate": 1
+}
+
+POST /quran/playback/ustadh-mode
+Body:
+{
+  "chapterNumber": 1,
+  "reciterId": 7,
+  "ayahs": [1, 2, 3],
+  "mode": "new",
+  "playbackRate": 1
+}
+
+The backend returns timestamp plans. The mobile app owns actual audio playback, looping, buffering, speed control, and UI state.
+
+User progress:
+POST /user/progress
+Headers:
+Authorization: Bearer <session-token>
+
+Body example:
+{
+  "goalDate": "2026-05-08",
+  "targetAyahs": 5,
+  "targetJuzNumber": 30,
+  "ayahs": [
+    {
+      "surahNumber": 1,
+      "ayahNumber": 1,
+      "juzNumber": 1,
+      "status": "memorized"
+    }
+  ]
+}
+
+GET /user/progress
+
+GET /user/goals/daily
+
+Last visited:
+PUT /user/last-visited
+Body:
+{
+  "surahNumber": 1,
+  "ayahNumber": 1,
+  "reciterId": 7,
+  "playbackRate": 1,
+  "lastPositionMs": 0
+}
+
+GET /user/last-visited
+
+Saved surahs:
+POST /user/saved-surahs
+Body:
+{
+  "surahNumber": 1,
+  "name": "Al-Fatihah"
+}
+
+GET /user/saved-surahs
+
+DELETE /user/saved-surahs/:id
+
+Saved words:
+POST /user/saved-words
+Body:
+{
+  "surahNumber": 1,
+  "ayahNumber": 1,
+  "wordPosition": 1,
+  "verseKey": "1:1",
+  "textArabic": "بِسْمِ",
+  "transliteration": "bis'mi",
+  "translation": "In the name",
+  "audioSegmentStartMs": 0,
+  "audioSegmentEndMs": 500,
+  "masteryLevel": 0
+}
+
+GET /user/saved-words
+
+DELETE /user/saved-words/:id
+
+Reciter preferences:
+GET /user/reciter-preferences
+
+PUT /user/reciter-preferences
+Body:
+{
+  "defaultReciterId": 7,
+  "recentReciterIds": [7, 1, 2],
+  "playbackRate": 1,
+  "repeatCount": "5"
+}
+
+Offline packages:
+POST /quran/offline-packages
+Body:
+{
+  "surahNumber": 1,
+  "reciterId": 7,
+  "translations": "131"
+}
+
+GET /quran/offline-packages/:id
+
+DELETE /quran/offline-packages/:id
+
+Implementation requirements:
+- Create a single typed API client module.
+- Centralize base URL, auth header injection, JSON parsing, and error handling.
+- Expose functions like:
+  getChapters()
+  getQuranPage(params)
+  getAudioSegments(params)
+  updateProgress(body)
+  saveWord(body)
+  startQuranFoundationOAuth()
+  getQuranFoundationOAuthStatus()
+- Do not scatter raw fetch calls across screens.
+- Every screen should call the typed API client.
+- Add loading, empty, and error states for every network call.
+- If a request returns 401, route user back to login/session refresh.
+- Cache Quran reading pages lightly on-device for smoother navigation.
+- Keep saved/progress mutations optimistic only if rollback is implemented.
+- Never expose backend secrets, Quran Foundation client secret, R2 keys, or Resend keys in the app.
+
+Deep link setup:
+Configure the mobile app to handle:
+
+madeenan://oauth/quran-foundation/success
+madeenan://oauth/quran-foundation/error
+
+On success:
+- close browser/auth session
+- refresh OAuth status
+- show connected state
+
+On error:
+- close browser/auth session
+- show a friendly retry message
+
+Main reading screen suggested flow:
+1. Load /user/last-visited
+2. Load /user/reciter-preferences
+3. Load /quran/page using selected chapter/page/reciter
+4. Load /quran/audio/segments for highlighting/looping
+5. Save last visited when user changes ayah/page/reciter
+6. Use /user/progress to mark ayahs as target/memorized
+7. Use /user/saved-words for the word quiz database

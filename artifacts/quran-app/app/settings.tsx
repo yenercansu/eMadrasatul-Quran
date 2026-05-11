@@ -9,10 +9,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Switch,
-  TextInput,
   Alert,
-  Modal,
-  TouchableWithoutFeedback,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -78,68 +75,13 @@ function SettingRow({
   );
 }
 
-function EditModal({
-  visible,
-  title,
-  placeholder,
-  value,
-  onSave,
-  onClose,
-  keyboardType = "default",
-  colors,
-}: {
-  visible: boolean;
-  title: string;
-  placeholder: string;
-  value: string;
-  onSave: (val: string) => void;
-  onClose: () => void;
-  keyboardType?: "default" | "email-address";
-  colors: ReturnType<typeof useColors>;
-}) {
-  const [text, setText] = useState(value);
-  const s = styles(colors);
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={s.editOverlay}>
-          <TouchableWithoutFeedback>
-            <View style={s.editCard}>
-              <Text style={s.editTitle}>{title}</Text>
-              <TextInput
-                style={s.editInput}
-                value={text}
-                onChangeText={setText}
-                placeholder={placeholder}
-                placeholderTextColor={colors.mutedForeground}
-                autoFocus
-                keyboardType={keyboardType}
-              />
-              <View style={s.editActions}>
-                <TouchableOpacity style={s.editCancel} onPress={onClose} activeOpacity={0.8}>
-                  <Text style={s.editCancelText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.editSave} onPress={() => { onSave(text); onClose(); }} activeOpacity={0.85}>
-                  <Text style={s.editSaveText}>Save</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
-    </Modal>
-  );
-}
-
 export default function SettingsScreen() {
   const colors = useColors();
   const s = styles(colors);
   const insets = useSafeAreaInsets();
   const { accountSettings, updateAccountSettings } = useQuran();
-  const { session, signOut } = useAuth();
+  const { signOut } = useAuth();
   const queryClient = useQueryClient();
-  const [editField, setEditField] = useState<"name" | "email" | null>(null);
   const [linkingQf, setLinkingQf] = useState(false);
   const topPad = insets.top;
   const qfStatus = useQuery({
@@ -153,7 +95,7 @@ export default function SettingsScreen() {
   const handleSignOut = () => {
     Alert.alert(
       "Sign Out",
-      "This will remove the Madeenan session from this device. Synced Quran progress stays in your account.",
+      "You will need to sign in again to sync your Quran data.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -188,26 +130,6 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-        <Section title="ACCOUNT">
-          <SettingRow
-            icon="shield"
-            label="Madeenan Session"
-            value={session?.token ? "Signed in" : "Not signed in"}
-          />
-          <SettingRow
-            icon="user"
-            label="Name"
-            value={accountSettings.name || "Not set"}
-            onPress={() => setEditField("name")}
-          />
-          <SettingRow
-            icon="mail"
-            label="Email"
-            value={accountSettings.email || "Not set"}
-            onPress={() => setEditField("email")}
-          />
-        </Section>
-
         <Section title="QURAN FOUNDATION">
           <SettingRow
             icon="link"
@@ -303,7 +225,7 @@ export default function SettingsScreen() {
           />
         </Section>
 
-        <Section title="ACCOUNT ACTIONS">
+        <Section title="ACCOUNT">
           <SettingRow
             icon="log-out"
             label="Sign Out"
@@ -317,26 +239,6 @@ export default function SettingsScreen() {
           <Text style={s.appInfoSub}>Content powered by Madeenan</Text>
         </View>
       </ScrollView>
-
-      <EditModal
-        visible={editField === "name"}
-        title="Change Name"
-        placeholder="Your name"
-        value={accountSettings.name}
-        onSave={val => updateAccountSettings({ name: val })}
-        onClose={() => setEditField(null)}
-        colors={colors}
-      />
-      <EditModal
-        visible={editField === "email"}
-        title="Change Email"
-        placeholder="your@email.com"
-        value={accountSettings.email}
-        onSave={val => updateAccountSettings({ email: val })}
-        onClose={() => setEditField(null)}
-        keyboardType="email-address"
-        colors={colors}
-      />
     </View>
   );
 }
@@ -385,15 +287,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     themeChipActive: { borderColor: colors.primary, backgroundColor: colors.primary },
     themeChipText: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     themeChipTextActive: { color: colors.primaryForeground, fontFamily: "Inter_600SemiBold" },
-    editOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center", padding: 24 },
-    editCard: { backgroundColor: colors.card, borderRadius: 16, padding: 20, width: "100%", shadowColor: colors.appBlack, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 12 },
-    editTitle: { fontSize: 17, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold", marginBottom: 12 },
-    editInput: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, fontSize: 16, color: colors.foreground, fontFamily: "Inter_400Regular", marginBottom: 16 },
-    editActions: { flexDirection: "row", gap: 10 },
-    editCancel: { flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border },
-    editCancelText: { fontSize: 15, color: colors.foreground, fontFamily: "Inter_400Regular" },
-    editSave: { flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 10, backgroundColor: colors.primary },
-    editSaveText: { fontSize: 15, fontWeight: "700", color: colors.primaryForeground, fontFamily: "Inter_700Bold" },
     appInfo: { alignItems: "center", paddingVertical: 24, gap: 4 },
     appInfoText: { fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     appInfoSub: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
