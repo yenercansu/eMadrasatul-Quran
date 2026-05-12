@@ -53,7 +53,6 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const AYAHS_PER_PAGE = 10;
 const MUSHAF_BG = "#F5EDD6";
 const WORD_COLORS = ["#E8507A", "#F2994A", "#27AE60", "#2F80ED", "#9B51E0", "#EB5757"];
-const REPEAT_SWIPE_OPEN = 96;
 
 const TRANSLATION_OPTIONS = [
   { id: "en.sahih", name: "Sahih International" },
@@ -91,8 +90,6 @@ interface AyahCardProps {
   ayah: ApiAyah;
   surahNum: number;
   isPlaying: boolean;
-  isOnRepeat: boolean;
-  repeatCount: number;
   isRangeSelected: boolean;
   showMemorizedToggle: boolean;
   isMemorized: boolean;
@@ -103,39 +100,33 @@ interface AyahCardProps {
   showBasmala: boolean;
   arabicFontSize: number;
   romanFontSize: number;
+  isOnRepeat: boolean;
+  repeatCount: number;
   onSave: (ayah: ApiAyah) => void;
-  onSetRepeat: (ayah: ApiAyah, count: number) => void;
+  onCancelRepeat: (ayah: ApiAyah) => void;
   onToggleMemorized: (ayah: ApiAyah) => void;
   onPress: () => void;
   onWordLongPress?: (word: string, ayah: ApiAyah) => void;
 }
 
-const TAP_THRESHOLD = 8; // px movement allowed for tap
+const TAP_THRESHOLD = 8;
 
 function SwipeableAyahCard({
-  ayah, surahNum, isPlaying, isOnRepeat, repeatCount, isRangeSelected,
+  ayah, surahNum, isPlaying, isRangeSelected,
   showMemorizedToggle, isMemorized,
+  isOnRepeat, repeatCount,
   translations, transliterationText,
   showTransliteration,
   colorCoding, showBasmala, arabicFontSize, romanFontSize,
-  onSave, onSetRepeat, onToggleMemorized, onPress, onWordLongPress,
+  onSave, onCancelRepeat, onToggleMemorized, onPress, onWordLongPress,
 }: AyahCardProps) {
   const pan = useRef(new Animated.Value(0)).current;
-  const swipeOpenRef = useRef(false);
   const gestureStarted = useRef(false);
   const suppressTapUntilRef = useRef(0);
-  const [, force] = useState(0);
-
-  const close = useCallback(() => {
-    Animated.spring(pan, { toValue: 0, useNativeDriver: true, tension: 80, friction: 10 }).start();
-    swipeOpenRef.current = false;
-    force(v => v + 1);
-  }, [pan]);
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-      // Responsive thresholds: mild horizontal bias catches fast swipes without stealing scrolls
       onMoveShouldSetPanResponder: (_, { dx, dy }) =>
         Math.abs(dx) > Math.abs(dy) * 1.2 && Math.abs(dx) > 5,
       onMoveShouldSetPanResponderCapture: (_, { dx, dy }) =>
@@ -144,32 +135,14 @@ function SwipeableAyahCard({
         gestureStarted.current = true;
       },
       onPanResponderMove: (_, { dx }) => {
-        if (swipeOpenRef.current) {
-          pan.setValue(Math.min(REPEAT_SWIPE_OPEN, REPEAT_SWIPE_OPEN + Math.max(-REPEAT_SWIPE_OPEN, dx)));
-        } else {
-          if (dx > 0) pan.setValue(Math.min(dx, REPEAT_SWIPE_OPEN + 20));
-          else pan.setValue(Math.max(dx, -120));
-        }
+        // Only allow leftward (save) movement
+        if (dx < 0) pan.setValue(Math.max(dx, -120));
       },
       onPanResponderRelease: (_, { dx, vx }) => {
         const wasSignificantGesture = Math.abs(dx) > TAP_THRESHOLD;
-        // Suppress tap from firing after any real swipe gesture
         if (wasSignificantGesture) suppressTapUntilRef.current = Date.now() + 350;
         setTimeout(() => { gestureStarted.current = false; }, wasSignificantGesture ? 300 : 60);
-        if (swipeOpenRef.current) {
-          if (dx < -20) {
-            close();
-          } else {
-            Animated.spring(pan, { toValue: REPEAT_SWIPE_OPEN, useNativeDriver: true }).start();
-          }
-          return;
-        }
-        if (dx > 20 || vx > 0.3) {
-          Animated.spring(pan, { toValue: REPEAT_SWIPE_OPEN, useNativeDriver: true, tension: 80 }).start();
-          swipeOpenRef.current = true;
-          force(v => v + 1);
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        } else if (dx < -20 || vx < -0.3) {
+        if (dx < -20 || vx < -0.3) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           Animated.sequence([
             Animated.timing(pan, { toValue: -100, duration: 180, useNativeDriver: true }),
@@ -186,43 +159,21 @@ function SwipeableAyahCard({
       onPanResponderTerminate: () => {
         suppressTapUntilRef.current = Date.now() + 350;
         setTimeout(() => { gestureStarted.current = false; }, 300);
-        Animated.spring(pan, { toValue: swipeOpenRef.current ? REPEAT_SWIPE_OPEN : 0, useNativeDriver: true }).start();
+        Animated.spring(pan, { toValue: 0, useNativeDriver: true }).start();
       },
     })
   ).current;
 
-  // Press handler — blocked after any swipe gesture to prevent accidental menu toggle
   const handlePress = useCallback(() => {
     if (Date.now() < suppressTapUntilRef.current) return;
     if (gestureStarted.current) return;
-    if (swipeOpenRef.current) {
-      close();
-      return;
-    }
     onPress();
-  }, [close, onPress]);
+  }, [onPress]);
 
-  const cardBg = isPlaying || isOnRepeat ? "#F5F0E8" : isRangeSelected ? "#F0F5EE" : "#FFFFFF";
+  const cardBg = isPlaying ? "#F5F0E8" : isRangeSelected ? "#F0F5EE" : "#FFFFFF";
 
   return (
     <View style={cs.wrap}>
-      {/* Vertical white repeat buttons on the LEFT */}
-      <View style={cs.swipeReveal}>
-        {[10, 20, 0].map((count) => (
-          <TouchableOpacity
-            key={count}
-            style={cs.repeatBtn}
-            onPress={() => {
-              close();
-              onSetRepeat(ayah, count === 0 ? 999 : count);
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={cs.repeatBtnText}>{count === 0 ? "∞" : `${count}x`}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
       {/* Save reveal panel — full-height, visible as card slides left */}
       <View style={cs.saveReveal}>
         <Ionicons name="bookmark-outline" size={22} color="#FFFFFF" />
@@ -238,14 +189,23 @@ function SwipeableAyahCard({
           android_disableSound
           style={({ pressed }) => [cs.card, { backgroundColor: cardBg, opacity: pressed ? 0.95 : 1 }]}
         >
-          {/* Top-right ayah badge */}
           <View style={cs.topRow}>
             {isOnRepeat && (
-              <View style={cs.repeatIconBadge}>
-                {repeatCount === 999
-                  ? <Text style={cs.repeatIconText}>∞</Text>
-                  : <Text style={cs.repeatIconText}>{repeatCount}x</Text>}
-                <Ionicons name="repeat" size={12} color="#FFFFFF" />
+              <View style={cs.repeatRow}>
+                <View style={cs.repeatIconBadge}>
+                  <Ionicons name="repeat" size={16} color="#FFFFFF" />
+                  <Text style={cs.repeatIconText}>
+                    {repeatCount >= 999 ? "∞" : `${repeatCount}x`}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={cs.cancelRepeatTag}
+                  onPress={() => onCancelRepeat(ayah)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={cs.cancelRepeatText}>cancel repeat</Text>
+                </TouchableOpacity>
               </View>
             )}
             <View style={cs.numBadge}>
@@ -300,29 +260,12 @@ function SwipeableAyahCard({
           ))}
         </Pressable>
       </Animated.View>
-
-      {swipeOpenRef.current && (
-        <TouchableWithoutFeedback onPress={close}>
-          <View style={StyleSheet.absoluteFill} />
-        </TouchableWithoutFeedback>
-      )}
     </View>
   );
 }
 
 const cs = StyleSheet.create({
   wrap: { marginHorizontal: 0, marginBottom: 0, position: "relative" },
-  swipeReveal: {
-    position: "absolute",
-    left: 12,
-    top: 8,
-    bottom: 8,
-    width: REPEAT_SWIPE_OPEN - 16,
-    flexDirection: "column",
-    justifyContent: "space-around",
-    gap: 4,
-    zIndex: 0,
-  },
   saveReveal: {
     position: "absolute",
     right: 0,
@@ -342,18 +285,6 @@ const cs = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.8,
   },
-  repeatBtn: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingVertical: 10,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  repeatBtnText: { fontSize: 16, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
   card: {
     paddingHorizontal: 20,
     paddingTop: 14,
@@ -367,16 +298,31 @@ const cs = StyleSheet.create({
     gap: 6,
     marginBottom: 4,
   },
+  repeatRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+  },
   repeatIconBadge: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#1A1A1A",
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 8,
-    gap: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    gap: 4,
   },
-  repeatIconText: { fontSize: 11, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+  repeatIconText: { fontSize: 13, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+  cancelRepeatTag: {
+    backgroundColor: "#F3EFE9",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: "#D4CFC8",
+  },
+  cancelRepeatText: { fontSize: 12, fontWeight: "600", color: "#555555", fontFamily: "Inter_600SemiBold" },
   numBadge: {
     backgroundColor: "#EDEBE6",
     borderRadius: 8,
@@ -1405,6 +1351,16 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, [arabic, surahNum, playAyah, recordAyahRead, saveProgress]);
 
+  const handleCancelRepeat = useCallback((ayah: ApiAyah) => {
+    setAyahRepeatCounts(prev => {
+      const next = { ...prev };
+      delete next[ayah.numberInSurah];
+      return next;
+    });
+    stopAudio();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [stopAudio]);
+
   const handlePlayAll = useCallback(() => {
     if (!arabic) return;
     playAyah(surahNum, 1, arabic.ayahs.length, 1);
@@ -1623,14 +1579,13 @@ const [settingsVisible, setSettingsVisible] = useState(false);
                   <View style={{ height: 12 }} />
                 )}
                 <View style={scr.swipeHintBar}>
-                  <Text style={scr.swipeHintText}>← swipe left to save to quizzes · swipe right to play in 10x 20x or infinite repetition →</Text>
+                  <Text style={scr.swipeHintText}>← swipe left to save to quizzes</Text>
                 </View>
               </View>
             }
             renderItem={({ item }) => {
               const isPlaying = audioState.currentSurah === surahNum && audioState.currentAyah === item.numberInSurah;
               const repeatVal = ayahRepeatCounts[item.numberInSurah];
-              // Show repeat badge when ayah has repeat set OR is currently playing on repeat
               const isOnRepeat = (repeatVal != null && repeatVal > 1) || (isPlaying && audioState.repeatCount > 1);
               const repeatCount = repeatVal ?? audioState.repeatCount;
               const isRangeSelected = !!audioState.range
@@ -1669,7 +1624,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
                   arabicFontSize={accountSettings.fontSize ?? 28}
                   romanFontSize={accountSettings.romanFontSize ?? 14}
                   onSave={handleSaveAyah}
-                  onSetRepeat={handleSetRepeat}
+                  onCancelRepeat={handleCancelRepeat}
                   onToggleMemorized={(ayah) => toggleAyahMemorized(surahNum, ayah.numberInSurah)}
                   onPress={safeToggleMenu}
                   onWordLongPress={handleWordLongPress}
