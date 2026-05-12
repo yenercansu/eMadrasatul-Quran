@@ -947,7 +947,7 @@ export default function LibraryScreen() {
       {/* ── Words Quiz Card ────────────────────────────────────────────── */}
       <TouchableOpacity
         style={s.quizCard}
-        onPress={() => setView("words")}
+        onPress={() => router.push("/quiz")}
         activeOpacity={0.88}
       >
         <View style={s.cardTopRow}>
