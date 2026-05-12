@@ -12,6 +12,7 @@ import {
   ScrollView,
   useWindowDimensions,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { getJuzAyahs, getWeeklyGoalAyahsFrom, JUZ_STARTS, SURAH_DATA } from "@/constants/surahData";
@@ -100,6 +101,7 @@ interface Props {
 }
 
 export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
+  const insets = useSafeAreaInsets();
   const { memorizedAyahKeys, removeMemorizedAyahKeys } = useQuran();
   const { width: windowWidth } = useWindowDimensions();
   const infoPageWidth = windowWidth - 40;
@@ -245,14 +247,8 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={s.overlay}>
-          <TouchableWithoutFeedback>
-            <View style={s.sheet}>
-              <View style={s.sheetTopBar}>
-                <View style={s.handle} />
-              </View>
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={[s.sheet, { paddingTop: insets.top }]}>
 
               {/* ── STEP 1: Memorization Mode ───────────────────────────────── */}
               {step === 1 && (
@@ -261,7 +257,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                   <View style={s.startHeader}>
                     <View style={{ width: 36 }} />
                     <Text style={s.bigTitle}>Choose Path</Text>
-                    <TouchableOpacity onPress={onClose} style={s.inlineCloseBtn} activeOpacity={0.7}>
+                    <TouchableOpacity onPress={onClose} style={s.inlineCloseBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                       <Feather name="x" size={20} color="#1A1A1A" />
                     </TouchableOpacity>
                   </View>
@@ -330,7 +326,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                         <Feather name="chevron-left" size={22} color="#1A1A1A" />
                       </TouchableOpacity>
                       <Text style={s.stepTitle}>Select Surah</Text>
-                      <TouchableOpacity onPress={onClose} style={s.inlineCloseBtn} activeOpacity={0.7}>
+                      <TouchableOpacity onPress={onClose} style={s.inlineCloseBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                         <Feather name="x" size={20} color="#1A1A1A" />
                       </TouchableOpacity>
                     </View>
@@ -409,7 +405,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                         <Feather name="chevron-left" size={22} color="#1A1A1A" />
                       </TouchableOpacity>
                       <Text style={s.stepTitle}>Select Juz</Text>
-                      <TouchableOpacity onPress={onClose} style={s.inlineCloseBtn} activeOpacity={0.7}>
+                      <TouchableOpacity onPress={onClose} style={s.inlineCloseBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                         <Feather name="x" size={20} color="#1A1A1A" />
                       </TouchableOpacity>
                     </View>
@@ -504,7 +500,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                       <Feather name="chevron-left" size={22} color="#1A1A1A" />
                     </TouchableOpacity>
                     <Text style={s.stepTitle}>Starting From Which Ayah</Text>
-                    <TouchableOpacity onPress={onClose} style={s.inlineCloseBtn} activeOpacity={0.7}>
+                    <TouchableOpacity onPress={onClose} style={s.inlineCloseBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                       <Feather name="x" size={20} color="#1A1A1A" />
                     </TouchableOpacity>
                   </View>
@@ -632,7 +628,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                       <Feather name="chevron-left" size={22} color="#1A1A1A" />
                     </TouchableOpacity>
                     <Text style={s.stepTitle}>Set Your Weekly Goal</Text>
-                    <TouchableOpacity onPress={onClose} style={s.inlineCloseBtn} activeOpacity={0.7}>
+                    <TouchableOpacity onPress={onClose} style={s.inlineCloseBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                       <Feather name="x" size={20} color="#1A1A1A" />
                     </TouchableOpacity>
                   </View>
@@ -764,46 +760,26 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                   </View>
                 </TouchableWithoutFeedback>
               </Modal>
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
+      </View>
     </Modal>
   );
 }
 
 const s = StyleSheet.create({
-  overlay: { flex: 1 },
   sheet: {
     flex: 1,
     backgroundColor: "#FDFBF7",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    overflow: "hidden",
-  },
-  sheetTopBar: {
-    height: 52,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
   },
   stepPad: { paddingHorizontal: 20, paddingBottom: 16 },
-  handle: {
-    width: 36, height: 4, borderRadius: 2,
-    backgroundColor: "#E7E5DB",
-  },
   closeBtn: {
-    position: "absolute",
-    right: 16,
-    top: 8,
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
   },
   inlineCloseBtn: {
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -10,6 +10,7 @@ import {
   ScrollView,
   useWindowDimensions,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { getJuzAyahs, getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
@@ -116,6 +117,7 @@ export function EditDailyGoalModal({
   onSave,
   onClose,
 }: Props) {
+  const insets = useSafeAreaInsets();
   const { removeMemorizedAyahKeys } = useQuran();
   const { width: windowWidth } = useWindowDimensions();
   const infoPageWidth = windowWidth - 48;
@@ -190,19 +192,15 @@ export function EditDailyGoalModal({
 
   return (
     <>
-      <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View style={s.overlay}>
-            <TouchableWithoutFeedback>
-              <View style={s.sheet}>
-                <View style={s.handle} />
+      <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+        <View style={[s.sheet, { paddingTop: insets.top }]}>
 
                 {step === 1 ? (
                   <>
                   <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={s.stepPad}>
                     <View style={s.stepHeader}>
                       <Text style={s.title}>Starting Ayah</Text>
-                      <TouchableOpacity onPress={onClose} style={s.closeBtn} activeOpacity={0.7}>
+                      <TouchableOpacity onPress={onClose} style={s.closeBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                         <Feather name="x" size={20} color="#1A1A1A" />
                       </TouchableOpacity>
                     </View>
@@ -283,7 +281,7 @@ export function EditDailyGoalModal({
                         <Feather name="chevron-left" size={22} color="#1A1A1A" />
                       </TouchableOpacity>
                       <Text style={s.title}>Weekly Quantity</Text>
-                      <TouchableOpacity onPress={onClose} style={s.closeBtn} activeOpacity={0.7}>
+                      <TouchableOpacity onPress={onClose} style={s.closeBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                         <Feather name="x" size={20} color="#1A1A1A" />
                       </TouchableOpacity>
                     </View>
@@ -397,10 +395,7 @@ export function EditDailyGoalModal({
                   </View>
                   </>
                 )}
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
+        </View>
       </Modal>
 
       <Modal visible={resetVisible} transparent animationType="fade" onRequestClose={() => setResetVisible(false)}>
@@ -428,27 +423,19 @@ export function EditDailyGoalModal({
 }
 
 const s = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: "flex-end", paddingTop: 72 },
   sheet: {
-    height: "90%",
+    flex: 1,
     backgroundColor: "#FDFBF7",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingTop: 12,
   },
   stepPad: { paddingHorizontal: 24, paddingBottom: 44 },
-  handle: {
-    width: 36, height: 4, borderRadius: 2,
-    backgroundColor: "#E7E5DB", alignSelf: "center", marginBottom: 16,
-  },
   stepHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 14,
   },
-  backBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
-  closeBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  backBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  closeBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   title: {
     fontSize: 22, fontWeight: "700", color: "#1A1A1A",
     fontFamily: "Inter_700Bold", textAlign: "center", flex: 1,

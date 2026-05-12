@@ -188,8 +188,13 @@ export function RangeSelectorModal({ visible, currentSurah, currentAyah, onConfi
     >
       <View style={[s.container, { paddingTop: topPad }]}>
         <View style={s.header}>
-          <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-            <Feather name="x" size={22} color={colors.foreground} />
+          <TouchableOpacity
+            onPress={onClose}
+            style={s.closeBtn}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={s.title}>Play Range</Text>
           <View style={{ width: 38 }} />
@@ -364,7 +369,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
-    closeBtn: { padding: 4, width: 38 },
+    closeBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
     title: {
       flex: 1,
       textAlign: "center",

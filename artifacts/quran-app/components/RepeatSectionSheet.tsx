@@ -5,13 +5,13 @@ import {
   Modal,
   StyleSheet,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   ScrollView,
   Platform,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { FullScreenPage } from "@/components/FullScreenPage";
 
 interface Props {
   visible: boolean;
@@ -19,7 +19,7 @@ interface Props {
   surahNumber: number;
   surahName: string;
   ayahNumber: number;
-  ayahText: string; // Arabic ayah text (whitespace-separated words)
+  ayahText: string;
   onConfirm: (
     startWordIdx: number,
     endWordIdx: number,
@@ -36,15 +36,6 @@ const REPEAT_OPTIONS: { value: number; label: string }[] = [
   { value: 999, label: "∞" },
 ];
 
-/**
- * Repeat Section Sheet — splits a SINGLE ayah into a smaller word-range
- * for piece-by-piece memorisation. Tap a word to set the start, tap
- * another to extend to end. Tap a word twice to clear and re-select.
- *
- * NOTE: words within an ayah audio are not individually timestamped
- * by the public API; the parent uses proportional timing
- * (startWordIdx / totalWords) when seeking the mp3.
- */
 export function RepeatSectionSheet({
   visible, onClose, surahNumber, surahName, ayahNumber, ayahText, onConfirm,
 }: Props) {
@@ -59,7 +50,6 @@ export function RepeatSectionSheet({
 
   useEffect(() => {
     if (visible) {
-      // default: whole ayah selected
       setStartIdx(0);
       setEndIdx(Math.max(0, words.length - 1));
       setRepeat(999);
@@ -68,16 +58,11 @@ export function RepeatSectionSheet({
 
   const handleWordTap = (i: number) => {
     try { Haptics.selectionAsync(); } catch {}
-    if (
-      startIdx === null ||
-      endIdx === null ||
-      (startIdx !== endIdx) // a range is already drawn → start over
-    ) {
+    if (startIdx === null || endIdx === null || startIdx !== endIdx) {
       setStartIdx(i);
       setEndIdx(i);
       return;
     }
-    // single word selected → extend in either direction
     if (i < startIdx) {
       setEndIdx(startIdx);
       setStartIdx(i);
@@ -115,31 +100,18 @@ export function RepeatSectionSheet({
         : `${segLen} of ${words.length} words`;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={s.overlay}>
-          <TouchableWithoutFeedback>
-            <View style={[s.sheet, { paddingBottom: insets.bottom + 20 }]}>
-        <View style={s.handle} />
-
-        <View style={s.headerRow}>
-          <View style={{ width: 28 }} />
-          <Text style={s.title}>Repeat Section</Text>
-          <TouchableOpacity onPress={onClose} activeOpacity={0.7} hitSlop={8}>
-            <Feather name="x" size={22} color="#1A1A1A" />
-          </TouchableOpacity>
-        </View>
-
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <FullScreenPage title="Repeat Section" onClose={onClose} scrollable={false}>
         <Text style={s.hint}>tap the words to mark the section you want to repeat</Text>
         <Text style={s.summary}>
           {surahName} · Ayah {ayahNumber} · {summary}
         </Text>
 
-        {/* Ayah words — wrapped, tappable */}
+        {/* Ayah words — flexible, fills available space */}
         <ScrollView
           style={s.wordsScroll}
           contentContainerStyle={s.wordsWrap}
-          showsVerticalScrollIndicator={true}
+          showsVerticalScrollIndicator={false}
         >
           {words.map((w, i) => {
             const inRange = lo !== null && hi !== null && i >= lo && i <= hi;
@@ -157,12 +129,7 @@ export function RepeatSectionSheet({
                   isEnd && s.wordChipEnd,
                 ]}
               >
-                <Text
-                  style={[
-                    s.wordText,
-                    inRange && s.wordTextActive,
-                  ]}
-                >
+                <Text style={[s.wordText, inRange && s.wordTextActive]}>
                   {w}
                 </Text>
               </TouchableOpacity>
@@ -205,34 +172,20 @@ export function RepeatSectionSheet({
           <Ionicons name="repeat" size={18} color="#FFFFFF" />
           <Text style={s.saveBtnText}>Repeat Section</Text>
         </TouchableOpacity>
+        <View style={{ height: insets.bottom + 16 }} />
         {void surahNumber}
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
+      </FullScreenPage>
     </Modal>
   );
 }
 
 const s = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
-  sheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    maxHeight: "90%",
-  },
-  handle: { width: 40, height: 4, backgroundColor: "#DEDEDE", borderRadius: 2, alignSelf: "center", marginBottom: 12 },
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
-  title: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  hint: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 6 },
-  summary: { fontSize: 13, color: "#1A1A1A", fontFamily: "Inter_600SemiBold", fontWeight: "600", textAlign: "center", marginTop: 4, marginBottom: 14 },
+  hint: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 6, paddingHorizontal: 20 },
+  summary: { fontSize: 13, color: "#1A1A1A", fontFamily: "Inter_600SemiBold", fontWeight: "600", textAlign: "center", marginTop: 4, marginBottom: 14, paddingHorizontal: 20 },
 
-  wordsScroll: { flexGrow: 0, maxHeight: 280 },
+  wordsScroll: { flex: 1, paddingHorizontal: 16 },
   wordsWrap: {
-    flexDirection: "row-reverse", // RTL: first Arabic word on the right
+    flexDirection: "row-reverse",
     flexWrap: "wrap",
     justifyContent: "flex-start",
     paddingVertical: 10,
@@ -283,8 +236,9 @@ const s = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     marginTop: 14,
     marginBottom: 8,
+    paddingHorizontal: 20,
   },
-  repeatRow: { flexDirection: "row", gap: 8, justifyContent: "space-between", marginBottom: 16 },
+  repeatRow: { flexDirection: "row", gap: 8, justifyContent: "space-between", marginBottom: 16, paddingHorizontal: 20 },
   repeatChip: {
     flex: 1,
     paddingVertical: 12,
@@ -305,6 +259,7 @@ const s = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 16,
     marginTop: 4,
+    marginHorizontal: 20,
   },
   saveBtnDisabled: { backgroundColor: "#9A9A9A" },
   saveBtnText: { fontSize: 15, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },

@@ -5,14 +5,14 @@ import {
   Modal,
   StyleSheet,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   ScrollView,
   Platform,
   ActivityIndicator,
 } from "react-native";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { FullScreenPage } from "@/components/FullScreenPage";
 import type { ApiAyah } from "@/services/quranApi";
 
 interface Props {
@@ -20,7 +20,7 @@ interface Props {
   onClose: () => void;
   surahNumber: number;
   surahName: string;
-  ayahs: ApiAyah[]; // arabic ayahs of current surah
+  ayahs: ApiAyah[];
   currentAyah: number;
   onConfirm: (startAyah: number, endAyah: number, repeatCount: number) => void;
 }
@@ -33,12 +33,6 @@ const REPEAT_OPTIONS: { value: number; label: string }[] = [
   { value: 999, label: "∞" },
 ];
 
-/**
- * Play Within Range Sheet — visual ayah picker.
- * Tap an ayah to set the start; tap another to extend to end.
- * Replaces the older numeric-grid range selector so the user
- * sees the actual ayah text while choosing.
- */
 export function PlayRangeSheet({
   visible, onClose, surahNumber, surahName, ayahs, currentAyah, onConfirm,
 }: Props) {
@@ -58,10 +52,8 @@ export function PlayRangeSheet({
   const handleTap = (n: number) => {
     Haptics.selectionAsync();
     if (start === null || (start !== null && end !== null && start !== end)) {
-      setStart(n);
-      setEnd(n);
+      setStart(n); setEnd(n);
     } else {
-      // start is set, end equals start — extend selection
       if (n < start) { setStart(n); setEnd(start); }
       else { setEnd(n); }
     }
@@ -74,12 +66,10 @@ export function PlayRangeSheet({
     onClose();
   };
 
-  // Render the full surah; scroll to currentAyah on open
   const scrollRef = useRef<ScrollView>(null);
   const ayahYRef = useRef<Record<number, number>>({});
   useEffect(() => {
     if (visible && ayahs.length > 0) {
-      // Wait one frame for layout, then scroll
       const t = setTimeout(() => {
         const y = ayahYRef.current[currentAyah];
         if (typeof y === "number" && scrollRef.current) {
@@ -95,25 +85,11 @@ export function PlayRangeSheet({
     : "Select an ayah";
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={s.overlay}>
-          <TouchableWithoutFeedback>
-            <View style={[s.sheet, { paddingBottom: insets.bottom + 20 }]}>
-        <View style={s.handle} />
-
-        <View style={s.headerRow}>
-          <View style={{ width: 28 }} />
-          <Text style={s.title}>Play Within Range</Text>
-          <TouchableOpacity onPress={onClose} activeOpacity={0.7} hitSlop={8}>
-            <Feather name="x" size={22} color="#1A1A1A" />
-          </TouchableOpacity>
-        </View>
-
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <FullScreenPage title="Play Within Range" onClose={onClose} scrollable={false}>
         <Text style={s.hint}>tap the ayahs to mark the start and end of your range</Text>
         <Text style={s.summary}>{surahName} · {summary}</Text>
 
-        {/* Ayah list — tap to select (entire surah is selectable) */}
         {ayahs.length === 0 ? (
           <ActivityIndicator color="#1A1A1A" style={{ marginVertical: 24 }} />
         ) : (
@@ -121,7 +97,7 @@ export function PlayRangeSheet({
             ref={scrollRef}
             style={s.ayahScroll}
             contentContainerStyle={{ paddingBottom: 12 }}
-            showsVerticalScrollIndicator={true}
+            showsVerticalScrollIndicator={false}
           >
             {ayahs.map((a) => {
               const n = a.numberInSurah;
@@ -136,16 +112,11 @@ export function PlayRangeSheet({
                   onPress={() => handleTap(n)}
                   onLayout={(e) => { ayahYRef.current[n] = e.nativeEvent.layout.y; }}
                   activeOpacity={0.85}
-                  style={[
-                    s.ayahCard,
-                    inRange && s.ayahCardActive,
-                  ]}
+                  style={[s.ayahCard, inRange && s.ayahCardActive]}
                 >
                   <View style={s.ayahHead}>
                     <View style={[s.ayahBadge, inRange && s.ayahBadgeActive]}>
-                      <Text style={[s.ayahBadgeText, inRange && s.ayahBadgeTextActive]}>
-                        {n}
-                      </Text>
+                      <Text style={[s.ayahBadgeText, inRange && s.ayahBadgeTextActive]}>{n}</Text>
                     </View>
                     {(isStart || isEnd) && (
                       <View style={s.ayahMarker}>
@@ -153,11 +124,7 @@ export function PlayRangeSheet({
                       </View>
                     )}
                   </View>
-                  <Text
-                    style={[s.ayahArabic, inRange && s.ayahArabicActive]}
-                    numberOfLines={2}
-                    ellipsizeMode="tail"
-                  >
+                  <Text style={[s.ayahArabic, inRange && s.ayahArabicActive]} numberOfLines={2} ellipsizeMode="tail">
                     {a.text}
                   </Text>
                 </TouchableOpacity>
@@ -166,7 +133,6 @@ export function PlayRangeSheet({
           </ScrollView>
         )}
 
-        {/* Repeat count selector */}
         <Text style={s.repeatLabel}>REPEAT</Text>
         <View style={s.repeatRow}>
           {REPEAT_OPTIONS.map((opt) => {
@@ -178,15 +144,12 @@ export function PlayRangeSheet({
                 style={[s.repeatChip, active && s.repeatChipActive]}
                 activeOpacity={0.85}
               >
-                <Text style={[s.repeatChipText, active && s.repeatChipTextActive]}>
-                  {opt.label}
-                </Text>
+                <Text style={[s.repeatChipText, active && s.repeatChipTextActive]}>{opt.label}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* Play Range */}
         <TouchableOpacity
           style={[s.saveBtn, (start === null || end === null) && s.saveBtnDisabled]}
           onPress={handleSave}
@@ -196,30 +159,17 @@ export function PlayRangeSheet({
           <Ionicons name="play" size={18} color="#FFFFFF" />
           <Text style={s.saveBtnText}>Play Range</Text>
         </TouchableOpacity>
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
+
+        <View style={{ height: insets.bottom + 16 }} />
+      </FullScreenPage>
     </Modal>
   );
 }
 
 const s = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
-  sheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    maxHeight: "90%",
-  },
-  handle: { width: 40, height: 4, backgroundColor: "#DEDEDE", borderRadius: 2, alignSelf: "center", marginBottom: 12 },
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
-  title: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  hint: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 6 },
-  summary: { fontSize: 13, color: "#1A1A1A", fontFamily: "Inter_600SemiBold", fontWeight: "600", textAlign: "center", marginTop: 4, marginBottom: 12 },
-  ayahScroll: { flexGrow: 0, maxHeight: 360 },
+  hint: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 6, paddingHorizontal: 20 },
+  summary: { fontSize: 13, color: "#1A1A1A", fontFamily: "Inter_600SemiBold", fontWeight: "600", textAlign: "center", marginTop: 4, marginBottom: 12, paddingHorizontal: 20 },
+  ayahScroll: { flex: 1, paddingHorizontal: 20 },
   ayahCard: {
     backgroundColor: "#FAFAFA",
     borderRadius: 14,
@@ -228,70 +178,26 @@ const s = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "transparent",
   },
-  ayahCardActive: {
-    backgroundColor: "#DCFCE7",
-    borderColor: "#16A34A",
-    borderStyle: "dashed",
-  },
+  ayahCardActive: { backgroundColor: "#DCFCE7", borderColor: "#16A34A", borderStyle: "dashed" },
   ayahHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
-  ayahBadge: {
-    minWidth: 26,
-    height: 26,
-    paddingHorizontal: 7,
-    borderRadius: 13,
-    backgroundColor: "#E0E0E0",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  ayahBadge: { minWidth: 26, height: 26, paddingHorizontal: 7, borderRadius: 13, backgroundColor: "#E0E0E0", alignItems: "center", justifyContent: "center" },
   ayahBadgeActive: { backgroundColor: "#16A34A" },
   ayahBadgeText: { fontSize: 12, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
   ayahBadgeTextActive: { color: "#FFFFFF" },
-  ayahMarker: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    backgroundColor: "#16A34A",
-    borderRadius: 10,
-  },
+  ayahMarker: { paddingHorizontal: 10, paddingVertical: 3, backgroundColor: "#16A34A", borderRadius: 10 },
   ayahMarkerText: { fontSize: 10, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
   ayahArabic: {
-    fontSize: 18,
-    lineHeight: 32,
-    color: "#1A1A1A",
-    textAlign: "right",
-    writingDirection: "rtl",
-    fontFamily: Platform.OS === "ios" ? "System" : undefined,
+    fontSize: 18, lineHeight: 32, color: "#1A1A1A", textAlign: "right",
+    writingDirection: "rtl", fontFamily: Platform.OS === "ios" ? "System" : undefined,
   },
   ayahArabicActive: { color: "#0E5132" },
-  repeatLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#9A9A9A",
-    letterSpacing: 1.2,
-    fontFamily: "Inter_700Bold",
-    marginTop: 14,
-    marginBottom: 8,
-  },
-  repeatRow: { flexDirection: "row", gap: 8, justifyContent: "space-between", marginBottom: 16 },
-  repeatChip: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: "#F0F0F0",
-    alignItems: "center",
-  },
+  repeatLabel: { fontSize: 10, fontWeight: "700", color: "#9A9A9A", letterSpacing: 1.2, fontFamily: "Inter_700Bold", marginTop: 14, marginBottom: 8, paddingHorizontal: 20 },
+  repeatRow: { flexDirection: "row", gap: 8, justifyContent: "space-between", marginBottom: 16, paddingHorizontal: 20 },
+  repeatChip: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: "#F0F0F0", alignItems: "center" },
   repeatChipActive: { backgroundColor: "#1A1A1A" },
   repeatChipText: { fontSize: 14, fontWeight: "700", color: "#6B6B6B", fontFamily: "Inter_700Bold" },
   repeatChipTextActive: { color: "#FFFFFF" },
-  saveBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#1A1A1A",
-    paddingVertical: 16,
-    borderRadius: 16,
-    marginTop: 4,
-  },
+  saveBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#1A1A1A", paddingVertical: 16, borderRadius: 16, marginTop: 4, marginHorizontal: 20 },
   saveBtnDisabled: { backgroundColor: "#9A9A9A" },
   saveBtnText: { fontSize: 15, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
 });
