@@ -23,6 +23,7 @@ import { PageTitle } from "@/components/Typography";
 import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
 import { MadeenanApiError } from "@/services/madeenanApi";
 import { useQuran } from "@/contexts/QuranContext";
+import { searchByType } from "@/services/search";
 
 type FilterType = "all" | "meccan" | "medinan" | "alphabetic";
 
@@ -110,17 +111,12 @@ export default function QuranScreen() {
   const recentNumbers = useMemo(() => new Set(recentProgress.map(p => p.surahNumber)), [recentProgress]);
 
   const filtered = useMemo(() => {
-    let list = surahs.filter((s) => {
-      const q = search.toLowerCase();
-      const matchSearch =
-        s.englishName.toLowerCase().includes(q) ||
-        s.englishNameTranslation.toLowerCase().includes(q) ||
-        String(s.number).includes(q);
+    let list = searchByType("surah", search, surahs).filter((s) => {
       const matchType =
         filterType === "all" || filterType === "alphabetic" ||
         (filterType === "meccan" && s.revelationType === "Meccan") ||
         (filterType === "medinan" && s.revelationType === "Medinan");
-      return matchSearch && matchType;
+      return matchType;
     });
     if (filterType === "alphabetic") {
       list = [...list].sort((a, b) => a.englishName.localeCompare(b.englishName));

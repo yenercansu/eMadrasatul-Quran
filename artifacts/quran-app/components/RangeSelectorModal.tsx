@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { SURAH_DATA, type SurahMeta } from "@/constants/surahData";
 import type { AyahRange } from "@/contexts/AudioContext";
+import { searchByType } from "@/services/search";
 
 interface Props {
   visible: boolean;
@@ -42,11 +43,7 @@ function SurahPicker({
   const [search, setSearch] = useState("");
   const s = styles(colors);
 
-  const filtered = useMemo(() =>
-    SURAH_DATA.filter(s =>
-      s.englishName.toLowerCase().includes(search.toLowerCase()) ||
-      String(s.number).startsWith(search)
-    ), [search]);
+  const filtered = useMemo(() => searchByType("surah", search, SURAH_DATA), [search]);
 
   return (
     <View style={s.pickerContainer}>

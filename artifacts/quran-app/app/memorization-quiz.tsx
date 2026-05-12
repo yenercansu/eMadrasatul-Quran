@@ -19,6 +19,7 @@ import { SURAH_DATA } from "@/constants/surahData";
 import { SwipeableRow } from "@/components/SwipeableRow";
 import { Pagination } from "@/components/Pagination";
 import { Tag } from "@/components/Tag";
+import { searchByType } from "@/services/search";
 
 const DEFAULT_SURAHS: { number: number; name: string; englishName: string; ayahs: string[]; translations: string[] }[] = [
   {
@@ -734,8 +735,7 @@ export default function MemorizationQuizScreen() {
     // Always include special surahs (112/113/114) even if user hasn't saved their ayahs
     let surahs = SURAH_DATA.filter(s => savedSurahNums.has(s.number) || SPECIAL_SURAH_NUMS.has(s.number));
     if (surahSearchQuery.trim()) {
-      const q = surahSearchQuery.toLowerCase();
-      surahs = surahs.filter(s => s.englishName.toLowerCase().includes(q) || s.name.includes(q));
+      surahs = searchByType("surah", surahSearchQuery, surahs);
     }
     if (tagFilter === "selected") {
       const savedMap = new Map(surahGroups.map(g => [g.surahNumber, g.ayahs]));

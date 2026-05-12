@@ -18,6 +18,7 @@ import { getJuzAyahs, getWeeklyGoalAyahsFrom, JUZ_STARTS, SURAH_DATA } from "@/c
 import type { Goal, MemorizationGoal } from "@/contexts/QuranContext";
 import { useQuran } from "@/contexts/QuranContext";
 import colors from "@/constants/colors";
+import { searchByType } from "@/services/search";
 
 const COMMITMENT_STEPS = [1, 2, 3, 5, 7, 10, 15, 25, 45, 70];
 const MAX_WEEKLY = 70;
@@ -177,26 +178,15 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
   })), []);
 
   const filteredSurahs = useMemo(() => {
-    if (!search) return SURAH_DATA;
-    const q = search.toLowerCase();
-    return SURAH_DATA.filter(
-      (item) =>
-        item.englishName.toLowerCase().includes(q) ||
-        item.name.includes(search) ||
-        String(item.number).includes(q) ||
-        String(item.juz).includes(q)
-    );
+    return searchByType("surah", search, SURAH_DATA);
   }, [search]);
 
   const filteredJuzGroups = useMemo(() => {
     if (!search) return juzGroups;
-    const q = search.toLowerCase();
+    const matchingSurahNumbers = new Set(searchByType("surah", search, SURAH_DATA).map((surah) => surah.number));
     return juzGroups.filter((group) => {
       const ayahs = getJuzAyahs(group.juz);
-      return String(group.juz).includes(q) || ayahs.some((a) => {
-        const surah = SURAH_DATA[a.surahNumber - 1];
-        return surah?.englishName.toLowerCase().includes(q) || surah?.name.includes(search);
-      });
+      return String(group.juz).includes(search.trim()) || ayahs.some((a) => matchingSurahNumbers.has(a.surahNumber));
     });
   }, [search, juzGroups]);
 
