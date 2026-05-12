@@ -135,6 +135,14 @@ function pickRandom<T>(arr: T[], count: number, exclude: T[] = []): T[] {
   return shuffle(pool).slice(0, count);
 }
 
+function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {
+  if (a.size !== b.size) return false;
+  for (const value of a) {
+    if (!b.has(value)) return false;
+  }
+  return true;
+}
+
 interface FollowUpQuestion {
   type: "follow-up";
   questionAyah: string;
@@ -669,18 +677,20 @@ export default function MemorizationQuizScreen() {
     setSelectedAyahIds(prev => {
       const existingIds = new Set(savedAyahs.map(a => a.id));
       const next = new Set([...prev].filter(id => existingIds.has(id)));
+      const shouldSelectByDefault = prev.size === 0 && excludedAyahIds.size === 0 && manuallyDeselectedSurahs.size === 0;
       for (const ayah of savedAyahs) {
-        if (!prev.size || (selectedQuizSurahSet.has(ayah.surahNumber) && !manuallyDeselectedSurahs.has(ayah.surahNumber))) {
+        if (shouldSelectByDefault || (selectedQuizSurahSet.has(ayah.surahNumber) && !manuallyDeselectedSurahs.has(ayah.surahNumber) && !excludedAyahIds.has(ayah.id))) {
           next.add(ayah.id);
         }
       }
-      return next;
+      return setsEqual(prev, next) ? prev : next;
     });
     setExcludedAyahIds(prev => {
       const existingIds = new Set(savedAyahs.map(a => a.id));
-      return new Set([...prev].filter(id => existingIds.has(id)));
+      const next = new Set([...prev].filter(id => existingIds.has(id)));
+      return setsEqual(prev, next) ? prev : next;
     });
-  }, [savedAyahs, manuallyDeselectedSurahs, selectedQuizSurahSet]);
+  }, [excludedAyahIds, savedAyahs, manuallyDeselectedSurahs, selectedQuizSurahSet]);
 
   const surahGroups = useMemo(() => {
     const map = new Map<number, { surahNumber: number; surahName: string; ayahs: SavedAyah[] }>();
@@ -951,23 +961,76 @@ export default function MemorizationQuizScreen() {
   const handleSelectAll = useCallback(() => {
     if (filterMode === "by-ayah") {
       const ids = visibleAyahs.map(a => a.id);
+      const surahNums = Array.from(new Set(visibleAyahs.map(a => a.surahNumber)));
       setSelectedAyahIds(prev => { const n = new Set(prev); ids.forEach(id => n.add(id)); return n; });
       setExcludedAyahIds(prev => { const n = new Set(prev); ids.forEach(id => n.delete(id)); return n; });
+      setQuizSelectedSurahs([...quizSelectedSurahs, ...surahNums]);
+      setManuallyDeselectedSurahs(prev => {
+        const n = new Set(prev);
+        surahNums.forEach(surahNum => n.delete(surahNum));
+        return n;
+      });
     } else {
       setQuizSelectedSurahs([...quizSelectedSurahs, ...allFilteredSurahs.map(s => s.number)]);
+      setSelectedAyahIds(prev => {
+        const n = new Set(prev);
+        allFilteredSurahs.forEach(surah => savedAyahsBySurah.get(surah.number)?.forEach(ayah => n.add(ayah.id)));
+        return n;
+      });
+      setExcludedAyahIds(prev => {
+        const n = new Set(prev);
+        allFilteredSurahs.forEach(surah => savedAyahsBySurah.get(surah.number)?.forEach(ayah => n.delete(ayah.id)));
+        return n;
+      });
+      setManuallyDeselectedSurahs(prev => {
+        const n = new Set(prev);
+        allFilteredSurahs.forEach(surah => n.delete(surah.number));
+        return n;
+      });
     }
-  }, [filterMode, visibleAyahs, allFilteredSurahs, quizSelectedSurahs, setQuizSelectedSurahs]);
+  }, [filterMode, visibleAyahs, allFilteredSurahs, quizSelectedSurahs, savedAyahsBySurah, setQuizSelectedSurahs]);
 
   const handleClearAll = useCallback(() => {
     if (filterMode === "by-ayah") {
       const ids = visibleAyahs.map(a => a.id);
-      setSelectedAyahIds(prev => { const n = new Set(prev); ids.forEach(id => n.delete(id)); return n; });
+      const nextSelectedIds = new Set(selectedAyahIds);
+      const visibleSurahNums = Array.from(new Set(visibleAyahs.map(a => a.surahNumber)));
+      ids.forEach(id => nextSelectedIds.delete(id));
+      setSelectedAyahIds(nextSelectedIds);
       setExcludedAyahIds(prev => { const n = new Set(prev); ids.forEach(id => n.add(id)); return n; });
+      const surahsToRemove = visibleSurahNums.filter(surahNum => {
+        const ayahsInSurah = savedAyahsBySurah.get(surahNum) ?? [];
+        return !ayahsInSurah.some(ayah => nextSelectedIds.has(ayah.id));
+      });
+      if (surahsToRemove.length > 0) {
+        const removeSet = new Set(surahsToRemove);
+        setQuizSelectedSurahs(quizSelectedSurahs.filter(n => !removeSet.has(n)));
+        setManuallyDeselectedSurahs(prev => {
+          const n = new Set(prev);
+          surahsToRemove.forEach(surahNum => n.add(surahNum));
+          return n;
+        });
+      }
     } else {
       const visibleNums = new Set(allFilteredSurahs.map(s => s.number));
       setQuizSelectedSurahs(quizSelectedSurahs.filter(n => !visibleNums.has(n)));
+      setSelectedAyahIds(prev => {
+        const n = new Set(prev);
+        visibleNums.forEach(surahNum => savedAyahsBySurah.get(surahNum)?.forEach(ayah => n.delete(ayah.id)));
+        return n;
+      });
+      setExcludedAyahIds(prev => {
+        const n = new Set(prev);
+        visibleNums.forEach(surahNum => savedAyahsBySurah.get(surahNum)?.forEach(ayah => n.add(ayah.id)));
+        return n;
+      });
+      setManuallyDeselectedSurahs(prev => {
+        const n = new Set(prev);
+        visibleNums.forEach(surahNum => n.add(surahNum));
+        return n;
+      });
     }
-  }, [filterMode, visibleAyahs, allFilteredSurahs, quizSelectedSurahs, setQuizSelectedSurahs]);
+  }, [filterMode, visibleAyahs, allFilteredSurahs, quizSelectedSurahs, savedAyahsBySurah, selectedAyahIds, setQuizSelectedSurahs]);
 
   const renderAyahRow = (ayah: SavedAyah) => {
     const checked = selectedAyahIds.has(ayah.id);
@@ -1157,7 +1220,7 @@ export default function MemorizationQuizScreen() {
           <ScrollView style={{ flex: 1 }} contentContainerStyle={s.selectionContent2} showsVerticalScrollIndicator={false}>
             {filterMode === "by-surah" ? (
               <>
-                {quizSelectedSurahs.length === 0 && (
+                {selectedQuizPoolAyahCount === 0 && (
                   <View style={[s.infoBox, s.emptySelectionBox]}>
                     <Ionicons name="information-circle-outline" size={18} color="#A8A29E" />
                     <Text style={s.infoText}>No Surah selected, please select a Surah or Ayah to continue</Text>
@@ -1299,10 +1362,10 @@ export default function MemorizationQuizScreen() {
               />
             )}
             <TouchableOpacity
-              style={[s.startBtn2, quizSelectedSurahs.length === 0 && s.startBtn2Disabled]}
+              style={[s.startBtn2, selectedQuizPoolAyahCount === 0 && s.startBtn2Disabled]}
               onPress={startQuiz}
               activeOpacity={0.85}
-              disabled={quizSelectedSurahs.length === 0}
+              disabled={selectedQuizPoolAyahCount === 0}
             >
               <Text style={s.startBtnText2}>Start the Test</Text>
             </TouchableOpacity>
