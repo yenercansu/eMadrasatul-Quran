@@ -50,6 +50,7 @@ interface AudioState {
   currentRepeat: number;
   playbackRate: number;
   range: AyahRange | null;
+  planMode: "ayah" | "section" | "word" | "range" | "ustadh" | null;
 }
 
 export interface AyahSegment {
@@ -86,6 +87,7 @@ interface AudioContextType {
   playPrevAyah: () => void;
   onNextAyah: ((surahNum: number, ayahNum: number) => void) | null;
   setOnNextAyah: (fn: ((surahNum: number, ayahNum: number) => void) | null) => void;
+  setOnPlanFinish: (fn: ((surahNum: number, ayahNum: number) => void) | null) => void;
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
@@ -103,6 +105,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     currentRepeat: 0,
     playbackRate: 1.0,
     range: null,
+    planMode: null,
   });
   const soundRef = useRef<Audio.Sound | null>(null);
   const totalAyahsRef = useRef<number>(0);
@@ -120,6 +123,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const segmentFinishedRef = useRef<boolean>(false);
   const onNextAyahRef = useRef<((surahNum: number, ayahNum: number) => void) | null>(null);
   const [onNextAyah, setOnNextAyahState] = useState<((surahNum: number, ayahNum: number) => void) | null>(null);
+  const onPlanFinishRef = useRef<((surahNum: number, ayahNum: number) => void) | null>(null);
   const planRef = useRef<PlaybackPlan | null>(null);
   const planStepIndexRef = useRef(0);
   const planStepRepeatRef = useRef(0);
@@ -130,6 +134,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const setOnNextAyah = useCallback((fn: ((surahNum: number, ayahNum: number) => void) | null) => {
     onNextAyahRef.current = fn;
     setOnNextAyahState(() => fn);
+  }, []);
+
+  const setOnPlanFinish = useCallback((fn: ((surahNum: number, ayahNum: number) => void) | null) => {
+    onPlanFinishRef.current = fn;
   }, []);
 
   const clearPauseTimeout = useCallback(() => {
@@ -148,12 +156,15 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     planStepFinishedRef.current = false;
     planAdvancingRef.current = false;
     clearPauseTimeout();
-    setAudioState((prev) => ({ ...prev, isPlaying: false, isLoading: false, currentRepeat: 0, range: null }));
+    setAudioState((prev) => ({ ...prev, isPlaying: false, isLoading: false, currentRepeat: 0, range: null, planMode: null }));
     rangeRef.current = null;
 
     if (finishedPlan?.mode === "ayah" && lastStep && onNextAyahRef.current) {
       const totalAyahs = getAyahCount(lastStep.surahNumber) || totalAyahsRef.current;
       if (lastStep.ayahNumber < totalAyahs) onNextAyahRef.current(lastStep.surahNumber, lastStep.ayahNumber + 1);
+    }
+    if (lastStep && onPlanFinishRef.current) {
+      onPlanFinishRef.current(lastStep.surahNumber, lastStep.ayahNumber);
     }
   }, [clearPauseTimeout]);
 
@@ -182,6 +193,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       currentRepeat: 0,
       playbackRate: step.playbackRate,
       range: plan.mode === "range" ? prev.range : null,
+      planMode: plan.mode,
     }));
 
     if (soundRef.current) {
@@ -608,6 +620,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       currentSurah: null,
       position: 0,
       range: null,
+      planMode: null,
     }));
   }, [clearPauseTimeout]);
 
@@ -660,7 +673,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       pauseAudio, resumeAudio, stopAudio,
       seekTo, setPlaybackRate,
       playNextAyah, playPrevAyah,
-      onNextAyah, setOnNextAyah,
+      onNextAyah, setOnNextAyah, setOnPlanFinish,
     }}>
       {children}
     </AudioContext.Provider>

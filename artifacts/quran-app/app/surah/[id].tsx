@@ -35,6 +35,7 @@ import { SettingsSheet, TAFSIR_EDITIONS } from "@/components/SettingsSheet";
 import { FullScreenPage } from "@/components/FullScreenPage";
 import { PlayRangeSheet } from "@/components/PlayRangeSheet";
 import { RepeatSectionSheet } from "@/components/RepeatSectionSheet";
+import { CancelRepeatTag } from "@/components/CancelRepeatTag";
 import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -198,22 +199,10 @@ function SwipeableAyahCard({
         >
           <View style={cs.topRow}>
             {isOnRepeat && (
-              <View style={cs.repeatRow}>
-                <View style={cs.repeatIconBadge}>
-                  <Ionicons name="repeat" size={16} color="#FFFFFF" />
-                  <Text style={cs.repeatIconText}>
-                    {repeatCount >= 999 ? "∞" : `${repeatCount}x`}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={cs.cancelRepeatTag}
-                  onPress={() => onCancelRepeat(ayah)}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Text style={cs.cancelRepeatText}>cancel repeat</Text>
-                </TouchableOpacity>
-              </View>
+              <CancelRepeatTag
+                repeatCount={repeatCount}
+                onCancel={() => onCancelRepeat(ayah)}
+              />
             )}
             <View style={cs.numBadge}>
               <Text style={cs.numText}>{surahNum}:{ayah.numberInSurah}</Text>
@@ -305,31 +294,6 @@ const cs = StyleSheet.create({
     gap: 6,
     marginBottom: 4,
   },
-  repeatRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flex: 1,
-  },
-  repeatIconBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#1A1A1A",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-    gap: 4,
-  },
-  repeatIconText: { fontSize: 13, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
-  cancelRepeatTag: {
-    backgroundColor: "#F3EFE9",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: "#D4CFC8",
-  },
-  cancelRepeatText: { fontSize: 12, fontWeight: "600", color: "#555555", fontFamily: "Inter_600SemiBold" },
   numBadge: {
     backgroundColor: "#EDEBE6",
     borderRadius: 8,
@@ -1213,7 +1177,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     goal, memorizationGoal, isAyahMemorized, toggleAyahMemorized,
   } = useQuran();
 
-  const { audioState, playAyah, playRange, playSection, playUstadhMode, pauseAudio, resumeAudio, stopAudio, setPlaybackRate, playNextAyah, playPrevAyah, setOnNextAyah } = useAudio();
+  const { audioState, playAyah, playRange, playSection, playUstadhMode, pauseAudio, resumeAudio, stopAudio, setPlaybackRate, playNextAyah, playPrevAyah, setOnNextAyah, setOnPlanFinish } = useAudio();
 
   // Fetch translations on selection change
   useEffect(() => {
@@ -1379,6 +1343,33 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [stopAudio]);
 
+  // Clear the repeat tag when a plan finishes naturally (all repeats done).
+  useEffect(() => {
+    setOnPlanFinish((finishedSurah, finishedAyah) => {
+      if (finishedSurah !== surahNum) return;
+      setAyahRepeatCounts(prev => {
+        if (prev[finishedAyah] === undefined) return prev;
+        const next = { ...prev };
+        delete next[finishedAyah];
+        return next;
+      });
+    });
+    return () => setOnPlanFinish(null);
+  }, [surahNum, setOnPlanFinish]);
+
+  // After a plan finishes (planMode=null) the sound is at its end position.
+  // Resume would replay from that position instead of the full ayah, so we
+  // restart cleanly. When the plan is still active (paused mid-play) we resume.
+  const handlePlayOrResume = useCallback(() => {
+    if (audioState.planMode !== null) {
+      resumeAudio();
+    } else if (audioState.currentAyah && audioState.currentSurah === surahNum && arabic) {
+      playAyah(surahNum, audioState.currentAyah, arabic.ayahs.length, 1);
+    } else {
+      resumeAudio();
+    }
+  }, [audioState.planMode, audioState.currentAyah, audioState.currentSurah, surahNum, arabic, resumeAudio, playAyah]);
+
   const handlePlayAll = useCallback(() => {
     if (!arabic) return;
     playAyah(surahNum, 1, arabic.ayahs.length, 1);
@@ -1481,6 +1472,17 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     }
     return arabic?.ayahs.map((ayah) => ({ surahNumber: surahNum, ayahNumber: ayah.numberInSurah })) ?? [];
   }, [arabic?.ayahs, memorizationGoal, surahNum]);
+
+  // extraData ensures FlatList cells re-render when audio state changes.
+  // Without this, cells use a stale renderItem closure because pageAyahs is
+  // a stable memoized reference that never changes during audio playback.
+  const flatListExtraData = useMemo(() => ({
+    currentAyah: audioState.currentAyah,
+    currentSurah: audioState.currentSurah,
+    repeatCount: audioState.repeatCount,
+    range: audioState.range,
+    ayahRepeatCounts,
+  }), [audioState.currentAyah, audioState.currentSurah, audioState.repeatCount, audioState.range, ayahRepeatCounts]);
 
   const refreshOfflineStatus = useCallback(async () => {
     const ayahs = weeklyGoalAyahs.length > 0 ? weeklyGoalAyahs : pageAyahs.map((ayah) => ({ surahNumber: surahNum, ayahNumber: ayah.numberInSurah }));
@@ -1654,6 +1656,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
           <FlatList
             ref={listRef}
             data={pageAyahs}
+            extraData={flatListExtraData}
             keyExtractor={(item) => String(item.numberInSurah)}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
@@ -1767,7 +1770,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
               recordAyahRead(surahNum, firstAyah);
               saveProgress({ surahNumber: surahNum, ayahNumber: firstAyah, ayahNumberInSurah: firstAyah, surahName: arabic.englishName });
             }}
-            onPlay={resumeAudio}
+            onPlay={handlePlayOrResume}
             onPause={pauseAudio}
             onStop={stopAudio}
             onNext={playNextAyah}
@@ -1840,6 +1843,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
           const ayahN = repeatSectionInitialAyah ?? currentAyahForRange;
           void totalWords;
           playSection(surahNum, ayahN, startWordIdx + 1, endWordIdx + 1, repeatCount);
+          setAyahRepeatCounts(prev => ({ ...prev, [ayahN]: repeatCount }));
           recordAyahRead(surahNum, ayahN);
           saveProgress({
             surahNumber: surahNum,
@@ -1900,6 +1904,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
           onRepeat={() => {
             if (wordModal.wordPosition) {
               playSection(wordModal.surah, wordModal.ayah, wordModal.wordPosition, wordModal.wordPosition, 999);
+              setAyahRepeatCounts(prev => ({ ...prev, [wordModal.ayah]: 999 }));
             } else {
               handleSetRepeat(
                 { numberInSurah: wordModal.ayah } as ApiAyah,
