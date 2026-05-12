@@ -61,6 +61,7 @@ export interface WordTranslation {
   translation: string;
   position: number;
   transliteration?: string;
+  audioUrl?: string;
   audioSegmentStartMs?: number;
   audioSegmentEndMs?: number;
 }
@@ -266,6 +267,7 @@ function normalizeWord(word: unknown, idx: number): QuranWord {
     textUthmani: getTextValue(record.textUthmani ?? record.text_uthmani ?? record.text),
     translation: getTextValue(translation),
     transliteration: getTextValue(transliteration),
+    audioUrl: getString(record.audioUrl ?? record.audio_url, "") || undefined,
     audioSegmentStartMs: Number.isFinite(startMs) ? startMs : undefined,
     audioSegmentEndMs: Number.isFinite(endMs) ? endMs : undefined,
     segmentId: record.segmentId as string | number | undefined,
@@ -476,6 +478,7 @@ export async function fetchWordTranslations(
     translation: word.translation ?? "",
     transliteration: word.transliteration,
     position: Number(word.wordPosition ?? word.position ?? idx + 1),
+    audioUrl: word.audioUrl,
     audioSegmentStartMs: word.audioSegmentStartMs,
     audioSegmentEndMs: word.audioSegmentEndMs,
   }));

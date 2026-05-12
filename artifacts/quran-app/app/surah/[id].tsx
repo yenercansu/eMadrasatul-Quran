@@ -1167,7 +1167,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
    const [tajweedMode, setTajweedMode] = useState(false);
    const [selectedTranslations, setSelectedTranslations] = useState<string[]>([]);
   const [ayahRepeatCounts, setAyahRepeatCounts] = useState<Record<number, number>>({});
-  const [wordModal, setWordModal] = useState<{ word: string; surah: number; ayah: number; translation: string } | null>(null);
+  const [wordModal, setWordModal] = useState<{ word: string; surah: number; ayah: number; translation: string; audioUrl?: string } | null>(null);
   const [hintsVisible, setHintsVisible] = useState(false);
 
   // Show onboarding hints once per device
@@ -1205,6 +1205,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       surah: surahNum,
       ayah: ayah.numberInSurah,
       translation: match?.translation || fallback,
+      audioUrl: match?.audioUrl,
     });
   }, [surahNum, translationsMap]);
 
@@ -1831,6 +1832,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
           translation={wordModal.translation}
           surahNumber={wordModal.surah}
           ayahNumber={wordModal.ayah}
+          audioUrl={wordModal.audioUrl}
           onClose={() => setWordModal(null)}
           onRepeat={() => {
             // Repeat just this ayah ∞ times

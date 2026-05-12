@@ -251,6 +251,7 @@ export interface QuranWord {
   textUthmani?: string;
   transliteration?: string;
   translation?: string;
+  audioUrl?: string;
   audioSegmentStartMs?: number;
   audioSegmentEndMs?: number;
   segmentId?: string | number;

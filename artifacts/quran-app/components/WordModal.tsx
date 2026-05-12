@@ -9,6 +9,7 @@ import {
   Platform,
 } from "react-native";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
@@ -19,6 +20,7 @@ interface Props {
   translation: string;
   surahNumber: number;
   ayahNumber: number;
+  audioUrl?: string;
   onClose: () => void;
   onRepeat?: () => void;
   onCut?: () => void;
@@ -41,6 +43,7 @@ export function WordModal({
   translation,
   surahNumber,
   ayahNumber,
+  audioUrl,
   onClose,
   onRepeat,
   onCut,
@@ -54,6 +57,24 @@ export function WordModal({
   );
   const highlighted = isWordHighlighted(word, surahNumber, ayahNumber);
   const root = deriveRoot(word);
+
+  const handlePlayWord = async () => {
+    if (!audioUrl) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: audioUrl },
+        { shouldPlay: true },
+      );
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          sound.unloadAsync();
+        }
+      });
+    } catch (error) {
+      if (__DEV__) console.error("[WordModal] Audio play failed", error);
+    }
+  };
 
   const handleSave = () => {
     if (!alreadySaved) {
@@ -103,6 +124,12 @@ export function WordModal({
 
               {/* Quick action icon row (matches screenshot) */}
               <View style={s.iconRow}>
+                {audioUrl ? (
+                  <TouchableOpacity style={s.iconBtn} onPress={handlePlayWord} activeOpacity={0.7}>
+                    <Feather name="play-circle" size={20} color="#1A1A1A" />
+                    <Text style={s.iconLabel}>Play</Text>
+                  </TouchableOpacity>
+                ) : null}
                 <TouchableOpacity style={s.iconBtn} onPress={handleRepeat} activeOpacity={0.7}>
                   <Ionicons name="repeat" size={20} color="#1A1A1A" />
                   <Text style={s.iconLabel}>Repeat</Text>
