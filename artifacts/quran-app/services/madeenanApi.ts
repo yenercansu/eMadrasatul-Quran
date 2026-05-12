@@ -82,6 +82,16 @@ function buildUrl(path: string, query?: Record<string, QueryValue>): string {
   return url.toString();
 }
 
+export function resolveMadeenanAssetUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (/^(https?:|file:|blob:|data:)/i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith("//")) return `https:${trimmed}`;
+  if (trimmed.startsWith("/")) return new URL(trimmed, MADEENAN_API_BASE_URL).toString();
+  return new URL(`/${trimmed}`, MADEENAN_API_BASE_URL).toString();
+}
+
 function isEnvelope<T>(value: unknown): value is ApiEnvelope<T> {
   return !!value && typeof value === "object" && "success" in value;
 }
@@ -297,11 +307,34 @@ export interface QuranPage {
 export interface AudioSegment {
   verseKey?: string;
   ayahNumber?: number;
+  audioUrl?: string;
+  url?: string;
   wordPosition?: number;
   startMs?: number;
   endMs?: number;
   timestampFrom?: number;
   timestampTo?: number;
+  [key: string]: unknown;
+}
+
+export interface AudioSegmentsResponse {
+  chapterNumber?: number;
+  reciterId?: number;
+  audioUrl?: string;
+  url?: string;
+  segments?: AudioSegment[];
+  raw?: {
+    audio_file?: {
+      audio_url?: string;
+      timestamps?: Array<{
+        verse_key?: string;
+        timestamp_from?: number;
+        timestamp_to?: number;
+        duration?: number;
+        segments?: Array<[number, number, number] | number[]>;
+      }>;
+    };
+  };
   [key: string]: unknown;
 }
 
@@ -322,6 +355,27 @@ export interface UstadhModeBody {
   ayahs: number[];
   mode: "new" | "review" | string;
   playbackRate: number;
+}
+
+export interface PlaybackTimingStep {
+  verseKey?: string;
+  ayahNumber?: number;
+  audioUrl?: string;
+  url?: string;
+  startMs?: number;
+  endMs?: number;
+  repeatCount?: number | string;
+  pauseAfterMs?: number;
+  playbackRate?: number;
+  segments?: AudioSegment[];
+  [key: string]: unknown;
+}
+
+export interface PlaybackPlanResponse {
+  steps?: PlaybackTimingStep[];
+  segments?: PlaybackTimingStep[];
+  plan?: PlaybackTimingStep[];
+  [key: string]: unknown;
 }
 
 export interface UserProgressBody {
@@ -404,11 +458,11 @@ export const getVerse = (verseKey: string) => apiRequest<QuranVerse>(`/quran/ver
 export const getQuranPage = (params: QuranPageParams) =>
   apiRequest<QuranPage>("/quran/page", { query: params as unknown as Record<string, QueryValue> });
 export const getAudioSegments = (params: { chapterNumber: number; reciterId: number }) =>
-  apiRequest<AudioSegment[]>("/quran/audio/segments", { query: params });
+  apiRequest<AudioSegmentsResponse>("/quran/audio/segments", { query: params });
 export const createPlaybackRange = (body: PlaybackRangeBody) =>
-  apiRequest<unknown>("/quran/playback/range", { method: "POST", body });
+  apiRequest<PlaybackPlanResponse>("/quran/playback/range", { method: "POST", body });
 export const createUstadhModePlan = (body: UstadhModeBody) =>
-  apiRequest<unknown>("/quran/playback/ustadh-mode", { method: "POST", body });
+  apiRequest<PlaybackPlanResponse>("/quran/playback/ustadh-mode", { method: "POST", body });
 
 export const getProgress = () => apiRequest<unknown>("/user/progress");
 export const updateProgress = (body: UserProgressBody) =>
@@ -546,9 +600,10 @@ export async function getQuranPageWithCache(params: QuranPageParams): Promise<Qu
 export function getFirstAudioUrl(page: QuranPage, verseKey?: string): string | null {
   const verse = (page.verses ?? page.ayahs ?? []).find((v) => !verseKey || v.verseKey === verseKey);
   const verseAudio = verse?.audio?.audioUrl ?? verse?.audio?.url;
-  if (verseAudio) return verseAudio;
+  const resolvedVerseAudio = resolveMadeenanAssetUrl(verseAudio);
+  if (resolvedVerseAudio) return resolvedVerseAudio;
   const audio = Array.isArray(page.audio)
     ? page.audio.find((a) => !verseKey || a.verseKey === verseKey)
     : page.audio;
-  return audio?.audioUrl ?? audio?.url ?? null;
+  return resolveMadeenanAssetUrl(audio?.audioUrl ?? audio?.url);
 }

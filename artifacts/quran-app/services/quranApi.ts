@@ -3,6 +3,7 @@ import {
   getChapters,
   getFirstAudioUrl,
   getQuranPageWithCache,
+  resolveMadeenanAssetUrl,
   type Chapter,
   type QuranPage,
   type QuranVerse,
@@ -243,10 +244,10 @@ function getTransliterationText(verse: QuranVerse): string {
   const record = asRecord(verse);
   const transliteration = asRecord(record.transliteration);
   return getTextValue(
-    record.transliteration ??
-      transliteration.text ??
+    transliteration.text ??
       transliteration.textUtf8 ??
       transliteration.text_utf8 ??
+      record.transliteration ??
       record.transliterationText ??
       record.transliteration_text,
   );
@@ -267,7 +268,7 @@ function normalizeWord(word: unknown, idx: number): QuranWord {
     textUthmani: getTextValue(record.textUthmani ?? record.text_uthmani ?? record.text),
     translation: getTextValue(translation),
     transliteration: getTextValue(transliteration),
-    audioUrl: getString(record.audioUrl ?? record.audio_url, "") || undefined,
+    audioUrl: resolveMadeenanAssetUrl(getString(record.audioUrl ?? record.audio_url, "")) ?? undefined,
     audioSegmentStartMs: Number.isFinite(startMs) ? startMs : undefined,
     audioSegmentEndMs: Number.isFinite(endMs) ? endMs : undefined,
     segmentId: record.segmentId as string | number | undefined,
@@ -416,7 +417,10 @@ export async function fetchSurah(
   surahNumber: number,
   _edition = "quran-uthmani",
 ): Promise<SurahDetail> {
-  const page = await fetchSurahPage(surahNumber);
+  const page = await fetchSurahPage(surahNumber, {
+    page: 1,
+    perPage: SURAH_DATA[surahNumber - 1]?.ayahCount ?? 10,
+  });
   return pageToSurahDetail(page, surahNumber, "arabic");
 }
 
@@ -431,9 +435,7 @@ export async function fetchSurahWithTranslations(
 }> {
   const page = await fetchSurahPage(surahNumber, {
     page: 1,
-    perPage: SURAH_DATA[surahNumber - 1]?.ayahCount && SURAH_DATA[surahNumber - 1]!.ayahCount <= 20
-      ? SURAH_DATA[surahNumber - 1]!.ayahCount
-      : 10,
+    perPage: SURAH_DATA[surahNumber - 1]?.ayahCount ?? 10,
   });
 
   return {
@@ -447,7 +449,11 @@ export async function fetchTafsir(
   surahNumber: number,
   _edition = "en.maarifulquran",
 ): Promise<SurahDetail> {
-  const page = await fetchSurahPage(surahNumber, { page: 1, perPage: 10, tafsir: true });
+  const page = await fetchSurahPage(surahNumber, {
+    page: 1,
+    perPage: SURAH_DATA[surahNumber - 1]?.ayahCount ?? 10,
+    tafsir: true,
+  });
   return pageToSurahDetail(page, surahNumber, "tafsir");
 }
 
@@ -455,7 +461,10 @@ export async function fetchTranslation(
   surahNumber: number,
   _edition: string,
 ): Promise<SurahDetail> {
-  const page = await fetchSurahPage(surahNumber);
+  const page = await fetchSurahPage(surahNumber, {
+    page: 1,
+    perPage: SURAH_DATA[surahNumber - 1]?.ayahCount ?? 10,
+  });
   return pageToSurahDetail(page, surahNumber, "translation");
 }
 
@@ -510,9 +519,12 @@ export async function getAudioUrl(surahNum: number, ayahNum: number, reciterId: 
   if (url) return url;
 
   const segments = await getAudioSegments({ chapterNumber: surahNum, reciterId: Number(reciterId) || 7 });
-  const segment = segments.find((s) => s.verseKey === `${surahNum}:${ayahNum}` || s.ayahNumber === ayahNum);
-  const candidate = segment?.audioUrl ?? segment?.url;
-  if (typeof candidate === "string") return candidate;
+  const flatSegments = Array.isArray(segments) ? segments : segments.segments ?? [];
+  const segment = flatSegments.find((s) => s.verseKey === `${surahNum}:${ayahNum}` || s.ayahNumber === ayahNum);
+  const candidate = resolveMadeenanAssetUrl(segment?.audioUrl ?? segment?.url);
+  if (candidate) return candidate;
+  const chapterAudio = resolveMadeenanAssetUrl(segments.audioUrl ?? segments.url ?? segments.raw?.audio_file?.audio_url);
+  if (chapterAudio) return chapterAudio;
   throw new Error("Audio URL is not available from the Madeenan backend.");
 }
 

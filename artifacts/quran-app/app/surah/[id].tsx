@@ -39,9 +39,15 @@ import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchSurahWithTranslations, fetchTafsir, fetchTranslation, fetchWordTranslations, type SurahDetail, type ApiAyah, type WordTranslation } from "@/services/quranApi";
-import { createPlaybackRange } from "@/services/madeenanApi";
-import { getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
+import { getJuzAyahs, getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
 import { RECENT_RECITERS_KEY } from "@/contexts/AudioContext";
+import {
+  ensureGoalOffline,
+  getOfflineStatusForAyahs,
+  type DownloadProgress,
+  type GoalAyahLike,
+  type OfflineDownloadStatus,
+} from "@/services/offlineQuranCache";
 
 const HINTS_STORAGE_KEY = "@squran/surah-hints-seen-v1";
 
@@ -774,16 +780,19 @@ function EditSheet({
   visible, onClose,
   settings, updateSettings,
   playbackRate, onSpeedChange,
-  onPlayRange, onRepeatSection,
+  onPlayRange, onRepeatSection, onUstadhMode,
+  onDownloadFullTarget, offlineStatusLabel,
 }: {
   visible: boolean; onClose: () => void;
   settings: { selectedReciter: string };
   updateSettings: (p: any) => void;
   playbackRate: number; onSpeedChange: (r: number) => void;
   onPlayRange: () => void; onRepeatSection: () => void;
+  onUstadhMode: () => void;
+  onDownloadFullTarget: () => void;
+  offlineStatusLabel: string;
 }) {
   const [wordByWord, setWordByWord] = useState(false);
-  const [memMode, setMemMode] = useState(false);
   const [recentReciterIds, setRecentReciterIds] = useState<string[]>([]);
   const insets = useSafeAreaInsets();
 
@@ -819,8 +828,8 @@ function EditSheet({
               <Text style={es.optionDesc}>Listen every Ayah with a pre-determined repetition frequence</Text>
             </View>
             <Switch
-              value={memMode}
-              onValueChange={setMemMode}
+              value={false}
+              onValueChange={() => { onClose(); onUstadhMode(); }}
               trackColor={{ false: "#E0E0E0", true: "#1A1A1A" }}
               thumbColor="#FFFFFF"
             />
@@ -829,7 +838,7 @@ function EditSheet({
           {[
             { icon: "scissors" as const, label: "Repeat Section", desc: "select an Ayah, edit to listen to a smaller part on repeat", onPress: () => { onClose(); onRepeatSection(); } },
             { icon: "play-circle" as const, label: "Play Within Range", desc: "select two ayahs, play only the selected range", onPress: () => { onClose(); onPlayRange(); } },
-            { icon: "download" as const, label: "Download", desc: "download full Quran from the latest reciter to listen offline", onPress: onClose },
+            { icon: "download" as const, label: "Download Full Target", desc: offlineStatusLabel, onPress: () => { onClose(); onDownloadFullTarget(); } },
           ].map((b) => (
             <TouchableOpacity key={b.label} style={es.optionRow} onPress={b.onPress} activeOpacity={0.7}>
               <Feather name={b.icon} size={20} color="#1A1A1A" style={es.optionIcon} />
@@ -1102,7 +1111,21 @@ const [settingsVisible, setSettingsVisible] = useState(false);
    const [tajweedMode, setTajweedMode] = useState(false);
    const [selectedTranslations, setSelectedTranslations] = useState<string[]>([]);
   const [ayahRepeatCounts, setAyahRepeatCounts] = useState<Record<number, number>>({});
-  const [wordModal, setWordModal] = useState<{ word: string; surah: number; ayah: number; translation: string; audioUrl?: string } | null>(null);
+  const [wordModal, setWordModal] = useState<{
+    word: string;
+    surah: number;
+    ayah: number;
+    translation: string;
+    audioUrl?: string;
+    wordPosition?: number;
+  } | null>(null);
+  const [offlineStatus, setOfflineStatus] = useState<{
+    status: OfflineDownloadStatus;
+    ready: number;
+    total: number;
+    progress?: DownloadProgress;
+  }>({ status: "idle", ready: 0, total: 0 });
+  const offlineDownloadRef = useRef(false);
   const [hintsVisible, setHintsVisible] = useState(false);
 
   // Show onboarding hints once per device
@@ -1141,12 +1164,14 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       ayah: ayah.numberInSurah,
       translation: match?.translation || fallback,
       audioUrl: match?.audioUrl,
+      wordPosition: match?.position,
     });
   }, [surahNum, translationsMap]);
 
   const listRef = useRef<FlatList<ApiAyah>>(null);
   const mushafScrollRef = useRef<ScrollView>(null);
   const scrollYRef = useRef(0);
+  const userScrollingRef = useRef(false);
   const wordTranslationsCache = useRef<Record<string, WordTranslation[]>>({});
 
   // Horizontal swipe detector for Mushaf page navigation (via stable ref callbacks)
@@ -1188,7 +1213,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     goal, memorizationGoal, isAyahMemorized, toggleAyahMemorized,
   } = useQuran();
 
-  const { audioState, playAyah, playRange, pauseAudio, resumeAudio, stopAudio, setPlaybackRate, playNextAyah, playPrevAyah, setOnNextAyah } = useAudio();
+  const { audioState, playAyah, playRange, playSection, playUstadhMode, pauseAudio, resumeAudio, stopAudio, setPlaybackRate, playNextAyah, playPrevAyah, setOnNextAyah } = useAudio();
 
   // Fetch translations on selection change
   useEffect(() => {
@@ -1220,18 +1245,22 @@ const [settingsVisible, setSettingsVisible] = useState(false);
   }, [settings.showTafsir, settings.selectedTafsirs, arabic, surahNum]);
 
   useEffect(() => {
-    setSelectedTranslations([]);
     setTajweedMode(false);
-    updateSettings({
-      showTranslation: false,
-      showTransliteration: false,
-      showTafsir: false,
-      colorCoding: false,
-      tajweedColorCoding: false,
-    });
     loadData();
     return () => setOnNextAyah(null);
   }, [surahNum]);
+
+  useEffect(() => {
+    AsyncStorage.getItem("quran_selected_translations").then((value) => {
+      if (!value) return;
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        const next = parsed.filter((id): id is string => typeof id === "string");
+        setSelectedTranslations(next);
+        updateSettings({ showTranslation: next.length > 0 });
+      }
+    }).catch(() => {});
+  }, [updateSettings]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -1422,6 +1451,90 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     ).map(a => `${a.surahNumber}:${a.ayahNumber}`));
   }, [goal, memorizationGoal]);
 
+  const weeklyGoalAyahs = useMemo<GoalAyahLike[]>(() => {
+    if (!goal?.startSurahNumber || !goal.startAyahNumber) return [];
+    const target = memorizationGoal?.path === "juz" && memorizationGoal.targetJuz
+      ? { path: "juz" as const, juz: memorizationGoal.targetJuz }
+      : { path: "surah" as const };
+    return getWeeklyGoalAyahsFrom(
+      goal.startSurahNumber,
+      goal.startAyahNumber,
+      goal.ayahsPerWeek,
+      target
+    ).map((a) => ({ surahNumber: a.surahNumber, ayahNumber: a.ayahNumber }));
+  }, [goal, memorizationGoal]);
+
+  const fullTargetAyahs = useMemo<GoalAyahLike[]>(() => {
+    if (memorizationGoal?.path === "juz" && memorizationGoal.targetJuz) {
+      return getJuzAyahs(memorizationGoal.targetJuz).map((a) => ({
+        surahNumber: a.surahNumber,
+        ayahNumber: a.ayahNumber,
+      }));
+    }
+    if (memorizationGoal?.path === "surah" && memorizationGoal.startSurahNumber) {
+      const surah = SURAH_DATA[memorizationGoal.startSurahNumber - 1];
+      if (!surah) return [];
+      return Array.from({ length: surah.ayahCount }, (_, index) => ({
+        surahNumber: surah.number,
+        ayahNumber: index + 1,
+      }));
+    }
+    return arabic?.ayahs.map((ayah) => ({ surahNumber: surahNum, ayahNumber: ayah.numberInSurah })) ?? [];
+  }, [arabic?.ayahs, memorizationGoal, surahNum]);
+
+  const refreshOfflineStatus = useCallback(async () => {
+    const ayahs = weeklyGoalAyahs.length > 0 ? weeklyGoalAyahs : pageAyahs.map((ayah) => ({ surahNumber: surahNum, ayahNumber: ayah.numberInSurah }));
+    if (ayahs.length === 0) return;
+    const status = await getOfflineStatusForAyahs(ayahs, Number(settings.selectedReciter) || 7);
+    setOfflineStatus({ status: status.status, ready: status.ready, total: status.total });
+  }, [pageAyahs, settings.selectedReciter, surahNum, weeklyGoalAyahs]);
+
+  const downloadAyahs = useCallback(async (ayahs: GoalAyahLike[]) => {
+    if (ayahs.length === 0 || offlineDownloadRef.current) return;
+    offlineDownloadRef.current = true;
+    setOfflineStatus({ status: "downloading", ready: 0, total: ayahs.length });
+    try {
+      const result = await ensureGoalOffline({
+        ayahs,
+        reciterId: Number(settings.selectedReciter) || 7,
+        onProgress: (progress) => setOfflineStatus({
+          status: "downloading",
+          ready: progress.completed,
+          total: progress.total,
+          progress,
+        }),
+      });
+      setOfflineStatus({
+        status: result.failed > 0 ? "failed" : "ready",
+        ready: result.completed,
+        total: result.total,
+        progress: result,
+      });
+    } finally {
+      offlineDownloadRef.current = false;
+    }
+  }, [settings.selectedReciter]);
+
+  useEffect(() => {
+    refreshOfflineStatus().catch(() => {});
+  }, [refreshOfflineStatus]);
+
+  useEffect(() => {
+    if (weeklyGoalAyahs.length === 0 || offlineDownloadRef.current) return;
+    downloadAyahs(weeklyGoalAyahs).catch(() => {
+      offlineDownloadRef.current = false;
+      setOfflineStatus((prev) => ({ ...prev, status: "failed" }));
+    });
+  }, [downloadAyahs, weeklyGoalAyahs]);
+
+  const offlineStatusLabel = offlineStatus.status === "downloading"
+    ? `downloading ${offlineStatus.ready}/${offlineStatus.total || fullTargetAyahs.length} ayahs for offline playback`
+    : offlineStatus.status === "ready"
+      ? `ready offline (${offlineStatus.ready}/${offlineStatus.total})`
+      : offlineStatus.status === "failed"
+        ? `some audio is missing (${offlineStatus.ready}/${offlineStatus.total}); tap to retry full target`
+        : "download this memorization target for offline playback";
+
   return (
     <View style={{ flex: 1, backgroundColor: "#F5F2EE" }}>
       {/* ── Fixed Header ─────────────────────────────────────── */}
@@ -1550,12 +1663,19 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             style={{ flex: 1, backgroundColor: "#FAF9F7" }}
             ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: "#EDEAE5" }} />}
             onScrollBeginDrag={(e) => {
+              userScrollingRef.current = true;
               menuToggleLockRef.current = Date.now() + 600;
               scrollYRef.current = e.nativeEvent.contentOffset.y;
             }}
+            onScrollEndDrag={() => {
+              setTimeout(() => { userScrollingRef.current = false; }, 250);
+            }}
+            onMomentumScrollEnd={() => {
+              userScrollingRef.current = false;
+            }}
             onScroll={(e) => {
               const y = e.nativeEvent.contentOffset.y;
-              if (menuVisible && Math.abs(y - scrollYRef.current) > 40) {
+              if (menuVisible && userScrollingRef.current && Math.abs(y - scrollYRef.current) > 40) {
                 setMenuVisible(false);
               }
             }}
@@ -1634,6 +1754,20 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             if (h > 0 && Math.abs(h - bottomBarHeight) > 4) setBottomBarHeight(h);
           }}
         >
+          <View style={scr.offlinePill}>
+            <Feather
+              name={offlineStatus.status === "ready" ? "check-circle" : offlineStatus.status === "downloading" ? "download-cloud" : "wifi-off"}
+              size={13}
+              color="#6B6B6B"
+            />
+            <Text style={scr.offlinePillText} numberOfLines={1}>
+              {offlineStatus.status === "downloading"
+                ? `Offline audio ${offlineStatus.ready}/${offlineStatus.total}`
+                : offlineStatus.status === "ready"
+                  ? `Offline ready ${offlineStatus.ready}/${offlineStatus.total}`
+                  : "Offline audio will cache your weekly goal"}
+            </Text>
+          </View>
           <PlayerBar
             audioState={audioState}
             playbackRate={audioState.playbackRate}
@@ -1685,6 +1819,20 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         onSpeedChange={setPlaybackRate}
         onPlayRange={() => setRangeVisible(true)}
         onRepeatSection={() => setRepeatSectionVisible(true)}
+        onUstadhMode={() => {
+          const ayahs = weeklyGoalAyahs
+            .filter((ayah) => ayah.surahNumber === surahNum)
+            .map((ayah) => ayah.ayahNumber);
+          const fallbackAyah = currentAyahForRange;
+          playUstadhMode(surahNum, ayahs.length > 0 ? ayahs : [fallbackAyah]);
+        }}
+        onDownloadFullTarget={() => {
+          downloadAyahs(fullTargetAyahs).catch(() => {
+            offlineDownloadRef.current = false;
+            setOfflineStatus((prev) => ({ ...prev, status: "failed" }));
+          });
+        }}
+        offlineStatusLabel={offlineStatusLabel}
       />
 
       <RepeatSectionSheet
@@ -1698,22 +1846,8 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         }
         onConfirm={(startWordIdx, endWordIdx, totalWords, repeatCount) => {
           const ayahN = repeatSectionInitialAyah ?? currentAyahForRange;
-          const total = arabic?.ayahs?.length ?? 0;
-          createPlaybackRange({
-            chapterNumber: surahNum,
-            reciterId: Number(settings.selectedReciter) || 7,
-            startAyah: ayahN,
-            endAyah: ayahN,
-            startWord: startWordIdx + 1,
-            endWord: endWordIdx + 1,
-            repeatCount: String(repeatCount),
-            playbackRate: audioState.playbackRate,
-          }).catch(() => {});
-          playAyah(surahNum, ayahN, total, repeatCount, {
-            startWordIdx,
-            endWordIdx,
-            totalWords,
-          });
+          void totalWords;
+          playSection(surahNum, ayahN, startWordIdx + 1, endWordIdx + 1, repeatCount);
           recordAyahRead(surahNum, ayahN);
           saveProgress({
             surahNumber: surahNum,
@@ -1748,14 +1882,6 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         ayahs={arabic?.ayahs ?? []}
         currentAyah={currentAyahForRange}
         onConfirm={(startA, endA, repeatCount) => {
-          createPlaybackRange({
-            chapterNumber: surahNum,
-            reciterId: Number(settings.selectedReciter) || 7,
-            startAyah: startA,
-            endAyah: endA,
-            repeatCount: String(repeatCount),
-            playbackRate: audioState.playbackRate,
-          }).catch(() => {});
           playRange(
             { startSurah: surahNum, startAyah: startA, endSurah: surahNum, endAyah: endA },
             repeatCount,
@@ -1780,11 +1906,14 @@ const [settingsVisible, setSettingsVisible] = useState(false);
           audioUrl={wordModal.audioUrl}
           onClose={() => setWordModal(null)}
           onRepeat={() => {
-            // Repeat just this ayah ∞ times
-            handleSetRepeat(
-              { numberInSurah: wordModal.ayah } as ApiAyah,
-              999,
-            );
+            if (wordModal.wordPosition) {
+              playSection(wordModal.surah, wordModal.ayah, wordModal.wordPosition, wordModal.wordPosition, 999);
+            } else {
+              handleSetRepeat(
+                { numberInSurah: wordModal.ayah } as ApiAyah,
+                999,
+              );
+            }
           }}
           onCut={() => {
             setRepeatSectionInitialAyah(wordModal.ayah);
@@ -1841,6 +1970,24 @@ const scr = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#E2D9CF",
     zIndex: 50,
+  },
+  offlinePill: {
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    maxWidth: "92%",
+    marginTop: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: "#EFEBE5",
+  },
+  offlinePillText: {
+    fontSize: 11,
+    color: "#6B6B6B",
+    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
   },
   errorState: {
     flex: 1,
