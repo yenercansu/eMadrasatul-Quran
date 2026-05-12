@@ -19,6 +19,7 @@ import type { Goal, MemorizationGoal } from "@/contexts/QuranContext";
 import { useQuran } from "@/contexts/QuranContext";
 import colors from "@/constants/colors";
 import { searchByType } from "@/services/search";
+import { ResetProgressButton } from "@/components/ResetProgressButton";
 
 const COMMITMENT_STEPS = [1, 2, 3, 5, 7, 10, 15, 25, 45, 70];
 const MAX_WEEKLY = 70;
@@ -99,7 +100,7 @@ interface Props {
 }
 
 export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
-  const { memorizedAyahKeys } = useQuran();
+  const { memorizedAyahKeys, removeMemorizedAyahKeys } = useQuran();
   const { width: windowWidth } = useWindowDimensions();
   const infoPageWidth = windowWidth - 40;
 
@@ -111,6 +112,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
   const [startAyahNumber, setStartAyahNumber] = useState(1);
   const [ayahsPerWeek, setAyahsPerWeek] = useState(3);
   const [search, setSearch] = useState("");
+  const [resetVisible, setResetVisible] = useState(false);
 
   // Reset everything when modal opens
   useEffect(() => {
@@ -122,6 +124,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
       setStartAyahNumber(1);
       setAyahsPerWeek(3);
       setSearch("");
+      setResetVisible(false);
     }
   }, [visible]);
 
@@ -201,6 +204,23 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
   }, [selectedSurah, startAyahNumber, ayahsPerWeek, dynamicMax, path, selectedJuz]);
   const endingAyah = weeklySelection[weeklySelection.length - 1];
 
+  const targetAyahs = useMemo(() => {
+    if (path === "juz" && selectedJuz != null) return selectedJuzAyahs;
+    if (path === "surah" && selectedSurah) {
+      return Array.from({ length: selectedSurah.ayahCount }, (_, i) => ({
+        surahNumber: selectedSurah.number,
+        ayahNumber: i + 1,
+      }));
+    }
+    return [];
+  }, [path, selectedJuz, selectedJuzAyahs, selectedSurah]);
+
+  const handleReset = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    removeMemorizedAyahKeys(targetAyahs.map(a => `${a.surahNumber}:${a.ayahNumber}`));
+    setResetVisible(false);
+  };
+
   // ── Completion ────────────────────────────────────────────────────────────
   const handleComplete = () => {
     if (!path || !selectedSurah) return;
@@ -226,17 +246,25 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableWithoutFeedback onPress={step === 1 ? onClose : undefined}>
+      <TouchableWithoutFeedback onPress={onClose}>
         <View style={s.overlay}>
           <TouchableWithoutFeedback>
             <View style={s.sheet}>
+              <View style={s.sheetTopBar}>
+                <View style={s.handle} />
+              </View>
 
               {/* ── STEP 1: Memorization Mode ───────────────────────────────── */}
               {step === 1 && (
                 <>
                 <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={s.stepPad}>
-                  <View style={s.handle} />
-                  <Text style={s.bigTitle}>Choose Path</Text>
+                  <View style={s.startHeader}>
+                    <View style={{ width: 36 }} />
+                    <Text style={s.bigTitle}>Choose Path</Text>
+                    <TouchableOpacity onPress={onClose} style={s.inlineCloseBtn} activeOpacity={0.7}>
+                      <Feather name="x" size={20} color="#1A1A1A" />
+                    </TouchableOpacity>
+                  </View>
                   <Text style={s.bigSub}>
                     Select how you want to begin your memorization journey
                   </Text>
@@ -302,7 +330,9 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                         <Feather name="chevron-left" size={22} color="#1A1A1A" />
                       </TouchableOpacity>
                       <Text style={s.stepTitle}>Select Surah</Text>
-                      <View style={{ width: 32 }} />
+                      <TouchableOpacity onPress={onClose} style={s.inlineCloseBtn} activeOpacity={0.7}>
+                        <Feather name="x" size={20} color="#1A1A1A" />
+                      </TouchableOpacity>
                     </View>
                     <ProgressBar step={2} />
                     <View style={s.searchBar}>
@@ -379,7 +409,9 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                         <Feather name="chevron-left" size={22} color="#1A1A1A" />
                       </TouchableOpacity>
                       <Text style={s.stepTitle}>Select Juz</Text>
-                      <View style={{ width: 32 }} />
+                      <TouchableOpacity onPress={onClose} style={s.inlineCloseBtn} activeOpacity={0.7}>
+                        <Feather name="x" size={20} color="#1A1A1A" />
+                      </TouchableOpacity>
                     </View>
                     <ProgressBar step={2} />
                     <View style={s.searchBar}>
@@ -472,16 +504,22 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                       <Feather name="chevron-left" size={22} color="#1A1A1A" />
                     </TouchableOpacity>
                     <Text style={s.stepTitle}>Starting From Which Ayah</Text>
-                    <View style={{ width: 32 }} />
+                    <TouchableOpacity onPress={onClose} style={s.inlineCloseBtn} activeOpacity={0.7}>
+                      <Feather name="x" size={20} color="#1A1A1A" />
+                    </TouchableOpacity>
                   </View>
                   <ProgressBar step={3} />
-
-                  <Text style={s.ayahGridLabel}>
-                    SELECT STARTING AYAH • {path === "juz" ? `Juz ${selectedJuz}` : selectedSurah?.englishName ?? ""}
-                  </Text>
-                  <Text style={s.ayahGridSub}>
-                    Green = already memorized. Tap an ayah to set your starting point.
-                  </Text>
+                  <View style={s.ayahIntroRow}>
+                    <View style={s.ayahIntroText}>
+                      <Text style={s.ayahGridLabel}>
+                        SELECT STARTING AYAH • {path === "juz" ? `Juz ${selectedJuz}` : selectedSurah?.englishName ?? ""}
+                      </Text>
+                      <Text style={s.ayahGridSub}>
+                        Green = already memorized. Tap an ayah to set your starting point.
+                      </Text>
+                    </View>
+                    <ResetProgressButton onPress={() => setResetVisible(true)} />
+                  </View>
 
                   {path === "juz" ? (
                     selectedJuzGroups.map((group) => (
@@ -594,7 +632,9 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                       <Feather name="chevron-left" size={22} color="#1A1A1A" />
                     </TouchableOpacity>
                     <Text style={s.stepTitle}>Set Your Weekly Goal</Text>
-                    <View style={{ width: 32 }} />
+                    <TouchableOpacity onPress={onClose} style={s.inlineCloseBtn} activeOpacity={0.7}>
+                      <Feather name="x" size={20} color="#1A1A1A" />
+                    </TouchableOpacity>
                   </View>
                   <ProgressBar step={4} />
 
@@ -704,6 +744,26 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                 </>
               )}
 
+              <Modal visible={resetVisible} transparent animationType="fade" onRequestClose={() => setResetVisible(false)}>
+                <TouchableWithoutFeedback onPress={() => setResetVisible(false)}>
+                  <View style={s.resetOverlay}>
+                    <TouchableWithoutFeedback>
+                      <View style={s.resetCard}>
+                        <Text style={s.resetTitle}>Reset Progress?</Text>
+                        <Text style={s.resetMessage}>
+                          This will remove memorized marks from this goal target. You can mark them again anytime.
+                        </Text>
+                        <TouchableOpacity style={s.resetPrimaryBtn} onPress={handleReset} activeOpacity={0.85}>
+                          <Text style={s.resetPrimaryBtnText}>Reset My Progress</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={s.resetCancelBtn} onPress={() => setResetVisible(false)} activeOpacity={0.7}>
+                          <Text style={s.resetCancelText}>Cancel</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </TouchableWithoutFeedback>
+                  </View>
+                </TouchableWithoutFeedback>
+              </Modal>
             </View>
           </TouchableWithoutFeedback>
         </View>
@@ -721,16 +781,43 @@ const s = StyleSheet.create({
     borderTopRightRadius: 28,
     overflow: "hidden",
   },
+  sheetTopBar: {
+    height: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
   stepPad: { paddingHorizontal: 20, paddingBottom: 16 },
   handle: {
     width: 36, height: 4, borderRadius: 2,
-    backgroundColor: "#E7E5DB", alignSelf: "center",
-    marginTop: 12, marginBottom: 24,
+    backgroundColor: "#E7E5DB",
+  },
+  closeBtn: {
+    position: "absolute",
+    right: 16,
+    top: 8,
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  inlineCloseBtn: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   bigTitle: {
+    flex: 1,
     fontSize: 26, fontWeight: "700", color: "#1A1A1A",
-    fontFamily: "Inter_700Bold", textAlign: "center", marginBottom: 8,
+    fontFamily: "Inter_700Bold", textAlign: "center",
+  },
+  startHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
   },
   bigSub: {
     fontSize: 14, color: "#78716C", fontFamily: "Inter_400Regular",
@@ -816,6 +903,14 @@ const s = StyleSheet.create({
 
   // ── Step 3: Ayah grid ────────────────────────────────────────────────────
   juzAyahGroup: { marginBottom: 12 },
+  ayahIntroRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 16,
+  },
+  ayahIntroText: { flex: 1 },
   ayahGridLabel: {
     fontSize: 11, fontWeight: "700", color: "#78716C",
     letterSpacing: 1.2, fontFamily: "Inter_700Bold",
@@ -823,7 +918,7 @@ const s = StyleSheet.create({
   },
   ayahGridSub: {
     fontSize: 13, color: "#78716C", fontFamily: "Inter_400Regular",
-    lineHeight: 18, marginBottom: 16,
+    lineHeight: 18,
   },
   ayahGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 },
   ayahBubble: {
@@ -980,4 +1075,48 @@ const s = StyleSheet.create({
   summaryLabel: { fontSize: 13, color: "#78716C", fontFamily: "Inter_400Regular" },
   summaryValue: { fontSize: 13, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
   summaryValueBold: { fontFamily: "Inter_700Bold" },
+  resetOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 28,
+  },
+  resetCard: {
+    backgroundColor: "#FDFBF7",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#D6D3D1",
+    shadowColor: "#5D4A37",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  resetTitle: {
+    fontSize: 20, fontWeight: "700", color: "#1A1A1A",
+    fontFamily: "Inter_700Bold", textAlign: "center", marginBottom: 10,
+  },
+  resetMessage: {
+    fontSize: 14, color: "#71717A", fontFamily: "Inter_400Regular",
+    textAlign: "center", lineHeight: 21, marginBottom: 24,
+  },
+  resetPrimaryBtn: {
+    backgroundColor: "#1A1A1A",
+    borderRadius: 14, paddingVertical: 16,
+    alignItems: "center", justifyContent: "center",
+    marginBottom: 10,
+  },
+  resetPrimaryBtnText: {
+    fontSize: 16, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold",
+  },
+  resetCancelBtn: {
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  resetCancelText: {
+    fontSize: 15, color: "#A8A29E", fontFamily: "Inter_400Regular",
+  },
 });

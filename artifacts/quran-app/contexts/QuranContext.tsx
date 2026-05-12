@@ -716,11 +716,20 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
 
   const removeMemorizedAyahKeys = useCallback((keys: string[]) => {
     const keySet = new Set(keys);
+    const affectedSurahs = new Set(keys.map(k => Number(k.split(":")[0])).filter(Number.isFinite));
     setMemorizedAyahKeys((prev) => {
       const next = prev.filter(k => !keySet.has(k));
       AsyncStorage.setItem("quran_memorized_ayahs", JSON.stringify(next));
       return next;
     });
+    if (affectedSurahs.size > 0) {
+      setCheckedSurahs((prev) => {
+        const next = prev.filter(surahNum => !affectedSurahs.has(surahNum));
+        if (next.length === prev.length) return prev;
+        AsyncStorage.setItem("quran_checked_surahs", JSON.stringify(next));
+        return next;
+      });
+    }
   }, []);
 
   const toggleAyahMemorized = useCallback((surahNumber: number, ayahNumber: number) => {

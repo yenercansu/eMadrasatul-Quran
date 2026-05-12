@@ -15,6 +15,7 @@ import * as Haptics from "expo-haptics";
 import { getJuzAyahs, getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
 import { useQuran } from "@/contexts/QuranContext";
 import colors from "@/constants/colors";
+import { ResetProgressButton } from "@/components/ResetProgressButton";
 
 const COMMITMENT_STEPS = [1, 2, 3, 5, 7, 10, 15, 25, 45, 70];
 const MAX_WEEKLY = 70;
@@ -208,13 +209,7 @@ export function EditDailyGoalModal({
                     <ProgressBar step={1} />
                     <View style={s.subRow}>
                       <Text style={s.sub}>{targetPath === "juz" && targetJuz ? `Juz ${targetJuz}` : surahName}</Text>
-                      <TouchableOpacity
-                        style={s.resetBtn}
-                        onPress={() => setResetVisible(true)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={s.resetBtnText}>Reset</Text>
-                      </TouchableOpacity>
+                      <ResetProgressButton onPress={() => setResetVisible(true)} />
                     </View>
                     <Text style={s.ayahGridLabel}>SELECT STARTING AYAH</Text>
 
@@ -433,9 +428,9 @@ export function EditDailyGoalModal({
 }
 
 const s = StyleSheet.create({
-  overlay: { flex: 1 },
+  overlay: { flex: 1, justifyContent: "flex-end", paddingTop: 72 },
   sheet: {
-    flex: 1,
+    height: "90%",
     backgroundColor: "#FDFBF7",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
@@ -638,19 +633,6 @@ const s = StyleSheet.create({
   stepLabel: {
     textAlign: "center", fontSize: 11, color: "#A8A29E",
     fontFamily: "Inter_400Regular", letterSpacing: 0.5, marginTop: 12,
-  },
-
-  // ── Reset button (small, secondary, top-right) ──────────────────────────────
-  resetBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#D6D3D1",
-  },
-  resetBtnText: {
-    fontSize: 12, fontWeight: "600", color: "#78716C",
-    fontFamily: "Inter_600SemiBold",
   },
 
   // ── Reset confirmation popup ────────────────────────────────────────────────
