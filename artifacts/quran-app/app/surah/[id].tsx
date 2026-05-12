@@ -1754,20 +1754,6 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             if (h > 0 && Math.abs(h - bottomBarHeight) > 4) setBottomBarHeight(h);
           }}
         >
-          <View style={scr.offlinePill}>
-            <Feather
-              name={offlineStatus.status === "ready" ? "check-circle" : offlineStatus.status === "downloading" ? "download-cloud" : "wifi-off"}
-              size={13}
-              color="#6B6B6B"
-            />
-            <Text style={scr.offlinePillText} numberOfLines={1}>
-              {offlineStatus.status === "downloading"
-                ? `Offline audio ${offlineStatus.ready}/${offlineStatus.total}`
-                : offlineStatus.status === "ready"
-                  ? `Offline ready ${offlineStatus.ready}/${offlineStatus.total}`
-                  : "Offline audio will cache your weekly goal"}
-            </Text>
-          </View>
           <PlayerBar
             audioState={audioState}
             playbackRate={audioState.playbackRate}
@@ -1806,6 +1792,12 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             onToggleColors={() => updateSettings({ colorCoding: !settings.colorCoding })}
             onToggleTajweed={() => setTajweedMode(v => !v)}
           />
+          {offlineStatus.status === "ready" && (
+            <View style={scr.offlineToast} pointerEvents="none">
+              <Feather name="check-circle" size={10} color="#6B6B6B" />
+              <Text style={scr.offlineToastText}>Offline ready</Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -1971,23 +1963,26 @@ const scr = StyleSheet.create({
     borderTopColor: "#E2D9CF",
     zIndex: 50,
   },
-  offlinePill: {
-    alignSelf: "center",
+  offlineToast: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 22,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    maxWidth: "92%",
-    marginTop: 7,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
+    justifyContent: "center",
+    gap: 5,
     backgroundColor: "#EFEBE5",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#D5D0CA",
   },
-  offlinePillText: {
-    fontSize: 11,
+  offlineToastText: {
+    fontSize: 10,
     color: "#6B6B6B",
     fontFamily: "Inter_600SemiBold",
     fontWeight: "600",
+    letterSpacing: 0.1,
   },
   errorState: {
     flex: 1,
