@@ -645,7 +645,6 @@ export default function MemorizationQuizScreen() {
     recordQuizCompletion,
     quizSelectedSurahs,
     setQuizSelectedSurahs,
-    toggleQuizSurahSelection,
     isQuizSurahSelected,
   } = useQuran();
   const topPad = insets.top;
@@ -663,13 +662,17 @@ export default function MemorizationQuizScreen() {
   const [ayahSearchQuery, setAyahSearchQuery] = useState("");
   const [surahPage, setSurahPage] = useState(0);
   const [ayahPage, setAyahPage] = useState(0);
+  const [manuallyDeselectedSurahs, setManuallyDeselectedSurahs] = useState<Set<number>>(new Set());
+  const selectedQuizSurahSet = useMemo(() => new Set(quizSelectedSurahs), [quizSelectedSurahs]);
 
   useEffect(() => {
     setSelectedAyahIds(prev => {
       const existingIds = new Set(savedAyahs.map(a => a.id));
       const next = new Set([...prev].filter(id => existingIds.has(id)));
       for (const ayah of savedAyahs) {
-        if (!prev.size) next.add(ayah.id);
+        if (!prev.size || (selectedQuizSurahSet.has(ayah.surahNumber) && !manuallyDeselectedSurahs.has(ayah.surahNumber))) {
+          next.add(ayah.id);
+        }
       }
       return next;
     });
@@ -677,7 +680,7 @@ export default function MemorizationQuizScreen() {
       const existingIds = new Set(savedAyahs.map(a => a.id));
       return new Set([...prev].filter(id => existingIds.has(id)));
     });
-  }, [savedAyahs]);
+  }, [savedAyahs, manuallyDeselectedSurahs, selectedQuizSurahSet]);
 
   const surahGroups = useMemo(() => {
     const map = new Map<number, { surahNumber: number; surahName: string; ayahs: SavedAyah[] }>();
@@ -693,6 +696,24 @@ export default function MemorizationQuizScreen() {
     }
     return Array.from(map.values()).sort((a, b) => a.surahNumber - b.surahNumber);
   }, [savedAyahs]);
+
+  const savedAyahsBySurah = useMemo(() => {
+    const map = new Map<number, SavedAyah[]>();
+    for (const ayah of savedAyahs) {
+      const group = map.get(ayah.surahNumber) ?? [];
+      group.push(ayah);
+      map.set(ayah.surahNumber, group);
+    }
+    return map;
+  }, [savedAyahs]);
+
+  useEffect(() => {
+    const savedSurahNums = Array.from(savedAyahsBySurah.keys()).filter(n => !manuallyDeselectedSurahs.has(n));
+    const missing = savedSurahNums.filter(n => !selectedQuizSurahSet.has(n));
+    if (missing.length > 0) {
+      setQuizSelectedSurahs([...quizSelectedSurahs, ...missing]);
+    }
+  }, [savedAyahsBySurah, manuallyDeselectedSurahs, quizSelectedSurahs, selectedQuizSurahSet, setQuizSelectedSurahs]);
 
   const visibleAyahs = useMemo(() => {
     let ayahs = savedAyahs;
@@ -727,8 +748,6 @@ export default function MemorizationQuizScreen() {
   const quizDataset = useMemo(() => {
     return savedAyahs.filter(ayah => selectedAyahIds.has(ayah.id) && !excludedAyahIds.has(ayah.id));
   }, [savedAyahs, selectedAyahIds, excludedAyahIds]);
-
-  const selectedQuizSurahSet = useMemo(() => new Set(quizSelectedSurahs), [quizSelectedSurahs]);
 
   const allFilteredSurahs = useMemo(() => {
     const savedSurahNums = new Set(surahGroups.map(g => g.surahNumber));
@@ -795,7 +814,7 @@ export default function MemorizationQuizScreen() {
 
   const startQuiz = useCallback(() => {
     if (!mode) return;
-    if (quizSelectedSurahs.length === 0) {
+    if (selectedQuizPoolAyahCount === 0) {
       setFilterMode("by-surah");
       setPhase("selection");
       return;
@@ -824,7 +843,7 @@ export default function MemorizationQuizScreen() {
     setQuestions(qs);
     setPhase("quiz");
     setFinalScore(0);
-  }, [mode, quizDataset, quizSelectedSurahs, selectedQuizSurahSet]);
+  }, [mode, quizDataset, selectedQuizPoolAyahCount, selectedQuizSurahSet]);
 
   const chooseMode = useCallback((selectedMode: NonNullable<QuizMode>) => {
     setMode(selectedMode);
@@ -832,15 +851,33 @@ export default function MemorizationQuizScreen() {
   }, []);
 
   const toggleSelected = useCallback((id: string) => {
-    const isSelected = selectedAyahIds.has(id);
+    const ayah = savedAyahs.find(a => a.id === id);
+    if (!ayah) return;
+
+    const nextSelectedIds = new Set(selectedAyahIds);
+    const nextExcludedIds = new Set(excludedAyahIds);
+    const isSelected = nextSelectedIds.has(id);
+
     if (isSelected) {
-      setSelectedAyahIds(prev => { const n = new Set(prev); n.delete(id); return n; });
-      setExcludedAyahIds(prev => { const n = new Set(prev); n.add(id); return n; });
+      nextSelectedIds.delete(id);
+      nextExcludedIds.add(id);
+      const hasSelectedAyahInSurah = savedAyahs.some(a => a.surahNumber === ayah.surahNumber && nextSelectedIds.has(a.id));
+      if (!hasSelectedAyahInSurah) {
+        setQuizSelectedSurahs(quizSelectedSurahs.filter(n => n !== ayah.surahNumber));
+        setManuallyDeselectedSurahs(prev => { const n = new Set(prev); n.add(ayah.surahNumber); return n; });
+      }
     } else {
-      setSelectedAyahIds(prev => { const n = new Set(prev); n.add(id); return n; });
-      setExcludedAyahIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+      nextSelectedIds.add(id);
+      nextExcludedIds.delete(id);
+      if (!selectedQuizSurahSet.has(ayah.surahNumber)) {
+        setQuizSelectedSurahs([...quizSelectedSurahs, ayah.surahNumber]);
+      }
+      setManuallyDeselectedSurahs(prev => { const n = new Set(prev); n.delete(ayah.surahNumber); return n; });
     }
-  }, [selectedAyahIds]);
+
+    setSelectedAyahIds(nextSelectedIds);
+    setExcludedAyahIds(nextExcludedIds);
+  }, [excludedAyahIds, quizSelectedSurahs, savedAyahs, selectedAyahIds, selectedQuizSurahSet, setQuizSelectedSurahs]);
 
   const removeSavedAyah = useCallback((id: string) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -887,8 +924,29 @@ export default function MemorizationQuizScreen() {
 
   const toggleSurah = useCallback((surahNum: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    toggleQuizSurahSelection(surahNum);
-  }, [toggleQuizSurahSelection]);
+    const ayahsInSurah = savedAyahsBySurah.get(surahNum) ?? [];
+    const nextSelectedIds = new Set(selectedAyahIds);
+    const nextExcludedIds = new Set(excludedAyahIds);
+
+    if (selectedQuizSurahSet.has(surahNum)) {
+      setQuizSelectedSurahs(quizSelectedSurahs.filter(n => n !== surahNum));
+      ayahsInSurah.forEach(ayah => {
+        nextSelectedIds.delete(ayah.id);
+        nextExcludedIds.add(ayah.id);
+      });
+      setManuallyDeselectedSurahs(prev => { const n = new Set(prev); n.add(surahNum); return n; });
+    } else {
+      setQuizSelectedSurahs([...quizSelectedSurahs, surahNum]);
+      ayahsInSurah.forEach(ayah => {
+        nextSelectedIds.add(ayah.id);
+        nextExcludedIds.delete(ayah.id);
+      });
+      setManuallyDeselectedSurahs(prev => { const n = new Set(prev); n.delete(surahNum); return n; });
+    }
+
+    setSelectedAyahIds(nextSelectedIds);
+    setExcludedAyahIds(nextExcludedIds);
+  }, [excludedAyahIds, quizSelectedSurahs, savedAyahsBySurah, selectedAyahIds, selectedQuizSurahSet, setQuizSelectedSurahs]);
 
   const handleSelectAll = useCallback(() => {
     if (filterMode === "by-ayah") {
