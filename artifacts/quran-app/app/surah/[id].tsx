@@ -685,7 +685,7 @@ function FloatingTopNav({
         style={fn.titlePill}
       >
         <Text style={fn.titleText} numberOfLines={1}>{surahName}</Text>
-        <Text style={fn.hintText} numberOfLines={1}>Long press to edit Ayah range</Text>
+        <Text style={fn.hintText} numberOfLines={1}>Long press for more options</Text>
       </TouchableOpacity>
       <TouchableOpacity style={fn.pillBtn} onPress={onPrev} activeOpacity={0.75}>
         <Text style={fn.pillBtnText}>Back</Text>
@@ -744,25 +744,29 @@ function PageEndNav({ onPrev, onNext }: { onPrev: () => void; onNext: () => void
   return (
     <View style={fbn.wrap}>
       <TouchableOpacity style={fbn.btn} onPress={onNext} activeOpacity={0.75}>
-        <Feather name="chevron-left" size={20} color="#1A1A1A" />
+        <Feather name="chevron-left" size={14} color="#1A1A1A" />
+        <Text style={fbn.btnText}>Next</Text>
       </TouchableOpacity>
       <TouchableOpacity style={fbn.btn} onPress={onPrev} activeOpacity={0.75}>
-        <Feather name="chevron-right" size={20} color="#1A1A1A" />
+        <Text style={fbn.btnText}>Back</Text>
+        <Feather name="chevron-right" size={14} color="#1A1A1A" />
       </TouchableOpacity>
     </View>
   );
 }
 
 const fbn = StyleSheet.create({
-  wrap: { flexDirection: "row", justifyContent: "center", gap: 36, paddingVertical: 24 },
+  wrap: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 24, paddingHorizontal: 8 },
   btn: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center", justifyContent: "center",
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
-    borderWidth: 1, borderColor: "#F0F0F0",
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.96)",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+    gap: 4,
   },
+  btnText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
 });
 
 // ─── Edit Sheet ───────────────────────────────────────────────────────────────
@@ -1565,6 +1569,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
                 )}
                 <View style={scr.swipeHintBar}>
                   <Text style={scr.swipeHintText}>← swipe left to save to quizzes</Text>
+                  <Text style={[scr.swipeHintText, { marginTop: 6 }]}>{"Long press to customize learning by\nrepeating sections, editing ranges & saving words"}</Text>
                 </View>
               </View>
             }
