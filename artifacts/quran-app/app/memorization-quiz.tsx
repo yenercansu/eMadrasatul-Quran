@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { SURAH_DATA } from "@/constants/surahData";
 import { SwipeableRow } from "@/components/SwipeableRow";
 import { Pagination } from "@/components/Pagination";
 import { Tag } from "@/components/Tag";
+import { QuestionNav } from "@/components/QuestionNav";
 import { searchByType } from "@/services/search";
 
 const DEFAULT_SURAHS: { number: number; name: string; englishName: string; ayahs: string[]; translations: string[] }[] = [
@@ -254,19 +255,33 @@ function TapChip({
   onTap,
   isSelected,
   isDisabled,
+  isCorrect,
+  isWrong,
 }: {
   word: string;
   onTap: (word: string) => void;
   isSelected: boolean;
   isDisabled: boolean;
+  isCorrect?: boolean;
+  isWrong?: boolean;
 }) {
   return (
     <TouchableOpacity
       onPress={() => { if (!isDisabled) onTap(word); }}
       activeOpacity={0.75}
-      style={[chipStyle.chip, isSelected && chipStyle.chipSelected, isDisabled && chipStyle.chipDisabled]}
+      style={[
+        chipStyle.chip,
+        isSelected && chipStyle.chipSelected,
+        isCorrect && chipStyle.chipCorrect,
+        isWrong && chipStyle.chipWrong,
+        isDisabled && !isSelected && !isCorrect && chipStyle.chipDisabled,
+      ]}
     >
-      <Text style={[chipStyle.chipText, isSelected && chipStyle.chipTextSelected]}>{word}</Text>
+      <Text style={[
+        chipStyle.chipText,
+        (isSelected || isCorrect) && chipStyle.chipTextSelected,
+        isWrong && chipStyle.chipTextWrong,
+      ]}>{word}</Text>
     </TouchableOpacity>
   );
 }
@@ -286,6 +301,14 @@ const chipStyle = StyleSheet.create({
     backgroundColor: "#1A1A1A",
     borderColor: "#1A1A1A",
   },
+  chipCorrect: {
+    backgroundColor: "#1A1A1A",
+    borderColor: "#1A1A1A",
+  },
+  chipWrong: {
+    backgroundColor: "#FEE2E2",
+    borderColor: "#DC2626",
+  },
   chipDisabled: {
     opacity: 0.4,
   },
@@ -295,37 +318,57 @@ const chipStyle = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "System" : undefined,
   },
   chipTextSelected: { color: "#FFFFFF" },
+  chipTextWrong: { color: "#991B1B" },
 });
 
 function FollowUpQuizScreen({ questions, onFinish }: { questions: FollowUpQuestion[]; onFinish: (score: number) => void }) {
   const [qIdx, setQIdx] = useState(0);
   const [score, setScore] = useState(0);
-  const [chosen, setChosen] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
+  const [answers, setAnswers] = useState<Array<string | null>>(() => questions.map(() => null));
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const q = questions[qIdx];
   const total = questions.length;
+  const chosen = answers[qIdx];
+
+  useEffect(() => () => {
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+  }, []);
 
   const handleAnswer = (option: string) => {
     if (chosen) return;
-    setChosen(option);
     const isCorrect = option === q.correctAnswer;
-    setFeedback(isCorrect ? "correct" : "wrong");
+    const nextScore = score + (isCorrect ? 1 : 0);
+    setAnswers(prev => {
+      const next = [...prev];
+      next[qIdx] = option;
+      return next;
+    });
     if (isCorrect) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setScore(s => s + 1);
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
-    setTimeout(() => {
-      if (qIdx + 1 >= total) {
-        onFinish(score + (isCorrect ? 1 : 0));
-      } else {
-        setQIdx(i => i + 1);
-        setChosen(null);
-        setFeedback(null);
-      }
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = setTimeout(() => {
+      advanceTimer.current = null;
+      if (qIdx + 1 >= total) onFinish(nextScore);
+      else setQIdx(qIdx + 1);
     }, 900);
+  };
+
+  const handlePrev = () => {
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = null;
+    setQIdx(i => Math.max(0, i - 1));
+  };
+  const handleNext = () => {
+    if (!chosen) return;
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = null;
+    if (qIdx + 1 >= total) onFinish(score);
+    else setQIdx(i => i + 1);
   };
 
   const s = followUpStyle;
@@ -337,6 +380,12 @@ function FollowUpQuizScreen({ questions, onFinish }: { questions: FollowUpQuesti
         </View>
         <Text style={s.progressLabel}>{qIdx + 1}/{total}</Text>
       </View>
+      <QuestionNav
+        canGoPrev={qIdx > 0}
+        canGoNext={!!chosen}
+        onPrev={handlePrev}
+        onNext={handleNext}
+      />
 
       <View style={s.card}>
         <Text style={s.surahLabel}>{q.surahName}</Text>
@@ -353,7 +402,7 @@ function FollowUpQuizScreen({ questions, onFinish }: { questions: FollowUpQuesti
           let border = "#D6D3D1";
           let textColor = "#1A1A1A";
           if (chosen) {
-            if (opt === q.correctAnswer) { bg = "#DCFCE7"; border = "#16A34A"; textColor = "#166534"; }
+            if (opt === q.correctAnswer) { bg = "#1A1A1A"; border = "#1A1A1A"; textColor = "#FFFFFF"; }
             else if (opt === chosen) { bg = "#FEE2E2"; border = "#DC2626"; textColor = "#991B1B"; }
           }
           return (
@@ -407,35 +456,53 @@ function FillBlankQuizScreen({ questions, onFinish }: { questions: FillBlankQues
   const colors = useColors();
   const [qIdx, setQIdx] = useState(0);
   const [score, setScore] = useState(0);
-  const [filledWord, setFilledWord] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
+  const [answers, setAnswers] = useState<Array<string | null>>(() => questions.map(() => null));
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const q = questions[qIdx];
   const total = questions.length;
+  const filledWord = answers[qIdx];
+  const feedback: "correct" | "wrong" | null = filledWord ? (filledWord === q.blankWord ? "correct" : "wrong") : null;
+
+  useEffect(() => () => {
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+  }, []);
 
   const handleTap = useCallback((word: string) => {
     if (filledWord) return;
     const isCorrect = word === q.blankWord;
-    setFilledWord(word);
-    setFeedback(isCorrect ? "correct" : "wrong");
+    const nextScore = score + (isCorrect ? 1 : 0);
+    setAnswers(prev => {
+      const next = [...prev];
+      next[qIdx] = word;
+      return next;
+    });
     if (isCorrect) {
       try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
       setScore(s => s + 1);
     } else {
       try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); } catch {}
     }
-    setTimeout(() => {
-      if (qIdx + 1 >= total) {
-        onFinish(score + (isCorrect ? 1 : 0));
-      } else {
-        setQIdx(i => i + 1);
-        setFilledWord(null);
-        setFeedback(null);
-      }
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = setTimeout(() => {
+      advanceTimer.current = null;
+      if (qIdx + 1 >= total) onFinish(nextScore);
+      else setQIdx(qIdx + 1);
     }, 900);
-  }, [filledWord, qIdx, total, score, onFinish, q]);
+  }, [filledWord, onFinish, q, qIdx, score, total]);
 
-  useEffect(() => { setFilledWord(null); setFeedback(null); }, [qIdx]);
+  const handlePrev = () => {
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = null;
+    setQIdx(i => Math.max(0, i - 1));
+  };
+  const handleNext = () => {
+    if (!filledWord) return;
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = null;
+    if (qIdx + 1 >= total) onFinish(score);
+    else setQIdx(i => i + 1);
+  };
 
   const s = { ...fillStyle, blankInText: { ...fillStyle.blankInText, color: colors.primary }, ayahCard: { ...fillStyle.ayahCard, backgroundColor: colors.card, borderColor: colors.border } };
   return (
@@ -446,6 +513,12 @@ function FillBlankQuizScreen({ questions, onFinish }: { questions: FillBlankQues
         </View>
         <Text style={s.progressLabel}>{qIdx + 1}/{total}</Text>
       </View>
+      <QuestionNav
+        canGoPrev={qIdx > 0}
+        canGoNext={!!filledWord}
+        onPrev={handlePrev}
+        onNext={handleNext}
+      />
 
       <Text style={s.surahLabel}>{q.surahName}</Text>
       <Text style={s.instruction}>Tap the correct missing word</Text>
@@ -483,6 +556,8 @@ function FillBlankQuizScreen({ questions, onFinish }: { questions: FillBlankQues
             word={word}
             onTap={handleTap}
             isSelected={filledWord === word}
+            isCorrect={!!filledWord && word === q.blankWord}
+            isWrong={filledWord === word && word !== q.blankWord}
             isDisabled={!!filledWord}
           />
         ))}
@@ -503,10 +578,10 @@ const fillStyle = StyleSheet.create({
     borderRadius: 14, borderWidth: 1.5, borderColor: "#D6D3D1", borderStyle: "dashed",
     padding: 12, alignItems: "center", justifyContent: "center", minHeight: 48, backgroundColor: "#F6F2EA",
   },
-  blankSlotCorrect: { borderColor: "#16A34A", backgroundColor: "#F0FDF4" },
+  blankSlotCorrect: { borderColor: "#1A1A1A", backgroundColor: "#1A1A1A" },
   blankSlotWrong: { borderColor: "#DC2626", backgroundColor: "#FFF5F5" },
   blankFilled: { fontSize: 20, color: "#1A1A1A", fontFamily: Platform.OS === "ios" ? "System" : undefined },
-  blankFilledCorrect: { color: "#166534" },
+  blankFilledCorrect: { color: "#FFFFFF" },
   blankFilledWrong: { color: "#991B1B" },
   blankPlaceholder: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular" },
   ayahCard: {
@@ -526,25 +601,51 @@ const fillStyle = StyleSheet.create({
 function TafsirMatchQuizScreen({ questions, onFinish }: { questions: TafsirMatchQuestion[]; onFinish: (score: number) => void }) {
   const [qIdx, setQIdx] = useState(0);
   const [score, setScore] = useState(0);
-  const [chosen, setChosen] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<Array<string | null>>(() => questions.map(() => null));
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const q = questions[qIdx];
   const total = questions.length;
+  const chosen = answers[qIdx];
+
+  useEffect(() => () => {
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+  }, []);
 
   const handleAnswer = (option: string) => {
     if (chosen) return;
-    setChosen(option);
     const isCorrect = option === q.correctTranslation;
+    const nextScore = score + (isCorrect ? 1 : 0);
+    setAnswers(prev => {
+      const next = [...prev];
+      next[qIdx] = option;
+      return next;
+    });
     if (isCorrect) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setScore(s => s + 1);
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
-    setTimeout(() => {
-      if (qIdx + 1 >= total) onFinish(score + (isCorrect ? 1 : 0));
-      else { setQIdx(i => i + 1); setChosen(null); }
-    }, 1100);
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = setTimeout(() => {
+      advanceTimer.current = null;
+      if (qIdx + 1 >= total) onFinish(nextScore);
+      else setQIdx(qIdx + 1);
+    }, 900);
+  };
+
+  const handlePrev = () => {
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = null;
+    setQIdx(i => Math.max(0, i - 1));
+  };
+  const handleNext = () => {
+    if (!chosen) return;
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = null;
+    if (qIdx + 1 >= total) onFinish(score);
+    else setQIdx(i => i + 1);
   };
 
   const s = followUpStyle;
@@ -556,6 +657,12 @@ function TafsirMatchQuizScreen({ questions, onFinish }: { questions: TafsirMatch
         </View>
         <Text style={s.progressLabel}>{qIdx + 1}/{total}</Text>
       </View>
+      <QuestionNav
+        canGoPrev={qIdx > 0}
+        canGoNext={!!chosen}
+        onPrev={handlePrev}
+        onNext={handleNext}
+      />
 
       <View style={s.card}>
         <Text style={s.surahLabel}>{q.surahName} · Ayah {q.ayahNumber}</Text>
@@ -572,7 +679,7 @@ function TafsirMatchQuizScreen({ questions, onFinish }: { questions: TafsirMatch
           let border = "#D6D3D1";
           let textColor = "#1A1A1A";
           if (chosen) {
-            if (opt === q.correctTranslation) { bg = "#DCFCE7"; border = "#16A34A"; textColor = "#166534"; }
+            if (opt === q.correctTranslation) { bg = "#1A1A1A"; border = "#1A1A1A"; textColor = "#FFFFFF"; }
             else if (opt === chosen) { bg = "#FEE2E2"; border = "#DC2626"; textColor = "#991B1B"; }
           }
           return (
@@ -642,7 +749,7 @@ const scoreStyle = StyleSheet.create({
 
 type QuizMode = null | "follow-up" | "fill-blank" | "tafsir-match";
 type AyahFilterMode = "by-ayah" | "by-surah";
-type AyahTagFilter = "all" | "selected" | "excluded";
+type AyahTagFilter = "all" | "selected";
 
 export default function MemorizationQuizScreen() {
   const insets = useSafeAreaInsets();
@@ -732,7 +839,6 @@ export default function MemorizationQuizScreen() {
     }
     if (filterMode === "by-ayah") {
       if (tagFilter === "selected") ayahs = ayahs.filter(ayah => selectedAyahIds.has(ayah.id) && !excludedAyahIds.has(ayah.id));
-      if (tagFilter === "excluded") ayahs = ayahs.filter(ayah => excludedAyahIds.has(ayah.id));
       if (ayahSearchQuery.trim()) {
         const q = ayahSearchQuery.toLowerCase();
         ayahs = ayahs.filter(a =>
@@ -748,9 +854,6 @@ export default function MemorizationQuizScreen() {
   const filteredSurahGroups = useMemo(() => {
     if (tagFilter === "selected") {
       return surahGroups.filter(g => g.ayahs.some(a => selectedAyahIds.has(a.id) && !excludedAyahIds.has(a.id)));
-    }
-    if (tagFilter === "excluded") {
-      return surahGroups.filter(g => g.ayahs.some(a => excludedAyahIds.has(a.id)));
     }
     return surahGroups;
   }, [surahGroups, tagFilter, selectedAyahIds, excludedAyahIds]);
@@ -771,13 +874,6 @@ export default function MemorizationQuizScreen() {
       surahs = surahs.filter(s => {
         if (SPECIAL_SURAH_NUMS.has(s.number) && !savedMap.has(s.number)) return selectedQuizSurahSet.has(s.number);
         return selectedQuizSurahSet.has(s.number) && savedMap.get(s.number)?.some(a => selectedAyahIds.has(a.id) && !excludedAyahIds.has(a.id));
-      });
-    }
-    if (tagFilter === "excluded") {
-      const savedMap = new Map(surahGroups.map(g => [g.surahNumber, g.ayahs]));
-      surahs = surahs.filter(s => {
-        if (SPECIAL_SURAH_NUMS.has(s.number) && !savedMap.has(s.number)) return !selectedQuizSurahSet.has(s.number);
-        return !selectedQuizSurahSet.has(s.number) || savedMap.get(s.number)?.some(a => excludedAyahIds.has(a.id));
       });
     }
     return surahs;
@@ -1197,7 +1293,7 @@ export default function MemorizationQuizScreen() {
           {/* Tag filter row */}
           <View style={s.tagRow2}>
             <View style={s.tagChipsRow}>
-              {([{ key: "all", label: "All" }, { key: "selected", label: "Selected" }, { key: "excluded", label: "Excluded" }] as const).map(item => (
+              {([{ key: "all", label: "All" }, { key: "selected", label: "Selected" }] as const).map(item => (
                 <Tag
                   key={item.key}
                   label={item.label}

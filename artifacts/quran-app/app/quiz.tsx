@@ -23,18 +23,33 @@ import { SURAH_DATA } from "@/constants/surahData";
 import { SwipeableRow } from "@/components/SwipeableRow";
 import { Pagination } from "@/components/Pagination";
 import { Tag } from "@/components/Tag";
+import { QuestionNav } from "@/components/QuestionNav";
 
-type QuizMode = "word-meaning" | "fill-blank";
+type QuizMode = "word-meaning";
 type QuizState = "selection" | "cards" | "answering" | "answered" | "finished" | "no-words";
 type SelectionMode = "by-ayah" | "by-words";
-type SelectionTagFilter = "all" | "selected" | "excluded";
+type SelectionTagFilter = "all" | "selected";
 
 const ITEMS_PER_PAGE = 20;
-const FALLBACK_ARABIC_OPTIONS = ["اللَّهِ", "رَبِّ", "الرَّحْمَٰنِ"];
+const FALLBACK_TRANSLATION_OPTIONS = [
+  "Mercy",
+  "Guidance",
+  "Prayer",
+  "Lord",
+  "Faith",
+  "Book",
+  "Truth",
+  "Light",
+  "Peace",
+  "Forgiveness",
+  "Patience",
+  "Knowledge",
+];
+const MAX_WORD_TRANSLATION_WORDS = 4;
+const MAX_WORD_TRANSLATION_CHARS = 36;
 
 interface QuizOption {
   text: string;
-  wordTranslation?: string; // per-option word-level translation (fill-blank mode)
 }
 
 interface QuizQuestion {
@@ -65,62 +80,36 @@ function ayahKey(ayah: Pick<SavedAyah, "surahNumber" | "ayahNumber">): string {
   return `${ayah.surahNumber}:${ayah.ayahNumber}`;
 }
 
+function sanitizeWordMeaning(translation?: string): string | null {
+  const cleaned = translation?.replace(/\s+/g, " ").trim();
+  if (!cleaned) return null;
+  const wordCount = cleaned.split(" ").filter(Boolean).length;
+  if (wordCount > MAX_WORD_TRANSLATION_WORDS || cleaned.length > MAX_WORD_TRANSLATION_CHARS) {
+    return null;
+  }
+  return cleaned;
+}
+
 function buildQuestions(words: SavedWord[]): QuizQuestion[] {
   if (words.length < 1) return [];
 
-  const wordsWithTranslation = words.filter(w => w.translation && w.translation.trim().length > 0);
   const selectedWords = shuffle(words).slice(0, 10);
 
-  // Build a lookup so fill-blank option buttons can show per-word translations
-  const arabicToTranslation = new Map<string, string>(
-    words.map(w => [w.arabic, w.translation])
-  );
-
-  let wordMeaningToggle = true;
-
   return selectedWords.map((word) => {
-    const hasTranslation = word.translation && word.translation.trim().length > 0;
-    const canDoWordMeaning = hasTranslation && wordsWithTranslation.length >= 2;
-
-    let mode: QuizMode;
-    if (!canDoWordMeaning) {
-      mode = "fill-blank";
-    } else {
-      mode = wordMeaningToggle ? "word-meaning" : "fill-blank";
-      wordMeaningToggle = !wordMeaningToggle;
+    const correctText = sanitizeWordMeaning(word.translation) ?? "Meaning not saved";
+    const otherTranslations = shuffle(
+      words
+        .map(w => sanitizeWordMeaning(w.translation))
+        .filter((translation): translation is string => !!translation && translation !== correctText)
+    ).slice(0, 3);
+    const fallbackTranslations = FALLBACK_TRANSLATION_OPTIONS.filter(t => t !== correctText && !otherTranslations.includes(t));
+    while (otherTranslations.length < 3) {
+      otherTranslations.push(fallbackTranslations.shift() ?? "Unknown meaning");
     }
-
-    if (mode === "word-meaning") {
-      // Options are English translations — no wordTranslation needed on option
-      const otherTranslations = shuffle(
-        wordsWithTranslation
-          .filter(w => w.translation !== word.translation)
-          .map(w => w.translation)
-      ).slice(0, 3);
-      while (otherTranslations.length < 3) {
-        otherTranslations.push("Unknown meaning");
-      }
-      const rawOptions = shuffle([word.translation, ...otherTranslations]);
-      const options: QuizOption[] = rawOptions.map(t => ({ text: t }));
-      const correctIndex = options.findIndex(o => o.text === word.translation);
-      return { word, options, correctIndex, mode };
-    } else {
-      // Options are Arabic words — attach their word-level translations
-      const otherArabics = shuffle(
-        words.filter(w => w.arabic !== word.arabic).map(w => w.arabic)
-      ).slice(0, 3);
-      const fallbackArabics = FALLBACK_ARABIC_OPTIONS.filter(a => a !== word.arabic && !otherArabics.includes(a));
-      while (otherArabics.length < 3) {
-        otherArabics.push(fallbackArabics.shift() ?? "ـ");
-      }
-      const rawOptions = shuffle([word.arabic, ...otherArabics]);
-      const options: QuizOption[] = rawOptions.map(a => ({
-        text: a,
-        wordTranslation: arabicToTranslation.get(a) ?? "",
-      }));
-      const correctIndex = options.findIndex(o => o.text === word.arabic);
-      return { word, options, correctIndex, mode };
-    }
+    const rawOptions = shuffle([correctText, ...otherTranslations]);
+    const options: QuizOption[] = rawOptions.map(t => ({ text: t }));
+    const correctIndex = options.findIndex(o => o.text === correctText);
+    return { word, options, correctIndex, mode: "word-meaning" as const };
   });
 }
 
@@ -522,8 +511,10 @@ export default function QuizScreen() {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [answers, setAnswers] = useState<Array<number | null>>([]);
   const [score, setScore] = useState(0);
   const [quizState, setQuizState] = useState<QuizState>("selection");
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [wordsManagerVisible, setWordsManagerVisible] = useState(false);
   const [selectionMode, setSelectionMode] = useState<SelectionMode>("by-ayah");
   const [tagFilter, setTagFilter] = useState<SelectionTagFilter>("all");
@@ -579,7 +570,6 @@ export default function QuizScreen() {
   const filteredAyahs = useMemo(() => {
     let ayahs = savedAyahs;
     if (tagFilter === "selected") ayahs = ayahs.filter(ayah => selectedAyahIds.has(ayah.id) && !excludedAyahIds.has(ayah.id));
-    if (tagFilter === "excluded") ayahs = ayahs.filter(ayah => excludedAyahIds.has(ayah.id));
     if (ayahSearchQuery.trim()) {
       const q = ayahSearchQuery.toLowerCase();
       ayahs = ayahs.filter(ayah =>
@@ -594,7 +584,6 @@ export default function QuizScreen() {
   const filteredWords = useMemo(() => {
     let words = standaloneWords;
     if (tagFilter === "selected") words = words.filter(word => selectedWordIds.has(word.id) && !excludedWordIds.has(word.id));
-    if (tagFilter === "excluded") words = words.filter(word => excludedWordIds.has(word.id));
     if (wordSearchQuery.trim()) {
       const q = wordSearchQuery.toLowerCase();
       words = words.filter(word =>
@@ -639,6 +628,8 @@ export default function QuizScreen() {
   const selectedItemCount = selectionMode === "by-ayah" ? selectedAyahCount : selectedStandaloneWordCount;
 
   const initQuiz = useCallback((words: SavedWord[]) => {
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = null;
     if (words.length < 1) { setQuizState("no-words"); return; }
     const q = buildQuestions(words);
     if (q.length === 0) { setQuizState("no-words"); return; }
@@ -646,8 +637,13 @@ export default function QuizScreen() {
     setQuestions(q);
     setCurrentIndex(0);
     setScore(0);
+    setAnswers(q.map(() => null));
     setSelectedAnswer(null);
     setQuizState("answering");
+  }, []);
+
+  useEffect(() => () => {
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
   }, []);
 
   const startQuiz = useCallback(() => {
@@ -745,28 +741,64 @@ export default function QuizScreen() {
   }, [filteredAyahs, filteredWords, selectionMode]);
 
   const handleAnswer = useCallback((idx: number) => {
-    if (quizState !== "answering") return;
-    setSelectedAnswer(idx);
-    setQuizState("answered");
+    if (quizState !== "answering" || selectedAnswer !== null) return;
     const isCorrect = idx === questions[currentIndex].correctIndex;
+    const nextScore = score + (isCorrect ? 1 : 0);
+    setSelectedAnswer(idx);
+    setAnswers(prev => {
+      const next = [...prev];
+      next[currentIndex] = idx;
+      return next;
+    });
+    setQuizState("answered");
     if (isCorrect) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setScore(prev => prev + 1);
+      setScore(nextScore);
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
-  }, [quizState, questions, currentIndex]);
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = setTimeout(() => {
+      advanceTimer.current = null;
+      if (currentIndex + 1 >= questions.length) {
+        setQuizState("finished");
+        recordQuizCompletion();
+      } else {
+        const nextIndex = currentIndex + 1;
+        const nextAnswer = answers[nextIndex] ?? null;
+        setCurrentIndex(nextIndex);
+        setSelectedAnswer(nextAnswer);
+        setQuizState(nextAnswer === null ? "answering" : "answered");
+      }
+    }, 900);
+  }, [answers, currentIndex, questions, quizState, recordQuizCompletion, score, selectedAnswer]);
 
   const handleNext = useCallback(() => {
+    if (selectedAnswer === null) return;
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = null;
     if (currentIndex + 1 >= questions.length) {
       setQuizState("finished");
       recordQuizCompletion();
     } else {
-      setCurrentIndex(prev => prev + 1);
-      setSelectedAnswer(null);
-      setQuizState("answering");
+      const nextIndex = currentIndex + 1;
+      const nextAnswer = answers[nextIndex] ?? null;
+      setCurrentIndex(nextIndex);
+      setSelectedAnswer(nextAnswer);
+      setQuizState(nextAnswer === null ? "answering" : "answered");
     }
-  }, [currentIndex, questions.length]);
+  }, [answers, currentIndex, questions.length, recordQuizCompletion, selectedAnswer]);
+
+  const handlePrev = useCallback(() => {
+    if (currentIndex === 0) return;
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = null;
+    const prevIndex = currentIndex - 1;
+    const prevAnswer = answers[prevIndex] ?? null;
+    setCurrentIndex(prevIndex);
+    setSelectedAnswer(prevAnswer);
+    setQuizState(prevAnswer === null ? "answering" : "answered");
+  }, [answers, currentIndex]);
 
   const handleShare = useCallback(async () => {
     const wordList = quizWords
@@ -880,7 +912,7 @@ export default function QuizScreen() {
 
           <View style={s.tagRow2}>
             <View style={s.tagChipsRow}>
-              {([{ key: "all", label: "All" }, { key: "selected", label: "Selected" }, { key: "excluded", label: "Excluded" }] as const).map(item => (
+              {([{ key: "all", label: "All" }, { key: "selected", label: "Selected" }] as const).map(item => (
                 <Tag
                   key={item.key}
                   label={item.label}
@@ -1124,9 +1156,6 @@ export default function QuizScreen() {
     );
   }
 
-  const isWordMeaning = currentQ.mode === "word-meaning";
-  const isFillBlank = currentQ.mode === "fill-blank";
-
   return (
     <View style={[s.container, { paddingTop: topPad }]}>
       <View style={s.header}>
@@ -1142,37 +1171,22 @@ export default function QuizScreen() {
       <View style={s.quizProgressBar}>
         <View style={[s.quizProgressFill, { width: `${progress * 100}%` as any }]} />
       </View>
+      <View style={s.questionNavRowTop}>
+        <QuestionNav
+          canGoPrev={currentIndex > 0}
+          canGoNext={selectedAnswer !== null}
+          onPrev={handlePrev}
+          onNext={handleNext}
+        />
+      </View>
 
       <ScrollView contentContainerStyle={s.quizContent} showsVerticalScrollIndicator={false}>
         <View style={s.questionCard}>
-          <View style={s.modeBadge}>
-            <Ionicons
-              name={isWordMeaning ? "help-circle" : "book-outline"}
-              size={14}
-              color={colors.primary}
-            />
-            <Text style={s.modeBadgeText}>
-              {isWordMeaning ? "What does this word mean?" : "Fill in the blank"}
-            </Text>
-          </View>
-
-          {/* Word card: Arabic large, English meaning below — same layout for both modes */}
+          <Text style={s.questionPrompt}>What does this word mean?</Text>
           <Text style={s.arabicQuestion}>{currentQ.word.arabic}</Text>
-          {isWordMeaning ? (
-            <Text style={s.questionSub}>
-              {SURAH_DATA[currentQ.word.surahNumber - 1]?.englishName ?? `Surah ${currentQ.word.surahNumber}`} • Ayah {currentQ.word.ayahNumber}
-            </Text>
-          ) : (
-            <>
-              {currentQ.word.translation ? (
-                <Text style={s.wordMeaning}>{currentQ.word.translation}</Text>
-              ) : null}
-              <Text style={s.questionSub}>
-                {SURAH_DATA[currentQ.word.surahNumber - 1]?.englishName ?? `Surah ${currentQ.word.surahNumber}`} • Ayah {currentQ.word.ayahNumber}
-              </Text>
-              <Text style={s.fillBlankInstruct}>Select the matching Arabic word</Text>
-            </>
-          )}
+          <Text style={s.questionSub}>
+            {SURAH_DATA[currentQ.word.surahNumber - 1]?.englishName ?? `Surah ${currentQ.word.surahNumber}`} • Ayah {currentQ.word.ayahNumber}
+          </Text>
         </View>
 
         <View style={s.optionsGrid}>
@@ -1184,10 +1198,9 @@ export default function QuizScreen() {
             let bgColor = colors.card;
             let borderColor = colors.border;
             let textColor = colors.foreground;
-            let subColor = colors.mutedForeground;
 
             if (showResult) {
-              if (isCorrect) { bgColor = colors.primary; borderColor = colors.primary; textColor = colors.primaryForeground; subColor = "rgba(255,255,255,0.75)"; }
+              if (isCorrect) { bgColor = colors.primary; borderColor = colors.primary; textColor = colors.primaryForeground; }
               else if (isSelected) { bgColor = "#FFF0F0"; borderColor = colors.destructive; textColor = colors.destructive; }
             } else if (isSelected) {
               bgColor = colors.secondary; borderColor = colors.primary;
@@ -1196,24 +1209,18 @@ export default function QuizScreen() {
             return (
               <TouchableOpacity
                 key={idx}
-                style={[s.optionBtn, { backgroundColor: bgColor, borderColor }, isFillBlank && s.optionBtnFillBlank]}
+                style={[s.optionBtn, { backgroundColor: bgColor, borderColor }]}
                 onPress={() => handleAnswer(idx)}
                 activeOpacity={0.8}
                 disabled={quizState === "answered"}
               >
                 <View style={s.optionInner}>
                   <Text style={[
-                    isFillBlank ? s.optionTextArabic : s.optionText,
+                    s.optionText,
                     { color: textColor },
                   ]}>
                     {option.text}
                   </Text>
-                  {/* Word-level translation shown on Arabic options in fill-blank mode */}
-                  {isFillBlank && option.wordTranslation ? (
-                    <Text style={[s.optionWordTrans, { color: subColor }]} numberOfLines={1}>
-                      {option.wordTranslation}
-                    </Text>
-                  ) : null}
                 </View>
                 {showResult && isCorrect && (
                   <Ionicons name="checkmark-circle" size={18} color={colors.primaryForeground} />
@@ -1225,15 +1232,6 @@ export default function QuizScreen() {
             );
           })}
         </View>
-
-        {quizState === "answered" && (
-          <TouchableOpacity style={s.nextBtn} onPress={handleNext} activeOpacity={0.85}>
-            <Text style={s.nextBtnText}>
-              {currentIndex + 1 >= questions.length ? "See Results" : "Next"}
-            </Text>
-            <Feather name="arrow-right" size={16} color={colors.primaryForeground} />
-          </TouchableOpacity>
-        )}
       </ScrollView>
 
       <WordsManagerModal
@@ -1268,6 +1266,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     quizProgressBar: { height: 3, backgroundColor: colors.border },
     quizProgressFill: { height: "100%", backgroundColor: colors.primary },
       quizContent: { padding: 8, gap: 8, paddingBottom: 16, flexGrow: 1 },
+    questionPrompt: { fontSize: 14, color: colors.mutedForeground, fontFamily: "Inter_600SemiBold", marginBottom: 12 },
     questionCard: {
       backgroundColor: colors.card,
       borderRadius: 18,
@@ -1360,17 +1359,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderColor: colors.destructive,
     },
     removeWordBtnText: { fontSize: 13, color: colors.destructive, fontFamily: "Inter_400Regular" },
-    nextBtn: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      backgroundColor: colors.primary,
-      padding: 16,
-      borderRadius: 14,
-    },
-    nextBtnText: { fontSize: 16, fontWeight: "700", color: colors.primaryForeground, fontFamily: "Inter_700Bold" },
+    questionNavRowTop: { paddingHorizontal: 8, paddingTop: 8, paddingBottom: 4 },
     resultsContent: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 16 },
     scoreCircle: { width: 140, height: 140, borderRadius: 70, borderWidth: 6, alignItems: "center", justifyContent: "center", marginBottom: 8 },
     scoreNumber: { fontSize: 40, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
