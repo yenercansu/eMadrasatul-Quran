@@ -1428,7 +1428,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     goal, memorizationGoal, isAyahMemorized, toggleAyahMemorized,
   } = useQuran();
 
-  const { audioState, playAyah, playRange, playSection, playUstadhMode, playWordByWord, pauseAudio, resumeAudio, stopAudio, setPlaybackRate, playNextAyah, playPrevAyah, setOnNextAyah, setOnPlanFinish, abortCurrentPlan } = useAudio();
+  const { audioState, playAyah, playRange, playSection, playUstadhMode, playWordByWord, pauseAudio, resumeAudio, stopAudio, setPlaybackRate, playNextAyah, playPrevAyah, setOnNextAyah, setOnPlanFinish } = useAudio();
 
   // Keep planModeRef current so handleConfigChange never captures stale state
   useEffect(() => { planModeRef.current = audioState.planMode; }, [audioState.planMode]);
@@ -1668,15 +1668,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
   const handleConfigChange = useCallback((newConfig: PlaybackConfig) => {
     playbackConfigRef.current = newConfig;
     setPlaybackConfig(newConfig);
-
-    if (!planModeRef.current) return; // not playing — just save config
-
-    // Any change while playing: immediately kill current audio and restart
-    // from the new config. This handles range changes, mode changes, and
-    // repeat count changes all uniformly (no partial-cycle artifacts).
-    abortCurrentPlan();
-    triggerPlayback(newConfig);
-  }, [abortCurrentPlan, triggerPlayback]);
+  }, []);
 
   const handleTafsirPress = useCallback(() => {
     if (!settings.showTafsir) updateSettings({ showTafsir: true });
