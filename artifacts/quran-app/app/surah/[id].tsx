@@ -36,6 +36,7 @@ import { FullScreenPage } from "@/components/FullScreenPage";
 import { PlayRangeSheet } from "@/components/PlayRangeSheet";
 import { RepeatSectionSheet } from "@/components/RepeatSectionSheet";
 import { CancelRepeatTag } from "@/components/CancelRepeatTag";
+import { CancelModeTag } from "@/components/CancelModeTag";
 import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -110,8 +111,10 @@ interface AyahCardProps {
   romanFontSize: number;
   isOnRepeat: boolean;
   repeatCount: number;
+  isUstadhMode: boolean;
   onSave: (ayah: ApiAyah) => void;
   onCancelRepeat: (ayah: ApiAyah) => void;
+  onCancelUstadh: () => void;
   onToggleMemorized: (ayah: ApiAyah) => void;
   onPress: () => void;
   onWordLongPress?: (word: string, ayah: ApiAyah) => void;
@@ -122,11 +125,11 @@ const TAP_THRESHOLD = 8;
 function SwipeableAyahCard({
   ayah, surahNum, isPlaying, isRangeSelected,
   showMemorizedToggle, isMemorized,
-  isOnRepeat, repeatCount,
+  isOnRepeat, repeatCount, isUstadhMode,
   translations, transliterationText,
   showTransliteration,
   colorCoding, showBasmala, arabicFontSize, romanFontSize,
-  onSave, onCancelRepeat, onToggleMemorized, onPress, onWordLongPress,
+  onSave, onCancelRepeat, onCancelUstadh, onToggleMemorized, onPress, onWordLongPress,
 }: AyahCardProps) {
   const pan = useRef(new Animated.Value(0)).current;
   const gestureStarted = useRef(false);
@@ -198,12 +201,17 @@ function SwipeableAyahCard({
           style={({ pressed }) => [cs.card, { backgroundColor: cardBg, opacity: pressed ? 0.95 : 1 }]}
         >
           <View style={cs.topRow}>
-            {isOnRepeat && (
+            {isOnRepeat ? (
               <CancelRepeatTag
                 repeatCount={repeatCount}
                 onCancel={() => onCancelRepeat(ayah)}
               />
-            )}
+            ) : isUstadhMode ? (
+              <CancelModeTag
+                label="cancel ustadh mode"
+                onCancel={onCancelUstadh}
+              />
+            ) : null}
             <View style={cs.numBadge}>
               <Text style={cs.numText}>{surahNum}:{ayah.numberInSurah}</Text>
             </View>
@@ -1701,7 +1709,8 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             renderItem={({ item }) => {
               const isPlaying = audioState.currentSurah === surahNum && audioState.currentAyah === item.numberInSurah;
               const repeatVal = ayahRepeatCounts[item.numberInSurah];
-              const isOnRepeat = (repeatVal != null && repeatVal > 1) || (isPlaying && audioState.repeatCount > 1);
+              const isOnRepeat = (repeatVal != null && repeatVal > 1) || (isPlaying && audioState.repeatCount > 1 && audioState.planMode !== "ustadh");
+              const isUstadhMode = audioState.planMode === "ustadh" && isPlaying;
               const repeatCount = repeatVal ?? audioState.repeatCount;
               const isRangeSelected = !!audioState.range
                 && surahNum >= audioState.range.startSurah
@@ -1728,6 +1737,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
                   isPlaying={isPlaying}
                   isOnRepeat={!!isOnRepeat}
                   repeatCount={repeatCount}
+                  isUstadhMode={isUstadhMode}
                   isRangeSelected={isRangeSelected && !isPlaying}
                   showMemorizedToggle={isInMemorizationGoal}
                   isMemorized={isAyahMemorized(surahNum, item.numberInSurah)}
@@ -1740,6 +1750,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
                   romanFontSize={accountSettings.romanFontSize ?? 14}
                   onSave={handleSaveAyah}
                   onCancelRepeat={handleCancelRepeat}
+                  onCancelUstadh={stopAudio}
                   onToggleMemorized={(ayah) => toggleAyahMemorized(surahNum, ayah.numberInSurah)}
                   onPress={safeToggleMenu}
                   onWordLongPress={handleWordLongPress}
