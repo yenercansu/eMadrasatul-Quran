@@ -1868,7 +1868,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); updateSettings({ mushafMode: false }); }}
               activeOpacity={0.85}
             >
-              <Text style={[scr.modeBtnText, !settings.mushafMode && scr.modeBtnTextActive]}>Normal</Text>
+              <Text style={[scr.modeBtnText, !settings.mushafMode && scr.modeBtnTextActive]}>Verses</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[scr.modeBtn, settings.mushafMode && scr.modeBtnActive]}
