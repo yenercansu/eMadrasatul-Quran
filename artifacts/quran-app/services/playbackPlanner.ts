@@ -117,9 +117,12 @@ async function resolveAudioSource(options: {
 }): Promise<{ sourceUri: string; remoteUrl: string }> {
   const verseKey = getVerseKey(options.surahNumber, options.ayahNumber);
   const local = await getCachedAyahAudioUri(verseKey, options.reciterId);
-  const remoteUrl = resolveMadeenanAssetUrl(options.candidateUrl)
-    ?? await getAudioUrl(options.surahNumber, options.ayahNumber, options.reciterId);
-  return { sourceUri: local ?? remoteUrl, remoteUrl };
+  const candidateUrl = resolveMadeenanAssetUrl(options.candidateUrl) ?? null;
+  if (local) {
+    return { sourceUri: local, remoteUrl: candidateUrl ?? local };
+  }
+  const remoteUrl = candidateUrl ?? await getAudioUrl(options.surahNumber, options.ayahNumber, options.reciterId);
+  return { sourceUri: remoteUrl, remoteUrl };
 }
 
 async function normalizeTimingStep(options: {
@@ -390,16 +393,18 @@ export async function createRangePlaybackPlan(options: {
     ),
   );
 
-  createPlaybackRange({
-    chapterNumber: options.surahNumber,
-    reciterId: options.reciterId,
-    startAyah: options.startAyah,
-    endAyah: options.endAyah,
-    startWord: options.startWord,
-    endWord: options.endWord,
-    repeatCount: String(options.repeatCount),
-    playbackRate: options.playbackRate,
-  }).catch(() => null);
+  if (options.repeatCount > 1) {
+    createPlaybackRange({
+      chapterNumber: options.surahNumber,
+      reciterId: options.reciterId,
+      startAyah: options.startAyah,
+      endAyah: options.endAyah,
+      startWord: options.startWord,
+      endWord: options.endWord,
+      repeatCount: String(options.repeatCount),
+      playbackRate: options.playbackRate,
+    }).catch(() => null);
+  }
 
   return {
     id: `range:${options.reciterId}:${options.surahNumber}:${options.startAyah}-${options.endAyah}`,

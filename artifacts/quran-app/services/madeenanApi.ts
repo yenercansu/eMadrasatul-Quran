@@ -457,8 +457,21 @@ export const getChapterVerses = (
 export const getVerse = (verseKey: string) => apiRequest<QuranVerse>(`/quran/verses/${verseKey}`);
 export const getQuranPage = (params: QuranPageParams) =>
   apiRequest<QuranPage>("/quran/page", { query: params as unknown as Record<string, QueryValue> });
-export const getAudioSegments = (params: { chapterNumber: number; reciterId: number }) =>
-  apiRequest<AudioSegmentsResponse>("/quran/audio/segments", { query: params });
+const audioSegmentsMemoryCache = new Map<string, AudioSegmentsResponse>();
+const audioSegmentsInFlight = new Map<string, Promise<AudioSegmentsResponse>>();
+
+export function getAudioSegments(params: { chapterNumber: number; reciterId: number }): Promise<AudioSegmentsResponse> {
+  const key = `${params.chapterNumber}:${params.reciterId}`;
+  const mem = audioSegmentsMemoryCache.get(key);
+  if (mem) return Promise.resolve(mem);
+  const inflight = audioSegmentsInFlight.get(key);
+  if (inflight) return inflight;
+  const promise = apiRequest<AudioSegmentsResponse>("/quran/audio/segments", { query: params })
+    .then((data) => { audioSegmentsMemoryCache.set(key, data); return data; })
+    .finally(() => audioSegmentsInFlight.delete(key));
+  audioSegmentsInFlight.set(key, promise);
+  return promise;
+}
 export const createPlaybackRange = (body: PlaybackRangeBody) =>
   apiRequest<PlaybackPlanResponse>("/quran/playback/range", { method: "POST", body });
 export const createUstadhModePlan = (body: UstadhModeBody) =>
@@ -585,16 +598,38 @@ export async function setCachedQuranPage(params: QuranPageParams, data: QuranPag
   } catch {}
 }
 
+// In-memory cache: survives within a session, no AsyncStorage overhead on repeated access.
+const pageMemoryCache = new Map<string, QuranPage>();
+// In-flight deduplication: multiple callers for the same key share one network request.
+const pageInFlight = new Map<string, Promise<QuranPage>>();
+
 export async function getQuranPageWithCache(params: QuranPageParams): Promise<QuranPage> {
-  try {
-    const data = await getQuranPage(params);
-    await setCachedQuranPage(params, data);
-    return data;
-  } catch (error) {
+  const key = getQuranPageCacheKey(params);
+
+  const mem = pageMemoryCache.get(key);
+  if (mem) return mem;
+
+  const inflight = pageInFlight.get(key);
+  if (inflight) return inflight;
+
+  const promise = (async () => {
     const cached = await getCachedQuranPage(params);
-    if (cached) return cached;
-    throw error;
-  }
+    if (cached) {
+      pageMemoryCache.set(key, cached);
+      return cached;
+    }
+    try {
+      const data = await getQuranPage(params);
+      pageMemoryCache.set(key, data);
+      await setCachedQuranPage(params, data);
+      return data;
+    } catch (error) {
+      throw error;
+    }
+  })().finally(() => pageInFlight.delete(key));
+
+  pageInFlight.set(key, promise);
+  return promise;
 }
 
 export function getFirstAudioUrl(page: QuranPage, verseKey?: string): string | null {

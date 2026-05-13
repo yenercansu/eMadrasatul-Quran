@@ -1282,7 +1282,7 @@ const DEFAULT_PLAYBACK_CONFIG: PlaybackConfig = {
   mode: "repetition",
   startAyah: 1,
   endAyah: 1,
-  ayahRepeat: 3,
+  ayahRepeat: 1,
   rangeRepeat: 1,
   wordRepeat: 3,
 };
@@ -1505,6 +1505,15 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       });
 
       setOnNextAyah((surahN, ayahN) => {
+        const cfg = playbackConfigRef.current;
+        // In 1x/1x regular play mode, stop advancing past the configured endAyah.
+        if (
+          surahN === surahNum &&
+          cfg.mode === "repetition" &&
+          cfg.ayahRepeat === 1 &&
+          cfg.rangeRepeat === 1 &&
+          ayahN > cfg.endAyah
+        ) return;
         const totalAyahs = SURAH_DATA[surahN - 1]?.ayahCount ?? main.arabic.ayahs.length;
         playAyah(surahN, ayahN, totalAyahs, settings.repeatCount);
         recordAyahRead(surahN, ayahN);
@@ -1645,12 +1654,16 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       playUstadhMode(surahNum, rangeAyahs);
     } else if (cfg.mode === "wordByWord") {
       playWordByWord(surahNum, cfg.startAyah, cfg.endAyah, cfg.wordRepeat);
+    } else if (cfg.ayahRepeat === 1 && cfg.rangeRepeat === 1) {
+      // 1x/1x = regular sequential play; use simple ayah-by-ayah advance.
+      // onNextAyah enforces the endAyah boundary via playbackConfigRef.
+      if (arabic) playAyah(surahNum, cfg.startAyah, arabic.ayahs.length, 1);
     } else {
       playRange({ startSurah: surahNum, startAyah: cfg.startAyah, endSurah: surahNum, endAyah: cfg.endAyah }, cfg.ayahRepeat, cfg.rangeRepeat);
     }
     recordAyahRead(surahNum, cfg.startAyah);
     saveProgress({ surahNumber: surahNum, ayahNumber: cfg.startAyah, ayahNumberInSurah: cfg.startAyah, surahName: arabic?.englishName ?? "" });
-  }, [surahNum, playUstadhMode, playWordByWord, playRange, recordAyahRead, saveProgress, arabic]);
+  }, [surahNum, playUstadhMode, playWordByWord, playAyah, playRange, recordAyahRead, saveProgress, arabic]);
 
   const handleConfigChange = useCallback((newConfig: PlaybackConfig) => {
     playbackConfigRef.current = newConfig;
@@ -2055,10 +2068,16 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             firstPageAyah={pageAyahs[0]?.numberInSurah ?? 1}
             onPlayFromStart={() => {
               if (!arabic) return;
-              const firstAyah = pageAyahs[0]?.numberInSurah ?? 1;
-              playAyah(surahNum, firstAyah, arabic.ayahs.length, settings.repeatCount);
-              recordAyahRead(surahNum, firstAyah);
-              saveProgress({ surahNumber: surahNum, ayahNumber: firstAyah, ayahNumberInSurah: firstAyah, surahName: arabic.englishName });
+              const cfg = playbackConfigRef.current;
+              const startAyah = cfg.startAyah;
+              const targetPage = Math.ceil(startAyah / AYAHS_PER_PAGE);
+              setCurrentPage(targetPage);
+              setTimeout(() => {
+                try {
+                  listRef.current?.scrollToIndex({ index: (startAyah - 1) % AYAHS_PER_PAGE, animated: true });
+                } catch {}
+              }, 120);
+              triggerPlayback(cfg);
             }}
             onPlay={handlePlayOrResume}
             onPause={pauseAudio}
