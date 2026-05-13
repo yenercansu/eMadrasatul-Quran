@@ -408,6 +408,43 @@ export async function createRangePlaybackPlan(options: {
   };
 }
 
+export async function createWordByWordRangePlaybackPlan(options: {
+  surahNumber: number;
+  reciterId: number;
+  startAyah: number;
+  endAyah: number;
+  wordRepeat: number;
+  playbackRate: number;
+}): Promise<PlaybackPlan> {
+  const steps: PlaybackStep[] = [];
+
+  for (let ayahNumber = options.startAyah; ayahNumber <= options.endAyah; ayahNumber++) {
+    const words = await fetchWordTranslations(options.surahNumber, ayahNumber).catch(() => []);
+    const playableWords = words.filter((w) => w.audioUrl).sort((a, b) => a.position - b.position);
+
+    for (const word of playableWords) {
+      const wordSteps = await createWordAudioSteps({
+        surahNumber: options.surahNumber,
+        ayahNumber,
+        startWord: word.position,
+        endWord: word.position,
+        repeatCount: options.wordRepeat,
+        playbackRate: options.playbackRate,
+      });
+      steps.push(...wordSteps.map((step, i) => ({
+        ...step,
+        id: `wbw:${options.surahNumber}:${ayahNumber}:${word.position}:${i}`,
+      })));
+    }
+  }
+
+  return {
+    id: `wbw:${options.reciterId}:${options.surahNumber}:${options.startAyah}-${options.endAyah}`,
+    mode: "word",
+    steps,
+  };
+}
+
 export async function createUstadhPlaybackPlan(options: {
   surahNumber: number;
   reciterId: number;

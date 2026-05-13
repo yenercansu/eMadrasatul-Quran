@@ -709,9 +709,8 @@ function EditSheet({
   settings, updateSettings,
   playbackRate, onSpeedChange,
   surahName, totalAyahs,
-  defaultStartAyah, defaultEndAyah,
+  config, onConfigChange, onPlay,
   onDownloadFullTarget, offlineStatusLabel,
-  onPlayRange,
 }: {
   visible: boolean; onClose: () => void;
   settings: { selectedReciter: string };
@@ -719,32 +718,27 @@ function EditSheet({
   playbackRate: number; onSpeedChange: (r: number) => void;
   surahName: string;
   totalAyahs: number;
-  defaultStartAyah: number;
-  defaultEndAyah: number;
+  config: PlaybackConfig;
+  onConfigChange: (config: PlaybackConfig) => void;
+  onPlay: () => void;
   onDownloadFullTarget: () => void;
   offlineStatusLabel: string;
-  onPlayRange: (params: { startAyah: number; endAyah: number; mode: "repetition" | "ustadh" | "wordByWord"; ayahRepeat: number; rangeRepeat: number }) => void;
 }) {
-  const [startAyah, setStartAyah] = useState(defaultStartAyah);
-  const [endAyah, setEndAyah] = useState(defaultEndAyah);
-  const [listeningMode, setListeningMode] = useState<"repetition" | "ustadh" | "wordByWord">("repetition");
-  const [ayahRepeat, setAyahRepeat] = useState(3);
-  const [rangeRepeat, setRangeRepeat] = useState(1);
   const [recentReciterIds, setRecentReciterIds] = useState<string[]>([]);
   const [pickerTarget, setPickerTarget] = useState<"start" | "end" | null>(null);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (!visible) return;
-    setStartAyah(defaultStartAyah);
-    setEndAyah(Math.max(defaultEndAyah, defaultStartAyah));
     AsyncStorage.getItem(RECENT_RECITERS_KEY).then((v) => {
       setRecentReciterIds(v ? JSON.parse(v) : []);
     }).catch(() => {});
-  }, [visible, defaultStartAyah, defaultEndAyah]);
+  }, [visible]);
+
+  const upd = (partial: Partial<PlaybackConfig>) => onConfigChange({ ...config, ...partial });
 
   const handlePlay = () => {
-    onPlayRange({ startAyah, endAyah, mode: listeningMode, ayahRepeat, rangeRepeat });
+    onPlay();
     onClose();
   };
 
@@ -765,12 +759,12 @@ function EditSheet({
             <SettingsCard>
               <SettingsRow
                 label="Start Ayah"
-                value={`${surahName} ${startAyah}`}
+                value={`${surahName} ${config.startAyah}`}
                 onPress={() => setPickerTarget("start")}
               />
               <SettingsRow
                 label="End Ayah"
-                value={`${surahName} ${endAyah}`}
+                value={`${surahName} ${config.endAyah}`}
                 onPress={() => setPickerTarget("end")}
                 last
               />
@@ -782,18 +776,18 @@ function EditSheet({
               {modes.map((m) => (
                 <TouchableOpacity
                   key={m.id}
-                  style={[es.modeCard, listeningMode === m.id && es.modeCardActive]}
-                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setListeningMode(m.id); }}
+                  style={[es.modeCard, config.mode === m.id && es.modeCardActive]}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); upd({ mode: m.id }); }}
                   activeOpacity={0.75}
                 >
-                  <Feather name={m.icon} size={20} color={listeningMode === m.id ? "#FFFFFF" : "#4A4A4A"} />
-                  <Text style={[es.modeCardText, listeningMode === m.id && es.modeCardTextActive]}>{m.label}</Text>
+                  <Feather name={m.icon} size={20} color={config.mode === m.id ? "#FFFFFF" : "#4A4A4A"} />
+                  <Text style={[es.modeCardText, config.mode === m.id && es.modeCardTextActive]}>{m.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            {/* ── Repetition Controls (Repetition mode only) ── */}
-            {listeningMode === "repetition" && (
+            {/* ── Mode-specific controls ── */}
+            {config.mode === "repetition" && (
               <>
                 <Text style={es.secHeader}>Repetition</Text>
                 <SettingsCard>
@@ -804,11 +798,11 @@ function EditSheet({
                         {([1, 3, 5, 10, 999] as number[]).map((v) => (
                           <TouchableOpacity
                             key={v}
-                            style={[es.seg, ayahRepeat === v && es.segActive]}
-                            onPress={() => setAyahRepeat(v)}
+                            style={[es.seg, config.ayahRepeat === v && es.segActive]}
+                            onPress={() => upd({ ayahRepeat: v })}
                             activeOpacity={0.8}
                           >
-                            <Text style={[es.segText, ayahRepeat === v && es.segTextActive]}>
+                            <Text style={[es.segText, config.ayahRepeat === v && es.segTextActive]}>
                               {v === 999 ? "∞" : `${v}x`}
                             </Text>
                           </TouchableOpacity>
@@ -824,12 +818,45 @@ function EditSheet({
                         {([1, 3, 5, 10, 999] as number[]).map((v) => (
                           <TouchableOpacity
                             key={v}
-                            style={[es.seg, rangeRepeat === v && es.segActive]}
-                            onPress={() => setRangeRepeat(v)}
+                            style={[es.seg, config.rangeRepeat === v && es.segActive]}
+                            onPress={() => upd({ rangeRepeat: v })}
                             activeOpacity={0.8}
                           >
-                            <Text style={[es.segText, rangeRepeat === v && es.segTextActive]}>
+                            <Text style={[es.segText, config.rangeRepeat === v && es.segTextActive]}>
                               {v === 999 ? "∞" : `${v}x`}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    }
+                  />
+                </SettingsCard>
+              </>
+            )}
+            {config.mode === "ustadh" && (
+              <View style={es.modeHint}>
+                <Text style={es.modeHintText}>Ustadh Mode uses its own repetition pattern.</Text>
+              </View>
+            )}
+            {config.mode === "wordByWord" && (
+              <>
+                <Text style={es.secHeader}>Word Repeat</Text>
+                <Text style={es.secSubtitle}>each word repeats before moving to next</Text>
+                <SettingsCard>
+                  <SettingsRow
+                    label="Word Repeat"
+                    last
+                    right={
+                      <View style={es.segRow}>
+                        {([1, 3, 5, 10] as number[]).map((v) => (
+                          <TouchableOpacity
+                            key={v}
+                            style={[es.seg, config.wordRepeat === v && es.segActive]}
+                            onPress={() => upd({ wordRepeat: v })}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={[es.segText, config.wordRepeat === v && es.segTextActive]}>
+                              {`${v}x`}
                             </Text>
                           </TouchableOpacity>
                         ))}
@@ -906,18 +933,16 @@ function EditSheet({
           onClose={() => setPickerTarget(null)}
         >
           {Array.from({ length: totalAyahs }, (_, i) => i + 1).map((n) => {
-            const sel = pickerTarget === "start" ? startAyah === n : endAyah === n;
+            const sel = pickerTarget === "start" ? config.startAyah === n : config.endAyah === n;
             return (
               <TouchableOpacity
                 key={n}
                 style={[es.pickerRow, sel && es.pickerRowSel]}
                 onPress={() => {
                   if (pickerTarget === "start") {
-                    setStartAyah(n);
-                    if (n > endAyah) setEndAyah(n);
+                    upd({ startAyah: n, endAyah: Math.max(config.endAyah, n) });
                   } else {
-                    setEndAyah(n);
-                    if (n < startAyah) setStartAyah(n);
+                    upd({ startAyah: Math.min(config.startAyah, n), endAyah: n });
                   }
                   setPickerTarget(null);
                 }}
@@ -982,10 +1007,37 @@ const es = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
   },
   segActive: {
     backgroundColor: "#1A1A1A",
+    borderColor: "#1A1A1A",
+  },
+  modeHint: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#F8F7F5",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#EBEBEB",
+  },
+  modeHintText: {
+    fontSize: 13,
+    color: "#9A9A9A",
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+  secSubtitle: {
+    fontSize: 12,
+    color: "#AAAAAA",
+    fontFamily: "Inter_400Regular",
+    paddingHorizontal: 20,
+    marginTop: -4,
+    marginBottom: 8,
   },
   segText: {
     fontSize: 13,
@@ -1216,6 +1268,25 @@ const ms = StyleSheet.create({
   marker: { fontSize: 18, color: "#8B6914" },
 });
 
+// ─── Playback config (lifted out of EditSheet so it survives sheet close) ────
+type PlaybackConfig = {
+  mode: "repetition" | "ustadh" | "wordByWord";
+  startAyah: number;
+  endAyah: number;
+  ayahRepeat: number;
+  rangeRepeat: number;
+  wordRepeat: number;
+};
+
+const DEFAULT_PLAYBACK_CONFIG: PlaybackConfig = {
+  mode: "repetition",
+  startAyah: 1,
+  endAyah: 1,
+  ayahRepeat: 3,
+  rangeRepeat: 1,
+  wordRepeat: 3,
+};
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function SurahScreen() {
   const colors = useColors();
@@ -1233,7 +1304,9 @@ export default function SurahScreen() {
   const [menuVisible, setMenuVisible] = useState(true);
   const [bottomBarHeight, setBottomBarHeight] = useState(160);
   const [editSheetVisible, setEditSheetVisible] = useState(false);
-  const [lastEditRange, setLastEditRange] = useState<{ start: number; end: number } | null>(null);
+  const [playbackConfig, setPlaybackConfig] = useState<PlaybackConfig>(DEFAULT_PLAYBACK_CONFIG);
+  const playbackConfigRef = useRef<PlaybackConfig>(DEFAULT_PLAYBACK_CONFIG);
+  const planModeRef = useRef<"ayah" | "section" | "word" | "range" | "ustadh" | null>(null);
   const [meaningPanelVisible, setMeaningPanelVisible] = useState(false);
   const [tafsirModalVisible, setTafsirModalVisible] = useState(false);
   const [rangeVisible, setRangeVisible] = useState(false);
@@ -1355,7 +1428,10 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     goal, memorizationGoal, isAyahMemorized, toggleAyahMemorized,
   } = useQuran();
 
-  const { audioState, playAyah, playRange, playSection, playUstadhMode, pauseAudio, resumeAudio, stopAudio, setPlaybackRate, playNextAyah, playPrevAyah, setOnNextAyah, setOnPlanFinish } = useAudio();
+  const { audioState, playAyah, playRange, playSection, playUstadhMode, playWordByWord, pauseAudio, resumeAudio, stopAudio, setPlaybackRate, playNextAyah, playPrevAyah, setOnNextAyah, setOnPlanFinish, abortCurrentPlan } = useAudio();
+
+  // Keep planModeRef current so handleConfigChange never captures stale state
+  useEffect(() => { planModeRef.current = audioState.planMode; }, [audioState.planMode]);
 
   // Fetch translations on selection change
   useEffect(() => {
@@ -1388,7 +1464,9 @@ const [settingsVisible, setSettingsVisible] = useState(false);
 
   useEffect(() => {
     setTajweedMode(false);
-    setLastEditRange(null);
+    const reset = { ...DEFAULT_PLAYBACK_CONFIG };
+    setPlaybackConfig(reset);
+    playbackConfigRef.current = reset;
     loadData();
     return () => setOnNextAyah(null);
   }, [surahNum]);
@@ -1420,6 +1498,11 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       setArabic(main.arabic);
       setTransliteration(main.transliteration);
       setTranslationsMap({ "en.sahih": main.translation });
+      setPlaybackConfig(prev => {
+        const updated = { ...prev, startAyah: 1, endAyah: main.arabic.ayahs.length };
+        playbackConfigRef.current = updated;
+        return updated;
+      });
 
       setOnNextAyah((surahN, ayahN) => {
         const totalAyahs = SURAH_DATA[surahN - 1]?.ayahCount ?? main.arabic.ayahs.length;
@@ -1555,6 +1638,32 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     recordAyahRead(surahNum, 1);
     saveProgress({ surahNumber: surahNum, ayahNumber: 1, ayahNumberInSurah: 1, surahName: arabic.englishName });
   }, [arabic, surahNum]);
+
+  const triggerPlayback = useCallback((cfg: PlaybackConfig) => {
+    if (cfg.mode === "ustadh") {
+      const rangeAyahs = Array.from({ length: cfg.endAyah - cfg.startAyah + 1 }, (_, i) => cfg.startAyah + i);
+      playUstadhMode(surahNum, rangeAyahs);
+    } else if (cfg.mode === "wordByWord") {
+      playWordByWord(surahNum, cfg.startAyah, cfg.endAyah, cfg.wordRepeat);
+    } else {
+      playRange({ startSurah: surahNum, startAyah: cfg.startAyah, endSurah: surahNum, endAyah: cfg.endAyah }, cfg.ayahRepeat, cfg.rangeRepeat);
+    }
+    recordAyahRead(surahNum, cfg.startAyah);
+    saveProgress({ surahNumber: surahNum, ayahNumber: cfg.startAyah, ayahNumberInSurah: cfg.startAyah, surahName: arabic?.englishName ?? "" });
+  }, [surahNum, playUstadhMode, playWordByWord, playRange, recordAyahRead, saveProgress, arabic]);
+
+  const handleConfigChange = useCallback((newConfig: PlaybackConfig) => {
+    playbackConfigRef.current = newConfig;
+    setPlaybackConfig(newConfig);
+
+    if (!planModeRef.current) return; // not playing — just save config
+
+    // Any change while playing: immediately kill current audio and restart
+    // from the new config. This handles range changes, mode changes, and
+    // repeat count changes all uniformly (no partial-cycle artifacts).
+    abortCurrentPlan();
+    triggerPlayback(newConfig);
+  }, [abortCurrentPlan, triggerPlayback]);
 
   const handleTafsirPress = useCallback(() => {
     if (!settings.showTafsir) updateSettings({ showTafsir: true });
@@ -1995,8 +2104,9 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         onSpeedChange={setPlaybackRate}
         surahName={arabic?.englishName ?? ""}
         totalAyahs={arabic?.ayahs.length ?? 1}
-        defaultStartAyah={lastEditRange?.start ?? 1}
-        defaultEndAyah={lastEditRange?.end ?? (arabic?.ayahs.length ?? 1)}
+        config={playbackConfig}
+        onConfigChange={handleConfigChange}
+        onPlay={() => triggerPlayback(playbackConfigRef.current)}
         onDownloadFullTarget={() => {
           downloadAyahs(fullTargetAyahs).catch(() => {
             offlineDownloadRef.current = false;
@@ -2004,29 +2114,6 @@ const [settingsVisible, setSettingsVisible] = useState(false);
           });
         }}
         offlineStatusLabel={offlineStatusLabel}
-        onPlayRange={({ startAyah, endAyah, mode, ayahRepeat, rangeRepeat }) => {
-          setLastEditRange({ start: startAyah, end: endAyah });
-          if (mode === "ustadh") {
-            const rangeAyahs = Array.from(
-              { length: endAyah - startAyah + 1 },
-              (_, i) => startAyah + i,
-            );
-            playUstadhMode(surahNum, rangeAyahs);
-          } else {
-            playRange(
-              { startSurah: surahNum, startAyah, endSurah: surahNum, endAyah },
-              ayahRepeat,
-              rangeRepeat,
-            );
-          }
-          recordAyahRead(surahNum, startAyah);
-          saveProgress({
-            surahNumber: surahNum,
-            ayahNumber: startAyah,
-            ayahNumberInSurah: startAyah,
-            surahName: arabic?.englishName ?? "",
-          });
-        }}
       />
 
       <RepeatSectionSheet

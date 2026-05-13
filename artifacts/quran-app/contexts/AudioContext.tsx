@@ -9,6 +9,7 @@ import {
   createRangePlaybackPlan,
   createSectionPlaybackPlan,
   createUstadhPlaybackPlan,
+  createWordByWordRangePlaybackPlan,
   type PlaybackPlan,
 } from "@/services/playbackPlanner";
 
@@ -78,6 +79,7 @@ interface AudioContextType {
     repeatCount: number,
   ) => Promise<void>;
   playUstadhMode: (surahNum: number, ayahs: number[]) => Promise<void>;
+  playWordByWord: (surahNum: number, startAyah: number, endAyah: number, wordRepeat: number) => Promise<void>;
   pauseAudio: () => Promise<void>;
   resumeAudio: () => Promise<void>;
   stopAudio: () => Promise<void>;
@@ -88,6 +90,9 @@ interface AudioContextType {
   onNextAyah: ((surahNum: number, ayahNum: number) => void) | null;
   setOnNextAyah: (fn: ((surahNum: number, ayahNum: number) => void) | null) => void;
   setOnPlanFinish: (fn: ((surahNum: number, ayahNum: number) => void) | null) => void;
+  setLiveRepeatCount: (count: number | null) => void;
+  setLiveRangeRepeat: (count: number) => void;
+  abortCurrentPlan: () => void;
 }
 
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
@@ -130,6 +135,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const planStepFinishedRef = useRef(false);
   const planAdvancingRef = useRef(false);
   const pauseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveRepeatCountRef = useRef<number | null>(null);
 
   const setOnNextAyah = useCallback((fn: ((surahNum: number, ayahNum: number) => void) | null) => {
     onNextAyahRef.current = fn;
@@ -140,12 +146,35 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     onPlanFinishRef.current = fn;
   }, []);
 
+  const setLiveRepeatCount = useCallback((count: number | null) => {
+    liveRepeatCountRef.current = count;
+  }, []);
+
+  const setLiveRangeRepeat = useCallback((count: number) => {
+    rangeRepeatRef.current = count;
+  }, []);
+
   const clearPauseTimeout = useCallback(() => {
     if (pauseTimeoutRef.current) {
       clearTimeout(pauseTimeoutRef.current);
       pauseTimeoutRef.current = null;
     }
   }, []);
+
+  // Immediately kills the current sound and clears plan state so a new plan
+  // can start without waiting for the current audio to finish naturally.
+  const abortCurrentPlan = useCallback(() => {
+    clearPauseTimeout();
+    const s = soundRef.current;
+    soundRef.current = null;
+    planRef.current = null;
+    planAdvancingRef.current = true;
+    planStepFinishedRef.current = false;
+    liveRepeatCountRef.current = null;
+    rangeRef.current = null;
+    s?.stopAsync().catch(() => {}).finally(() => s?.unloadAsync().catch(() => {}));
+    setAudioState(prev => ({ ...prev, isPlaying: false, isLoading: false }));
+  }, [clearPauseTimeout]);
 
   const finishPlaybackPlan = useCallback(async () => {
     const finishedPlan = planRef.current;
@@ -155,6 +184,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     planStepRepeatRef.current = 0;
     planStepFinishedRef.current = false;
     planAdvancingRef.current = false;
+    liveRepeatCountRef.current = null;
     clearPauseTimeout();
     setAudioState((prev) => ({ ...prev, isPlaying: false, isLoading: false, currentRepeat: 0, range: null, planMode: null }));
     rangeRef.current = null;
@@ -250,7 +280,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           }
         };
 
-        if (nextRepeat < activeStep.repeatCount) {
+        const effectiveRepeatCount = liveRepeatCountRef.current ?? activeStep.repeatCount;
+        if (nextRepeat < effectiveRepeatCount) {
           planStepRepeatRef.current = nextRepeat;
           setAudioState((prev) => ({ ...prev, currentRepeat: nextRepeat }));
           soundRef.current?.setPositionAsync(startMs)
@@ -283,6 +314,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const playPlan = useCallback(async (plan: PlaybackPlan) => {
     if (plan.steps.length === 0) return;
+    liveRepeatCountRef.current = null;
     planRef.current = plan;
     await playPlanStep(0);
   }, [playPlanStep]);
@@ -551,6 +583,20 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     await playPlan(plan);
   }, [playPlan, settings.selectedReciter]);
 
+  const playWordByWord = useCallback(async (surahNum: number, startAyah: number, endAyah: number, wordRepeat: number) => {
+    rangeRef.current = null;
+    segmentRef.current = null;
+    const plan = await createWordByWordRangePlaybackPlan({
+      surahNumber: surahNum,
+      reciterId: Number(settings.selectedReciter) || 7,
+      startAyah,
+      endAyah,
+      wordRepeat,
+      playbackRate: playbackRateRef.current,
+    });
+    await playPlan(plan);
+  }, [playPlan, settings.selectedReciter]);
+
   const pauseAudio = useCallback(async () => {
     if (soundRef.current) {
       await soundRef.current.pauseAsync();
@@ -612,6 +658,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     planStepRepeatRef.current = 0;
     planStepFinishedRef.current = false;
     planAdvancingRef.current = false;
+    liveRepeatCountRef.current = null;
     rangeRef.current = null;
     rangeRepeatRef.current = 1;
     rangeCurrentRepeatRef.current = 0;
@@ -675,11 +722,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   return (
     <AudioContext.Provider value={{
       audioState, playPlan, playAyah, playRange,
-      playSection, playUstadhMode,
+      playSection, playUstadhMode, playWordByWord,
       pauseAudio, resumeAudio, stopAudio,
       seekTo, setPlaybackRate,
       playNextAyah, playPrevAyah,
       onNextAyah, setOnNextAyah, setOnPlanFinish,
+      setLiveRepeatCount, setLiveRangeRepeat, abortCurrentPlan,
     }}>
       {children}
     </AudioContext.Provider>
