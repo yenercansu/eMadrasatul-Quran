@@ -681,7 +681,7 @@ const fn = StyleSheet.create({
   pillBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.96)",
+    backgroundColor: "#F5F2EE",
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 16,
@@ -695,7 +695,7 @@ const fn = StyleSheet.create({
   pillBtnText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
   titlePill: {
     flex: 1,
-    backgroundColor: "#F5EDD6",
+    backgroundColor: "#F5F2EE",
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -732,7 +732,7 @@ const fbn = StyleSheet.create({
   btn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.96)",
+    backgroundColor: "#F5F2EE",
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 16,
