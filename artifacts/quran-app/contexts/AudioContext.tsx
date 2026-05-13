@@ -14,6 +14,7 @@ import {
 } from "@/services/playbackPlanner";
 
 export const RECENT_RECITERS_KEY = "@squran/recent-reciters";
+const USTADH_PROGRESS_KEY = "@squran/ustadh-progress";
 
 export interface Reciter {
   id: string;
@@ -62,7 +63,7 @@ export interface AyahSegment {
 
 interface AudioContextType {
   audioState: AudioState;
-  playPlan: (plan: PlaybackPlan) => Promise<void>;
+  playPlan: (plan: PlaybackPlan, startIndex?: number) => Promise<void>;
   playAyah: (
     surahNum: number,
     ayahNum: number,
@@ -188,6 +189,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     clearPauseTimeout();
     setAudioState((prev) => ({ ...prev, isPlaying: false, isLoading: false, currentRepeat: 0, range: null, planMode: null }));
     rangeRef.current = null;
+    if (finishedPlan?.mode === "ustadh") {
+      AsyncStorage.removeItem(USTADH_PROGRESS_KEY).catch(() => {});
+    }
 
     if (finishedPlan?.mode === "ayah" && lastStep && onNextAyahRef.current) {
       const totalAyahs = getAyahCount(lastStep.surahNumber) || totalAyahsRef.current;
@@ -207,6 +211,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     }
 
     clearPauseTimeout();
+    const effectiveRate = playbackRateRef.current || step.playbackRate || 1;
     planStepIndexRef.current = index;
     planStepRepeatRef.current = 0;
     planStepFinishedRef.current = false;
@@ -221,10 +226,22 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       currentAyah: step.ayahNumber,
       repeatCount: step.repeatCount,
       currentRepeat: 0,
-      playbackRate: step.playbackRate,
+      playbackRate: effectiveRate,
       range: plan.mode === "range" ? prev.range : null,
       planMode: plan.mode,
     }));
+    if (plan.mode === "ustadh") {
+      AsyncStorage.setItem(USTADH_PROGRESS_KEY, JSON.stringify({
+        planId: plan.id,
+        stepIndex: index,
+        totalSteps: plan.steps.length,
+        surahNumber: step.surahNumber,
+        ayahNumber: step.ayahNumber,
+        verseKey: step.verseKey,
+        stepId: step.id,
+        updatedAt: Date.now(),
+      })).catch(() => {});
+    }
 
     if (soundRef.current) {
       await soundRef.current.unloadAsync().catch(() => {});
@@ -235,7 +252,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       { uri: step.sourceUri },
       {
         shouldPlay: false,
-        rate: step.playbackRate,
+        rate: effectiveRate,
         pitchCorrectionQuality: Audio.PitchCorrectionQuality.High,
         progressUpdateIntervalMillis: step.endMs !== undefined ? 40 : 250,
         positionMillis: step.startMs ?? 0,
@@ -306,17 +323,17 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     soundRef.current = sound;
     repeatCountRef.current = step.repeatCount;
     currentRepeatRef.current = 0;
-    playbackRateRef.current = step.playbackRate;
+    await sound.setRateAsync(effectiveRate, true, Audio.PitchCorrectionQuality.High).catch(() => {});
     if (step.startMs !== undefined) await sound.setPositionAsync(step.startMs).catch(() => {});
     await sound.playAsync();
     setAudioState((prev) => ({ ...prev, isLoading: false, isPlaying: true }));
   }, [clearPauseTimeout, finishPlaybackPlan]);
 
-  const playPlan = useCallback(async (plan: PlaybackPlan) => {
+  const playPlan = useCallback(async (plan: PlaybackPlan, startIndex = 0) => {
     if (plan.steps.length === 0) return;
     liveRepeatCountRef.current = null;
     planRef.current = plan;
-    await playPlanStep(0);
+    await playPlanStep(Math.max(0, Math.min(startIndex, plan.steps.length - 1)));
   }, [playPlanStep]);
 
   useEffect(() => {
@@ -459,6 +476,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       );
 
       soundRef.current = sound;
+      await sound.setRateAsync(rate, true, Audio.PitchCorrectionQuality.High).catch(() => {});
       repeatCountRef.current = repeatCount;
       currentRepeatRef.current = 0;
 
@@ -580,7 +598,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       mode: "new",
       playbackRate: playbackRateRef.current,
     });
-    await playPlan(plan);
+    const saved = await AsyncStorage.getItem(USTADH_PROGRESS_KEY)
+      .then((raw) => raw ? JSON.parse(raw) as { planId?: string; stepIndex?: number } : null)
+      .catch(() => null);
+    const stepIndex = saved?.planId === plan.id && typeof saved.stepIndex === "number"
+      ? Math.max(0, Math.min(saved.stepIndex, plan.steps.length - 1))
+      : 0;
+    await playPlan(plan, stepIndex);
   }, [playPlan, settings.selectedReciter]);
 
   const playWordByWord = useCallback(async (surahNum: number, startAyah: number, endAyah: number, wordRepeat: number) => {
@@ -641,6 +665,11 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const resumeAudio = useCallback(async () => {
     if (soundRef.current) {
+      await soundRef.current.setRateAsync(
+        playbackRateRef.current,
+        true,
+        Audio.PitchCorrectionQuality.High,
+      ).catch(() => {});
       await soundRef.current.playAsync();
       setAudioState((prev) => ({ ...prev, isPlaying: true }));
     }
@@ -686,7 +715,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     setAudioState((prev) => ({ ...prev, playbackRate: rate }));
     if (soundRef.current) {
       try {
-        await soundRef.current.setRateAsync(rate, true);
+        await soundRef.current.setRateAsync(rate, true, Audio.PitchCorrectionQuality.High);
       } catch {}
     }
   }, []);

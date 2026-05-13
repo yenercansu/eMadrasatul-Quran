@@ -6,6 +6,8 @@ import { getAudioUrl, type ApiAyah } from "@/services/quranApi";
 
 const AUDIO_MANIFEST_KEY = "madeenan:offline-audio-manifest:v1";
 const CONTENT_MANIFEST_KEY = "madeenan:offline-content-manifest:v1";
+const ACTIVE_SURAH_KEY = "madeenan:offline-active-surah:v1";
+const SURAH_CACHE_MIGRATION_KEY = "madeenan:offline-surah-cache-migration:v1";
 const AUDIO_ROOT = `${FileSystem.documentDirectory ?? ""}quran-audio`;
 const CONTENT_ROOT = `${FileSystem.documentDirectory ?? ""}quran-content`;
 
@@ -36,6 +38,12 @@ export interface DownloadProgress {
   completed: number;
   failed: number;
   currentVerseKey?: string;
+}
+
+export interface ActiveOfflineSurah {
+  surahNumber: number;
+  reciterId: number;
+  updatedAt: number;
 }
 
 function audioManifestKey(verseKey: string, reciterId: number): string {
@@ -99,6 +107,61 @@ export async function getCachedAyahAudioUri(
   reciterId: number,
 ): Promise<string | null> {
   return (await getCachedAyahAudio(verseKey, reciterId))?.localUri ?? null;
+}
+
+function getSurahFromVerseKey(verseKey: string): number | null {
+  const surah = Number(verseKey.split(":")[0]);
+  return Number.isFinite(surah) ? surah : null;
+}
+
+async function deleteAudioRecord(record: OfflineAudioRecord): Promise<void> {
+  await FileSystem.deleteAsync(record.localUri, { idempotent: true }).catch(() => {});
+}
+
+export async function clearOfflineAudioCache(): Promise<void> {
+  const manifest = await readAudioManifest();
+  await Promise.all(Object.values(manifest).map(deleteAudioRecord));
+  await writeAudioManifest({});
+  await AsyncStorage.removeItem(ACTIVE_SURAH_KEY).catch(() => {});
+}
+
+export async function migrateToSingleSurahOfflineCache(): Promise<void> {
+  const done = await AsyncStorage.getItem(SURAH_CACHE_MIGRATION_KEY).catch(() => null);
+  if (done === "1") return;
+  await clearOfflineAudioCache();
+  await AsyncStorage.setItem(SURAH_CACHE_MIGRATION_KEY, "1");
+}
+
+export async function setActiveOfflineSurah(surahNumber: number, reciterId: number): Promise<void> {
+  await AsyncStorage.setItem(ACTIVE_SURAH_KEY, JSON.stringify({
+    surahNumber,
+    reciterId,
+    updatedAt: Date.now(),
+  } satisfies ActiveOfflineSurah));
+}
+
+export async function getActiveOfflineSurah(): Promise<ActiveOfflineSurah | null> {
+  try {
+    const raw = await AsyncStorage.getItem(ACTIVE_SURAH_KEY);
+    return raw ? JSON.parse(raw) as ActiveOfflineSurah : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteOfflineAudioExceptSurah(surahNumber: number, reciterId: number): Promise<void> {
+  const manifest = await readAudioManifest();
+  const next: Record<string, OfflineAudioRecord> = {};
+  for (const [key, record] of Object.entries(manifest)) {
+    const recordSurah = getSurahFromVerseKey(record.verseKey);
+    if (recordSurah !== surahNumber) {
+      await deleteAudioRecord(record);
+    } else {
+      next[key] = record;
+    }
+  }
+  await writeAudioManifest(next);
+  await setActiveOfflineSurah(surahNumber, reciterId);
 }
 
 export async function cacheJsonContent(key: string, data: unknown): Promise<string | null> {
@@ -212,6 +275,24 @@ export async function ensureGoalOffline(options: {
   return { total, completed, failed };
 }
 
+export async function ensureSurahOffline(options: {
+  surahNumber: number;
+  ayahCount: number;
+  reciterId: number;
+  onProgress?: (progress: DownloadProgress) => void;
+}): Promise<DownloadProgress> {
+  await deleteOfflineAudioExceptSurah(options.surahNumber, options.reciterId);
+  const ayahs = Array.from({ length: options.ayahCount }, (_, index) => ({
+    surahNumber: options.surahNumber,
+    ayahNumber: index + 1,
+  }));
+  return ensureGoalOffline({
+    ayahs,
+    reciterId: options.reciterId,
+    onProgress: options.onProgress,
+  });
+}
+
 export async function getOfflineStatusForAyahs(
   ayahs: GoalAyahLike[],
   reciterId: number,
@@ -234,6 +315,19 @@ export async function deleteOfflineAudioForReciter(reciterId: number): Promise<v
   for (const [key, record] of Object.entries(manifest)) {
     if (record.reciterId === reciterId) {
       await FileSystem.deleteAsync(record.localUri, { idempotent: true }).catch(() => {});
+    } else {
+      next[key] = record;
+    }
+  }
+  await writeAudioManifest(next);
+}
+
+export async function deleteOfflineAudioForSurah(surahNumber: number, reciterId: number): Promise<void> {
+  const manifest = await readAudioManifest();
+  const next: Record<string, OfflineAudioRecord> = {};
+  for (const [key, record] of Object.entries(manifest)) {
+    if (record.reciterId === reciterId && getSurahFromVerseKey(record.verseKey) === surahNumber) {
+      await deleteAudioRecord(record);
     } else {
       next[key] = record;
     }

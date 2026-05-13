@@ -45,12 +45,14 @@ import { TajweedWordsText } from "@/components/TajweedText";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchSurahWithTranslations, fetchTranslation, fetchWordTranslations, type SurahDetail, type ApiAyah, type WordTranslation } from "@/services/quranApi";
 import { fetchTafsirPage, normalizeTafsirKeys, type TafsirEntry } from "@/services/tafsirApi";
-import { getJuzAyahs, getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
+import { getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
 import { getArabicFontFamily } from "@/constants/arabicFonts";
 import { RECENT_RECITERS_KEY } from "@/contexts/AudioContext";
 import {
-  ensureGoalOffline,
+  deleteOfflineAudioExceptSurah,
+  ensureSurahOffline,
   getOfflineStatusForAyahs,
+  migrateToSingleSurahOfflineCache,
   type DownloadProgress,
   type GoalAyahLike,
   type OfflineDownloadStatus,
@@ -746,7 +748,7 @@ function EditSheet({
   playbackRate, onSpeedChange,
   surahName, totalAyahs,
   config, onConfigChange, onPlay,
-  onDownloadFullTarget, offlineStatusLabel,
+  onDownloadCurrentSurah, offlineStatusLabel,
 }: {
   visible: boolean; onClose: () => void;
   settings: { selectedReciter: string };
@@ -757,7 +759,7 @@ function EditSheet({
   config: PlaybackConfig;
   onConfigChange: (config: PlaybackConfig) => void;
   onPlay: () => void;
-  onDownloadFullTarget: () => void;
+  onDownloadCurrentSurah: () => void;
   offlineStatusLabel: string;
 }) {
   const [recentReciterIds, setRecentReciterIds] = useState<string[]>([]);
@@ -904,10 +906,10 @@ function EditSheet({
             )}
 
             {/* ── Download ── */}
-            <TouchableOpacity style={[es.optionRow, { marginTop: 20 }]} onPress={() => { onClose(); onDownloadFullTarget(); }} activeOpacity={0.7}>
+            <TouchableOpacity style={[es.optionRow, { marginTop: 20 }]} onPress={() => { onClose(); onDownloadCurrentSurah(); }} activeOpacity={0.7}>
               <Feather name="download" size={20} color="#1A1A1A" style={es.optionIcon} />
               <View style={es.optionInfo}>
-                <Text style={es.optionLabel}>Download Full Target</Text>
+                <Text style={es.optionLabel}>Download Current Surah</Text>
                 <Text style={es.optionDesc}>{offlineStatusLabel}</Text>
               </View>
             </TouchableOpacity>
@@ -1848,36 +1850,15 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     ).map(a => `${a.surahNumber}:${a.ayahNumber}`));
   }, [goal, memorizationGoal]);
 
-  const weeklyGoalAyahs = useMemo<GoalAyahLike[]>(() => {
-    if (!goal?.startSurahNumber || !goal.startAyahNumber) return [];
-    const target = memorizationGoal?.path === "juz" && memorizationGoal.targetJuz
-      ? { path: "juz" as const, juz: memorizationGoal.targetJuz }
-      : { path: "surah" as const };
-    return getWeeklyGoalAyahsFrom(
-      goal.startSurahNumber,
-      goal.startAyahNumber,
-      goal.ayahsPerWeek,
-      target
-    ).map((a) => ({ surahNumber: a.surahNumber, ayahNumber: a.ayahNumber }));
-  }, [goal, memorizationGoal]);
-
-  const fullTargetAyahs = useMemo<GoalAyahLike[]>(() => {
-    if (memorizationGoal?.path === "juz" && memorizationGoal.targetJuz) {
-      return getJuzAyahs(memorizationGoal.targetJuz).map((a) => ({
-        surahNumber: a.surahNumber,
-        ayahNumber: a.ayahNumber,
-      }));
-    }
-    if (memorizationGoal?.path === "surah" && memorizationGoal.startSurahNumber) {
-      const surah = SURAH_DATA[memorizationGoal.startSurahNumber - 1];
-      if (!surah) return [];
-      return Array.from({ length: surah.ayahCount }, (_, index) => ({
-        surahNumber: surah.number,
-        ayahNumber: index + 1,
-      }));
-    }
-    return arabic?.ayahs.map((ayah) => ({ surahNumber: surahNum, ayahNumber: ayah.numberInSurah })) ?? [];
-  }, [arabic?.ayahs, memorizationGoal, surahNum]);
+  const currentDownloadSurahNumber = audioState.currentSurah ?? surahNum;
+  const currentDownloadSurah = SURAH_DATA[currentDownloadSurahNumber - 1];
+  const currentDownloadAyahs = useMemo<GoalAyahLike[]>(() => {
+    const ayahCount = currentDownloadSurah?.ayahCount ?? arabic?.ayahs.length ?? 0;
+    return Array.from({ length: ayahCount }, (_, index) => ({
+      surahNumber: currentDownloadSurahNumber,
+      ayahNumber: index + 1,
+    }));
+  }, [arabic?.ayahs.length, currentDownloadSurah?.ayahCount, currentDownloadSurahNumber]);
 
   // extraData ensures FlatList cells re-render when audio state changes.
   // Without this, cells use a stale renderItem closure because pageAyahs is
@@ -1891,19 +1872,20 @@ const [settingsVisible, setSettingsVisible] = useState(false);
   }), [audioState.currentAyah, audioState.currentSurah, audioState.repeatCount, audioState.range, ayahRepeatCounts]);
 
   const refreshOfflineStatus = useCallback(async () => {
-    const ayahs = weeklyGoalAyahs.length > 0 ? weeklyGoalAyahs : pageAyahs.map((ayah) => ({ surahNumber: surahNum, ayahNumber: ayah.numberInSurah }));
-    if (ayahs.length === 0) return;
-    const status = await getOfflineStatusForAyahs(ayahs, Number(settings.selectedReciter) || 7);
+    if (currentDownloadAyahs.length === 0) return;
+    const status = await getOfflineStatusForAyahs(currentDownloadAyahs, Number(settings.selectedReciter) || 7);
     setOfflineStatus({ status: status.status, ready: status.ready, total: status.total });
-  }, [pageAyahs, settings.selectedReciter, surahNum, weeklyGoalAyahs]);
+  }, [currentDownloadAyahs, settings.selectedReciter]);
 
-  const downloadAyahs = useCallback(async (ayahs: GoalAyahLike[]) => {
-    if (ayahs.length === 0 || offlineDownloadRef.current) return;
+  const downloadCurrentSurah = useCallback(async () => {
+    const surah = SURAH_DATA[currentDownloadSurahNumber - 1];
+    if (!surah || offlineDownloadRef.current) return;
     offlineDownloadRef.current = true;
-    setOfflineStatus({ status: "downloading", ready: 0, total: ayahs.length });
+    setOfflineStatus({ status: "downloading", ready: 0, total: surah.ayahCount });
     try {
-      const result = await ensureGoalOffline({
-        ayahs,
+      const result = await ensureSurahOffline({
+        surahNumber: currentDownloadSurahNumber,
+        ayahCount: surah.ayahCount,
         reciterId: Number(settings.selectedReciter) || 7,
         onProgress: (progress) => setOfflineStatus({
           status: "downloading",
@@ -1921,27 +1903,31 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     } finally {
       offlineDownloadRef.current = false;
     }
-  }, [settings.selectedReciter]);
+  }, [currentDownloadSurahNumber, settings.selectedReciter]);
+
+  useEffect(() => {
+    migrateToSingleSurahOfflineCache().then(() => refreshOfflineStatus()).catch(() => {});
+  }, [refreshOfflineStatus]);
+
+  useEffect(() => {
+    const activeSurah = audioState.currentSurah;
+    if (!activeSurah) return;
+    deleteOfflineAudioExceptSurah(activeSurah, Number(settings.selectedReciter) || 7)
+      .then(refreshOfflineStatus)
+      .catch(() => {});
+  }, [audioState.currentSurah, refreshOfflineStatus, settings.selectedReciter]);
 
   useEffect(() => {
     refreshOfflineStatus().catch(() => {});
   }, [refreshOfflineStatus]);
 
-  useEffect(() => {
-    if (weeklyGoalAyahs.length === 0 || offlineDownloadRef.current) return;
-    downloadAyahs(weeklyGoalAyahs).catch(() => {
-      offlineDownloadRef.current = false;
-      setOfflineStatus((prev) => ({ ...prev, status: "failed" }));
-    });
-  }, [downloadAyahs, weeklyGoalAyahs]);
-
   const offlineStatusLabel = offlineStatus.status === "downloading"
-    ? `downloading ${offlineStatus.ready}/${offlineStatus.total || fullTargetAyahs.length} ayahs for offline playback`
+    ? `downloading ${offlineStatus.ready}/${offlineStatus.total || currentDownloadAyahs.length} ayahs from ${currentDownloadSurah?.englishName ?? "current Surah"}`
     : offlineStatus.status === "ready"
-      ? `ready offline (${offlineStatus.ready}/${offlineStatus.total})`
+      ? `${currentDownloadSurah?.englishName ?? "Current Surah"} ready offline (${offlineStatus.ready}/${offlineStatus.total})`
       : offlineStatus.status === "failed"
-        ? `some audio is missing (${offlineStatus.ready}/${offlineStatus.total}); tap to retry full target`
-        : "download this memorization target for offline playback";
+        ? `some audio is missing (${offlineStatus.ready}/${offlineStatus.total}); tap to retry current Surah`
+        : `download ${currentDownloadSurah?.englishName ?? "the current Surah"} for offline playback`;
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F5F2EE" }}>
@@ -2253,8 +2239,8 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         config={playbackConfig}
         onConfigChange={handleConfigChange}
         onPlay={() => triggerPlayback(playbackConfigRef.current)}
-        onDownloadFullTarget={() => {
-          downloadAyahs(fullTargetAyahs).catch(() => {
+        onDownloadCurrentSurah={() => {
+          downloadCurrentSurah().catch(() => {
             offlineDownloadRef.current = false;
             setOfflineStatus((prev) => ({ ...prev, status: "failed" }));
           });

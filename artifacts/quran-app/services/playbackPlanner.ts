@@ -1,15 +1,12 @@
 import {
   createPlaybackRange,
-  createUstadhModePlan,
   getAudioSegments,
   resolveMadeenanAssetUrl,
   type AudioSegment,
   type AudioSegmentsResponse,
-  type PlaybackPlanResponse,
-  type PlaybackTimingStep,
 } from "@/services/madeenanApi";
 import { getCachedAyahAudioUri, getVerseKey } from "@/services/offlineQuranCache";
-import { fetchWordTranslations, getAudioUrl } from "@/services/quranApi";
+import { fetchWordTranslations, getAudioUrl, type WordTranslation } from "@/services/quranApi";
 
 export interface PlaybackStep {
   id: string;
@@ -42,6 +39,14 @@ export interface SectionSelection {
   playbackRate: number;
 }
 
+interface WordPlaybackRef {
+  surahNumber: number;
+  ayahNumber: number;
+  verseKey: string;
+  position: number;
+  audioUrl: string;
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? value as Record<string, unknown> : {};
 }
@@ -53,11 +58,6 @@ function getNumber(value: unknown, fallback = 0): number {
 
 function getString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
-}
-
-function getRepeat(value: unknown, fallback: number): number {
-  const next = getNumber(value, fallback);
-  return Math.max(1, Math.min(999, next));
 }
 
 function getStepStartMs(value: unknown): number | undefined {
@@ -97,18 +97,6 @@ function getSegmentAyah(segment: AudioSegment | Record<string, unknown>, fallbac
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function extractResponseSteps(response: PlaybackPlanResponse | unknown): PlaybackTimingStep[] {
-  if (Array.isArray(response)) return response as PlaybackTimingStep[];
-  const record = asRecord(response);
-  for (const key of ["steps", "segments", "plan", "items", "results"]) {
-    const value = record[key];
-    if (Array.isArray(value)) return value as PlaybackTimingStep[];
-  }
-  const nested = record.data;
-  if (nested && nested !== response) return extractResponseSteps(nested);
-  return [];
-}
-
 async function resolveAudioSource(options: {
   surahNumber: number;
   ayahNumber: number;
@@ -123,49 +111,6 @@ async function resolveAudioSource(options: {
   }
   const remoteUrl = candidateUrl ?? await getAudioUrl(options.surahNumber, options.ayahNumber, options.reciterId);
   return { sourceUri: remoteUrl, remoteUrl };
-}
-
-async function normalizeTimingStep(options: {
-  raw: PlaybackTimingStep | Record<string, unknown>;
-  index: number;
-  fallbackSurah: number;
-  fallbackAyah: number;
-  reciterId: number;
-  fallbackRepeat: number;
-  fallbackRate: number;
-}): Promise<PlaybackStep> {
-  const raw = asRecord(options.raw);
-  const verseKey = getString(raw.verseKey ?? raw.verse_key ?? raw.key, "");
-  const ayahNumber = getNumber(
-    raw.ayahNumber ?? raw.ayah_number ?? raw.verseNumber ?? raw.verse_number,
-    verseKey ? Number(verseKey.split(":")[1]) : options.fallbackAyah,
-  );
-  const surahNumber = getNumber(
-    raw.chapterNumber ?? raw.chapter_number ?? raw.surahNumber ?? raw.surah_number,
-    verseKey ? Number(verseKey.split(":")[0]) : options.fallbackSurah,
-  );
-  const candidateUrl = getString(raw.audioUrl ?? raw.audio_url ?? raw.url, "");
-  const audio = await resolveAudioSource({
-    surahNumber,
-    ayahNumber,
-    reciterId: options.reciterId,
-    candidateUrl,
-  });
-
-  return {
-    id: `${surahNumber}:${ayahNumber}:${options.index}:${getStepStartMs(raw) ?? 0}`,
-    verseKey: getVerseKey(surahNumber, ayahNumber),
-    surahNumber,
-    ayahNumber,
-    sourceUri: audio.sourceUri,
-    remoteUrl: audio.remoteUrl,
-    startMs: getStepStartMs(raw),
-    endMs: getStepEndMs(raw),
-    repeatCount: getRepeat(raw.repeatCount ?? raw.repeat_count, options.fallbackRepeat),
-    pauseAfterMs: getNumber(raw.pauseAfterMs ?? raw.pause_after_ms, 0) || undefined,
-    playbackRate: getNumber(raw.playbackRate ?? raw.playback_rate, options.fallbackRate),
-    label: typeof raw.label === "string" ? raw.label : undefined,
-  };
 }
 
 function extractWordSegments(
@@ -262,26 +207,88 @@ async function createWordAudioSteps(options: {
   const hi = Math.max(options.startWord, options.endWord);
   const words = await fetchWordTranslations(options.surahNumber, options.ayahNumber).catch(() => []);
   const selected = words
-    .filter((word) => word.position >= lo && word.position <= hi && word.audioUrl)
+    .filter((word) => word.position >= lo && word.position <= hi && word.audioUrl && !isVerseMarkerWord(word))
     .sort((a, b) => a.position - b.position);
-  const group = selected.map((word, index): PlaybackStep => {
-    const sourceUri = resolveMadeenanAssetUrl(word.audioUrl) ?? word.audioUrl!;
-    return {
-      id: `word-audio:${verseKey}:${word.position}:${index}`,
-      verseKey,
-      surahNumber: options.surahNumber,
-      ayahNumber: options.ayahNumber,
-      sourceUri,
-      remoteUrl: sourceUri,
-      repeatCount: lo === hi ? options.repeatCount : 1,
-      playbackRate: options.playbackRate,
-      label: `Word ${word.position}`,
-    };
-  });
-  if (lo === hi) return group;
-  return Array.from({ length: Math.max(1, options.repeatCount) }, (_, repeatIndex) =>
-    group.map((step) => ({ ...step, id: `${step.id}:r${repeatIndex}` })),
+  const group = selected.map((word): WordPlaybackRef => ({
+    surahNumber: options.surahNumber,
+    ayahNumber: options.ayahNumber,
+    verseKey,
+    position: word.position,
+    audioUrl: word.audioUrl!,
+  }));
+  return repeatWordSequence(group, options.repeatCount, options.playbackRate, "word-audio");
+}
+
+function isVerseMarkerWord(word: WordTranslation): boolean {
+  return /^\(\d+\)$/.test((word.translation ?? "").trim()) || /^[\u0660-\u0669\d]+$/.test((word.arabic ?? "").trim());
+}
+
+function repeatWordSequence(
+  words: WordPlaybackRef[],
+  repeatCount: number,
+  playbackRate: number,
+  idPrefix: string,
+  pauseAfterLastMs?: number,
+): PlaybackStep[] {
+  const normalizedRepeat = Math.max(1, repeatCount);
+  return Array.from({ length: normalizedRepeat }, (_, repeatIndex) =>
+    words.map((word, index): PlaybackStep => {
+      const sourceUri = resolveMadeenanAssetUrl(word.audioUrl) ?? word.audioUrl;
+      return {
+        id: `${idPrefix}:${word.verseKey}:${word.position}:r${repeatIndex}:i${index}`,
+        verseKey: word.verseKey,
+        surahNumber: word.surahNumber,
+        ayahNumber: word.ayahNumber,
+        sourceUri,
+        remoteUrl: sourceUri,
+        repeatCount: 1,
+        playbackRate,
+        pauseAfterMs: repeatIndex === normalizedRepeat - 1 && index === words.length - 1 ? pauseAfterLastMs : undefined,
+        label: `Word ${word.position}`,
+      };
+    }),
   ).flat();
+}
+
+async function getPlayableWordRefs(surahNumber: number, ayahNumber: number): Promise<WordPlaybackRef[]> {
+  const verseKey = getVerseKey(surahNumber, ayahNumber);
+  const words = await fetchWordTranslations(surahNumber, ayahNumber).catch(() => []);
+  return words
+    .filter((word) => word.audioUrl && !isVerseMarkerWord(word))
+    .sort((a, b) => a.position - b.position)
+    .map((word) => ({
+      surahNumber,
+      ayahNumber,
+      verseKey,
+      position: word.position,
+      audioUrl: word.audioUrl!,
+    }));
+}
+
+async function getPlayableWordsForRange(
+  surahNumber: number,
+  ayahs: number[],
+): Promise<WordPlaybackRef[]> {
+  const groups = await Promise.all(ayahs.map((ayahNumber) => getPlayableWordRefs(surahNumber, ayahNumber)));
+  return groups.flat();
+}
+
+function createUstadhProgressionSteps(words: WordPlaybackRef[], playbackRate: number): PlaybackStep[] {
+  const steps: PlaybackStep[] = [];
+  const localChunkSize = 3;
+  const cycleSize = 6;
+  for (let start = 0; start < words.length; start += cycleSize) {
+    const local = words.slice(start, Math.min(start + localChunkSize, words.length));
+    const expanded = words.slice(start, Math.min(start + cycleSize, words.length));
+    if (local.length === 0 || expanded.length === 0) continue;
+    steps.push(...repeatWordSequence(local, 3, playbackRate, `ustadh-local-${start}`, 500));
+    steps.push(...repeatWordSequence(expanded, 3, playbackRate, `ustadh-expanded-${start}`, 500));
+    steps.push(...repeatWordSequence(expanded, 3, playbackRate, `ustadh-reinforce-${start}`, 900));
+  }
+  if (words.length > 0) {
+    steps.push(...repeatWordSequence(words, 3, playbackRate, "ustadh-final", 0));
+  }
+  return steps;
 }
 
 export async function createAyahPlaybackPlan(options: {
@@ -425,7 +432,9 @@ export async function createWordByWordRangePlaybackPlan(options: {
 
   for (let ayahNumber = options.startAyah; ayahNumber <= options.endAyah; ayahNumber++) {
     const words = await fetchWordTranslations(options.surahNumber, ayahNumber).catch(() => []);
-    const playableWords = words.filter((w) => w.audioUrl).sort((a, b) => a.position - b.position);
+    const playableWords = words
+      .filter((w) => w.audioUrl && !isVerseMarkerWord(w))
+      .sort((a, b) => a.position - b.position);
 
     for (const word of playableWords) {
       const wordSteps = await createWordAudioSteps({
@@ -457,63 +466,10 @@ export async function createUstadhPlaybackPlan(options: {
   mode: "new" | "review" | string;
   playbackRate: number;
 }): Promise<PlaybackPlan> {
-  const response = await createUstadhModePlan({
-    chapterNumber: options.surahNumber,
-    reciterId: options.reciterId,
-    ayahs: options.ayahs,
-    mode: options.mode,
-    playbackRate: options.playbackRate,
-  }).catch(() => null);
-  const rawSteps = extractResponseSteps(response);
-  const backendRepeats = new Map<number, number>();
-  for (const raw of rawSteps) {
-    const record = asRecord(raw);
-    const verseKey = getString(record.verseKey ?? record.verse_key ?? record.key, "");
-    const ayahNumber = getNumber(record.ayahNumber ?? record.ayah_number, verseKey ? Number(verseKey.split(":")[1]) : NaN);
-    if (Number.isFinite(ayahNumber)) backendRepeats.set(ayahNumber, getRepeat(record.repeatCount ?? record.repeat_count, 10));
-  }
-
-  const steps: PlaybackStep[] = [];
-  for (const ayahNumber of options.ayahs) {
-    const full = await createAyahPlaybackPlan({
-      surahNumber: options.surahNumber,
-      ayahNumber,
-      reciterId: options.reciterId,
-      repeatCount: 1,
-      playbackRate: options.playbackRate,
-    });
-    steps.push({ ...full.steps[0], id: `ustadh-full-before:${full.steps[0].verseKey}` });
-
-    const words = await fetchWordTranslations(options.surahNumber, ayahNumber).catch(() => []);
-    const playableWords = words.filter((word) => word.audioUrl).sort((a, b) => a.position - b.position);
-    for (let i = 0; i < playableWords.length; i += 3) {
-      const first = playableWords[i];
-      const last = playableWords[Math.min(i + 2, playableWords.length - 1)];
-      if (!first || !last) continue;
-      const wordSteps = await createWordAudioSteps({
-        surahNumber: options.surahNumber,
-        ayahNumber,
-        startWord: first.position,
-        endWord: last.position,
-        repeatCount: 3,
-        playbackRate: options.playbackRate,
-      });
-      steps.push(...wordSteps.map((step, index) => ({
-        ...step,
-        id: `ustadh-word-section:${step.verseKey}:${i}:${index}`,
-        pauseAfterMs: index === wordSteps.length - 1 ? 900 : undefined,
-      })));
-    }
-
-    const final = await createAyahPlaybackPlan({
-      surahNumber: options.surahNumber,
-      ayahNumber,
-      reciterId: options.reciterId,
-      repeatCount: backendRepeats.get(ayahNumber) ?? 3,
-      playbackRate: options.playbackRate,
-    });
-    steps.push({ ...final.steps[0], id: `ustadh-full-after:${final.steps[0].verseKey}` });
-  }
-
-  return { id: `ustadh:${options.reciterId}:${options.surahNumber}:${options.ayahs.join(",")}`, mode: "ustadh", steps };
+  const words = await getPlayableWordsForRange(options.surahNumber, options.ayahs);
+  return {
+    id: `ustadh:${options.reciterId}:${options.surahNumber}:${options.ayahs.join(",")}`,
+    mode: "ustadh",
+    steps: createUstadhProgressionSteps(words, options.playbackRate),
+  };
 }
