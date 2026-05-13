@@ -40,6 +40,7 @@ import { CancelModeTag } from "@/components/CancelModeTag";
 import { SettingsCard, SettingsRow } from "@/components/SettingsRow";
 import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
+import { MushafPageView } from "@/components/mushaf/MushafPageView";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchSurahWithTranslations, fetchTafsir, fetchTranslation, fetchWordTranslations, type SurahDetail, type ApiAyah, type WordTranslation } from "@/services/quranApi";
 import { getJuzAyahs, getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
@@ -61,7 +62,7 @@ function normalizeArabic(s: string): string {
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const AYAHS_PER_PAGE = 10;
-const MUSHAF_BG = "#F5EDD6";
+const MUSHAF_BG = "#FFFFFF";
 const WORD_COLORS = ["#E8507A", "#F2994A", "#27AE60", "#2F80ED", "#9B51E0", "#EB5757"];
 
 const TRANSLATION_OPTIONS = [
@@ -1237,37 +1238,6 @@ const tm = StyleSheet.create({
   footer: { alignItems: "center", paddingVertical: 12 },
 });
 
-// ─── Mushaf Page ──────────────────────────────────────────────────────────────
-function MushafPage({ ayahs }: { ayahs: ApiAyah[] }) {
-  return (
-    <View style={ms.page}>
-      <View style={ms.pageInner}>
-        <Text style={ms.text} textBreakStrategy="highQuality">
-          {ayahs.map((ayah) => (
-            <Text key={ayah.numberInSurah}>
-              <Text style={ms.ayahText}>{ayah.text}</Text>
-              <Text style={ms.marker}> ۝{ayah.numberInSurah} </Text>
-            </Text>
-          ))}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-const ms = StyleSheet.create({
-  page: {
-    margin: 16, backgroundColor: "#F5EDD6", borderRadius: 10,
-    borderWidth: 1, borderColor: "#D4B896",
-    shadowColor: "#8B6914", shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15, shadowRadius: 10, elevation: 5, minHeight: 400,
-  },
-  pageInner: { padding: 24, paddingVertical: 32, borderWidth: 2, borderColor: "#C9A96E60", borderRadius: 8, margin: 10 },
-  text: { fontSize: 24, lineHeight: 52, textAlign: "justify", color: "#2C1810", writingDirection: "rtl", fontFamily: Platform.OS === "ios" ? "System" : undefined },
-  ayahText: { fontSize: 24, lineHeight: 52, color: "#2C1810" },
-  marker: { fontSize: 18, color: "#8B6914" },
-});
-
 // ─── Playback config (lifted out of EditSheet so it survives sheet close) ────
 type PlaybackConfig = {
   mode: "repetition" | "ustadh" | "wordByWord";
@@ -1400,12 +1370,31 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       onPanResponderGrant: () => {},
       onPanResponderMove: () => {},
       onPanResponderRelease: (_, { dx, vx }) => {
-        if (dx < -50 || vx < -0.4) {
+        // swipe RIGHT → next page, swipe LEFT → prev page
+        if (dx > 50 || vx > 0.4) {
           try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
           mushafGoNextRef.current();
-        } else if (dx > 50 || vx > 0.4) {
+        } else if (dx < -50 || vx < -0.4) {
           try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
           mushafGoPrevRef.current();
+        }
+      },
+    })
+  ).current;
+
+  // Normal-mode page nav: only captures rightward swipes so card save-swipe (leftward) still works.
+  const normalPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponderCapture: (_, { dx, dy }) =>
+        dx > 30 && dx > Math.abs(dy) * 1.3,
+      onPanResponderGrant: () => {},
+      onPanResponderMove: () => {},
+      onPanResponderRelease: (_, { dx, vx }) => {
+        if (dx > 50 || vx > 0.4) {
+          try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+          mushafGoNextRef.current();
         }
       },
     })
@@ -1881,7 +1870,12 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             </TouchableOpacity>
             <TouchableOpacity
               style={[scr.modeBtn, settings.mushafMode && scr.modeBtnActive]}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); updateSettings({ mushafMode: true }); }}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                updateSettings({ mushafMode: true, showTranslation: false });
+                setSelectedTranslations([]);
+                setTajweedMode(false);
+              }}
               activeOpacity={0.85}
             >
               <Text style={[scr.modeBtnText, settings.mushafMode && scr.modeBtnTextActive]}>Mushaf</Text>
@@ -1922,16 +1916,17 @@ const [settingsVisible, setSettingsVisible] = useState(false);
               <ScrollView
                 ref={mushafScrollRef}
                 style={{ flex: 1 }}
-                contentContainerStyle={{ paddingTop: menuVisible ? 8 : (insets.top + 64), paddingBottom: 24 }}
+                contentContainerStyle={{ paddingTop: menuVisible ? 0 : (insets.top + 64), paddingBottom: 24 }}
                 showsVerticalScrollIndicator={false}
               >
-                {arabic && currentPage === 1 && basmala && (
-                  <View style={scr.mushafInfo}>
-                    <Text style={scr.mushafArabicName}>{arabic.name}</Text>
-                    <Text style={scr.mushafBasmala}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
-                  </View>
-                )}
-                <MushafPage ayahs={pageAyahs} />
+                <MushafPageView
+                  ayahs={pageAyahs}
+                  surahArabicName={arabic?.name ?? ""}
+                  surahEnglishName={arabic?.englishName ?? ""}
+                  isFirstPage={currentPage === 1}
+                  showBasmala={basmala}
+                  activeAyah={audioState.currentSurah === surahNum ? audioState.currentAyah : null}
+                />
               </ScrollView>
             </TouchableOpacity>
           </View>
@@ -1962,6 +1957,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         </View>
       ) : (
         arabic ? (
+          <View style={{ flex: 1 }} {...normalPanResponder.panHandlers}>
           <FlatList
             ref={listRef}
             data={pageAyahs}
@@ -2057,6 +2053,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
               );
             }}
           />
+          </View>
         ) : null
       )}
 
@@ -2312,9 +2309,6 @@ const scr = StyleSheet.create({
     marginTop: 18,
   },
   errorRetryText: { fontSize: 13, color: "#FFFFFF", fontFamily: "Inter_700Bold" },
-  mushafInfo: { alignItems: "center", paddingVertical: 16, backgroundColor: MUSHAF_BG },
-  mushafArabicName: { fontSize: 28, color: "#2C1810", fontFamily: Platform.OS === "ios" ? "System" : undefined, marginBottom: 8 },
-  mushafBasmala: { fontSize: 18, color: "#2C1810", fontFamily: Platform.OS === "ios" ? "System" : undefined, textAlign: "center" },
   mushafTranslations: { padding: 16, gap: 8, backgroundColor: "#FFFFFF" },
   mushafTranslation: { fontSize: 14, color: "#4A4A4A", fontFamily: "Inter_400Regular", lineHeight: 22 },
   mushafTranslationNum: { fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },

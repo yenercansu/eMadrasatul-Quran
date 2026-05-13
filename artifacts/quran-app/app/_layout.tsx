@@ -5,6 +5,7 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
+import { AmiriQuran_400Regular } from "@expo-google-fonts/amiri-quran";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useSegments, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -18,6 +19,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { QuranProvider } from "@/contexts/QuranContext";
 import { AudioProvider } from "@/contexts/AudioContext";
+import LogoMark from "@/components/LogoMark";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -28,7 +30,7 @@ function RootLayoutNav() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="auth" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="surah/[id]" options={{ headerShown: false, animation: "slide_from_right" }} />
+      <Stack.Screen name="surah/[id]" options={{ headerShown: false, animation: "slide_from_right", gestureEnabled: false }} />
       <Stack.Screen name="oauth/quran-foundation/success" options={{ headerShown: false }} />
       <Stack.Screen name="oauth/quran-foundation/error" options={{ headerShown: false }} />
       <Stack.Screen name="oauth/google/callback" options={{ headerShown: false }} />
@@ -57,7 +59,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (isBootstrapping) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#F7F3EC" }}>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#FDFBF7", gap: 24 }}>
+        <LogoMark size={80} />
         <ActivityIndicator color="#1A1A1A" />
       </View>
     );
@@ -72,6 +75,7 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    AmiriQuran_400Regular,
   });
 
   useEffect(() => {
