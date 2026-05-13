@@ -15,10 +15,13 @@ import { useQuran } from "@/contexts/QuranContext";
 import { RECITERS } from "@/contexts/AudioContext";
 import { FullScreenPage } from "@/components/FullScreenPage";
 import { ARABIC_FONT_OPTIONS } from "@/constants/arabicFonts";
+import type { TafsirKey } from "@/services/tafsirApi";
 
 export const TAFSIR_EDITIONS = [
-  { id: "en.maarifulquran", name: "Maariful Quran", author: "Mufti Shafi Usmani" },
-  { id: "en.jalalayn", name: "Tafsir Jalalayn", author: "Jalal al-Din al-Suyuti" },
+  { id: "jalalayn", name: "Tafsir al-Jalalayn", author: "Jalal al-Din al-Mahalli and Jalal al-Din al-Suyuti" },
+  { id: "maarif", name: "Ma'arif al-Qur'an", author: "Mufti Muhammad Shafi" },
+  { id: "ibn_kathir", name: "Tafsir Ibn Kathir", author: "Hafiz Ibn Kathir" },
+  { id: "as_sadi", name: "Tafsir as-Sa'di", author: "Abd al-Rahman al-Sa'di" },
 ];
 
 interface Props {
@@ -216,6 +219,34 @@ export function SettingsSheet({ visible, onClose }: Props) {
               <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
             </TouchableOpacity>
 
+            <Text style={s.sectionLabel}>Tafsir Sources</Text>
+            <View style={s.tafsirGrid}>
+              {TAFSIR_EDITIONS.map((ed) => {
+                const key = ed.id as TafsirKey;
+                const active = settings.selectedTafsirs.includes(key);
+                return (
+                  <TouchableOpacity
+                    key={ed.id}
+                    style={[s.tafsirChip, active && s.tafsirChipActive]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      const next = active
+                        ? settings.selectedTafsirs.filter((id) => id !== key)
+                        : [...settings.selectedTafsirs, key];
+                      updateSettings({ selectedTafsirs: next.length > 0 ? next : [key] });
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.tafsirChipName, active && s.tafsirChipNameActive]}>{ed.name}</Text>
+                      <Text style={[s.tafsirChipAuthor, active && s.tafsirChipAuthorActive]} numberOfLines={1}>{ed.author}</Text>
+                    </View>
+                    {active && <Ionicons name="checkmark-circle" size={20} color={colors.primaryForeground} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
             <Text style={s.sectionLabel}>Auto-pause Timer</Text>
             <View style={s.autoPauseRow}>
               {[
@@ -318,6 +349,34 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
       padding: 14,
       borderRadius: 16,
     },
+    tafsirGrid: { gap: 8 },
+    tafsirChip: {
+      minHeight: 58,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.secondary,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    tafsirChipActive: { borderColor: colors.primary, backgroundColor: colors.primary },
+    tafsirChipName: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: colors.foreground,
+      fontFamily: "Inter_700Bold",
+    },
+    tafsirChipNameActive: { color: colors.primaryForeground },
+    tafsirChipAuthor: {
+      fontSize: 11,
+      color: colors.mutedForeground,
+      fontFamily: "Inter_400Regular",
+      marginTop: 2,
+    },
+    tafsirChipAuthorActive: { color: colors.primaryForeground },
     reciterAvatar: {
       width: 44, height: 44, borderRadius: 22,
       backgroundColor: colors.card, alignItems: "center", justifyContent: "center",

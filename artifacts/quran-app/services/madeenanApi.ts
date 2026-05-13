@@ -439,6 +439,28 @@ export interface QuranPageParams {
   words?: boolean;
 }
 
+export type TafsirKey = "jalalayn" | "maarif" | "ibn_kathir" | "as_sadi";
+
+export interface TafsirResourceConfig {
+  key: TafsirKey;
+  name: string;
+  author: string;
+  language: "en";
+  resourceId?: number;
+  slug?: string;
+}
+
+export interface TafsirConfigResponse {
+  tafsirs: Record<TafsirKey, TafsirResourceConfig>;
+}
+
+export interface TafsirAyahResponse {
+  key: TafsirKey;
+  verseKey: string;
+  text: string;
+  resourceName?: string;
+}
+
 export const healthCheck = () => apiRequest<HealthData>("/health", { auth: false });
 export const getMeta = () => apiRequest<MetaData>("/meta", { auth: false });
 
@@ -457,6 +479,9 @@ export const getChapterVerses = (
 export const getVerse = (verseKey: string) => apiRequest<QuranVerse>(`/quran/verses/${verseKey}`);
 export const getQuranPage = (params: QuranPageParams) =>
   apiRequest<QuranPage>("/quran/page", { query: params as unknown as Record<string, QueryValue> });
+export const getTafsirConfig = () => apiRequest<TafsirConfigResponse>("/quran/tafsirs/config", { auth: false });
+export const getTafsirForAyah = (key: TafsirKey, verseKey: string) =>
+  apiRequest<TafsirAyahResponse>(`/quran/tafsirs/${key}/ayah/${encodeURIComponent(verseKey)}`, { auth: false });
 const audioSegmentsMemoryCache = new Map<string, AudioSegmentsResponse>();
 const audioSegmentsInFlight = new Map<string, Promise<AudioSegmentsResponse>>();
 

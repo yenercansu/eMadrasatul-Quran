@@ -5,6 +5,7 @@ import type { ArabicFontKey } from "@/constants/arabicFonts";
 import { getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
 import { useAuth } from "@/contexts/AuthContext";
 import * as madeenanApi from "@/services/madeenanApi";
+import { normalizeTafsirKeys, type TafsirKey } from "@/services/tafsirApi";
 
 export interface SavedWord {
   id: string;
@@ -87,7 +88,7 @@ interface Settings {
   showTranslation: boolean;
   showTransliteration: boolean;
   showTafsir: boolean;
-  selectedTafsirs: string[];
+  selectedTafsirs: TafsirKey[];
   colorCoding: boolean;
   tajweedColorCoding: boolean;
   mushafMode: boolean;
@@ -168,7 +169,7 @@ const DEFAULT_SETTINGS: Settings = {
   showTranslation: false,
   showTransliteration: false,
   showTafsir: false,
-  selectedTafsirs: ["en.maarifulquran"],
+  selectedTafsirs: ["jalalayn", "maarif", "ibn_kathir", "as_sadi"],
   colorCoding: false,
   tajweedColorCoding: false,
   mushafMode: false,
@@ -266,6 +267,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       if (map.quran_settings) {
         const loaded = { ...DEFAULT_SETTINGS, ...JSON.parse(map.quran_settings) };
         loaded.selectedReciter = normalizeReciterId(loaded.selectedReciter);
+        loaded.selectedTafsirs = normalizeTafsirKeys(loaded.selectedTafsirs);
         setSettings(loaded);
       }
       if (map.quran_account) {
@@ -386,6 +388,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const updateSettings = useCallback((partial: Partial<Settings>) => {
     setSettings((prev) => {
       const next = { ...prev, ...partial };
+      if (partial.selectedTafsirs) next.selectedTafsirs = normalizeTafsirKeys(partial.selectedTafsirs);
       if (partial.tajweedColorCoding === true) next.showTransliteration = false;
       if (partial.showTransliteration === true) next.tajweedColorCoding = false;
       if (partial.mushafMode === true) { next.showTranslation = false; next.showTransliteration = false; next.showTafsir = false; next.tajweedColorCoding = false; next.colorCoding = false; }

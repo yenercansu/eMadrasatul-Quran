@@ -42,7 +42,8 @@ import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
 import { MushafPageView } from "@/components/mushaf/MushafPageView";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { fetchSurahWithTranslations, fetchTafsir, fetchTranslation, fetchWordTranslations, type SurahDetail, type ApiAyah, type WordTranslation } from "@/services/quranApi";
+import { fetchSurahWithTranslations, fetchTranslation, fetchWordTranslations, type SurahDetail, type ApiAyah, type WordTranslation } from "@/services/quranApi";
+import { fetchTafsirPage, normalizeTafsirKeys, type TafsirEntry } from "@/services/tafsirApi";
 import { getJuzAyahs, getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
 import { getArabicFontFamily } from "@/constants/arabicFonts";
 import { RECENT_RECITERS_KEY } from "@/contexts/AudioContext";
@@ -1170,18 +1171,21 @@ const mp = StyleSheet.create({
 });
 
 // ─── Tafsir Modal ─────────────────────────────────────────────────────────────
-function TafsirModal({ visible, onClose, tafsirDataMap, currentAyah, onPlay }: {
+function TafsirModal({ visible, onClose, entries, selected, currentAyah, loading, onToggleSource, onPlay }: {
   visible: boolean; onClose: () => void;
-  tafsirDataMap: Record<string, SurahDetail>;
+  entries: TafsirEntry[];
+  selected: string[];
   currentAyah: number;
+  loading: boolean;
+  onToggleSource: (id: string) => void;
   onPlay: () => void;
 }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   useEffect(() => {
-    if (visible && TAFSIR_EDITIONS[0]) {
-      setExpanded({ [TAFSIR_EDITIONS[0].id]: true });
+    if (visible && entries[0]) {
+      setExpanded({ [entries[0].key]: true });
     }
-  }, [visible]);
+  }, [visible, entries]);
   const insets = useSafeAreaInsets();
 
   return (
@@ -1197,9 +1201,32 @@ function TafsirModal({ visible, onClose, tafsirDataMap, currentAyah, onPlay }: {
           </TouchableOpacity>
         </View>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
+          <Text style={tm.ayahLabel}>Ayah {currentAyah}</Text>
+          <View style={tm.sourceGrid}>
+            {TAFSIR_EDITIONS.map((ed) => {
+              const active = selected.includes(ed.id);
+              return (
+                <TouchableOpacity
+                  key={ed.id}
+                  style={[tm.sourceChip, active && tm.sourceChipActive]}
+                  onPress={() => onToggleSource(ed.id)}
+                  activeOpacity={0.8}
+                >
+                  {active && <Feather name="check" size={12} color="#FFFFFF" />}
+                  <Text style={[tm.sourceChipText, active && tm.sourceChipTextActive]}>{ed.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {loading && (
+            <View style={tm.loadingRow}>
+              <ActivityIndicator size="small" color="#1A1A1A" />
+              <Text style={tm.loadingText}>Loading tafsir…</Text>
+            </View>
+          )}
           {TAFSIR_EDITIONS.map((ed) => {
-            const td = tafsirDataMap[ed.id];
-            const ta = td?.ayahs[currentAyah - 1];
+            if (!selected.includes(ed.id)) return null;
+            const entry = entries.find((item) => item.key === ed.id);
             const isExp = expanded[ed.id];
             return (
               <View key={ed.id} style={tm.section}>
@@ -1213,7 +1240,7 @@ function TafsirModal({ visible, onClose, tafsirDataMap, currentAyah, onPlay }: {
                 </TouchableOpacity>
                 {isExp && (
                   <Text style={tm.sectionText}>
-                    {ta?.text ?? "Tafsir not available for this ayah."}
+                    {entry?.text ?? "Tafsir not available for this ayah yet."}
                   </Text>
                 )}
               </View>
@@ -1233,6 +1260,23 @@ const tm = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 12, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
   headerBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   title: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  ayahLabel: { fontSize: 12, color: "#8A8178", fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 },
+  sourceGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
+  sourceChip: {
+    minHeight: 36,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderRadius: 12,
+    backgroundColor: "#F5F2EE",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  sourceChipActive: { backgroundColor: "#1A1A1A" },
+  sourceChipText: { fontSize: 12, color: "#4A4A4A", fontFamily: "Inter_600SemiBold" },
+  sourceChipTextActive: { color: "#FFFFFF" },
+  loadingRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 12 },
+  loadingText: { fontSize: 13, color: "#6B6B6B", fontFamily: "Inter_400Regular" },
   section: { marginBottom: 12 },
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
   sectionName: { fontSize: 15, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
@@ -1270,7 +1314,8 @@ export default function SurahScreen() {
   const [arabic, setArabic] = useState<SurahDetail | null>(null);
   const [transliteration, setTransliteration] = useState<SurahDetail | null>(null);
   const [translationsMap, setTranslationsMap] = useState<Record<string, SurahDetail>>({});
-  const [tafsirDataMap, setTafsirDataMap] = useState<Record<string, SurahDetail>>({});
+  const [tafsirEntriesByVerseKey, setTafsirEntriesByVerseKey] = useState<Record<string, TafsirEntry[]>>({});
+  const [tafsirAttemptedByVerseKey, setTafsirAttemptedByVerseKey] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [menuVisible, setMenuVisible] = useState(true);
@@ -1281,6 +1326,7 @@ export default function SurahScreen() {
   const planModeRef = useRef<"ayah" | "section" | "word" | "range" | "ustadh" | null>(null);
   const [meaningPanelVisible, setMeaningPanelVisible] = useState(false);
   const [tafsirModalVisible, setTafsirModalVisible] = useState(false);
+  const [tafsirLoading, setTafsirLoading] = useState(false);
   const [rangeVisible, setRangeVisible] = useState(false);
   const [repeatSectionVisible, setRepeatSectionVisible] = useState(false);
   const [repeatSectionInitialAyah, setRepeatSectionInitialAyah] = useState<number | null>(null);
@@ -1437,21 +1483,6 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       });
     });
   }, [selectedTranslations, arabic, surahNum]);
-
-  // Tafsir on-demand
-  useEffect(() => {
-    if (!settings.showTafsir || !arabic) return;
-    const selected = settings.selectedTafsirs ?? ["en.maarifulquran"];
-    const toFetch = selected.filter(ed => !tafsirDataMap[ed]);
-    if (toFetch.length === 0) return;
-    Promise.all(toFetch.map(ed => fetchTafsir(surahNum, ed).catch(() => null))).then(results => {
-      setTafsirDataMap(prev => {
-        const next = { ...prev };
-        toFetch.forEach((ed, i) => { if (results[i]) next[ed] = results[i]!; });
-        return next;
-      });
-    });
-  }, [settings.showTafsir, settings.selectedTafsirs, arabic, surahNum]);
 
   useEffect(() => {
     setTajweedMode(false);
@@ -1683,6 +1714,16 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [settings.showTafsir, updateSettings]);
 
+  const handleTafsirSourceToggle = useCallback((id: string) => {
+    const key = normalizeTafsirKeys([id])[0];
+    if (!key) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const next = settings.selectedTafsirs.includes(key)
+      ? settings.selectedTafsirs.filter((item) => item !== key)
+      : [...settings.selectedTafsirs, key];
+    updateSettings({ selectedTafsirs: next.length > 0 ? next : [key] });
+  }, [settings.selectedTafsirs, updateSettings]);
+
    const handleMeaningTranslationToggle = useCallback((id: string) => {
      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
      setSelectedTranslations(prev => {
@@ -1704,6 +1745,40 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     const start = (currentPage - 1) * AYAHS_PER_PAGE;
     return arabic.ayahs.slice(start, start + AYAHS_PER_PAGE);
   }, [arabic, currentPage]);
+  const currentAyahForRange = audioState.currentSurah === surahNum && audioState.currentAyah ? audioState.currentAyah : parseInt(ayahParam ?? "1", 10) || 1;
+
+  const currentTafsirVerseKey = useMemo(() => {
+    const ayah = arabic?.ayahs[currentAyahForRange - 1];
+    return ayah?.verseKey ?? `${surahNum}:${currentAyahForRange}`;
+  }, [arabic, currentAyahForRange, surahNum]);
+
+  // Tafsir is lazy-loaded only when the modal is open, outside the Quran/audio fetch path.
+  useEffect(() => {
+    if (!tafsirModalVisible || !arabic) return;
+    let cancelled = false;
+    const selected = normalizeTafsirKeys(settings.selectedTafsirs);
+    const existing = tafsirEntriesByVerseKey[currentTafsirVerseKey] ?? [];
+    const attempted = tafsirAttemptedByVerseKey[currentTafsirVerseKey] ?? [];
+    const missing = selected.filter((key) => !existing.some((entry) => entry.key === key) && !attempted.includes(key));
+    if (missing.length === 0) return;
+    setTafsirLoading(true);
+    fetchTafsirPage(missing, [currentTafsirVerseKey])
+      .then((result) => {
+        if (cancelled) return;
+        setTafsirEntriesByVerseKey((prev) => ({ ...prev, ...result.entriesByVerseKey }));
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) {
+          setTafsirAttemptedByVerseKey((prev) => ({
+            ...prev,
+            [currentTafsirVerseKey]: Array.from(new Set([...(prev[currentTafsirVerseKey] ?? []), ...missing])),
+          }));
+          setTafsirLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [tafsirModalVisible, settings.selectedTafsirs, arabic, currentTafsirVerseKey, tafsirEntriesByVerseKey, tafsirAttemptedByVerseKey]);
 
   const goToNextSurah = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -1728,7 +1803,6 @@ const [settingsVisible, setSettingsVisible] = useState(false);
 
   const topPad = insets.top;
   const basmala = surahNum !== 1 && surahNum !== 9;
-  const currentAyahForRange = audioState.currentSurah === surahNum && audioState.currentAyah ? audioState.currentAyah : parseInt(ayahParam ?? "1", 10) || 1;
   const memorizationGoalAyahKeys = useMemo(() => {
     if (!goal?.startSurahNumber || !goal.startAyahNumber) return null;
     const target = memorizationGoal?.path === "juz" && memorizationGoal.targetJuz
@@ -2169,8 +2243,11 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       <TafsirModal
         visible={tafsirModalVisible}
         onClose={() => setTafsirModalVisible(false)}
-        tafsirDataMap={tafsirDataMap}
+        entries={tafsirEntriesByVerseKey[currentTafsirVerseKey] ?? []}
+        selected={settings.selectedTafsirs}
         currentAyah={currentAyahForRange}
+        loading={tafsirLoading}
+        onToggleSource={handleTafsirSourceToggle}
         onPlay={() => { setTafsirModalVisible(false); handlePlayAll(); }}
       />
 
