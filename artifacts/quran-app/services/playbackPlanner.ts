@@ -384,7 +384,7 @@ export async function createRangePlaybackPlan(options: {
         surahNumber: options.surahNumber,
         ayahNumber: options.startAyah + index,
         reciterId: options.reciterId,
-        repeatCount: 1,
+        repeatCount: options.repeatCount,
         playbackRate: options.playbackRate,
       }).then((plan) => plan.steps[0]),
     ),
@@ -404,9 +404,7 @@ export async function createRangePlaybackPlan(options: {
   return {
     id: `range:${options.reciterId}:${options.surahNumber}:${options.startAyah}-${options.endAyah}`,
     mode: "range",
-    steps: Array.from({ length: Math.max(1, options.repeatCount) }, (_, repeatIndex) =>
-      localSteps.map((step) => ({ ...step, id: `${step.id}:range-r${repeatIndex}`, repeatCount: 1 })),
-    ).flat(),
+    steps: localSteps,
   };
 }
 

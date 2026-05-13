@@ -240,7 +240,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
           if (nextIndex < (planRef.current?.steps.length ?? 0)) {
             playPlanStep(nextIndex).catch(() => finishPlaybackPlan());
           } else {
-            finishPlaybackPlan().catch(() => {});
+            const nextRangeRepeat = rangeCurrentRepeatRef.current + 1;
+            if (planRef.current?.mode === "range" && nextRangeRepeat < rangeRepeatRef.current) {
+              rangeCurrentRepeatRef.current = nextRangeRepeat;
+              playPlanStep(0).catch(() => finishPlaybackPlan());
+            } else {
+              finishPlaybackPlan().catch(() => {});
+            }
           }
         };
 

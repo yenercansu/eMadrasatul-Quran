@@ -373,24 +373,21 @@ function PlayerBar({
   audioState,
   playbackRate,
   reciterName,
-  repeatingSelected,
   firstPageAyah,
   onPlayFromStart,
   onPlay, onPause, onStop, onNext, onPrev, onSpeedPress, onEditPress,
 }: {
-  audioState: { isPlaying: boolean; isLoading: boolean; currentAyah: number | null; range: any; repeatCount: number; currentRepeat: number };
+  audioState: { isPlaying: boolean; isLoading: boolean; currentAyah: number | null; range: any };
   playbackRate: number;
   reciterName: string;
-  repeatingSelected: boolean;
   firstPageAyah: number;
   onPlayFromStart: () => void;
   onPlay: () => void; onPause: () => void; onStop: () => void;
   onNext: () => void; onPrev: () => void;
   onSpeedPress: () => void; onEditPress: () => void;
 }) {
-  const { isPlaying, isLoading, currentAyah, range, repeatCount, currentRepeat } = audioState;
+  const { isPlaying, isLoading, currentAyah, range } = audioState;
   const isIdle = !currentAyah && !isLoading;
-  const showRepeat = !isIdle && (repeatCount ?? 0) > 1;
 
   const SpeedBtn = (
     <TouchableOpacity style={pb.speedBtn} onPress={onSpeedPress} activeOpacity={0.8}>
@@ -407,22 +404,11 @@ function PlayerBar({
   return (
     <View style={pb.wrapper}>
       {/* Status pills */}
-      {repeatingSelected && (
-        <View style={pb.repeatingPill}>
-          <Ionicons name="infinite" size={13} color="#FFFFFF" />
-          <Text style={pb.repeatingText}>Repeating Selected</Text>
-        </View>
-      )}
       {range && (
         <View style={pb.rangePill}>
           <Text style={pb.rangeText}>
             Range {range.startSurah}:{range.startAyah} – {range.endSurah}:{range.endAyah}
           </Text>
-        </View>
-      )}
-      {showRepeat && (
-        <View style={pb.repeatCountPill}>
-          <Text style={pb.repeatCountText}>Repeat {(currentRepeat ?? 0) + 1}/{repeatCount}</Text>
         </View>
       )}
 
@@ -481,23 +467,6 @@ const pb = StyleSheet.create({
     alignItems: "center",
   },
   rangeText: { fontSize: 12, color: "#FFFFFF", fontFamily: "Inter_600SemiBold", fontWeight: "600" },
-  repeatingPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    backgroundColor: "#1A1A1A",
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-  },
-  repeatingText: { fontSize: 12, color: "#FFFFFF", fontFamily: "Inter_600SemiBold", fontWeight: "600" },
-  repeatCountPill: {
-    backgroundColor: "rgba(0,0,0,0.08)",
-    paddingHorizontal: 16,
-    paddingVertical: 5,
-    alignItems: "center",
-  },
-  repeatCountText: { fontSize: 11, color: "#3A5A3A", fontFamily: "Inter_500Medium", fontWeight: "500" },
   bar: {
     flexDirection: "row",
     alignItems: "center",
@@ -1988,7 +1957,6 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             audioState={audioState}
             playbackRate={audioState.playbackRate}
             reciterName={RECITERS.find(r => r.id === settings.selectedReciter)?.name ?? ""}
-            repeatingSelected={!!audioState.range && audioState.repeatCount > 1}
             firstPageAyah={pageAyahs[0]?.numberInSurah ?? 1}
             onPlayFromStart={() => {
               if (!arabic) return;
