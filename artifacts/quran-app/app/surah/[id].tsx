@@ -1490,6 +1490,17 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     }, 60);
   }, [currentPage]);
 
+  useEffect(() => {
+    if (!arabic || audioState.isPlaying || audioState.isLoading) return;
+    const firstAyahOfPage = Math.min((currentPage - 1) * AYAHS_PER_PAGE + 1, arabic.ayahs.length);
+    setPlaybackConfig(prev => {
+      if (prev.startAyah === firstAyahOfPage) return prev;
+      const updated = { ...prev, startAyah: firstAyahOfPage };
+      playbackConfigRef.current = updated;
+      return updated;
+    });
+  }, [currentPage, arabic, audioState.isPlaying, audioState.isLoading]);
+
   async function loadData() {
     setLoading(true);
     setLoadError(null);
@@ -1649,6 +1660,11 @@ const [settingsVisible, setSettingsVisible] = useState(false);
   }, [arabic, surahNum]);
 
   const triggerPlayback = useCallback((cfg: PlaybackConfig) => {
+    const targetPage = Math.ceil(cfg.startAyah / AYAHS_PER_PAGE);
+    setCurrentPage(targetPage);
+    setTimeout(() => {
+      try { listRef.current?.scrollToIndex({ index: (cfg.startAyah - 1) % AYAHS_PER_PAGE, animated: true }); } catch {}
+    }, 120);
     if (cfg.mode === "ustadh") {
       const rangeAyahs = Array.from({ length: cfg.endAyah - cfg.startAyah + 1 }, (_, i) => cfg.startAyah + i);
       playUstadhMode(surahNum, rangeAyahs);
@@ -2060,16 +2076,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             firstPageAyah={pageAyahs[0]?.numberInSurah ?? 1}
             onPlayFromStart={() => {
               if (!arabic) return;
-              const cfg = playbackConfigRef.current;
-              const startAyah = cfg.startAyah;
-              const targetPage = Math.ceil(startAyah / AYAHS_PER_PAGE);
-              setCurrentPage(targetPage);
-              setTimeout(() => {
-                try {
-                  listRef.current?.scrollToIndex({ index: (startAyah - 1) % AYAHS_PER_PAGE, animated: true });
-                } catch {}
-              }, 120);
-              triggerPlayback(cfg);
+              triggerPlayback(playbackConfigRef.current);
             }}
             onPlay={handlePlayOrResume}
             onPause={pauseAudio}
