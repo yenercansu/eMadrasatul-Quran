@@ -69,7 +69,7 @@ interface AudioContextType {
     repeatCount?: number,
     segment?: AyahSegment | null,
   ) => Promise<void>;
-  playRange: (range: AyahRange, repeatCount: number) => Promise<void>;
+  playRange: (range: AyahRange, ayahRepeat: number, setRepeat?: number) => Promise<void>;
   playSection: (
     surahNum: number,
     ayahNum: number,
@@ -493,9 +493,9 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     await playPlan(plan);
   }, [playPlan, settings.selectedReciter]);
 
-  const playRange = useCallback(async (range: AyahRange, repeatCount: number) => {
+  const playRange = useCallback(async (range: AyahRange, ayahRepeat: number, setRepeat = 1) => {
     rangeRef.current = range;
-    rangeRepeatRef.current = repeatCount;
+    rangeRepeatRef.current = setRepeat;
     rangeCurrentRepeatRef.current = 0;
     segmentRef.current = null;
     setAudioState((prev) => ({ ...prev, range }));
@@ -505,7 +505,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       reciterId,
       startAyah: range.startAyah,
       endAyah: range.endAyah,
-      repeatCount,
+      repeatCount: ayahRepeat,
       playbackRate: playbackRateRef.current,
     });
     await playPlan(plan);

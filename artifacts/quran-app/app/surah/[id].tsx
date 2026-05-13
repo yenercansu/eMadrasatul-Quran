@@ -37,6 +37,7 @@ import { PlayRangeSheet } from "@/components/PlayRangeSheet";
 import { RepeatSectionSheet } from "@/components/RepeatSectionSheet";
 import { CancelRepeatTag } from "@/components/CancelRepeatTag";
 import { CancelModeTag } from "@/components/CancelModeTag";
+import { SettingsCard, SettingsRow } from "@/components/SettingsRow";
 import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -754,143 +755,356 @@ function EditSheet({
   visible, onClose,
   settings, updateSettings,
   playbackRate, onSpeedChange,
-  onPlayRange, onRepeatSection, onUstadhMode,
+  surahName, totalAyahs,
+  defaultStartAyah, defaultEndAyah,
   onDownloadFullTarget, offlineStatusLabel,
+  onPlayRange,
 }: {
   visible: boolean; onClose: () => void;
   settings: { selectedReciter: string };
   updateSettings: (p: any) => void;
   playbackRate: number; onSpeedChange: (r: number) => void;
-  onPlayRange: () => void; onRepeatSection: () => void;
-  onUstadhMode: () => void;
+  surahName: string;
+  totalAyahs: number;
+  defaultStartAyah: number;
+  defaultEndAyah: number;
   onDownloadFullTarget: () => void;
   offlineStatusLabel: string;
+  onPlayRange: (params: { startAyah: number; endAyah: number; mode: "repetition" | "ustadh" | "wordByWord"; ayahRepeat: number; rangeRepeat: number }) => void;
 }) {
-  const [wordByWord, setWordByWord] = useState(false);
+  const [startAyah, setStartAyah] = useState(defaultStartAyah);
+  const [endAyah, setEndAyah] = useState(defaultEndAyah);
+  const [listeningMode, setListeningMode] = useState<"repetition" | "ustadh" | "wordByWord">("repetition");
+  const [ayahRepeat, setAyahRepeat] = useState(3);
+  const [rangeRepeat, setRangeRepeat] = useState(1);
   const [recentReciterIds, setRecentReciterIds] = useState<string[]>([]);
+  const [pickerTarget, setPickerTarget] = useState<"start" | "end" | null>(null);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (!visible) return;
+    setStartAyah(defaultStartAyah);
+    setEndAyah(Math.max(defaultEndAyah, defaultStartAyah));
     AsyncStorage.getItem(RECENT_RECITERS_KEY).then((v) => {
       setRecentReciterIds(v ? JSON.parse(v) : []);
     }).catch(() => {});
-  }, [visible]);
+  }, [visible, defaultStartAyah, defaultEndAyah]);
+
+  const handlePlay = () => {
+    onPlayRange({ startAyah, endAyah, mode: listeningMode, ayahRepeat, rangeRepeat });
+    onClose();
+  };
+
+  const modes = [
+    { id: "repetition" as const, icon: "repeat" as const, label: "Repetition" },
+    { id: "ustadh" as const, icon: "headphones" as const, label: "Ustadh Mode" },
+    { id: "wordByWord" as const, icon: "refresh-cw" as const, label: "Word by Word" },
+  ];
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <FullScreenPage title="Editing" onClose={onClose} scrollable={false}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
-          <View style={es.optionRow}>
-            <Feather name="refresh-cw" size={20} color="#1A1A1A" style={es.optionIcon} />
-            <View style={es.optionInfo}>
-              <Text style={es.optionLabel}>Word-by-Word</Text>
-              <Text style={es.optionDesc}>repeat each word several times</Text>
-            </View>
-            <Switch
-              value={wordByWord}
-              onValueChange={setWordByWord}
-              trackColor={{ false: "#E0E0E0", true: "#1A1A1A" }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
+        <View style={{ flex: 1 }}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
 
-          <View style={es.optionRow}>
-            <Feather name="headphones" size={20} color="#1A1A1A" style={es.optionIcon} />
-            <View style={es.optionInfo}>
-              <Text style={es.optionLabel}>Ustadh Mode</Text>
-              <Text style={es.optionDesc}>Listen every Ayah with a pre-determined repetition frequence</Text>
-            </View>
-            <Switch
-              value={false}
-              onValueChange={() => { onClose(); onUstadhMode(); }}
-              trackColor={{ false: "#E0E0E0", true: "#1A1A1A" }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
+            {/* ── Playback Range ── */}
+            <Text style={es.secHeader}>Playback Range</Text>
+            <SettingsCard>
+              <SettingsRow
+                label="Start Ayah"
+                value={`${surahName} ${startAyah}`}
+                onPress={() => setPickerTarget("start")}
+              />
+              <SettingsRow
+                label="End Ayah"
+                value={`${surahName} ${endAyah}`}
+                onPress={() => setPickerTarget("end")}
+                last
+              />
+            </SettingsCard>
 
-          {[
-            { icon: "scissors" as const, label: "Repeat Section", desc: "select an Ayah, edit to listen to a smaller part on repeat", onPress: () => { onClose(); onRepeatSection(); } },
-            { icon: "play-circle" as const, label: "Play Within Range", desc: "select two ayahs, play only the selected range", onPress: () => { onClose(); onPlayRange(); } },
-            { icon: "download" as const, label: "Download Full Target", desc: offlineStatusLabel, onPress: () => { onClose(); onDownloadFullTarget(); } },
-          ].map((b) => (
-            <TouchableOpacity key={b.label} style={es.optionRow} onPress={b.onPress} activeOpacity={0.7}>
-              <Feather name={b.icon} size={20} color="#1A1A1A" style={es.optionIcon} />
+            {/* ── Listening Mode ── */}
+            <Text style={es.secHeader}>Listening Mode</Text>
+            <View style={es.modeRow}>
+              {modes.map((m) => (
+                <TouchableOpacity
+                  key={m.id}
+                  style={[es.modeCard, listeningMode === m.id && es.modeCardActive]}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setListeningMode(m.id); }}
+                  activeOpacity={0.75}
+                >
+                  <Feather name={m.icon} size={20} color={listeningMode === m.id ? "#FFFFFF" : "#4A4A4A"} />
+                  <Text style={[es.modeCardText, listeningMode === m.id && es.modeCardTextActive]}>{m.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* ── Repetition Controls (Repetition mode only) ── */}
+            {listeningMode === "repetition" && (
+              <>
+                <Text style={es.secHeader}>Repetition</Text>
+                <SettingsCard>
+                  <SettingsRow
+                    label="Ayah Repeat"
+                    right={
+                      <View style={es.segRow}>
+                        {([1, 3, 5, 10, 999] as number[]).map((v) => (
+                          <TouchableOpacity
+                            key={v}
+                            style={[es.seg, ayahRepeat === v && es.segActive]}
+                            onPress={() => setAyahRepeat(v)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={[es.segText, ayahRepeat === v && es.segTextActive]}>
+                              {v === 999 ? "∞" : `${v}x`}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    }
+                  />
+                  <SettingsRow
+                    label="Set Repeat"
+                    last
+                    right={
+                      <View style={es.segRow}>
+                        {([1, 3, 5, 10, 999] as number[]).map((v) => (
+                          <TouchableOpacity
+                            key={v}
+                            style={[es.seg, rangeRepeat === v && es.segActive]}
+                            onPress={() => setRangeRepeat(v)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={[es.segText, rangeRepeat === v && es.segTextActive]}>
+                              {v === 999 ? "∞" : `${v}x`}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    }
+                  />
+                </SettingsCard>
+              </>
+            )}
+
+            {/* ── Download ── */}
+            <TouchableOpacity style={[es.optionRow, { marginTop: 20 }]} onPress={() => { onClose(); onDownloadFullTarget(); }} activeOpacity={0.7}>
+              <Feather name="download" size={20} color="#1A1A1A" style={es.optionIcon} />
               <View style={es.optionInfo}>
-                <Text style={es.optionLabel}>{b.label}</Text>
-                <Text style={es.optionDesc}>{b.desc}</Text>
+                <Text style={es.optionLabel}>Download Full Target</Text>
+                <Text style={es.optionDesc}>{offlineStatusLabel}</Text>
               </View>
             </TouchableOpacity>
-          ))}
 
-          {recentReciterIds.length > 0 && (
-            <>
-              <Text style={es.sectionLabel}>Recently listened reciters</Text>
-              {recentReciterIds.map((id) => {
-                const reciter = RECITERS.find(r => r.id === id);
-                if (!reciter) return null;
-                const isActive = settings.selectedReciter === id;
-                return (
-                  <TouchableOpacity
-                    key={id}
-                    style={es.optionRow}
-                    onPress={() => updateSettings({ selectedReciter: id })}
-                    activeOpacity={0.7}
-                  >
-                    <Feather name="mic" size={20} color="#1A1A1A" style={es.optionIcon} />
-                    <View style={es.optionInfo}>
-                      <Text style={es.optionLabel}>{reciter.name}</Text>
-                      <Text style={es.optionDesc}>{reciter.style}</Text>
-                    </View>
-                    {isActive && <Feather name="check" size={18} color="#1A1A1A" />}
-                  </TouchableOpacity>
-                );
-              })}
-            </>
-          )}
+            {/* ── Recently listened reciters ── */}
+            {recentReciterIds.length > 0 && (
+              <>
+                <Text style={es.secHeader}>Recently Listened Reciters</Text>
+                {recentReciterIds.map((id) => {
+                  const reciter = RECITERS.find(r => r.id === id);
+                  if (!reciter) return null;
+                  const isActive = settings.selectedReciter === id;
+                  return (
+                    <TouchableOpacity key={id} style={es.optionRow} onPress={() => updateSettings({ selectedReciter: id })} activeOpacity={0.7}>
+                      <Feather name="mic" size={20} color="#1A1A1A" style={es.optionIcon} />
+                      <View style={es.optionInfo}>
+                        <Text style={es.optionLabel}>{reciter.name}</Text>
+                        <Text style={es.optionDesc}>{reciter.style}</Text>
+                      </View>
+                      {isActive && <Feather name="check" size={18} color="#1A1A1A" />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </>
+            )}
 
-          <Text style={es.sectionLabel}>Playback Speed</Text>
-          <View style={es.speedRow}>
-            {PLAYBACK_RATES.map((rate) => (
-              <TouchableOpacity
-                key={rate}
-                style={[es.speedChip, playbackRate === rate && es.speedChipActive]}
-                onPress={() => onSpeedChange(rate)}
-                activeOpacity={0.85}
-              >
-                <Text style={[es.speedChipText, playbackRate === rate && es.speedChipTextActive]}>
-                  {rate}×
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {/* ── Playback Speed ── */}
+            <Text style={es.secHeader}>Playback Speed</Text>
+            <View style={es.speedRow}>
+              {PLAYBACK_RATES.map((rate) => (
+                <TouchableOpacity
+                  key={rate}
+                  style={[es.speedChip, playbackRate === rate && es.speedChipActive]}
+                  onPress={() => onSpeedChange(rate)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[es.speedChipText, playbackRate === rate && es.speedChipTextActive]}>
+                    {rate}×
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
+          {/* ── Sticky Play Range CTA ── */}
+          <View style={[es.ctaBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+            <TouchableOpacity style={es.ctaBtn} onPress={handlePlay} activeOpacity={0.85}>
+              <Ionicons name="play" size={18} color="#FFFFFF" />
+              <Text style={es.ctaBtnText}>Play Range</Text>
+            </TouchableOpacity>
           </View>
-        </ScrollView>
+        </View>
       </FullScreenPage>
+
+      {/* ── Ayah number picker (full-screen) ── */}
+      <Modal visible={pickerTarget !== null} animationType="slide" onRequestClose={() => setPickerTarget(null)}>
+        <FullScreenPage
+          title={pickerTarget === "start" ? "Start Ayah" : "End Ayah"}
+          onClose={() => setPickerTarget(null)}
+        >
+          {Array.from({ length: totalAyahs }, (_, i) => i + 1).map((n) => {
+            const sel = pickerTarget === "start" ? startAyah === n : endAyah === n;
+            return (
+              <TouchableOpacity
+                key={n}
+                style={[es.pickerRow, sel && es.pickerRowSel]}
+                onPress={() => {
+                  if (pickerTarget === "start") {
+                    setStartAyah(n);
+                    if (n > endAyah) setEndAyah(n);
+                  } else {
+                    setEndAyah(n);
+                    if (n < startAyah) setStartAyah(n);
+                  }
+                  setPickerTarget(null);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[es.pickerRowText, sel && es.pickerRowTextSel]}>Ayah {n}</Text>
+                {sel && <Feather name="check" size={16} color="#1A1A1A" />}
+              </TouchableOpacity>
+            );
+          })}
+        </FullScreenPage>
+      </Modal>
     </Modal>
   );
 }
 
 const es = StyleSheet.create({
-  optionRow: {
-    flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14,
+  secHeader: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#9A9A9A",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
     paddingHorizontal: 20,
-    borderBottomWidth: 1, borderBottomColor: "#F0F0F0",
+    marginTop: 22,
+    marginBottom: 8,
+  },
+  modeRow: {
+    flexDirection: "row",
+    marginHorizontal: 16,
+    gap: 10,
+  },
+  modeCard: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    backgroundColor: "#F5F3F0",
+    gap: 6,
+  },
+  modeCardActive: {
+    backgroundColor: "#1A1A1A",
+  },
+  modeCardText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#4A4A4A",
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+  },
+  modeCardTextActive: {
+    color: "#FFFFFF",
+  },
+  segRow: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  seg: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: "#F0F0F0",
+  },
+  segActive: {
+    backgroundColor: "#1A1A1A",
+  },
+  segText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#6B6B6B",
+    fontFamily: "Inter_600SemiBold",
+  },
+  segTextActive: {
+    color: "#FFFFFF",
+  },
+  optionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
   },
   optionIcon: { width: 28 },
   optionInfo: { flex: 1 },
   optionLabel: { fontSize: 15, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
   optionDesc: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 1 },
-  sectionLabel: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 18, marginBottom: 10, paddingHorizontal: 20 },
-  reciterList: { gap: 8, paddingRight: 16 },
-  reciterChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: "#F0F0F0" },
-  reciterChipActive: { backgroundColor: "#1A1A1A" },
-  reciterName: { fontSize: 13, fontWeight: "600", color: "#6B6B6B", fontFamily: "Inter_600SemiBold" },
-  reciterNameActive: { color: "#FFFFFF" },
   speedRow: { flexDirection: "row", gap: 8, flexWrap: "wrap", paddingHorizontal: 20 },
   speedChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, backgroundColor: "#F0F0F0" },
   speedChipActive: { backgroundColor: "#1A1A1A" },
   speedChipText: { fontSize: 13, fontWeight: "600", color: "#6B6B6B", fontFamily: "Inter_600SemiBold" },
   speedChipTextActive: { color: "#FFFFFF" },
+  ctaBar: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "#EBEBEB",
+  },
+  ctaBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#1A1A1A",
+    borderRadius: 16,
+    paddingVertical: 16,
+    gap: 8,
+  },
+  ctaBtnText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    fontFamily: "Inter_700Bold",
+  },
+  pickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F8F8F8",
+  },
+  pickerRowSel: {
+    backgroundColor: "#F8F7F5",
+  },
+  pickerRowText: {
+    fontSize: 15,
+    color: "#3A3A3A",
+    fontFamily: "Inter_400Regular",
+  },
+  pickerRowTextSel: {
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+  },
 });
 
 // ─── Meaning Panel ────────────────────────────────────────────────────────────
@@ -1825,15 +2039,10 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         updateSettings={updateSettings}
         playbackRate={audioState.playbackRate}
         onSpeedChange={setPlaybackRate}
-        onPlayRange={() => setRangeVisible(true)}
-        onRepeatSection={() => setRepeatSectionVisible(true)}
-        onUstadhMode={() => {
-          const ayahs = weeklyGoalAyahs
-            .filter((ayah) => ayah.surahNumber === surahNum)
-            .map((ayah) => ayah.ayahNumber);
-          const fallbackAyah = currentAyahForRange;
-          playUstadhMode(surahNum, ayahs.length > 0 ? ayahs : [fallbackAyah]);
-        }}
+        surahName={arabic?.englishName ?? ""}
+        totalAyahs={arabic?.ayahs.length ?? 1}
+        defaultStartAyah={currentAyahForRange}
+        defaultEndAyah={Math.min(currentAyahForRange + 4, arabic?.ayahs.length ?? currentAyahForRange)}
         onDownloadFullTarget={() => {
           downloadAyahs(fullTargetAyahs).catch(() => {
             offlineDownloadRef.current = false;
@@ -1841,6 +2050,28 @@ const [settingsVisible, setSettingsVisible] = useState(false);
           });
         }}
         offlineStatusLabel={offlineStatusLabel}
+        onPlayRange={({ startAyah, endAyah, mode, ayahRepeat, rangeRepeat }) => {
+          if (mode === "ustadh") {
+            const rangeAyahs = Array.from(
+              { length: endAyah - startAyah + 1 },
+              (_, i) => startAyah + i,
+            );
+            playUstadhMode(surahNum, rangeAyahs);
+          } else {
+            playRange(
+              { startSurah: surahNum, startAyah, endSurah: surahNum, endAyah },
+              ayahRepeat,
+              rangeRepeat,
+            );
+          }
+          recordAyahRead(surahNum, startAyah);
+          saveProgress({
+            surahNumber: surahNum,
+            ayahNumber: startAyah,
+            ayahNumberInSurah: startAyah,
+            surahName: arabic?.englishName ?? "",
+          });
+        }}
       />
 
       <RepeatSectionSheet
