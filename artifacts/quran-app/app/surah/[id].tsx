@@ -377,7 +377,7 @@ function PlayerBar({
   onPlayFromStart,
   onPlay, onPause, onStop, onNext, onPrev, onSpeedPress, onEditPress,
 }: {
-  audioState: { isPlaying: boolean; isLoading: boolean; currentAyah: number | null; range: any };
+  audioState: { isPlaying: boolean; isLoading: boolean; currentAyah: number | null };
   playbackRate: number;
   reciterName: string;
   firstPageAyah: number;
@@ -386,7 +386,7 @@ function PlayerBar({
   onNext: () => void; onPrev: () => void;
   onSpeedPress: () => void; onEditPress: () => void;
 }) {
-  const { isPlaying, isLoading, currentAyah, range } = audioState;
+  const { isPlaying, isLoading, currentAyah } = audioState;
   const isIdle = !currentAyah && !isLoading;
 
   const SpeedBtn = (
@@ -403,14 +403,6 @@ function PlayerBar({
 
   return (
     <View style={pb.wrapper}>
-      {/* Status pills */}
-      {range && (
-        <View style={pb.rangePill}>
-          <Text style={pb.rangeText}>
-            Range {range.startSurah}:{range.startAyah} – {range.endSurah}:{range.endAyah}
-          </Text>
-        </View>
-      )}
 
       <View style={pb.bar}>
         {isIdle ? (
@@ -459,14 +451,6 @@ const pb = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#E2D9CF",
   },
-  rangePill: {
-    backgroundColor: "#22C55E",
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  rangeText: { fontSize: 12, color: "#FFFFFF", fontFamily: "Inter_600SemiBold", fontWeight: "600" },
   bar: {
     flexDirection: "row",
     alignItems: "center",
@@ -1249,6 +1233,7 @@ export default function SurahScreen() {
   const [menuVisible, setMenuVisible] = useState(true);
   const [bottomBarHeight, setBottomBarHeight] = useState(160);
   const [editSheetVisible, setEditSheetVisible] = useState(false);
+  const [lastEditRange, setLastEditRange] = useState<{ start: number; end: number } | null>(null);
   const [meaningPanelVisible, setMeaningPanelVisible] = useState(false);
   const [tafsirModalVisible, setTafsirModalVisible] = useState(false);
   const [rangeVisible, setRangeVisible] = useState(false);
@@ -1403,6 +1388,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
 
   useEffect(() => {
     setTajweedMode(false);
+    setLastEditRange(null);
     loadData();
     return () => setOnNextAyah(null);
   }, [surahNum]);
@@ -2009,8 +1995,8 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         onSpeedChange={setPlaybackRate}
         surahName={arabic?.englishName ?? ""}
         totalAyahs={arabic?.ayahs.length ?? 1}
-        defaultStartAyah={currentAyahForRange}
-        defaultEndAyah={Math.min(currentAyahForRange + 4, arabic?.ayahs.length ?? currentAyahForRange)}
+        defaultStartAyah={lastEditRange?.start ?? 1}
+        defaultEndAyah={lastEditRange?.end ?? (arabic?.ayahs.length ?? 1)}
         onDownloadFullTarget={() => {
           downloadAyahs(fullTargetAyahs).catch(() => {
             offlineDownloadRef.current = false;
@@ -2019,6 +2005,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         }}
         offlineStatusLabel={offlineStatusLabel}
         onPlayRange={({ startAyah, endAyah, mode, ayahRepeat, rangeRepeat }) => {
+          setLastEditRange({ start: startAyah, end: endAyah });
           if (mode === "ustadh") {
             const rangeAyahs = Array.from(
               { length: endAyah - startAyah + 1 },
