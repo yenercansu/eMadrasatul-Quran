@@ -88,7 +88,12 @@ const SURAH_TRANSLATION_FALLBACKS = [
 ];
 
 const QURAN_COM_API_BASE_URL = "https://api.quran.com/api/v4";
-const tajweedMemoryCache = new Map<number, Map<number, string>>();
+type QuranComVerseText = {
+  textUthmani: string;
+  textUthmaniTajweed: string;
+};
+
+const tajweedMemoryCache = new Map<number, Map<number, QuranComVerseText>>();
 
 function fallbackRevelationType(chapterNumber: number): string {
   return MEDINAN_SURAHS.has(chapterNumber) ? "Medinan" : "Meccan";
@@ -109,6 +114,14 @@ function getTextValue(value: unknown, fallback = ""): string {
     return getTextValue(record.text ?? record.name ?? record.value, fallback);
   }
   return fallback;
+}
+
+function stripHtmlTags(value: string): string {
+  return value
+    .replace(/<span\b[^>]*class=["']?end["']?[^>]*>.*?<\/span>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function getNumber(value: unknown, fallback = 0): number {
@@ -306,11 +319,11 @@ function extractTajweedVerses(data: unknown): Array<Record<string, unknown>> {
   return [];
 }
 
-async function fetchSurahTajweedText(chapterNumber: number): Promise<Map<number, string>> {
+async function fetchSurahTajweedText(chapterNumber: number): Promise<Map<number, QuranComVerseText>> {
   const cached = tajweedMemoryCache.get(chapterNumber);
   if (cached) return cached;
 
-  const mapped = new Map<number, string>();
+  const mapped = new Map<number, QuranComVerseText>();
   let page = 1;
   let nextPage: number | null = 1;
 
@@ -327,8 +340,11 @@ async function fetchSurahTajweedText(chapterNumber: number): Promise<Map<number,
     for (const verse of extractTajweedVerses(data)) {
       const verseKey = getString(verse.verse_key ?? verse.verseKey);
       const ayahNumber = getNumber(verseKey.split(":")[1], getNumber(verse.verse_number ?? verse.ayah_number, NaN));
-      const text = getString(verse.text_uthmani_tajweed ?? verse.textUthmaniTajweed);
-      if (Number.isFinite(ayahNumber) && text) mapped.set(ayahNumber, text);
+      const textUthmaniTajweed = getString(verse.text_uthmani_tajweed ?? verse.textUthmaniTajweed);
+      const textUthmani = getString(verse.text_uthmani ?? verse.textUthmani, textUthmaniTajweed ? stripHtmlTags(textUthmaniTajweed) : "");
+      if (Number.isFinite(ayahNumber) && textUthmani && textUthmaniTajweed) {
+        mapped.set(ayahNumber, { textUthmani, textUthmaniTajweed });
+      }
     }
 
     const pagination = asRecord(asRecord(data).pagination);
@@ -341,14 +357,19 @@ async function fetchSurahTajweedText(chapterNumber: number): Promise<Map<number,
   return mapped;
 }
 
-function attachTajweedText(detail: SurahDetail, tajweedByAyah: Map<number, string>): SurahDetail {
+function attachTajweedText(detail: SurahDetail, tajweedByAyah: Map<number, QuranComVerseText>): SurahDetail {
   if (tajweedByAyah.size === 0) return detail;
   return {
     ...detail,
-    ayahs: detail.ayahs.map((ayah) => ({
-      ...ayah,
-      tajweedText: tajweedByAyah.get(ayah.numberInSurah),
-    })),
+    ayahs: detail.ayahs.map((ayah) => {
+      const quranComText = tajweedByAyah.get(ayah.numberInSurah);
+      if (!quranComText) return ayah;
+      return {
+        ...ayah,
+        text: quranComText.textUthmani,
+        tajweedText: quranComText.textUthmaniTajweed,
+      };
+    }),
   };
 }
 
@@ -480,7 +501,7 @@ export async function fetchSurah(
     perPage: SURAH_DATA[surahNumber - 1]?.ayahCount ?? 10,
   });
   const detail = pageToSurahDetail(page, surahNumber, "arabic");
-  const tajweed = await fetchSurahTajweedText(surahNumber).catch(() => new Map<number, string>());
+  const tajweed = await fetchSurahTajweedText(surahNumber).catch(() => new Map<number, QuranComVerseText>());
   return attachTajweedText(detail, tajweed);
 }
 
@@ -498,7 +519,7 @@ export async function fetchSurahWithTranslations(
       page: 1,
       perPage: SURAH_DATA[surahNumber - 1]?.ayahCount ?? 10,
     }),
-    fetchSurahTajweedText(surahNumber).catch(() => new Map<number, string>()),
+    fetchSurahTajweedText(surahNumber).catch(() => new Map<number, QuranComVerseText>()),
   ]);
 
   return {
