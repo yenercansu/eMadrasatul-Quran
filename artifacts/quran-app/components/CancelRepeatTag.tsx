@@ -11,7 +11,7 @@ export function CancelRepeatTag({ repeatCount, onCancel }: Props) {
   return (
     <View style={styles.row}>
       <View style={styles.badge}>
-        <Ionicons name="repeat" size={16} color="#FFFFFF" />
+        <Ionicons name="repeat" size={18} color="#FFFFFF" />
         <Text style={styles.badgeText}>
           {repeatCount >= 999 ? "∞" : `${repeatCount}x`}
         </Text>
@@ -38,14 +38,15 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "#1A1A1A",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 20,
+    paddingVertical: 7,
     borderRadius: 10,
-    gap: 4,
+    gap: 5,
   },
   badgeText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
     color: "#FFFFFF",
     fontFamily: "Inter_700Bold",
@@ -53,13 +54,15 @@ const styles = StyleSheet.create({
   tag: {
     backgroundColor: "#F3EFE9",
     borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 20,
+    paddingVertical: 7,
     borderWidth: 1,
     borderColor: "#D4CFC8",
+    alignItems: "center",
+    justifyContent: "center",
   },
   tagText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "600",
     color: "#555555",
     fontFamily: "Inter_600SemiBold",

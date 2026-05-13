@@ -296,11 +296,13 @@ const cs = StyleSheet.create({
   },
   numBadge: {
     backgroundColor: "#EDEBE6",
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  numText: { fontSize: 11, fontWeight: "700", color: "#6B6B6B", fontFamily: "Inter_700Bold" },
+  numText: { fontSize: 14, fontWeight: "700", color: "#6B6B6B", fontFamily: "Inter_700Bold" },
   memorizedCheckBtn: {
     width: 32,
     height: 32,
@@ -1785,7 +1787,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
           <ContentBar
             showTranslation={selectedTranslations.length > 0}
             showTransliteration={settings.showTransliteration && !settings.mushafMode}
-            showTafsir={settings.showTafsir}
+            showTafsir={tafsirModalVisible}
             colorCoding={settings.colorCoding}
             tajweedMode={tajweedMode}
             mushafMode={settings.mushafMode}
