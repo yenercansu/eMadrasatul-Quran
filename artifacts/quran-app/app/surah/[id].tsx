@@ -1986,25 +1986,45 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       ) : settings.mushafMode ? (
         // Split view: TOP fixed Mushaf panel, BOTTOM scrollable translations.
         // If translations are off, the Mushaf takes the full panel and scrolls.
-        <View style={{ flex: 1 }} {...mushafPanResponder.panHandlers}>
-          <View style={settings.showTranslation ? { flex: 0.55, backgroundColor: MUSHAF_BG } : { flex: 1, backgroundColor: MUSHAF_BG }}>
-            <TouchableOpacity activeOpacity={1} style={{ flex: 1 }} onPress={safeToggleMenu}>
-              <ScrollView
-                ref={mushafScrollRef}
-                style={{ flex: 1 }}
-                contentContainerStyle={{ paddingTop: menuVisible ? 0 : (insets.top + 64), paddingBottom: 24 }}
-                showsVerticalScrollIndicator={false}
-              >
-                <MushafPageView
-                  ayahs={pageAyahs}
-                  surahArabicName={arabic?.name ?? ""}
-                  surahEnglishName={arabic?.englishName ?? ""}
-                  isFirstPage={currentPage === 1}
-                  showBasmala={basmala}
-                  activeAyah={audioState.currentSurah === surahNum ? audioState.currentAyah : null}
-                />
-              </ScrollView>
-            </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <View
+            style={settings.showTranslation ? { flex: 0.55, backgroundColor: MUSHAF_BG } : { flex: 1, backgroundColor: MUSHAF_BG }}
+            {...mushafPanResponder.panHandlers}
+          >
+            <ScrollView
+              ref={mushafScrollRef}
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingTop: menuVisible ? 0 : (insets.top + 64), paddingBottom: 24 }}
+              showsVerticalScrollIndicator={false}
+              onTouchEnd={safeToggleMenu}
+              onScrollBeginDrag={(e) => {
+                userScrollingRef.current = true;
+                menuToggleLockRef.current = Date.now() + 600;
+                scrollYRef.current = e.nativeEvent.contentOffset.y;
+              }}
+              onScrollEndDrag={() => {
+                setTimeout(() => { userScrollingRef.current = false; }, 250);
+              }}
+              onMomentumScrollEnd={() => {
+                userScrollingRef.current = false;
+              }}
+              onScroll={(e) => {
+                const y = e.nativeEvent.contentOffset.y;
+                if (menuVisible && userScrollingRef.current && Math.abs(y - scrollYRef.current) > 40) {
+                  setMenuVisible(false);
+                }
+              }}
+              scrollEventThrottle={32}
+            >
+              <MushafPageView
+                ayahs={pageAyahs}
+                surahArabicName={arabic?.name ?? ""}
+                surahEnglishName={arabic?.englishName ?? ""}
+                isFirstPage={currentPage === 1}
+                showBasmala={basmala}
+                activeAyah={audioState.currentSurah === surahNum ? audioState.currentAyah : null}
+              />
+            </ScrollView>
           </View>
           {settings.showTranslation && (
             <View style={scr.mushafSplitDivider} />
