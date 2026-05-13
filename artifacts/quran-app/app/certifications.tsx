@@ -82,7 +82,6 @@ export default function CertificationsScreen() {
     const totalMemorized = surahs.reduce((sum, surah) => sum + surah.memorized, 0);
     const percent = Math.round((totalMemorized / TOTAL_AYAHS) * 100);
     return {
-      surahs,
       totalMemorized,
       remaining: TOTAL_AYAHS - totalMemorized,
       percent,
@@ -265,29 +264,6 @@ export default function CertificationsScreen() {
               </Text>
             </View>
           )}
-        </View>
-
-        {/* ── Surah Breakdown ────────────────────────────────────── */}
-        <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", marginTop: sp.xs }}>
-          <Text style={{ fontSize: ty.fontSize.xl, fontWeight: "800", color: c.appText, fontFamily: "Inter_700Bold" }}>Surah Breakdown</Text>
-          <Text style={{ fontSize: ty.fontSize.sm, color: c.appTextMuted, fontFamily: "Inter_400Regular" }}>{stats.completed.length} completed</Text>
-        </View>
-
-        <View style={{ gap: sp.sm }}>
-          {stats.surahs.map((surah) => (
-            <View key={surah.number} style={{ ...c.cardStyle, padding: sp.md }}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", gap: sp.md, marginBottom: sp.sm }}>
-                <View>
-                  <Text style={{ fontSize: ty.fontSize.base, fontWeight: "800", color: c.appText, fontFamily: "Inter_700Bold" }}>{surah.englishName}</Text>
-                  <Text style={{ fontSize: ty.fontSize.sm, color: c.appTextMuted, fontFamily: "Inter_400Regular", marginTop: 1 }}>{surah.memorized} / {surah.ayahCount}</Text>
-                </View>
-                <Text style={{ fontSize: ty.fontSize.base - 1, fontWeight: "800", color: c.appText, fontFamily: "Inter_700Bold" }}>{surah.percent}%</Text>
-              </View>
-              <View style={{ height: 7, backgroundColor: c.appBorderLighter, borderRadius: br.full, overflow: "hidden" }}>
-                <View style={{ height: 7, width: `${surah.percent}%` as any, backgroundColor: c.appText, borderRadius: br.full }} />
-              </View>
-            </View>
-          ))}
         </View>
 
       </ScrollView>

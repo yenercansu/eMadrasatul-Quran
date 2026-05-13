@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import LogoMark from "@/components/LogoMark";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -45,7 +46,7 @@ export default function AuthScreen() {
     >
       <View style={s.header}>
         <View style={s.logo}>
-          <Feather name="book-open" size={28} color={colors.appBlack} />
+          <LogoMark size={80} bgColor={colors.appLighterBg} />
         </View>
         <Text style={s.title}>Quran Madrasa</Text>
         <Text style={s.subtitle}>
@@ -91,15 +92,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     header: { alignItems: "center", marginBottom: 32 },
     logo: {
-      width: 64,
-      height: 64,
-      borderRadius: 18,
-      backgroundColor: "#FFFFFF",
-      alignItems: "center",
-      justifyContent: "center",
       marginBottom: 16,
-      borderWidth: 1,
-      borderColor: colors.appBorderLighter,
     },
     title: { fontSize: 28, fontFamily: "Inter_700Bold", color: colors.appBlack, marginBottom: 8 },
     subtitle: {
