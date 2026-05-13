@@ -41,6 +41,7 @@ import { SettingsCard, SettingsRow } from "@/components/SettingsRow";
 import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
 import { MushafPageView } from "@/components/mushaf/MushafPageView";
+import { TajweedWordsText } from "@/components/TajweedText";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchSurahWithTranslations, fetchTranslation, fetchWordTranslations, type SurahDetail, type ApiAyah, type WordTranslation } from "@/services/quranApi";
 import { fetchTafsirPage, normalizeTafsirKeys, type TafsirEntry } from "@/services/tafsirApi";
@@ -98,6 +99,34 @@ function ColorWords({ text, colorCoding, style, rtl, onWordLongPress }: {
   );
 }
 
+function QuranWords({ text, tajweedText, colorCoding, tajweedMode, style, rtl, onWordLongPress }: {
+  text: string; tajweedText?: string; colorCoding: boolean; tajweedMode: boolean; style?: any; rtl?: boolean;
+  onWordLongPress?: (word: string) => void;
+}) {
+  if (tajweedMode && tajweedText) {
+    return (
+      <TajweedWordsText
+        text={text}
+        markup={tajweedText}
+        style={style}
+        rtl={rtl}
+        fallbackColor="#1A1A1A"
+        onWordLongPress={onWordLongPress}
+      />
+    );
+  }
+
+  return (
+    <ColorWords
+      text={text}
+      colorCoding={colorCoding}
+      style={style}
+      rtl={rtl}
+      onWordLongPress={onWordLongPress}
+    />
+  );
+}
+
 // ─── Swipeable ayah card ─────────────────────────────────────────────────────
 interface AyahCardProps {
   ayah: ApiAyah;
@@ -110,6 +139,7 @@ interface AyahCardProps {
   transliterationText: string | null;
   showTransliteration: boolean;
   colorCoding: boolean;
+  tajweedMode: boolean;
   showBasmala: boolean;
   arabicFontSize: number;
   romanFontSize: number;
@@ -133,7 +163,7 @@ function SwipeableAyahCard({
   isOnRepeat, repeatCount, isUstadhMode,
   translations, transliterationText,
   showTransliteration,
-  colorCoding, showBasmala, arabicFontSize, romanFontSize, arabicFontFamily,
+  colorCoding, tajweedMode, showBasmala, arabicFontSize, romanFontSize, arabicFontFamily,
   onSave, onCancelRepeat, onCancelUstadh, onToggleMemorized, onPress, onWordLongPress,
 }: AyahCardProps) {
   const pan = useRef(new Animated.Value(0)).current;
@@ -245,9 +275,11 @@ function SwipeableAyahCard({
             <Text style={[cs.basmala, { fontFamily: arabicFontFamily }]}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
           )}
 
-          <ColorWords
+          <QuranWords
             text={ayah.text}
+            tajweedText={ayah.tajweedText}
             colorCoding={colorCoding}
+            tajweedMode={tajweedMode}
             style={[cs.arabic, { fontSize: arabicFontSize, lineHeight: arabicFontSize * 2, fontFamily: arabicFontFamily }]}
             rtl
             onWordLongPress={onWordLongPress ? (w) => onWordLongPress(w, ayah) : undefined}
@@ -2023,6 +2055,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
                 isFirstPage={currentPage === 1}
                 showBasmala={basmala}
                 activeAyah={audioState.currentSurah === surahNum ? audioState.currentAyah : null}
+                tajweedMode={tajweedMode}
               />
             </ScrollView>
           </View>
@@ -2136,6 +2169,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
                   transliterationText={transliteration?.ayahs[item.numberInSurah - 1]?.text ?? null}
                   showTransliteration={settings.showTransliteration}
                   colorCoding={settings.colorCoding}
+                  tajweedMode={tajweedMode}
                   showBasmala={showB}
                   arabicFontSize={accountSettings.fontSize ?? 28}
                   romanFontSize={accountSettings.romanFontSize ?? 14}

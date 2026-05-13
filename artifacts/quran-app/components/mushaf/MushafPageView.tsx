@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import type { ApiAyah } from "@/services/quranApi";
+import { getTajweedColor, splitOriginalWordsWithTajweed } from "@/components/TajweedText";
 import { DEFAULT_MUSHAF_THEME, type MushafTheme } from "./MushafTheme";
 
 function toArabicNumerals(n: number): string {
@@ -14,6 +15,7 @@ interface Props {
   isFirstPage: boolean;
   showBasmala: boolean;
   activeAyah: number | null;
+  tajweedMode?: boolean;
   theme?: MushafTheme;
 }
 
@@ -24,6 +26,7 @@ export function MushafPageView({
   isFirstPage,
   showBasmala,
   activeAyah,
+  tajweedMode = false,
   theme = DEFAULT_MUSHAF_THEME,
 }: Props) {
   const firstAyah = ayahs[0];
@@ -61,17 +64,38 @@ export function MushafPageView({
         <Text style={s.quranText} textBreakStrategy="highQuality">
           {ayahs.map((ayah) => {
             const isActive = activeAyah === ayah.numberInSurah;
-            const words = ayah.text.split(" ").filter(Boolean);
+            const tajweedWords = tajweedMode && ayah.tajweedText ? splitOriginalWordsWithTajweed(ayah.text, ayah.tajweedText) : null;
+            const words = tajweedWords ?? ayah.text.split(" ").filter(Boolean);
             return (
               <Text key={ayah.numberInSurah}>
-                {words.map((word, idx) => (
-                  <Text
-                    key={`${ayah.numberInSurah}-${idx}`}
-                    style={isActive ? s.activeWord : undefined}
-                  >
-                    {word}{" "}
-                  </Text>
-                ))}
+                {words.map((word, idx) => {
+                  if (typeof word === "string") {
+                    return (
+                      <Text
+                        key={`${ayah.numberInSurah}-${idx}`}
+                        style={isActive ? s.activeWord : undefined}
+                      >
+                        {word}{" "}
+                      </Text>
+                    );
+                  }
+                  return (
+                    <Text
+                      key={`${ayah.numberInSurah}-${idx}`}
+                      style={isActive ? s.activeWord : undefined}
+                    >
+                      {word.tokens.map((token, tokenIdx) => (
+                        <Text
+                          key={`${ayah.numberInSurah}-${idx}-${tokenIdx}`}
+                          style={{ color: getTajweedColor(token.className) ?? theme.textColor }}
+                        >
+                          {token.text}
+                        </Text>
+                      ))}
+                      {" "}
+                    </Text>
+                  );
+                })}
                 <Text style={[s.ayahMarker, isActive && s.ayahMarkerActive]}>
                   {"۝"}{toArabicNumerals(ayah.numberInSurah)}{" "}
                 </Text>

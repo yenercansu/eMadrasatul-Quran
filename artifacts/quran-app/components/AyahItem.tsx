@@ -17,6 +17,7 @@ import type { ApiAyah } from "@/services/quranApi";
 import { SelectRangeModal } from "@/components/SelectRangeModal";
 import { useState } from "react";
 import { getArabicFontFamily } from "@/constants/arabicFonts";
+import { getTajweedColor, splitOriginalWordsWithTajweed } from "@/components/TajweedText";
 
 export interface TafsirEntry {
   edition: string;
@@ -104,6 +105,9 @@ export function AyahItem({
     swipeRef.current?.close();
   }, [arabic.numberInSurah, onRepeatSelect]);
 
+  const tajweedWords = settings.tajweedColorCoding && arabic.tajweedText
+    ? splitOriginalWordsWithTajweed(arabic.text, arabic.tajweedText)
+    : null;
   const arabicWords = arabic.text.split(" ").filter(Boolean);
 
   const renderRightActions = (progress: Animated.AnimatedInterpolation<number>) => {
@@ -189,21 +193,29 @@ export function AyahItem({
         <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
           <View style={s.arabicContainer}>
             <View style={s.arabicWordsWrap}>
-              {arabicWords.map((word, idx) => {
-                const highlighted = isWordHighlighted(word, surahNumber, arabic.numberInSurah);
+              {(tajweedWords ?? arabicWords).map((word, idx) => {
+                const plainWord = typeof word === "string" ? word : word.text;
+                const highlighted = isWordHighlighted(plainWord, surahNumber, arabic.numberInSurah);
                 const wordColor = settings.colorCoding ? WORD_COLORS[idx % WORD_COLORS.length] : colors.foreground;
                 return (
                   <TouchableOpacity
-                    key={`${idx}-${word}`}
+                    key={`${idx}-${plainWord}`}
                     onLongPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                      onWordLongPress?.(word, arabic.numberInSurah);
+                      onWordLongPress?.(plainWord, arabic.numberInSurah);
                     }}
                     delayLongPress={400}
                     activeOpacity={0.7}
                   >
                     <Text style={[s.arabicWord, { color: wordColor, fontFamily: getArabicFontFamily(accountSettings.arabicFont) }, highlighted && s.highlightedWord]}>
-                      {word}
+                      {typeof word === "string" ? word : word.tokens.map((token, tokenIdx) => (
+                        <Text
+                          key={`${idx}-${tokenIdx}-${token.text}`}
+                          style={{ color: getTajweedColor(token.className) ?? wordColor }}
+                        >
+                          {token.text}
+                        </Text>
+                      ))}
                     </Text>
                   </TouchableOpacity>
                 );

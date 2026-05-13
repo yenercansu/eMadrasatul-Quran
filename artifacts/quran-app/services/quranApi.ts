@@ -23,6 +23,7 @@ export interface ApiSurah {
 export interface ApiAyah {
   number: number;
   text: string;
+  tajweedText?: string;
   numberInSurah: number;
   juz: number;
   manzil: number;
@@ -85,6 +86,9 @@ const SURAH_TRANSLATION_FALLBACKS = [
   "The Calamity", "Rivalry in World Increase", "The Declining Day", "The Traducer", "The Elephant", "Quraysh", "Small Kindnesses", "Abundance", "The Disbelievers", "The Divine Support",
   "The Palm Fiber", "Sincerity", "The Daybreak", "Mankind",
 ];
+
+const QURAN_COM_API_BASE_URL = "https://api.quran.com/api/v4";
+const tajweedMemoryCache = new Map<number, Map<number, string>>();
 
 function fallbackRevelationType(chapterNumber: number): string {
   return MEDINAN_SURAHS.has(chapterNumber) ? "Medinan" : "Meccan";
@@ -294,6 +298,60 @@ function getVerseAudioUrl(verse: QuranVerse): string | null {
   ) || null;
 }
 
+function extractTajweedVerses(data: unknown): Array<Record<string, unknown>> {
+  if (Array.isArray(data)) return data.filter((item): item is Record<string, unknown> => !!item && typeof item === "object");
+  const record = asRecord(data);
+  const verses = record.verses;
+  if (Array.isArray(verses)) return verses.filter((item): item is Record<string, unknown> => !!item && typeof item === "object");
+  return [];
+}
+
+async function fetchSurahTajweedText(chapterNumber: number): Promise<Map<number, string>> {
+  const cached = tajweedMemoryCache.get(chapterNumber);
+  if (cached) return cached;
+
+  const mapped = new Map<number, string>();
+  let page = 1;
+  let nextPage: number | null = 1;
+
+  while (nextPage) {
+    const url = new URL("/api/v4/quran/verses/uthmani_tajweed", QURAN_COM_API_BASE_URL);
+    url.searchParams.set("chapter_number", String(chapterNumber));
+    url.searchParams.set("per_page", "50");
+    url.searchParams.set("page", String(page));
+
+    const response = await fetch(url.toString(), { headers: { accept: "application/json" } });
+    if (!response.ok) throw new Error(`Quran.com Tajweed request failed with HTTP ${response.status}`);
+    const data = await response.json();
+
+    for (const verse of extractTajweedVerses(data)) {
+      const verseKey = getString(verse.verse_key ?? verse.verseKey);
+      const ayahNumber = getNumber(verseKey.split(":")[1], getNumber(verse.verse_number ?? verse.ayah_number, NaN));
+      const text = getString(verse.text_uthmani_tajweed ?? verse.textUthmaniTajweed);
+      if (Number.isFinite(ayahNumber) && text) mapped.set(ayahNumber, text);
+    }
+
+    const pagination = asRecord(asRecord(data).pagination);
+    const parsedNext = getNumber(pagination.next_page ?? pagination.nextPage, NaN);
+    nextPage = Number.isFinite(parsedNext) ? parsedNext : null;
+    page = nextPage ?? 0;
+  }
+
+  tajweedMemoryCache.set(chapterNumber, mapped);
+  return mapped;
+}
+
+function attachTajweedText(detail: SurahDetail, tajweedByAyah: Map<number, string>): SurahDetail {
+  if (tajweedByAyah.size === 0) return detail;
+  return {
+    ...detail,
+    ayahs: detail.ayahs.map((ayah) => ({
+      ...ayah,
+      tajweedText: tajweedByAyah.get(ayah.numberInSurah),
+    })),
+  };
+}
+
 async function fetchSurahPage(chapterNumber: number, params: { page: number; perPage: number; tafsir?: boolean } = { page: 1, perPage: 10 }): Promise<QuranPage> {
   return getQuranPageWithCache({
     chapterNumber,
@@ -421,7 +479,9 @@ export async function fetchSurah(
     page: 1,
     perPage: SURAH_DATA[surahNumber - 1]?.ayahCount ?? 10,
   });
-  return pageToSurahDetail(page, surahNumber, "arabic");
+  const detail = pageToSurahDetail(page, surahNumber, "arabic");
+  const tajweed = await fetchSurahTajweedText(surahNumber).catch(() => new Map<number, string>());
+  return attachTajweedText(detail, tajweed);
 }
 
 export async function fetchSurahWithTranslations(
@@ -433,13 +493,16 @@ export async function fetchSurahWithTranslations(
   translation: SurahDetail;
   transliteration: SurahDetail;
 }> {
-  const page = await fetchSurahPage(surahNumber, {
-    page: 1,
-    perPage: SURAH_DATA[surahNumber - 1]?.ayahCount ?? 10,
-  });
+  const [page, tajweed] = await Promise.all([
+    fetchSurahPage(surahNumber, {
+      page: 1,
+      perPage: SURAH_DATA[surahNumber - 1]?.ayahCount ?? 10,
+    }),
+    fetchSurahTajweedText(surahNumber).catch(() => new Map<number, string>()),
+  ]);
 
   return {
-    arabic: pageToSurahDetail(page, surahNumber, "arabic"),
+    arabic: attachTajweedText(pageToSurahDetail(page, surahNumber, "arabic"), tajweed),
     translation: pageToSurahDetail(page, surahNumber, "translation"),
     transliteration: pageToSurahDetail(page, surahNumber, "transliteration"),
   };
