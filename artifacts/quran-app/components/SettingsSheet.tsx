@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Modal,
   FlatList,
+  ScrollView,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -13,6 +14,7 @@ import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
 import { RECITERS } from "@/contexts/AudioContext";
 import { FullScreenPage } from "@/components/FullScreenPage";
+import { ARABIC_FONT_OPTIONS } from "@/constants/arabicFonts";
 
 export const TAFSIR_EDITIONS = [
   { id: "en.maarifulquran", name: "Maariful Quran", author: "Mufti Shafi Usmani" },
@@ -166,6 +168,38 @@ export function SettingsSheet({ visible, onClose }: Props) {
               sampleStyle={s.fontSizeRoman}
             />
 
+            <Text style={s.sectionLabel}>Normal View Font</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.fontPickerRow}
+            >
+              {ARABIC_FONT_OPTIONS.map((opt) => {
+                const active = (accountSettings.arabicFont ?? "system") === opt.key;
+                return (
+                  <TouchableOpacity
+                    key={opt.key}
+                    style={[s.fontChip, active && s.fontChipActive]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      updateAccountSettings({ arabicFont: opt.key });
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[s.fontChipLabel, active && s.fontChipLabelActive]}>
+                      {opt.label}
+                    </Text>
+                    <Text
+                      style={[s.fontChipSample, { fontFamily: opt.fontFamily }, active && s.fontChipSampleActive]}
+                      numberOfLines={1}
+                    >
+                      {"بِسْمِ"}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
             <Text style={s.sectionLabel}>Reciter</Text>
             <TouchableOpacity
               style={s.reciterRow}
@@ -304,6 +338,32 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
     autoPauseChipText: { fontSize: 13, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
     autoPauseChipTextActive: { color: colors.primaryForeground },
     autoPauseHint: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 8, paddingHorizontal: 4 },
+    fontPickerRow: { gap: 8, paddingBottom: 4 },
+    fontChip: {
+      width: 82,
+      paddingVertical: 10,
+      paddingHorizontal: 8,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      backgroundColor: colors.secondary,
+      alignItems: "center",
+      gap: 6,
+    },
+    fontChipActive: { borderColor: colors.primary, backgroundColor: colors.primary + "18" },
+    fontChipLabel: {
+      fontSize: 11,
+      color: colors.mutedForeground,
+      fontFamily: "Inter_500Medium",
+      textAlign: "center",
+    },
+    fontChipLabelActive: { color: colors.primary, fontFamily: "Inter_600SemiBold" },
+    fontChipSample: {
+      fontSize: 22,
+      color: colors.foreground,
+      lineHeight: 36,
+    },
+    fontChipSampleActive: { color: colors.primary },
   });
 
 const makeRsStyles = (colors: ReturnType<typeof useColors>) =>

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Appearance } from "react-native";
+import type { ArabicFontKey } from "@/constants/arabicFonts";
 import { getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
 import { useAuth } from "@/contexts/AuthContext";
 import * as madeenanApi from "@/services/madeenanApi";
@@ -76,6 +77,7 @@ export interface AccountSettings {
   email: string;
   fontSize: number;
   romanFontSize: number;
+  arabicFont: ArabicFontKey;
   theme: "auto" | "light" | "dark";
   dailyNotifications: boolean;
   notificationTime: string;
@@ -180,6 +182,7 @@ const DEFAULT_ACCOUNT: AccountSettings = {
   email: "",
   fontSize: 28,
   romanFontSize: 14,
+  arabicFont: "noto",
   theme: "light",
   dailyNotifications: false,
   notificationTime: "08:00",

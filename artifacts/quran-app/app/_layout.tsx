@@ -6,6 +6,9 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { AmiriQuran_400Regular } from "@expo-google-fonts/amiri-quran";
+import { Amiri_400Regular } from "@expo-google-fonts/amiri";
+import { ScheherazadeNew_400Regular } from "@expo-google-fonts/scheherazade-new";
+import { NotoNaskhArabic_400Regular } from "@expo-google-fonts/noto-naskh-arabic";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useSegments, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -76,6 +79,9 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
     AmiriQuran_400Regular,
+    Amiri_400Regular,
+    ScheherazadeNew_400Regular,
+    NotoNaskhArabic_400Regular,
   });
 
   useEffect(() => {

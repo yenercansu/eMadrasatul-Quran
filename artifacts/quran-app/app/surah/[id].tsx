@@ -44,6 +44,7 @@ import { MushafPageView } from "@/components/mushaf/MushafPageView";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetchSurahWithTranslations, fetchTafsir, fetchTranslation, fetchWordTranslations, type SurahDetail, type ApiAyah, type WordTranslation } from "@/services/quranApi";
 import { getJuzAyahs, getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
+import { getArabicFontFamily } from "@/constants/arabicFonts";
 import { RECENT_RECITERS_KEY } from "@/contexts/AudioContext";
 import {
   ensureGoalOffline,
@@ -111,6 +112,7 @@ interface AyahCardProps {
   showBasmala: boolean;
   arabicFontSize: number;
   romanFontSize: number;
+  arabicFontFamily: string | undefined;
   isOnRepeat: boolean;
   repeatCount: number;
   isUstadhMode: boolean;
@@ -130,7 +132,7 @@ function SwipeableAyahCard({
   isOnRepeat, repeatCount, isUstadhMode,
   translations, transliterationText,
   showTransliteration,
-  colorCoding, showBasmala, arabicFontSize, romanFontSize,
+  colorCoding, showBasmala, arabicFontSize, romanFontSize, arabicFontFamily,
   onSave, onCancelRepeat, onCancelUstadh, onToggleMemorized, onPress, onWordLongPress,
 }: AyahCardProps) {
   const pan = useRef(new Animated.Value(0)).current;
@@ -239,13 +241,13 @@ function SwipeableAyahCard({
           </View>
 
           {showBasmala && (
-            <Text style={cs.basmala}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
+            <Text style={[cs.basmala, { fontFamily: arabicFontFamily }]}>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</Text>
           )}
 
           <ColorWords
             text={ayah.text}
             colorCoding={colorCoding}
-            style={[cs.arabic, { fontSize: arabicFontSize, lineHeight: arabicFontSize * 2 }]}
+            style={[cs.arabic, { fontSize: arabicFontSize, lineHeight: arabicFontSize * 2, fontFamily: arabicFontFamily }]}
             rtl
             onWordLongPress={onWordLongPress ? (w) => onWordLongPress(w, ayah) : undefined}
           />
@@ -2043,6 +2045,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
                   showBasmala={showB}
                   arabicFontSize={accountSettings.fontSize ?? 28}
                   romanFontSize={accountSettings.romanFontSize ?? 14}
+                  arabicFontFamily={getArabicFontFamily(accountSettings.arabicFont)}
                   onSave={handleSaveAyah}
                   onCancelRepeat={handleCancelRepeat}
                   onCancelUstadh={stopAudio}

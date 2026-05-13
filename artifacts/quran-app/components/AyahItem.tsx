@@ -16,6 +16,7 @@ import { useAudio } from "@/contexts/AudioContext";
 import type { ApiAyah } from "@/services/quranApi";
 import { SelectRangeModal } from "@/components/SelectRangeModal";
 import { useState } from "react";
+import { getArabicFontFamily } from "@/constants/arabicFonts";
 
 export interface TafsirEntry {
   edition: string;
@@ -64,7 +65,7 @@ export function AyahItem({
 }: Props) {
   const colors = useColors();
   const s = styles(colors);
-  const { settings, isWordHighlighted } = useQuran();
+  const { settings, accountSettings, isWordHighlighted } = useQuran();
   const { audioState, playAyah, pauseAudio, resumeAudio } = useAudio();
   const swipeRef = useRef<Swipeable>(null);
   const [savePulse, setSavePulse] = useState(false);
@@ -201,7 +202,7 @@ export function AyahItem({
                     delayLongPress={400}
                     activeOpacity={0.7}
                   >
-                    <Text style={[s.arabicWord, { color: wordColor }, highlighted && s.highlightedWord]}>
+                    <Text style={[s.arabicWord, { color: wordColor, fontFamily: getArabicFontFamily(accountSettings.arabicFont) }, highlighted && s.highlightedWord]}>
                       {word}
                     </Text>
                   </TouchableOpacity>

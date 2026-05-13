@@ -16,8 +16,11 @@
   },
   "dependencies": {
     "@better-auth/expo": "^1.6.10",
+    "@expo-google-fonts/amiri": "^0.4.1",
     "@expo-google-fonts/amiri-quran": "^0.4.1",
     "@expo-google-fonts/inter": "^0.4.0",
+    "@expo-google-fonts/noto-naskh-arabic": "^0.4.5",
+    "@expo-google-fonts/scheherazade-new": "^0.4.2",
     "@expo/ngrok": "^4.1.0",
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
