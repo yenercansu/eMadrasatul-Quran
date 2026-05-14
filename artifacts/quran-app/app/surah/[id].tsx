@@ -1328,6 +1328,8 @@ type PlaybackConfig = {
   wordRepeat: number;
 };
 
+type PlaybackRangeConfig = Pick<PlaybackConfig, "startAyah" | "endAyah">;
+
 const DEFAULT_PLAYBACK_CONFIG: PlaybackConfig = {
   mode: "repetition",
   startAyah: 1,
@@ -1336,6 +1338,8 @@ const DEFAULT_PLAYBACK_CONFIG: PlaybackConfig = {
   rangeRepeat: 1,
   wordRepeat: 3,
 };
+
+const sessionPlaybackRanges = new Map<number, PlaybackRangeConfig>();
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function SurahScreen() {
@@ -1357,6 +1361,7 @@ export default function SurahScreen() {
   const [editSheetVisible, setEditSheetVisible] = useState(false);
   const [playbackConfig, setPlaybackConfig] = useState<PlaybackConfig>(DEFAULT_PLAYBACK_CONFIG);
   const playbackConfigRef = useRef<PlaybackConfig>(DEFAULT_PLAYBACK_CONFIG);
+  const sessionSelectedRangeRef = useRef<PlaybackRangeConfig | null>(null);
   const planModeRef = useRef<"ayah" | "section" | "word" | "range" | "ustadh" | null>(null);
   const [meaningPanelVisible, setMeaningPanelVisible] = useState(false);
   const [tafsirModalVisible, setTafsirModalVisible] = useState(false);
@@ -1520,7 +1525,9 @@ const [settingsVisible, setSettingsVisible] = useState(false);
 
   useEffect(() => {
     setTajweedMode(false);
-    const reset = { ...DEFAULT_PLAYBACK_CONFIG };
+    const savedRange = sessionPlaybackRanges.get(surahNum) ?? null;
+    const reset = { ...DEFAULT_PLAYBACK_CONFIG, ...(savedRange ?? {}) };
+    sessionSelectedRangeRef.current = savedRange;
     setPlaybackConfig(reset);
     playbackConfigRef.current = reset;
     loadData();
@@ -1548,6 +1555,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
 
   useEffect(() => {
     if (!arabic || audioState.isPlaying || audioState.isLoading) return;
+    if (sessionSelectedRangeRef.current) return;
     const firstAyahOfPage = Math.min((currentPage - 1) * AYAHS_PER_PAGE + 1, arabic.ayahs.length);
     setPlaybackConfig(prev => {
       if (prev.startAyah === firstAyahOfPage) return prev;
@@ -1566,6 +1574,14 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       setTransliteration(main.transliteration);
       setTranslationsMap({ "en.sahih": main.translation });
       setPlaybackConfig(prev => {
+        const selectedRange = sessionSelectedRangeRef.current;
+        if (selectedRange) {
+          const startAyah = Math.min(Math.max(selectedRange.startAyah, 1), main.arabic.ayahs.length);
+          const endAyah = Math.min(Math.max(selectedRange.endAyah, startAyah), main.arabic.ayahs.length);
+          const updated = { ...prev, startAyah, endAyah };
+          playbackConfigRef.current = updated;
+          return updated;
+        }
         const updated = { ...prev, startAyah: 1, endAyah: main.arabic.ayahs.length };
         playbackConfigRef.current = updated;
         return updated;
@@ -1738,9 +1754,17 @@ const [settingsVisible, setSettingsVisible] = useState(false);
   }, [surahNum, playUstadhMode, playWordByWord, playAyah, playRange, recordAyahRead, saveProgress, arabic]);
 
   const handleConfigChange = useCallback((newConfig: PlaybackConfig) => {
+    const previousConfig = playbackConfigRef.current;
+    if (newConfig.startAyah !== previousConfig.startAyah || newConfig.endAyah !== previousConfig.endAyah) {
+      sessionSelectedRangeRef.current = {
+        startAyah: newConfig.startAyah,
+        endAyah: newConfig.endAyah,
+      };
+      sessionPlaybackRanges.set(surahNum, sessionSelectedRangeRef.current);
+    }
     playbackConfigRef.current = newConfig;
     setPlaybackConfig(newConfig);
-  }, []);
+  }, [surahNum]);
 
   const handleTafsirPress = useCallback(() => {
     if (!settings.showTafsir) updateSettings({ showTafsir: true });
@@ -2299,6 +2323,11 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         ayahs={arabic?.ayahs ?? []}
         currentAyah={currentAyahForRange}
         onConfirm={(startA, endA, repeatCount) => {
+          handleConfigChange({
+            ...playbackConfigRef.current,
+            startAyah: startA,
+            endAyah: endA,
+          });
           playRange(
             { startSurah: surahNum, startAyah: startA, endSurah: surahNum, endAyah: endA },
             repeatCount,
