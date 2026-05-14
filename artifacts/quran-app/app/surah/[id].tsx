@@ -1711,19 +1711,6 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     return () => setOnPlanFinish(null);
   }, [surahNum, setOnPlanFinish]);
 
-  // After a plan finishes (planMode=null) the sound is at its end position.
-  // Resume would replay from that position instead of the full ayah, so we
-  // restart cleanly. When the plan is still active (paused mid-play) we resume.
-  const handlePlayOrResume = useCallback(() => {
-    if (audioState.planMode !== null) {
-      resumeAudio();
-    } else if (audioState.currentAyah && audioState.currentSurah === surahNum && arabic) {
-      playAyah(surahNum, audioState.currentAyah, arabic.ayahs.length, 1);
-    } else {
-      resumeAudio();
-    }
-  }, [audioState.planMode, audioState.currentAyah, audioState.currentSurah, surahNum, arabic, resumeAudio, playAyah]);
-
   const handlePlayAll = useCallback(() => {
     if (!arabic) return;
     playAyah(surahNum, 1, arabic.ayahs.length, 1);
@@ -1752,6 +1739,20 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     recordAyahRead(surahNum, cfg.startAyah);
     saveProgress({ surahNumber: surahNum, ayahNumber: cfg.startAyah, ayahNumberInSurah: cfg.startAyah, surahName: arabic?.englishName ?? "" });
   }, [surahNum, playUstadhMode, playWordByWord, playAyah, playRange, recordAyahRead, saveProgress, arabic]);
+
+  // After a plan finishes (planMode=null), restart from the configured Edit
+  // Sheet range instead of replaying the last completed ayah.
+  const handlePlayOrResume = useCallback(() => {
+    if (audioState.planMode !== null) {
+      resumeAudio();
+    } else if (sessionSelectedRangeRef.current) {
+      triggerPlayback(playbackConfigRef.current);
+    } else if (audioState.currentAyah && audioState.currentSurah === surahNum && arabic) {
+      playAyah(surahNum, audioState.currentAyah, arabic.ayahs.length, 1);
+    } else {
+      resumeAudio();
+    }
+  }, [audioState.planMode, audioState.currentAyah, audioState.currentSurah, surahNum, arabic, resumeAudio, triggerPlayback, playAyah]);
 
   const handleConfigChange = useCallback((newConfig: PlaybackConfig) => {
     const previousConfig = playbackConfigRef.current;
@@ -2141,7 +2142,8 @@ const [settingsVisible, setSettingsVisible] = useState(false);
               </View>
             }
             renderItem={({ item }) => {
-              const isPlaying = audioState.currentSurah === surahNum && audioState.currentAyah === item.numberInSurah;
+              const isCurrentAyah = audioState.currentSurah === surahNum && audioState.currentAyah === item.numberInSurah;
+              const isPlaying = isCurrentAyah && (audioState.isPlaying || audioState.isLoading);
               const repeatVal = ayahRepeatCounts[item.numberInSurah];
               const isOnRepeat = (repeatVal != null && repeatVal > 1) || (isPlaying && audioState.repeatCount > 1 && audioState.planMode !== "ustadh");
               const isUstadhMode = audioState.planMode === "ustadh" && isPlaying;
