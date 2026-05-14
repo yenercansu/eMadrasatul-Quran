@@ -1339,14 +1339,12 @@ const DEFAULT_PLAYBACK_CONFIG: PlaybackConfig = {
   wordRepeat: 3,
 };
 
-const sessionPlaybackRanges = new Map<number, PlaybackRangeConfig>();
-
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function SurahScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const bottomInset = Platform.OS === "web" ? 8 : insets.bottom;
-  const { id, ayah: ayahParam } = useLocalSearchParams<{ id: string; ayah?: string }>();
+  const { id, ayah: ayahParam, play: playParam } = useLocalSearchParams<{ id: string; ayah?: string; play?: string }>();
   const surahNum = parseInt(id, 10);
 
   const [arabic, setArabic] = useState<SurahDetail | null>(null);
@@ -1525,9 +1523,8 @@ const [settingsVisible, setSettingsVisible] = useState(false);
 
   useEffect(() => {
     setTajweedMode(false);
-    const savedRange = sessionPlaybackRanges.get(surahNum) ?? null;
-    const reset = { ...DEFAULT_PLAYBACK_CONFIG, ...(savedRange ?? {}) };
-    sessionSelectedRangeRef.current = savedRange;
+    const reset = { ...DEFAULT_PLAYBACK_CONFIG };
+    sessionSelectedRangeRef.current = null;
     setPlaybackConfig(reset);
     playbackConfigRef.current = reset;
     loadData();
@@ -1636,6 +1633,17 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         setTimeout(() => {
           try { listRef.current?.scrollToIndex({ index: initialIndex % AYAHS_PER_PAGE, animated: false }); } catch {}
         }, 300);
+      }
+
+      if (playParam === "1") {
+        playAyah(surahNum, visitAyah, main.arabic.ayahs.length, settings.repeatCount);
+        recordAyahRead(surahNum, visitAyah);
+        saveProgress({
+          surahNumber: surahNum,
+          ayahNumber: visitAyah,
+          ayahNumberInSurah: visitAyah,
+          surahName: main.arabic.englishName,
+        });
       }
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Could not load this Quran page.");
@@ -1761,7 +1769,6 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         startAyah: newConfig.startAyah,
         endAyah: newConfig.endAyah,
       };
-      sessionPlaybackRanges.set(surahNum, sessionSelectedRangeRef.current);
     }
     playbackConfigRef.current = newConfig;
     setPlaybackConfig(newConfig);

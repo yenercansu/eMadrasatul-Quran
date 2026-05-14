@@ -256,7 +256,7 @@ export default function HomeScreen() {
           <View style={[s.audioCardGlowWrap, s.audioCardOffset]}>
             <TouchableOpacity
               style={s.audioCard}
-              onPress={() => router.push(isFirstListen ? "/surah/1" : `/surah/${lastListened!.surahNumber}?ayah=${lastListened!.ayahNumberInSurah}`)}
+              onPress={() => router.push(isFirstListen ? "/surah/1?play=1" : `/surah/${lastListened!.surahNumber}?ayah=${lastListened!.ayahNumberInSurah}&play=1`)}
               activeOpacity={0.88}
             >
               <View pointerEvents="none" style={s.audioCardStrokeGlow} />
