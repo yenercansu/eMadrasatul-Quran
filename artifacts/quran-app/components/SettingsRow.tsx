@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, type StyleProp, type TextStyle } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
 interface RowProps {
@@ -8,6 +8,7 @@ interface RowProps {
   right?: React.ReactNode;
   onPress?: () => void;
   last?: boolean;
+  labelStyle?: StyleProp<TextStyle>;
 }
 
 interface CardProps {
@@ -19,10 +20,10 @@ export function SettingsCard({ children, style }: CardProps) {
   return <View style={[s.card, style]}>{children}</View>;
 }
 
-export function SettingsRow({ label, value, right, onPress, last }: RowProps) {
+export function SettingsRow({ label, value, right, onPress, last, labelStyle }: RowProps) {
   const inner = (
     <>
-      <Text style={s.label}>{label}</Text>
+      <Text style={[s.label, labelStyle]}>{label}</Text>
       {right ?? (
         <View style={s.valueWrap}>
           {value !== undefined && <Text style={s.value}>{value}</Text>}
@@ -63,10 +64,12 @@ const s = StyleSheet.create({
     borderBottomWidth: 0,
   },
   label: {
+    flex: 1,
     fontSize: 15,
     fontWeight: "600",
     color: "#1A1A1A",
     fontFamily: "Inter_600SemiBold",
+    paddingRight: 12,
   },
   valueWrap: {
     flexDirection: "row",
