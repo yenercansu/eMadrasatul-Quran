@@ -125,6 +125,21 @@ export async function clearOfflineAudioCache(): Promise<void> {
   await AsyncStorage.removeItem(ACTIVE_SURAH_KEY).catch(() => {});
 }
 
+export async function clearOfflineContentCache(): Promise<void> {
+  const manifest = await readContentManifest();
+  await Promise.all(
+    Object.values(manifest).map((record) =>
+      FileSystem.deleteAsync(record.localUri, { idempotent: true }).catch(() => {}),
+    ),
+  );
+  await writeContentManifest({});
+  await FileSystem.deleteAsync(CONTENT_ROOT, { idempotent: true }).catch(() => {});
+}
+
+export async function clearOfflineCaches(): Promise<void> {
+  await Promise.all([clearOfflineAudioCache(), clearOfflineContentCache()]);
+}
+
 export async function migrateToSingleSurahOfflineCache(): Promise<void> {
   const done = await AsyncStorage.getItem(SURAH_CACHE_MIGRATION_KEY).catch(() => null);
   if (done === "1") return;

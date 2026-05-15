@@ -22,6 +22,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { QuranProvider } from "@/contexts/QuranContext";
 import { AudioProvider } from "@/contexts/AudioContext";
+import { NetworkProvider } from "@/contexts/NetworkContext";
 import LogoMark from "@/components/LogoMark";
 
 SplashScreen.preventAutoHideAsync();
@@ -98,15 +99,17 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <AuthGate>
-              <QuranProvider>
-                <AudioProvider>
-                  <GestureHandlerRootView style={{ flex: 1 }}>
-                    <KeyboardProvider>
-                      <RootLayoutNav />
-                    </KeyboardProvider>
-                  </GestureHandlerRootView>
-                </AudioProvider>
-              </QuranProvider>
+              <NetworkProvider>
+                <QuranProvider>
+                  <AudioProvider>
+                    <GestureHandlerRootView style={{ flex: 1 }}>
+                      <KeyboardProvider>
+                        <RootLayoutNav />
+                      </KeyboardProvider>
+                    </GestureHandlerRootView>
+                  </AudioProvider>
+                </QuranProvider>
+              </NetworkProvider>
             </AuthGate>
           </AuthProvider>
         </QueryClientProvider>

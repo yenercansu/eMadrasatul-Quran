@@ -18,6 +18,7 @@ import {
   Switch,
   LayoutAnimation,
   UIManager,
+  Alert,
 } from "react-native";
 
 // Enable LayoutAnimation on Android
@@ -31,6 +32,7 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
 import { useAudio, RECITERS, PLAYBACK_RATES } from "@/contexts/AudioContext";
+import { useNetworkStatus } from "@/contexts/NetworkContext";
 import { SettingsSheet, TAFSIR_EDITIONS } from "@/components/SettingsSheet";
 import { FullScreenPage } from "@/components/FullScreenPage";
 import { PlayRangeSheet } from "@/components/PlayRangeSheet";
@@ -43,7 +45,7 @@ import { OnboardingHints } from "@/components/OnboardingHints";
 import { MushafPageView } from "@/components/mushaf/MushafPageView";
 import { TajweedWordsText } from "@/components/TajweedText";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { fetchSurahWithTranslations, fetchTranslation, fetchWordTranslations, type SurahDetail, type ApiAyah, type WordTranslation } from "@/services/quranApi";
+import { cacheSurahContentForOffline, fetchSurahWithTranslations, fetchTranslation, fetchWordTranslations, type SurahDetail, type ApiAyah, type WordTranslation } from "@/services/quranApi";
 import { fetchTafsirPage, normalizeTafsirKeys, type TafsirEntry } from "@/services/tafsirApi";
 import { getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
 import { getArabicFontFamily } from "@/constants/arabicFonts";
@@ -51,7 +53,9 @@ import { RECENT_RECITERS_KEY } from "@/contexts/AudioContext";
 import {
   deleteOfflineAudioExceptSurah,
   ensureSurahOffline,
+  getCachedAyahAudioUri,
   getOfflineStatusForAyahs,
+  getVerseKey,
   migrateToSingleSurahOfflineCache,
   type DownloadProgress,
   type GoalAyahLike,
@@ -149,6 +153,7 @@ interface AyahCardProps {
   isOnRepeat: boolean;
   repeatCount: number;
   isUstadhMode: boolean;
+  isSaved: boolean;
   onSave: (ayah: ApiAyah) => void;
   onCancelRepeat: (ayah: ApiAyah) => void;
   onCancelUstadh: () => void;
@@ -163,6 +168,7 @@ function SwipeableAyahCard({
   ayah, surahNum, isPlaying, isRangeSelected,
   showMemorizedToggle, isMemorized,
   isOnRepeat, repeatCount, isUstadhMode,
+  isSaved,
   translations, transliterationText,
   showTransliteration,
   colorCoding, tajweedMode, showBasmala, arabicFontSize, romanFontSize, arabicFontFamily,
@@ -271,6 +277,18 @@ function SwipeableAyahCard({
                 )}
               </TouchableOpacity>
             )}
+            <TouchableOpacity
+              style={cs.saveBtn}
+              onPress={() => {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                onSave(ayah);
+              }}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel={`Save ayah ${ayah.numberInSurah}`}
+            >
+              <Ionicons name={isSaved ? "bookmark" : "bookmark-outline"} size={21} color={isSaved ? "#1A1A1A" : "#6B6B6B"} />
+            </TouchableOpacity>
           </View>
 
           {showBasmala && (
@@ -351,6 +369,12 @@ const cs = StyleSheet.create({
   },
   numText: { fontSize: 14, fontWeight: "700", color: "#6B6B6B", fontFamily: "Inter_700Bold" },
   memorizedCheckBtn: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  saveBtn: {
     width: 32,
     height: 32,
     alignItems: "center",
@@ -1416,7 +1440,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     const cacheKey = `${surahNum}:${ayah.numberInSurah}`;
     let wordTranslations = wordTranslationsCache.current[cacheKey];
     if (!wordTranslations) {
-      wordTranslations = await fetchWordTranslations(surahNum, ayah.numberInSurah);
+      wordTranslations = await fetchWordTranslations(surahNum, ayah.numberInSurah).catch(() => []);
       wordTranslationsCache.current[cacheKey] = wordTranslations;
     }
 
@@ -1443,6 +1467,15 @@ const [settingsVisible, setSettingsVisible] = useState(false);
   const scrollYRef = useRef(0);
   const userScrollingRef = useRef(false);
   const wordTranslationsCache = useRef<Record<string, WordTranslation[]>>({});
+  const persistVisibleAyahRef = useRef<(ayahNumber: number) => void>(() => {});
+  const viewabilityConfigRef = useRef({ itemVisiblePercentThreshold: 55 });
+  const onViewableItemsChangedRef = useRef(({ viewableItems }: { viewableItems: Array<{ item?: ApiAyah; isViewable?: boolean }> }) => {
+    const visible = viewableItems
+      .filter((item) => item.isViewable && item.item)
+      .map((item) => item.item!)
+      .sort((a, b) => a.numberInSurah - b.numberInSurah);
+    if (visible[0]) persistVisibleAyahRef.current(visible[0].numberInSurah);
+  });
 
   // Horizontal swipe detector for Mushaf page navigation (via stable ref callbacks)
   const mushafGoNextRef = useRef<() => void>(() => {});
@@ -1497,12 +1530,65 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     settings, updateSettings,
     accountSettings,
     saveProgress, recordVisit, recordAyahRead,
-    saveAyah, saveWord,
+    saveAyah, saveWord, isAyahSaved, savedAyahs,
     surahPositions, saveSurahPosition,
     goal, memorizationGoal, isAyahMemorized, toggleAyahMemorized,
   } = useQuran();
 
   const { audioState, playAyah, playRange, playSection, playUstadhMode, playWordByWord, pauseAudio, resumeAudio, stopAudio, setPlaybackRate, playNextAyah, playPrevAyah, setOnNextAyah, setOnPlanFinish } = useAudio();
+  const { isOffline } = useNetworkStatus();
+  persistVisibleAyahRef.current = (ayahNumber) => saveSurahPosition(surahNum, ayahNumber - 1);
+
+  const warnOfflineUnavailable = useCallback(() => {
+    Alert.alert(
+      "App is offline",
+      "This Surah has not been downloaded for offline playback yet. Connect to the internet and choose Download Current Surah first.",
+    );
+  }, []);
+
+  const hasOfflineAudioForRange = useCallback(async (startAyah: number, endAyah: number) => {
+    const reciterId = Number(settings.selectedReciter) || 7;
+    const ayahs = Array.from({ length: endAyah - startAyah + 1 }, (_, index) => ({
+      surahNumber: surahNum,
+      ayahNumber: startAyah + index,
+    }));
+    const status = await getOfflineStatusForAyahs(ayahs, reciterId);
+    return status.status === "ready";
+  }, [settings.selectedReciter, surahNum]);
+
+  const canPlayOfflineRange = useCallback(async (startAyah: number, endAyah: number) => {
+    if (!isOffline) return true;
+    const ready = await hasOfflineAudioForRange(startAyah, endAyah);
+    if (!ready) warnOfflineUnavailable();
+    return ready;
+  }, [hasOfflineAudioForRange, isOffline, warnOfflineUnavailable]);
+
+  const resetSpecialPlaybackMode = useCallback(() => {
+    const current = playbackConfigRef.current;
+    if (current.mode === "repetition") return;
+    const next = { ...current, mode: "repetition" as const };
+    playbackConfigRef.current = next;
+    setPlaybackConfig(next);
+  }, []);
+
+  useEffect(() => {
+    const specialModeSelected = playbackConfigRef.current.mode === "ustadh" || playbackConfigRef.current.mode === "wordByWord";
+    const specialPlanPlaying = audioState.planMode === "ustadh" || audioState.planMode === "word";
+    if (!isOffline || (!specialModeSelected && !specialPlanPlaying)) return;
+    stopAudio().catch(() => {});
+    resetSpecialPlaybackMode();
+  }, [audioState.planMode, isOffline, resetSpecialPlaybackMode, stopAudio]);
+
+  useFocusEffect(
+    useCallback(() => () => {
+      const specialModeSelected = playbackConfigRef.current.mode === "ustadh" || playbackConfigRef.current.mode === "wordByWord";
+      const specialPlanPlaying = planModeRef.current === "ustadh" || planModeRef.current === "word";
+      if (specialModeSelected || specialPlanPlaying) {
+        stopAudio().catch(() => {});
+        resetSpecialPlaybackMode();
+      }
+    }, [resetSpecialPlaybackMode, stopAudio]),
+  );
 
   // Keep planModeRef current so handleConfigChange never captures stale state
   useEffect(() => { planModeRef.current = audioState.planMode; }, [audioState.planMode]);
@@ -1554,13 +1640,14 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     if (!arabic || audioState.isPlaying || audioState.isLoading) return;
     if (sessionSelectedRangeRef.current) return;
     const firstAyahOfPage = Math.min((currentPage - 1) * AYAHS_PER_PAGE + 1, arabic.ayahs.length);
+    saveSurahPosition(surahNum, firstAyahOfPage - 1);
     setPlaybackConfig(prev => {
       if (prev.startAyah === firstAyahOfPage) return prev;
       const updated = { ...prev, startAyah: firstAyahOfPage };
       playbackConfigRef.current = updated;
       return updated;
     });
-  }, [currentPage, arabic, audioState.isPlaying, audioState.isLoading]);
+  }, [currentPage, arabic, audioState.isPlaying, audioState.isLoading, saveSurahPosition, surahNum]);
 
   async function loadData() {
     setLoading(true);
@@ -1683,7 +1770,8 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, [surahNum, saveAyah, saveWord, arabic, translationsMap]);
 
-  const handleSetRepeat = useCallback((ayah: ApiAyah, count: number) => {
+  const handleSetRepeat = useCallback(async (ayah: ApiAyah, count: number) => {
+    if (!(await canPlayOfflineRange(ayah.numberInSurah, ayah.numberInSurah))) return;
     setAyahRepeatCounts(prev => ({ ...prev, [ayah.numberInSurah]: count }));
     if (!arabic) return;
     playAyah(surahNum, ayah.numberInSurah, arabic.ayahs.length, count);
@@ -1693,7 +1781,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       ayahNumberInSurah: ayah.numberInSurah, surahName: arabic.englishName,
     });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }, [arabic, surahNum, playAyah, recordAyahRead, saveProgress]);
+  }, [arabic, canPlayOfflineRange, surahNum, playAyah, recordAyahRead, saveProgress]);
 
   const handleCancelRepeat = useCallback((ayah: ApiAyah) => {
     setAyahRepeatCounts(prev => {
@@ -1719,48 +1807,63 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     return () => setOnPlanFinish(null);
   }, [surahNum, setOnPlanFinish]);
 
-  const handlePlayAll = useCallback(() => {
+  const handlePlayAll = useCallback(async () => {
     if (!arabic) return;
+    if (!(await canPlayOfflineRange(1, arabic.ayahs.length))) return;
     playAyah(surahNum, 1, arabic.ayahs.length, 1);
     recordAyahRead(surahNum, 1);
     saveProgress({ surahNumber: surahNum, ayahNumber: 1, ayahNumberInSurah: 1, surahName: arabic.englishName });
-  }, [arabic, surahNum]);
+  }, [arabic, canPlayOfflineRange, surahNum, playAyah, recordAyahRead, saveProgress]);
 
-  const triggerPlayback = useCallback((cfg: PlaybackConfig) => {
-    const targetPage = Math.ceil(cfg.startAyah / AYAHS_PER_PAGE);
+  const triggerPlayback = useCallback(async (cfg: PlaybackConfig) => {
+    if (!(await canPlayOfflineRange(cfg.startAyah, cfg.endAyah))) return;
+    const requestedSpecialMode = cfg.mode === "ustadh" || cfg.mode === "wordByWord";
+    const effectiveConfig = isOffline && requestedSpecialMode
+      ? { ...cfg, mode: "repetition" as const, ayahRepeat: 1, rangeRepeat: 1 }
+      : cfg;
+    if (effectiveConfig !== cfg) {
+      playbackConfigRef.current = effectiveConfig;
+      setPlaybackConfig(effectiveConfig);
+    }
+    const targetPage = Math.ceil(effectiveConfig.startAyah / AYAHS_PER_PAGE);
     setCurrentPage(targetPage);
     setTimeout(() => {
-      try { listRef.current?.scrollToIndex({ index: (cfg.startAyah - 1) % AYAHS_PER_PAGE, animated: true }); } catch {}
+      try { listRef.current?.scrollToIndex({ index: (effectiveConfig.startAyah - 1) % AYAHS_PER_PAGE, animated: true }); } catch {}
     }, 120);
-    if (cfg.mode === "ustadh") {
-      const rangeAyahs = Array.from({ length: cfg.endAyah - cfg.startAyah + 1 }, (_, i) => cfg.startAyah + i);
+    if (effectiveConfig.mode === "ustadh") {
+      const rangeAyahs = Array.from({ length: effectiveConfig.endAyah - effectiveConfig.startAyah + 1 }, (_, i) => effectiveConfig.startAyah + i);
       playUstadhMode(surahNum, rangeAyahs);
-    } else if (cfg.mode === "wordByWord") {
-      playWordByWord(surahNum, cfg.startAyah, cfg.endAyah, cfg.wordRepeat);
-    } else if (cfg.ayahRepeat === 1 && cfg.rangeRepeat === 1) {
+    } else if (effectiveConfig.mode === "wordByWord") {
+      playWordByWord(surahNum, effectiveConfig.startAyah, effectiveConfig.endAyah, effectiveConfig.wordRepeat);
+    } else if (effectiveConfig.ayahRepeat === 1 && effectiveConfig.rangeRepeat === 1) {
       // 1x/1x = regular sequential play; use simple ayah-by-ayah advance.
       // onNextAyah enforces the endAyah boundary via playbackConfigRef.
-      if (arabic) playAyah(surahNum, cfg.startAyah, arabic.ayahs.length, 1);
+      if (arabic) playAyah(surahNum, effectiveConfig.startAyah, arabic.ayahs.length, 1);
     } else {
-      playRange({ startSurah: surahNum, startAyah: cfg.startAyah, endSurah: surahNum, endAyah: cfg.endAyah }, cfg.ayahRepeat, cfg.rangeRepeat);
+      playRange({ startSurah: surahNum, startAyah: effectiveConfig.startAyah, endSurah: surahNum, endAyah: effectiveConfig.endAyah }, effectiveConfig.ayahRepeat, effectiveConfig.rangeRepeat);
     }
-    recordAyahRead(surahNum, cfg.startAyah);
-    saveProgress({ surahNumber: surahNum, ayahNumber: cfg.startAyah, ayahNumberInSurah: cfg.startAyah, surahName: arabic?.englishName ?? "" });
-  }, [surahNum, playUstadhMode, playWordByWord, playAyah, playRange, recordAyahRead, saveProgress, arabic]);
+    recordAyahRead(surahNum, effectiveConfig.startAyah);
+    saveProgress({ surahNumber: surahNum, ayahNumber: effectiveConfig.startAyah, ayahNumberInSurah: effectiveConfig.startAyah, surahName: arabic?.englishName ?? "" });
+  }, [arabic, canPlayOfflineRange, isOffline, playAyah, playRange, playUstadhMode, playWordByWord, recordAyahRead, saveProgress, surahNum]);
 
   // After a plan finishes (planMode=null), restart from the configured Edit
   // Sheet range instead of replaying the last completed ayah.
-  const handlePlayOrResume = useCallback(() => {
+  const handlePlayOrResume = useCallback(async () => {
     if (audioState.planMode !== null) {
+      if (
+        audioState.currentAyah &&
+        !(await canPlayOfflineRange(audioState.currentAyah, audioState.currentAyah))
+      ) return;
       resumeAudio();
     } else if (sessionSelectedRangeRef.current) {
-      triggerPlayback(playbackConfigRef.current);
+      await triggerPlayback(playbackConfigRef.current);
     } else if (audioState.currentAyah && audioState.currentSurah === surahNum && arabic) {
+      if (!(await canPlayOfflineRange(audioState.currentAyah, audioState.currentAyah))) return;
       playAyah(surahNum, audioState.currentAyah, arabic.ayahs.length, 1);
     } else {
       resumeAudio();
     }
-  }, [audioState.planMode, audioState.currentAyah, audioState.currentSurah, surahNum, arabic, resumeAudio, triggerPlayback, playAyah]);
+  }, [audioState.planMode, audioState.currentAyah, audioState.currentSurah, surahNum, arabic, canPlayOfflineRange, resumeAudio, triggerPlayback, playAyah]);
 
   const handleConfigChange = useCallback((newConfig: PlaybackConfig) => {
     const previousConfig = playbackConfigRef.current;
@@ -1901,7 +2004,8 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     repeatCount: audioState.repeatCount,
     range: audioState.range,
     ayahRepeatCounts,
-  }), [audioState.currentAyah, audioState.currentSurah, audioState.repeatCount, audioState.range, ayahRepeatCounts]);
+    savedAyahs,
+  }), [audioState.currentAyah, audioState.currentSurah, audioState.repeatCount, audioState.range, ayahRepeatCounts, savedAyahs]);
 
   const refreshOfflineStatus = useCallback(async () => {
     if (currentDownloadAyahs.length === 0) return;
@@ -1915,17 +2019,20 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     offlineDownloadRef.current = true;
     setOfflineStatus({ status: "downloading", ready: 0, total: surah.ayahCount });
     try {
-      const result = await ensureSurahOffline({
-        surahNumber: currentDownloadSurahNumber,
-        ayahCount: surah.ayahCount,
-        reciterId: Number(settings.selectedReciter) || 7,
-        onProgress: (progress) => setOfflineStatus({
-          status: "downloading",
-          ready: progress.completed,
-          total: progress.total,
-          progress,
+      const [result] = await Promise.all([
+        ensureSurahOffline({
+          surahNumber: currentDownloadSurahNumber,
+          ayahCount: surah.ayahCount,
+          reciterId: Number(settings.selectedReciter) || 7,
+          onProgress: (progress) => setOfflineStatus({
+            status: "downloading",
+            ready: progress.completed,
+            total: progress.total,
+            progress,
+          }),
         }),
-      });
+        cacheSurahContentForOffline(currentDownloadSurahNumber),
+      ]);
       setOfflineStatus({
         status: result.failed > 0 ? "failed" : "ready",
         ready: result.completed,
@@ -2109,6 +2216,8 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             ref={listRef}
             data={pageAyahs}
             extraData={flatListExtraData}
+            viewabilityConfig={viewabilityConfigRef.current}
+            onViewableItemsChanged={onViewableItemsChangedRef.current}
             keyExtractor={(item) => String(item.numberInSurah)}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
@@ -2181,6 +2290,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
                   isOnRepeat={!!isOnRepeat}
                   repeatCount={repeatCount}
                   isUstadhMode={isUstadhMode}
+                  isSaved={isAyahSaved(surahNum, item.numberInSurah)}
                   isRangeSelected={isRangeSelected && !isPlaying}
                   showMemorizedToggle={isInMemorizationGoal}
                   isMemorized={isAyahMemorized(surahNum, item.numberInSurah)}
@@ -2195,9 +2305,23 @@ const [settingsVisible, setSettingsVisible] = useState(false);
                   arabicFontFamily={getArabicFontFamily(accountSettings.arabicFont)}
                   onSave={handleSaveAyah}
                   onCancelRepeat={handleCancelRepeat}
-                  onCancelUstadh={stopAudio}
+                  onCancelUstadh={() => {
+                    stopAudio().catch(() => {});
+                    resetSpecialPlaybackMode();
+                  }}
                   onToggleMemorized={(ayah) => toggleAyahMemorized(surahNum, ayah.numberInSurah)}
-                  onPress={safeToggleMenu}
+                  onPress={() => {
+                    if (isOffline) {
+                      getCachedAyahAudioUri(getVerseKey(surahNum, item.numberInSurah), Number(settings.selectedReciter) || 7)
+                        .then((uri) => {
+                          if (!uri) warnOfflineUnavailable();
+                          else safeToggleMenu();
+                        })
+                        .catch(warnOfflineUnavailable);
+                      return;
+                    }
+                    safeToggleMenu();
+                  }}
                   onWordLongPress={handleWordLongPress}
                 />
               );
@@ -2290,8 +2414,9 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         ayahText={
           arabic?.ayahs?.[(repeatSectionInitialAyah ?? currentAyahForRange) - 1]?.text ?? ""
         }
-        onConfirm={(startWordIdx, endWordIdx, totalWords, repeatCount) => {
+        onConfirm={async (startWordIdx, endWordIdx, totalWords, repeatCount) => {
           const ayahN = repeatSectionInitialAyah ?? currentAyahForRange;
+          if (!(await canPlayOfflineRange(ayahN, ayahN))) return;
           void totalWords;
           playSection(surahNum, ayahN, startWordIdx + 1, endWordIdx + 1, repeatCount);
           setAyahRepeatCounts(prev => ({ ...prev, [ayahN]: repeatCount }));
@@ -2331,7 +2456,8 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         surahName={arabic?.englishName ?? ""}
         ayahs={arabic?.ayahs ?? []}
         currentAyah={currentAyahForRange}
-        onConfirm={(startA, endA, repeatCount) => {
+        onConfirm={async (startA, endA, repeatCount) => {
+          if (!(await canPlayOfflineRange(startA, endA))) return;
           handleConfigChange({
             ...playbackConfigRef.current,
             startAyah: startA,

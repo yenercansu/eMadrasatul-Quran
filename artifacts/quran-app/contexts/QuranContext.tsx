@@ -139,6 +139,7 @@ interface QuranContextType {
   getWeekGoalProgress: () => number;
   surahPositions: Record<number, number>;
   saveSurahPosition: (surahNum: number, ayahIndex: number) => void;
+  resetLocalData: () => void;
   checkedSurahs: number[];
   toggleCheckedSurah: (surahNum: number, ayahCount: number) => void;
   isSurahChecked: (surahNum: number) => boolean;
@@ -606,6 +607,27 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const resetLocalData = useCallback(() => {
+    setSettings(DEFAULT_SETTINGS);
+    setAccountSettings(DEFAULT_ACCOUNT);
+    setSavedWords(SEED_WORDS);
+    setSavedAyahs([]);
+    setSavedSurahs([]);
+    setSavedSurahRemoteIds({});
+    setHighlightedWords([]);
+    setRecentProgress([]);
+    setLastListened(null);
+    setGoalState(null);
+    setMemorizationGoalState(null);
+    setDailyEntries([]);
+    setQuranPosition(0);
+    setSurahPositions({});
+    setCheckedSurahs([]);
+    setQuizSelectedSurahsState(DEFAULT_QUIZ_SELECTED_SURAHS);
+    setMemorizedAyahKeys([]);
+    applyTheme(DEFAULT_ACCOUNT.theme);
+  }, []);
+
   const toggleCheckedSurah = useCallback((surahNum: number, ayahCount: number) => {
     const wasChecked = checkedSurahs.includes(surahNum);
     setCheckedSurahs((prev) => {
@@ -777,7 +799,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       dailyEntries, recordAyahRead, recordQuizCompletion, todayEntry,
       onlineUsers,
       quranPosition, advanceQuranPosition, getWeekGoalAyahs, getWeekGoalProgress,
-      surahPositions, saveSurahPosition,
+      surahPositions, saveSurahPosition, resetLocalData,
       checkedSurahs, toggleCheckedSurah, isSurahChecked, clearCheckedSurahs,
       quizSelectedSurahs, setQuizSelectedSurahs, toggleQuizSurahSelection, isQuizSurahSelected,
       memorizedAyahKeys, markAyahsMemorized, removeMemorizedAyahKeys, toggleAyahMemorized, isAyahMemorized,

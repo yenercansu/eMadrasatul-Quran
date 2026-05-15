@@ -509,6 +509,7 @@ export const getDailyGoals = () => apiRequest<unknown>("/user/goals/daily");
 export const getLastVisited = () => apiRequest<LastVisitedBody | null>("/user/last-visited");
 export const updateLastVisited = (body: LastVisitedBody) =>
   apiRequest<unknown>("/user/last-visited", { method: "PUT", body });
+export const deleteAccount = () => apiRequest<unknown>("/user/account", { method: "DELETE" });
 export const getSavedSurahs = () => apiRequest<Array<SavedSurahBody & { id: string | number }>>("/user/saved-surahs");
 export const saveSurah = (body: SavedSurahBody) =>
   apiRequest<SavedSurahBody & { id: string | number }>("/user/saved-surahs", { method: "POST", body });
@@ -602,12 +603,12 @@ function getQuranPageCacheKey(params: QuranPageParams): string {
   })}`;
 }
 
-export async function getCachedQuranPage(params: QuranPageParams): Promise<QuranPage | null> {
+export async function getCachedQuranPage(params: QuranPageParams, allowStale = false): Promise<QuranPage | null> {
   try {
     const raw = await AsyncStorage.getItem(getQuranPageCacheKey(params));
     if (!raw) return null;
     const cached = JSON.parse(raw) as { timestamp: number; data: QuranPage };
-    if (Date.now() - cached.timestamp > QURAN_PAGE_CACHE_MAX_AGE_MS) return null;
+    if (!allowStale && Date.now() - cached.timestamp > QURAN_PAGE_CACHE_MAX_AGE_MS) return null;
     return cached.data;
   } catch {
     return null;
@@ -649,6 +650,11 @@ export async function getQuranPageWithCache(params: QuranPageParams): Promise<Qu
       await setCachedQuranPage(params, data);
       return data;
     } catch (error) {
+      const stale = await getCachedQuranPage(params, true);
+      if (stale) {
+        pageMemoryCache.set(key, stale);
+        return stale;
+      }
       throw error;
     }
   })().finally(() => pageInFlight.delete(key));

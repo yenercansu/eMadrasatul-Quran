@@ -18,7 +18,9 @@ import { useQuran } from "@/contexts/QuranContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { BackButton } from "@/components/BackButton";
 import { SettingsCard, SettingsRow } from "@/components/SettingsRow";
-import { getQuranFoundationOAuthStatus, startQuranFoundationOAuth } from "@/services/madeenanApi";
+import { deleteAccount, getQuranFoundationOAuthStatus, startQuranFoundationOAuth } from "@/services/madeenanApi";
+import { clearOfflineCaches } from "@/services/offlineQuranCache";
+import { clearAppOwnedAsyncStorage } from "@/services/localData";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   const colors = useColors();
@@ -35,10 +37,11 @@ export default function SettingsScreen() {
   const colors = useColors();
   const s = styles(colors);
   const insets = useSafeAreaInsets();
-  const { accountSettings, updateAccountSettings } = useQuran();
+  const { accountSettings, updateAccountSettings, resetLocalData } = useQuran();
   const { signOut } = useAuth();
   const queryClient = useQueryClient();
   const [linkingQf, setLinkingQf] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const topPad = insets.top;
   const qfStatus = useQuery({
     queryKey: ["quran-foundation-oauth-status"],
@@ -73,6 +76,34 @@ export default function SettingsScreen() {
     } finally {
       setLinkingQf(false);
     }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "This permanently deletes your account and synced Quran data. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Account",
+          style: "destructive",
+          onPress: async () => {
+            setDeletingAccount(true);
+            try {
+              await deleteAccount();
+              await clearOfflineCaches();
+              await clearAppOwnedAsyncStorage();
+              resetLocalData();
+              await signOut();
+            } catch (error) {
+              Alert.alert("Could not delete account", error instanceof Error ? error.message : "Please try again.");
+            } finally {
+              setDeletingAccount(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -163,6 +194,11 @@ export default function SettingsScreen() {
           <SettingsRow
             label="Sign Out"
             onPress={handleSignOut}
+            labelStyle={s.dangerLabel}
+          />
+          <SettingsRow
+            label={deletingAccount ? "Deleting Account..." : "Delete Account"}
+            onPress={deletingAccount ? undefined : handleDeleteAccount}
             labelStyle={s.dangerLabel}
             last
           />

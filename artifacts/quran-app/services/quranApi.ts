@@ -529,6 +529,24 @@ export async function fetchSurahWithTranslations(
   };
 }
 
+export async function cacheSurahContentForOffline(surahNumber: number): Promise<void> {
+  const ayahCount = SURAH_DATA[surahNumber - 1]?.ayahCount ?? 10;
+  const wordPageCount = Math.ceil(ayahCount / 10);
+  await Promise.all([
+    fetchSurahPage(surahNumber, { page: 1, perPage: ayahCount }),
+    ...Array.from({ length: wordPageCount }, (_, index) =>
+      getQuranPageWithCache({
+        chapterNumber: surahNumber,
+        page: index + 1,
+        perPage: 10,
+        translations: 131,
+        reciterId: 7,
+        words: true,
+      }),
+    ),
+  ]);
+}
+
 export async function fetchTafsir(
   surahNumber: number,
   _edition = "en.maarifulquran",
