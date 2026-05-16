@@ -48,19 +48,31 @@ function AyahSlider({
   onChange: (v: number) => void;
   maxValue?: number;
 }) {
+  const sliderRef = useRef<View>(null);
   const trackWidthRef = useRef(0);
   const [trackWidth, setTrackWidth] = useState(0);
+  const onChangeRef = useRef(onChange);
+  const maxValueRef = useRef(maxValue);
   const THUMB = 26;
 
-  const clamp = (x: number) =>
-    Math.max(1, Math.min(maxValue, Math.round((x / (trackWidthRef.current || 1)) * (maxValue - 1)) + 1));
+  useEffect(() => { onChangeRef.current = onChange; });
+  useEffect(() => { maxValueRef.current = maxValue; });
+
+  const resolve = (pageX: number) => {
+    sliderRef.current?.measure((_x, _y, width, _height, containerPageX) => {
+      const max = maxValueRef.current;
+      const w = width || trackWidthRef.current || 1;
+      const x = Math.max(0, Math.min(w, pageX - containerPageX));
+      onChangeRef.current(Math.max(1, Math.min(max, Math.round((x / w) * (max - 1)) + 1)));
+    });
+  };
 
   const pan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) => onChange(clamp(Math.max(0, Math.min(trackWidthRef.current, evt.nativeEvent.locationX)))),
-      onPanResponderMove: (evt) => onChange(clamp(Math.max(0, Math.min(trackWidthRef.current, evt.nativeEvent.locationX)))),
+      onPanResponderGrant: (evt) => resolve(evt.nativeEvent.pageX),
+      onPanResponderMove: (evt) => resolve(evt.nativeEvent.pageX),
     })
   ).current;
 
@@ -68,6 +80,7 @@ function AyahSlider({
 
   return (
     <View
+      ref={sliderRef}
       style={s.sliderContainer}
       onLayout={(e) => {
         const w = e.nativeEvent.layout.width;

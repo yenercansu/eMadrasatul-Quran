@@ -36,6 +36,7 @@ function AyahSlider({
   value: number; onChange: (v: number) => void; maxValue?: number;
   onDragStart?: () => void; onDragEnd?: () => void;
 }) {
+  const sliderRef = useRef<View>(null);
   const trackWidthRef = useRef(0);
   const [trackWidth, setTrackWidth] = useState(0);
   const onChangeRef = useRef(onChange);
@@ -47,18 +48,20 @@ function AyahSlider({
   useEffect(() => { onDragStartRef.current = onDragStart; });
   useEffect(() => { onDragEndRef.current = onDragEnd; });
   const THUMB = 26;
-  const resolve = (locationX: number) => {
-    const max = maxValueRef.current;
-    const w = trackWidthRef.current || 1;
-    const x = Math.max(0, Math.min(trackWidthRef.current, locationX));
-    onChangeRef.current(Math.max(1, Math.min(max, Math.round((x / w) * (max - 1)) + 1)));
+  const resolve = (pageX: number) => {
+    sliderRef.current?.measure((_x, _y, width, _height, containerPageX) => {
+      const max = maxValueRef.current;
+      const w = width || trackWidthRef.current || 1;
+      const x = Math.max(0, Math.min(w, pageX - containerPageX));
+      onChangeRef.current(Math.max(1, Math.min(max, Math.round((x / w) * (max - 1)) + 1)));
+    });
   };
   const pan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) => { onDragStartRef.current?.(); resolve(evt.nativeEvent.locationX); },
-      onPanResponderMove: (evt) => { resolve(evt.nativeEvent.locationX); },
+      onPanResponderGrant: (evt) => { onDragStartRef.current?.(); resolve(evt.nativeEvent.pageX); },
+      onPanResponderMove: (evt) => { resolve(evt.nativeEvent.pageX); },
       onPanResponderRelease: () => { onDragEndRef.current?.(); },
       onPanResponderTerminate: () => { onDragEndRef.current?.(); },
     })
@@ -66,6 +69,7 @@ function AyahSlider({
   const thumbLeft = trackWidth > 0 && maxValue > 1 ? ((value - 1) / (maxValue - 1)) * (trackWidth - THUMB) : 0;
   return (
     <View
+      ref={sliderRef}
       style={s.sliderContainer}
       onLayout={(e) => { const w = e.nativeEvent.layout.width; setTrackWidth(w); trackWidthRef.current = w; }}
       {...pan.panHandlers}

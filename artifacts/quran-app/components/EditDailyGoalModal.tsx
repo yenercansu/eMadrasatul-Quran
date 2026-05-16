@@ -36,27 +36,36 @@ function estimateCompletion(remaining: number, weeklyGoal: number): string {
 }
 
 function AyahSlider({ value, onChange, max }: { value: number; onChange: (v: number) => void; max: number }) {
+  const sliderRef = useRef<View>(null);
   const trackWidthRef = useRef(0);
   const [trackWidth, setTrackWidth] = useState(0);
+  const onChangeRef = useRef(onChange);
+  const maxRef = useRef(max);
   const THUMB = 26;
 
-  const clampValue = (x: number) => {
+  useEffect(() => { onChangeRef.current = onChange; });
+  useEffect(() => { maxRef.current = max; });
+
+  const clampValue = (x: number, width: number) => {
+    const max = maxRef.current;
     if (max <= 1) return 1;
-    return Math.max(1, Math.min(max, Math.round((x / (trackWidthRef.current || 1)) * (max - 1)) + 1));
+    return Math.max(1, Math.min(max, Math.round((x / (width || 1)) * (max - 1)) + 1));
+  };
+
+  const resolve = (pageX: number) => {
+    sliderRef.current?.measure((_x, _y, width, _height, containerPageX) => {
+      const w = width || trackWidthRef.current || 1;
+      const x = Math.max(0, Math.min(w, pageX - containerPageX));
+      onChangeRef.current(clampValue(x, w));
+    });
   };
 
   const pan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) => {
-        const x = Math.max(0, Math.min(trackWidthRef.current, evt.nativeEvent.locationX));
-        onChange(clampValue(x));
-      },
-      onPanResponderMove: (evt) => {
-        const x = Math.max(0, Math.min(trackWidthRef.current, evt.nativeEvent.locationX));
-        onChange(clampValue(x));
-      },
+      onPanResponderGrant: (evt) => resolve(evt.nativeEvent.pageX),
+      onPanResponderMove: (evt) => resolve(evt.nativeEvent.pageX),
     })
   ).current;
 
@@ -64,6 +73,7 @@ function AyahSlider({ value, onChange, max }: { value: number; onChange: (v: num
 
   return (
     <View
+      ref={sliderRef}
       style={s.sliderContainer}
       onLayout={(e) => {
         const w = e.nativeEvent.layout.width;
