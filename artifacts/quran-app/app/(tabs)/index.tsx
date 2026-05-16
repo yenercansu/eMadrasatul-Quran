@@ -860,7 +860,7 @@ export default function HomeScreen() {
                           style={s.weekAddOption}
                           onPress={() => {
                             if (!goal || !memorizationGoal) return;
-                            const weeklyGoal = buildWeeklyGoal({
+                            const extra = buildWeeklyGoal({
                               path: memorizationGoal.path,
                               targetJuz: memorizationGoal.targetJuz,
                               startSurahNumber: goal.startSurahNumber ?? memorizationGoal.startSurahNumber,
@@ -870,7 +870,14 @@ export default function HomeScreen() {
                               requestedAyahsPerWeek: count,
                               memorizedAyahKeys,
                             });
-                            setGoal({ ...goal, ...weeklyGoal });
+                            // Append new ayahs to existing — preserve this week's memorized dots
+                            const existingKeys = goal.weeklyTargetAyahKeys ?? [];
+                            const newKeys = [...existingKeys, ...(extra.weeklyTargetAyahKeys ?? [])];
+                            setGoal({
+                              ...goal,
+                              ayahsPerWeek: newKeys.length,
+                              weeklyTargetAyahKeys: newKeys,
+                            });
                             setShowWeekCompleteCard(false);
                           }}
                           activeOpacity={0.8}
@@ -1266,18 +1273,39 @@ export default function HomeScreen() {
             endSurahNumber: last.surahNumber,
             endAyahNumber: last.ayahNumber,
           });
-          const weeklyGoal = buildWeeklyGoal({
-            path: weeklyGoalPath,
-            targetJuz,
+          // Preserve this week's already-memorized ayahs so progress isn't reset
+          const existingTargetKeys = goal?.weeklyTargetAyahKeys ?? [];
+          const memorizedSet = new Set(memorizedAyahKeys);
+          const doneThisWeek = existingTargetKeys.filter(k => memorizedSet.has(k));
+
+          let weeklyTargetAyahKeys: string[];
+          let finalAyahsPerWeek: number;
+
+          if (doneThisWeek.length >= ayahsPerWeek) {
+            // New target already met — cap to the done ones
+            weeklyTargetAyahKeys = doneThisWeek.slice(0, ayahsPerWeek);
+            finalAyahsPerWeek = ayahsPerWeek;
+          } else {
+            // Fill remaining slots with unmemoized ayahs from range
+            const extra = buildWeeklyGoal({
+              path: weeklyGoalPath,
+              targetJuz,
+              startSurahNumber: first.surahNumber,
+              startAyahNumber: first.ayahNumber,
+              endSurahNumber: last.surahNumber,
+              endAyahNumber: last.ayahNumber,
+              requestedAyahsPerWeek: ayahsPerWeek - doneThisWeek.length,
+              memorizedAyahKeys,
+            });
+            weeklyTargetAyahKeys = [...doneThisWeek, ...(extra.weeklyTargetAyahKeys ?? [])];
+            finalAyahsPerWeek = weeklyTargetAyahKeys.length;
+          }
+
+          setGoal({
+            ayahsPerWeek: finalAyahsPerWeek,
+            weeklyTargetAyahKeys,
             startSurahNumber: first.surahNumber,
             startAyahNumber: first.ayahNumber,
-            endSurahNumber: last.surahNumber,
-            endAyahNumber: last.ayahNumber,
-            requestedAyahsPerWeek: ayahsPerWeek,
-            memorizedAyahKeys,
-          });
-          setGoal({
-            ...weeklyGoal,
             startDate: goal?.startDate ?? today,
             endSurahNumber: last.surahNumber,
             endAyahNumber: last.ayahNumber,
