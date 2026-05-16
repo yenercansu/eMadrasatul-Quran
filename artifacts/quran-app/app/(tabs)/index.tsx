@@ -877,9 +877,10 @@ export default function HomeScreen() {
                     >
                       {Array.from({ length: effectiveGoalCount }).map((_, i) => {
                         const done = i < weekGoalProgress;
+                        const ayahNumber = weekGoalAyahs[i]?.ayahNumber ?? i + 1;
                         return (
                           <View key={i} style={[s.dotCircle, done ? s.dotCircleDone : s.dotCircleEmpty]}>
-                            <Text style={done ? s.dotNumDone : s.dotNum}>{i + 1}</Text>
+                            <Text style={done ? s.dotNumDone : s.dotNum}>{ayahNumber}</Text>
                           </View>
                         );
                       })}

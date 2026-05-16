@@ -293,6 +293,48 @@ export function AyahRangeModal({
   const dynamicMax = availableForTarget > 0 ? Math.min(MAX_WEEKLY, availableForTarget) : MAX_WEEKLY;
   const clampedAyahsPerWeek = Math.max(1, Math.min(ayahsPerWeek, dynamicMax));
 
+  const weeklyPreviewAyahs = useMemo(() => {
+    if (!firstAyah) return [];
+    const memorized = new Set(memorizedAyahKeys);
+    const source = path === "juz"
+      ? juzAyahs
+      : (() => {
+          const surah = SURAH_DATA.find((s) => s.number === firstAyah.surahNumber);
+          if (!surah) return [];
+          return Array.from({ length: surah.ayahCount }, (_, i) => ({
+            surahNumber: surah.number,
+            surahName: surah.englishName,
+            ayahNumber: i + 1,
+          }));
+        })();
+    const firstIdx = source.findIndex(
+      (a) => a.surahNumber === firstAyah.surahNumber && a.ayahNumber === firstAyah.ayahNumber
+    );
+    if (firstIdx < 0) return [];
+    const selectedLastIdx = lastAyah
+      ? source.findIndex((a) => a.surahNumber === lastAyah.surahNumber && a.ayahNumber === lastAyah.ayahNumber)
+      : source.length - 1;
+    const lastIdx = startAtWeeklyGoal ? source.length - 1 : selectedLastIdx;
+    if (lastIdx < firstIdx) return [];
+    return source
+      .slice(firstIdx, lastIdx + 1)
+      .filter((ayah) => !memorized.has(`${ayah.surahNumber}:${ayah.ayahNumber}`))
+      .slice(0, clampedAyahsPerWeek);
+  }, [clampedAyahsPerWeek, firstAyah, lastAyah, juzAyahs, memorizedAyahKeys, path, startAtWeeklyGoal]);
+
+  const weeklyPreviewRangeLabel = useMemo(() => {
+    const first = weeklyPreviewAyahs[0];
+    const last = weeklyPreviewAyahs[weeklyPreviewAyahs.length - 1];
+    if (!first || !last) return "No ayahs available";
+    if (first.surahNumber === last.surahNumber) {
+      const prefix = path === "juz" ? `${first.surahName}, ` : "";
+      return first.ayahNumber === last.ayahNumber
+        ? `${prefix}Ayah ${first.ayahNumber}`
+        : `${prefix}Ayah ${first.ayahNumber} – ${last.ayahNumber}`;
+    }
+    return `${first.surahName} ${first.ayahNumber} – ${last.surahName} ${last.ayahNumber}`;
+  }, [path, weeklyPreviewAyahs]);
+
   useEffect(() => {
     setAyahsPerWeek((prev) => Math.max(1, Math.min(prev, dynamicMax)));
   }, [dynamicMax]);
@@ -461,7 +503,8 @@ export function AyahRangeModal({
     const isLast = lastAyah?.surahNumber === surahNumber && lastAyah?.ayahNumber === ayahNumber;
     const inRange = isInRange(surahNumber, ayahNumber);
     const disabled = isDisabledBubble(surahNumber, ayahNumber);
-    const showMemorized = isMemorized && !isFirst && !isLast && !disabled;
+    const showMemorized = isMemorized && !isFirst && !isLast;
+    const showDisabledMemorized = showMemorized && disabled;
 
     const isAutoLast = startAtPaceDate && isLast;
 
@@ -474,12 +517,13 @@ export function AyahRangeModal({
           inRange && s.ayahBubbleInRange,
           disabled && s.ayahBubbleDisabled,
           showMemorized && s.ayahBubbleMemorized,
+          showDisabledMemorized && s.ayahBubbleMemorizedDisabled,
         ]}
         onPress={() => !disabled && handleAyahTap(surahNumber, surahName, ayahNumber)}
         activeOpacity={disabled ? 1 : 0.7}
       >
         {showMemorized ? (
-          <Feather name="check" size={12} color="#FFFFFF" />
+          <Feather name="check" size={12} color={showDisabledMemorized ? "#16A34A" : "#FFFFFF"} />
         ) : (
           <Text
             style={[
@@ -1099,6 +1143,19 @@ export function AyahRangeModal({
             onDragEnd={() => setWeeklyScrollEnabled(true)}
           />
 
+          <View style={s.weeklyPreviewCard}>
+            <View style={s.weeklyPreviewIcon}>
+              <Feather name="target" size={15} color="#1A1A1A" />
+            </View>
+            <View style={s.weeklyPreviewTextWrap}>
+              <Text style={s.weeklyPreviewLabel}>THIS WEEK</Text>
+              <Text style={s.weeklyPreviewRange}>{weeklyPreviewRangeLabel}</Text>
+              <Text style={s.weeklyPreviewSub}>
+                {weeklyPreviewAyahs.length} of {clampedAyahsPerWeek} ayahs selected
+              </Text>
+            </View>
+          </View>
+
           {/* Finish date card — updates live as slider moves */}
           {remainingRangeAyahs > 0 && (
             <View style={s.finishDateCard}>
@@ -1456,6 +1513,12 @@ const s = StyleSheet.create({
   ayahBubbleInRange: { backgroundColor: "#C9B9A4" },
   ayahBubbleDisabled: { backgroundColor: "#F0EDE8", opacity: 0.45 },
   ayahBubbleMemorized: { backgroundColor: "#16A34A" },
+  ayahBubbleMemorizedDisabled: {
+    backgroundColor: "#E4F3E8",
+    borderWidth: 1,
+    borderColor: "#A7D8B5",
+    opacity: 0.7,
+  },
   ayahBubbleText: {
     fontSize: 13,
     fontWeight: "600",
@@ -1669,6 +1732,48 @@ const s = StyleSheet.create({
     backgroundColor: "#1A1A1A",
     shadowColor: "#000", shadowOpacity: 0.2,
     shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 4,
+  },
+  weeklyPreviewCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#EEE8DF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#DED6C9",
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    marginBottom: 12,
+  },
+  weeklyPreviewIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#FDFBF7",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  weeklyPreviewTextWrap: { flex: 1 },
+  weeklyPreviewLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#78716C",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.1,
+    textTransform: "uppercase",
+    marginBottom: 2,
+  },
+  weeklyPreviewRange: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+  },
+  weeklyPreviewSub: {
+    fontSize: 12,
+    color: "#78716C",
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
   },
   finishDateCard: {
     backgroundColor: "#F6F2EA",
