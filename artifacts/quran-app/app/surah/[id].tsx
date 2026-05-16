@@ -200,25 +200,6 @@ function SwipeableAyahCard({
                 onCancel={onCancelUstadh}
               />
             ) : null}
-            {showMemorizedToggle && (
-              <TouchableOpacity
-                style={cs.memorizedCheckBtn}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  onToggleMemorized(ayah);
-                }}
-                activeOpacity={0.75}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: isMemorized }}
-                accessibilityLabel={`Mark ayah ${ayah.numberInSurah} memorized`}
-              >
-                {isMemorized ? (
-                  <Ionicons name="checkmark-circle" size={26} color="#1A1A1A" />
-                ) : (
-                  <View style={cs.memorizedCheckCircle} />
-                )}
-              </TouchableOpacity>
-            )}
             <SaveButton
               saved={isSaved}
               size="md"
@@ -231,6 +212,28 @@ function SwipeableAyahCard({
             <View style={cs.numBadge}>
               <Text style={cs.numText}>{surahNum}:{ayah.numberInSurah}</Text>
             </View>
+            {showMemorizedToggle && (
+              <TouchableOpacity
+                style={cs.memorizedCheckBtn}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  onToggleMemorized(ayah);
+                }}
+                activeOpacity={0.75}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: isMemorized }}
+                accessibilityLabel={isMemorized
+                  ? `Unmark ayah ${ayah.numberInSurah} as memorized`
+                  : `Mark ayah ${ayah.numberInSurah} as memorized`}
+              >
+                {isMemorized ? (
+                  <Ionicons name="checkmark-circle" size={26} color="#1A1A1A" />
+                ) : (
+                  <View style={cs.memorizedCheckCircle} />
+                )}
+              </TouchableOpacity>
+            )}
           </View>
 
           {showBasmala && (
