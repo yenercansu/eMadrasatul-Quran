@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Appearance } from "react-native";
+import { AppState, Appearance, type AppStateStatus } from "react-native";
 import type { ArabicFontKey } from "@/constants/arabicFonts";
 import { getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNetworkStatus } from "@/contexts/NetworkContext";
 import * as madeenanApi from "@/services/madeenanApi";
 import { normalizeTafsirKeys, type TafsirKey } from "@/services/tafsirApi";
 
@@ -232,6 +233,7 @@ export const QuranContext = createContext<QuranContextType | undefined>(undefine
 
 export function QuranProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
+  const { isOffline } = useNetworkStatus();
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [accountSettings, setAccountSettings] = useState<AccountSettings>(DEFAULT_ACCOUNT);
   const [savedWords, setSavedWords] = useState<SavedWord[]>(SEED_WORDS);
@@ -244,7 +246,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const [goal, setGoalState] = useState<Goal | null>(null);
   const [memorizationGoal, setMemorizationGoalState] = useState<MemorizationGoal | null>(null);
   const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
-  const [onlineUsers] = useState(0);
+  const [onlineUsers, setOnlineUsers] = useState(0);
   const [quranPosition, setQuranPosition] = useState(0);
   const [surahPositions, setSurahPositions] = useState<Record<number, number>>({});
   const [checkedSurahs, setCheckedSurahs] = useState<number[]>([]);
@@ -257,6 +259,39 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       hydrateRemoteData().catch(() => {});
     }
   }, [isAuthenticated]);
+
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const syncActiveUsers = useCallback(async () => {
+    if (!isAuthenticated || isOffline || appStateRef.current !== "active") return;
+    try {
+      await madeenanApi.sendHeartbeat();
+      const response = await madeenanApi.getActiveUserCount();
+      setOnlineUsers(Math.max(0, Number(response.activeUsers) || 0));
+    } catch {
+      // Presence is non-critical; keep the last known count if the network blips.
+    }
+  }, [isAuthenticated, isOffline]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setOnlineUsers(0);
+      return;
+    }
+
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      appStateRef.current = nextState;
+      if (nextState === "active") syncActiveUsers().catch(() => {});
+    });
+    syncActiveUsers().catch(() => {});
+    const intervalId = setInterval(() => {
+      syncActiveUsers().catch(() => {});
+    }, 30_000);
+
+    return () => {
+      clearInterval(intervalId);
+      subscription.remove();
+    };
+  }, [isAuthenticated, syncActiveUsers]);
 
   async function loadData() {
     try {

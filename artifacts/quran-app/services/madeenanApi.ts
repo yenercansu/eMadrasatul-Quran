@@ -423,6 +423,10 @@ export interface ReciterPreferencesBody {
   repeatCount: string;
 }
 
+export interface ActiveUsersResponse {
+  activeUsers: number;
+}
+
 export interface OfflinePackageBody {
   surahNumber: number;
   reciterId: number;
@@ -523,6 +527,8 @@ export const deleteSavedWord = (id: string | number) =>
 export const getReciterPreferences = () => apiRequest<ReciterPreferencesBody | null>("/user/reciter-preferences");
 export const updateReciterPreferences = (body: ReciterPreferencesBody) =>
   apiRequest<ReciterPreferencesBody>("/user/reciter-preferences", { method: "PUT", body });
+export const sendHeartbeat = () => apiRequest<{ status?: string }>("/user/heartbeat", { method: "POST" });
+export const getActiveUserCount = () => apiRequest<ActiveUsersResponse>("/users/active-count");
 export const createOfflinePackage = (body: OfflinePackageBody) =>
   apiRequest<unknown>("/quran/offline-packages", { method: "POST", body });
 export const getOfflinePackage = (id: string | number) => apiRequest<unknown>(`/quran/offline-packages/${id}`);

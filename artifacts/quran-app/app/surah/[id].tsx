@@ -576,111 +576,6 @@ const cb = StyleSheet.create({
   tajweedUnderline: { width: 12, height: 1.5, marginTop: 1 },
 });
 
-// ─── Floating top nav (← Next | [Title + hint] | Back →) ────────────────────
-function FloatingTopNav({
-  surahName, onPrev, onNext, onLongPress, topInset,
-}: {
-  surahName: string; onPrev: () => void; onNext: () => void;
-  onLongPress: () => void; topInset: number;
-}) {
-  // RTL — left arrow advances forward in the book (Next), right arrow goes backward (Back)
-  return (
-    <View style={[fn.wrap, { top: topInset + 8 }]}>
-      <TouchableOpacity style={fn.pillBtn} onPress={onNext} activeOpacity={0.75}>
-        <Feather name="chevron-left" size={14} color="#1A1A1A" />
-        <Text style={fn.pillBtnText}>Next</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        onLongPress={onLongPress}
-        delayLongPress={350}
-        activeOpacity={0.85}
-        style={fn.titlePill}
-      >
-        <Text style={fn.titleText} numberOfLines={1}>{surahName}</Text>
-        <Text style={fn.hintText} numberOfLines={1}>Long press for more options</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={fn.pillBtn} onPress={onPrev} activeOpacity={0.75}>
-        <Text style={fn.pillBtnText}>Back</Text>
-        <Feather name="chevron-right" size={14} color="#1A1A1A" />
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-const fn = StyleSheet.create({
-  wrap: {
-    position: "absolute",
-    left: 8,
-    right: 8,
-    zIndex: 100,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 6,
-  },
-  pillBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F5F2EE",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 16,
-    gap: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  pillBtnText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  titlePill: {
-    flex: 1,
-    backgroundColor: "#F5F2EE",
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  titleText: { fontSize: 14, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  hintText: { fontSize: 10, color: "#5D4A37", fontFamily: "Inter_400Regular", marginTop: 1, opacity: 0.85 },
-});
-
-// ─── Inline page-end nav (only at end of page) ────────────────────────────────
-function PageEndNav({ onPrev, onNext }: { onPrev: () => void; onNext: () => void }) {
-  // RTL — left arrow advances forward (Next), right arrow goes backward (Back)
-  return (
-    <View style={fbn.wrap}>
-      <TouchableOpacity style={fbn.btn} onPress={onNext} activeOpacity={0.75}>
-        <Feather name="chevron-left" size={14} color="#1A1A1A" />
-        <Text style={fbn.btnText}>Next</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={fbn.btn} onPress={onPrev} activeOpacity={0.75}>
-        <Text style={fbn.btnText}>Back</Text>
-        <Feather name="chevron-right" size={14} color="#1A1A1A" />
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-const fbn = StyleSheet.create({
-  wrap: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 24, paddingHorizontal: 8 },
-  btn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F5F2EE",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 16,
-    gap: 4,
-  },
-  btnText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-});
-
 // ─── Edit Sheet ───────────────────────────────────────────────────────────────
 function EditSheet({
   visible, onClose,
@@ -2032,17 +1927,6 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         </View>
       )}
 
-      {/* ── Floating top nav (menu hidden) ───────────────────── */}
-      {!menuVisible && (
-        <FloatingTopNav
-          surahName={arabic?.englishName ?? ""}
-          topInset={insets.top}
-          onPrev={goToPrevSurah}
-          onNext={goToNextSurah}
-          onLongPress={() => setRangeVisible(true)}
-        />
-      )}
-
       {/* ── Content ──────────────────────────────────────────── */}
       {loading ? (
         <ActivityIndicator color="#1A1A1A" style={{ flex: 1 }} size="large" />
@@ -2066,7 +1950,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             <ScrollView
               ref={mushafScrollRef}
               style={{ flex: 1 }}
-              contentContainerStyle={{ paddingTop: menuVisible ? 0 : (insets.top + 64), paddingBottom: 24 }}
+              contentContainerStyle={{ paddingTop: menuVisible ? 0 : (insets.top + 12), paddingBottom: 24 }}
               showsVerticalScrollIndicator={false}
               onTouchEnd={safeToggleMenu}
               onScrollBeginDrag={(e) => {
@@ -2136,7 +2020,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             keyExtractor={(item) => String(item.numberInSurah)}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
-              paddingTop: menuVisible ? 4 : (insets.top + 64),
+              paddingTop: menuVisible ? 4 : (insets.top + 12),
               paddingBottom: menuVisible ? (bottomBarHeight + 8) : 24,
             }}
             style={{ flex: 1, backgroundColor: "#FAF9F7" }}
@@ -2159,19 +2043,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
               }
             }}
             scrollEventThrottle={32}
-            ListFooterComponent={
-              <View>
-                {!menuVisible ? (
-                  <PageEndNav onPrev={goToPrevSurah} onNext={goToNextSurah} />
-                ) : (
-                  <View style={{ height: 12 }} />
-                )}
-                <View style={scr.swipeHintBar}>
-                  <Text style={scr.swipeHintText}>Swipe right for next page · swipe left for previous page</Text>
-                  <Text style={[scr.swipeHintText, { marginTop: 6 }]}>{"Long press to customize learning by\nrepeating sections, editing ranges & saving words"}</Text>
-                </View>
-              </View>
-            }
+            ListFooterComponent={<View style={{ height: menuVisible ? 12 : 0 }} />}
             renderItem={({ item }) => {
               const isCurrentAyah = audioState.currentSurah === surahNum && audioState.currentAyah === item.numberInSurah;
               const isPlaying = isCurrentAyah && (audioState.isPlaying || audioState.isLoading);
@@ -2517,18 +2389,5 @@ const scr = StyleSheet.create({
   mushafSplitText: {
     flex: 1, fontSize: 14, lineHeight: 22,
     color: "#2C2C2C", fontFamily: "Inter_400Regular",
-  },
-  swipeHintBar: {
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  swipeHintText: {
-    fontSize: 11,
-    color: "#AAAAAA",
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    lineHeight: 16,
-    letterSpacing: 0.1,
   },
 });

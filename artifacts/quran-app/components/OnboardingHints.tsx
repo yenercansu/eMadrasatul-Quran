@@ -23,16 +23,16 @@ interface Step {
 const STEPS: Step[] = [
   {
     key: "right",
-    icon: <Ionicons name="repeat" size={36} color="#FFFFFF" />,
+    icon: <Ionicons name="arrow-forward" size={36} color="#FFFFFF" />,
     title: "Swipe right",
-    body: "to repeat the ayah 2×, 5×, 10× or ∞ times",
+    body: "to move to the next page",
     arrowDir: "right",
   },
   {
     key: "left",
-    icon: <Ionicons name="bookmark" size={32} color="#FFFFFF" />,
+    icon: <Ionicons name="arrow-back" size={36} color="#FFFFFF" />,
     title: "Swipe left",
-    body: "to save the ayah to your library",
+    body: "to return to the previous page",
     arrowDir: "left",
   },
   {
