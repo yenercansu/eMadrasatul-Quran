@@ -91,6 +91,55 @@ function buildWeeklyGoal(options: {
   };
 }
 
+function getNextAyahAfter(ayah: Pick<AyahRef, "surahNumber" | "ayahNumber">): AyahRef | null {
+  const surah = SURAH_DATA.find(s => s.number === ayah.surahNumber);
+  if (!surah) return null;
+  if (ayah.ayahNumber < surah.ayahCount) {
+    return { surahNumber: surah.number, surahName: surah.englishName, ayahNumber: ayah.ayahNumber + 1 };
+  }
+  const nextSurah = SURAH_DATA.find(s => s.number === ayah.surahNumber + 1);
+  return nextSurah ? { surahNumber: nextSurah.number, surahName: nextSurah.englishName, ayahNumber: 1 } : null;
+}
+
+function expandLastAyahForWeeklyCount(options: {
+  path: "surah" | "juz";
+  targetJuz?: number;
+  first: AyahRef;
+  last: AyahRef;
+  requestedAyahsPerWeek: number;
+  memorizedAyahKeys: string[];
+}) {
+  const source = options.path === "juz" && options.targetJuz
+    ? getJuzAyahs(options.targetJuz)
+    : (() => {
+        const surah = SURAH_DATA.find(s => s.number === options.first.surahNumber);
+        if (!surah) return [];
+        return Array.from({ length: surah.ayahCount }, (_, index) => ({
+          surahNumber: surah.number,
+          surahName: surah.englishName,
+          ayahNumber: index + 1,
+        }));
+      })();
+  const firstIdx = source.findIndex(
+    a => a.surahNumber === options.first.surahNumber && a.ayahNumber === options.first.ayahNumber
+  );
+  const lastIdx = source.findIndex(
+    a => a.surahNumber === options.last.surahNumber && a.ayahNumber === options.last.ayahNumber
+  );
+  if (firstIdx < 0) return options.last;
+
+  const memorized = new Set(options.memorizedAyahKeys);
+  let available = 0;
+  let expandedLast = lastIdx >= firstIdx ? source[lastIdx] : options.last;
+  for (let i = firstIdx; i < source.length; i++) {
+    const ayah = source[i];
+    if (!memorized.has(getAyahKey(ayah))) available++;
+    expandedLast = ayah;
+    if (available >= options.requestedAyahsPerWeek) break;
+  }
+  return expandedLast;
+}
+
 function CircularRing({
   percent, size = 60, strokeWidth = 5,
   color, trackColor, label,
@@ -446,9 +495,9 @@ export default function HomeScreen() {
       },
       last,
       juz: memorizationGoal.targetJuz,
-      ayahsPerWeek: goal.ayahsPerWeek,
+      ayahsPerWeek: effectiveGoalCount || goal.ayahsPerWeek,
     };
-  }, [memorizationGoal, goal]);
+  }, [memorizationGoal, goal, effectiveGoalCount]);
   const weeklyGoalPath = currentWeeklySelection ? memorizationGoal?.path ?? widgetPath : widgetPath;
   const weeklyInitialSelection = currentWeeklySelection ?? widgetWeeklySelection;
 
@@ -513,7 +562,10 @@ export default function HomeScreen() {
     if (prev !== null && prev < 100 && weekPercent >= 100 && goal && !milestoneComplete) {
       setShowWeeklyToast(true);
       setShowWeekCompleteCard(true);
-      const t = setTimeout(() => setShowWeeklyToast(false), 4000);
+      const t = setTimeout(() => {
+        setShowWeeklyToast(false);
+        setShowWeekCompleteCard(false);
+      }, 5000);
       return () => clearTimeout(t);
     }
   }, [goal, milestoneComplete, weekPercent]);
@@ -823,7 +875,7 @@ export default function HomeScreen() {
                       style={s.dotsScrollView}
                       contentContainerStyle={s.dotsScrollContent}
                     >
-                      {Array.from({ length: Math.max(effectiveGoalCount, goal?.ayahsPerWeek ?? 0) }).map((_, i) => {
+                      {Array.from({ length: effectiveGoalCount }).map((_, i) => {
                         const done = i < weekGoalProgress;
                         return (
                           <View key={i} style={[s.dotCircle, done ? s.dotCircleDone : s.dotCircleEmpty]}>
@@ -860,24 +912,41 @@ export default function HomeScreen() {
                           style={s.weekAddOption}
                           onPress={() => {
                             if (!goal || !memorizationGoal) return;
+                            const lastWeekAyah = weekGoalAyahs[weekGoalAyahs.length - 1];
+                            const nextStart = lastWeekAyah ? getNextAyahAfter(lastWeekAyah) : null;
+                            if (!nextStart) return;
                             const extra = buildWeeklyGoal({
                               path: memorizationGoal.path,
                               targetJuz: memorizationGoal.targetJuz,
-                              startSurahNumber: goal.startSurahNumber ?? memorizationGoal.startSurahNumber,
-                              startAyahNumber: goal.startAyahNumber ?? 1,
-                              endSurahNumber: memorizationGoal.endSurahNumber,
-                              endAyahNumber: memorizationGoal.endAyahNumber,
+                              startSurahNumber: nextStart.surahNumber,
+                              startAyahNumber: nextStart.ayahNumber,
                               requestedAyahsPerWeek: count,
                               memorizedAyahKeys,
                             });
                             // Append new ayahs to existing — preserve this week's memorized dots
                             const existingKeys = goal.weeklyTargetAyahKeys ?? [];
-                            const newKeys = [...existingKeys, ...(extra.weeklyTargetAyahKeys ?? [])];
+                            const existingKeySet = new Set(existingKeys);
+                            const newExtraKeys = (extra.weeklyTargetAyahKeys ?? []).filter(k => !existingKeySet.has(k));
+                            if (newExtraKeys.length === 0) return;
+                            const newKeys = [...existingKeys, ...newExtraKeys];
+                            const lastNewKey = newExtraKeys[newExtraKeys.length - 1];
+                            const [lastNewSurahRaw, lastNewAyahRaw] = lastNewKey.split(":");
+                            const lastNewSurahNumber = Number(lastNewSurahRaw);
+                            const lastNewAyahNumber = Number(lastNewAyahRaw);
                             setGoal({
                               ...goal,
                               ayahsPerWeek: newKeys.length,
                               weeklyTargetAyahKeys: newKeys,
+                              endSurahNumber: Number.isFinite(lastNewSurahNumber) ? lastNewSurahNumber : goal.endSurahNumber,
+                              endAyahNumber: Number.isFinite(lastNewAyahNumber) ? lastNewAyahNumber : goal.endAyahNumber,
                             });
+                            if (Number.isFinite(lastNewSurahNumber) && Number.isFinite(lastNewAyahNumber)) {
+                              setMemorizationGoal({
+                                ...memorizationGoal,
+                                endSurahNumber: lastNewSurahNumber,
+                                endAyahNumber: lastNewAyahNumber,
+                              });
+                            }
                             setShowWeekCompleteCard(false);
                           }}
                           activeOpacity={0.8}
@@ -1254,29 +1323,48 @@ export default function HomeScreen() {
         path={weeklyGoalPath}
         memorizedAyahKeys={memorizedAyahKeys}
         initialSelection={weeklyInitialSelection}
-        startAtWeeklyGoal
-        confirmLabel="Set Weekly Target"
-        onConfirm={({ first, last, juz, ayahsPerWeek }) => {
-          const today = new Date().toISOString().split("T")[0];
-          const targetJuz = weeklyGoalPath === "juz" ? (juz ?? memorizationGoal?.targetJuz ?? undefined) : undefined;
-          setWidgetFirstAyah(first);
-          setWidgetLastAyah(last);
-          setWidgetJuz(targetJuz ?? null);
+	        startAtWeeklyGoal
+	        confirmLabel="Set Weekly Target"
+	        onConfirm={({ first, last, juz, ayahsPerWeek }) => {
+	          const today = new Date().toISOString().split("T")[0];
+	          const targetJuz = weeklyGoalPath === "juz" ? (juz ?? memorizationGoal?.targetJuz ?? undefined) : undefined;
+	          const effectiveLast = expandLastAyahForWeeklyCount({
+	            path: weeklyGoalPath,
+	            targetJuz,
+	            first,
+	            last,
+	            requestedAyahsPerWeek: ayahsPerWeek,
+	            memorizedAyahKeys,
+	          });
+	          setWidgetFirstAyah(first);
+	          setWidgetLastAyah(effectiveLast);
+	          setWidgetJuz(targetJuz ?? null);
           setShowHifzGoalOptions(false);
           setMemorizationGoal({
             path: weeklyGoalPath,
-            startSurahNumber: first.surahNumber,
-            startSurahName: weeklyGoalPath === "juz" && targetJuz != null ? `Juz ${targetJuz}` : first.surahName,
+            startSurahNumber: memorizationGoal?.startSurahNumber ?? first.surahNumber,
+            startSurahName: memorizationGoal?.startSurahName ?? (weeklyGoalPath === "juz" && targetJuz != null ? `Juz ${targetJuz}` : first.surahName),
             startDate: memorizationGoal?.startDate ?? today,
             ayahsReadAtStart: memorizationGoal?.ayahsReadAtStart ?? todayEntry?.ayahsRead ?? 0,
             targetJuz,
-            endSurahNumber: last.surahNumber,
-            endAyahNumber: last.ayahNumber,
-          });
+	            endSurahNumber: memorizationGoal?.endSurahNumber ?? effectiveLast.surahNumber,
+	            endAyahNumber: memorizationGoal?.endAyahNumber ?? effectiveLast.ayahNumber,
+	          });
           // Preserve this week's already-memorized ayahs so progress isn't reset
           const existingTargetKeys = goal?.weeklyTargetAyahKeys ?? [];
+          const selectedRangeAyahs = getGoalRangeAyahs({
+	            path: weeklyGoalPath,
+	            targetJuz,
+	            startSurahNumber: first.surahNumber,
+	            startAyahNumber: first.ayahNumber,
+	            endSurahNumber: effectiveLast.surahNumber,
+	            endAyahNumber: effectiveLast.ayahNumber,
+	          });
+          const existingTargetSet = new Set(existingTargetKeys);
           const memorizedSet = new Set(memorizedAyahKeys);
-          const doneThisWeek = existingTargetKeys.filter(k => memorizedSet.has(k));
+          const doneThisWeek = selectedRangeAyahs
+            .map(getAyahKey)
+            .filter(k => existingTargetSet.has(k) && memorizedSet.has(k));
 
           let weeklyTargetAyahKeys: string[];
           let finalAyahsPerWeek: number;
@@ -1288,14 +1376,14 @@ export default function HomeScreen() {
           } else {
             // Fill remaining slots with unmemoized ayahs from range
             const extra = buildWeeklyGoal({
-              path: weeklyGoalPath,
-              targetJuz,
-              startSurahNumber: first.surahNumber,
-              startAyahNumber: first.ayahNumber,
-              endSurahNumber: last.surahNumber,
-              endAyahNumber: last.ayahNumber,
-              requestedAyahsPerWeek: ayahsPerWeek - doneThisWeek.length,
-              memorizedAyahKeys,
+	              path: weeklyGoalPath,
+	              targetJuz,
+	              startSurahNumber: first.surahNumber,
+	              startAyahNumber: first.ayahNumber,
+	              endSurahNumber: effectiveLast.surahNumber,
+	              endAyahNumber: effectiveLast.ayahNumber,
+	              requestedAyahsPerWeek: ayahsPerWeek - doneThisWeek.length,
+	              memorizedAyahKeys,
             });
             weeklyTargetAyahKeys = [...doneThisWeek, ...(extra.weeklyTargetAyahKeys ?? [])];
             finalAyahsPerWeek = weeklyTargetAyahKeys.length;
@@ -1304,12 +1392,12 @@ export default function HomeScreen() {
           setGoal({
             ayahsPerWeek: finalAyahsPerWeek,
             weeklyTargetAyahKeys,
-            startSurahNumber: first.surahNumber,
-            startAyahNumber: first.ayahNumber,
-            startDate: goal?.startDate ?? today,
-            endSurahNumber: last.surahNumber,
-            endAyahNumber: last.ayahNumber,
-          });
+	            startSurahNumber: first.surahNumber,
+	            startAyahNumber: first.ayahNumber,
+	            startDate: goal?.startDate ?? today,
+	            endSurahNumber: effectiveLast.surahNumber,
+	            endAyahNumber: effectiveLast.ayahNumber,
+	          });
           setWeeklyGoalVisible(false);
         }}
         onClose={() => setWeeklyGoalVisible(false)}

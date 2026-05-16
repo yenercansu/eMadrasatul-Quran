@@ -60,9 +60,11 @@ function AyahSlider({
   useEffect(() => { onDragStartRef.current = onDragStart; });
   useEffect(() => { onDragEndRef.current = onDragEnd; });
   const THUMB = 26;
+  const safeMax = Math.max(1, maxValue);
+  const clampedValue = Math.max(1, Math.min(value, safeMax));
   const resolve = (pageX: number) => {
     sliderRef.current?.measure((_x, _y, width, _height, containerPageX) => {
-      const max = maxValueRef.current;
+      const max = Math.max(1, maxValueRef.current);
       const w = width || trackWidthRef.current || 1;
       const x = Math.max(0, Math.min(w, pageX - containerPageX));
       onChangeRef.current(Math.max(1, Math.min(max, Math.round((x / w) * (max - 1)) + 1)));
@@ -78,7 +80,7 @@ function AyahSlider({
       onPanResponderTerminate: () => { onDragEndRef.current?.(); },
     })
   ).current;
-  const thumbLeft = trackWidth > 0 && maxValue > 1 ? ((value - 1) / (maxValue - 1)) * (trackWidth - THUMB) : 0;
+  const thumbLeft = trackWidth > 0 && safeMax > 1 ? ((clampedValue - 1) / (safeMax - 1)) * (trackWidth - THUMB) : 0;
   return (
     <View
       ref={sliderRef}
@@ -266,7 +268,34 @@ export function AyahRangeModal({
   }, [firstAyah, lastAyah, path, juzAyahs, memorizedAyahKeys]);
 
   const remainingRangeAyahs = unmemorizedRangeAyahs.length;
-  const dynamicMax = remainingRangeAyahs > 0 ? Math.min(MAX_WEEKLY, remainingRangeAyahs) : MAX_WEEKLY;
+  const expandableWeeklyAyahs = useMemo(() => {
+    if (!startAtWeeklyGoal || !firstAyah) return 0;
+    const memorized = new Set(memorizedAyahKeys);
+    const source = path === "juz"
+      ? juzAyahs
+      : (() => {
+          const surah = SURAH_DATA.find((s) => s.number === firstAyah.surahNumber);
+          if (!surah) return [];
+          return Array.from({ length: surah.ayahCount }, (_, i) => ({
+            surahNumber: surah.number,
+            surahName: surah.englishName,
+            ayahNumber: i + 1,
+          }));
+        })();
+    const firstIdx = source.findIndex(
+      (a) => a.surahNumber === firstAyah.surahNumber && a.ayahNumber === firstAyah.ayahNumber
+    );
+    if (firstIdx < 0) return 0;
+    return source.slice(firstIdx).filter((ayah) => !memorized.has(`${ayah.surahNumber}:${ayah.ayahNumber}`)).length;
+  }, [firstAyah, juzAyahs, memorizedAyahKeys, path, startAtWeeklyGoal]);
+  const currentWeeklyTargetCount = startAtWeeklyGoal && initialSelection ? initialSelection.ayahsPerWeek : 0;
+  const availableForTarget = Math.max(remainingRangeAyahs, currentWeeklyTargetCount, expandableWeeklyAyahs);
+  const dynamicMax = availableForTarget > 0 ? Math.min(MAX_WEEKLY, availableForTarget) : MAX_WEEKLY;
+  const clampedAyahsPerWeek = Math.max(1, Math.min(ayahsPerWeek, dynamicMax));
+
+  useEffect(() => {
+    setAyahsPerWeek((prev) => Math.max(1, Math.min(prev, dynamicMax)));
+  }, [dynamicMax]);
 
   // ── PaceDate flow helpers ──────────────────────────────────────────────────
   const autoCapacity = startAtPaceDate && selectedFinishWeeks ? ayahsPerWeek * selectedFinishWeeks : 0;
@@ -401,7 +430,7 @@ export function AyahRangeModal({
   const handleFinalConfirm = () => {
     if (!canConfirm) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onConfirm({ first: firstAyah!, last: lastAyah!, juz: selectedJuz ?? undefined, ayahsPerWeek });
+    onConfirm({ first: firstAyah!, last: lastAyah!, juz: selectedJuz ?? undefined, ayahsPerWeek: clampedAyahsPerWeek });
     onClose();
   };
 
@@ -1048,7 +1077,7 @@ export function AyahRangeModal({
           </Text>
 
           <Text style={s.targetLabel}>TARGET VOLUME</Text>
-          <Text style={s.targetNum}>{ayahsPerWeek}</Text>
+          <Text style={s.targetNum}>{clampedAyahsPerWeek}</Text>
           <Text style={s.targetUnit}>Ayahs per week</Text>
 
           <View style={s.dynamicLimitChip}>
@@ -1063,7 +1092,7 @@ export function AyahRangeModal({
             <Text style={s.sliderRangeText}>{dynamicMax}</Text>
           </View>
           <AyahSlider
-            value={ayahsPerWeek}
+            value={clampedAyahsPerWeek}
             onChange={(v) => setAyahsPerWeek(Math.min(v, dynamicMax))}
             maxValue={dynamicMax}
             onDragStart={() => setWeeklyScrollEnabled(false)}
@@ -1078,12 +1107,12 @@ export function AyahRangeModal({
               <Text style={s.finishDateCardDate}>
                 {(() => {
                   const d = new Date();
-                  d.setDate(d.getDate() + Math.ceil(remainingRangeAyahs / ayahsPerWeek) * 7);
+                  d.setDate(d.getDate() + Math.ceil(remainingRangeAyahs / clampedAyahsPerWeek) * 7);
                   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
                 })()}
               </Text>
               <Text style={s.finishDateCardSub}>
-                {Math.ceil(remainingRangeAyahs / ayahsPerWeek)} weeks · {ayahsPerWeek} ayahs/week
+                {Math.ceil(remainingRangeAyahs / clampedAyahsPerWeek)} weeks · {clampedAyahsPerWeek} ayahs/week
               </Text>
             </View>
           )}
@@ -1091,7 +1120,7 @@ export function AyahRangeModal({
           <Text style={s.commitmentLabel}>WEEKLY COMMITMENT STEPS</Text>
           <View style={s.dots}>
             {COMMITMENT_STEPS.filter((cs) => cs <= dynamicMax).map((cs) => (
-              <View key={cs} style={[s.dot, ayahsPerWeek >= cs && s.dotFilled]} />
+              <View key={cs} style={[s.dot, clampedAyahsPerWeek >= cs && s.dotFilled]} />
             ))}
           </View>
 
@@ -1113,7 +1142,7 @@ export function AyahRangeModal({
             <View style={s.summaryDivider} />
             <View style={s.summaryRow}>
               <Text style={s.summaryLabel}>Weekly Goal</Text>
-              <Text style={[s.summaryValue, s.summaryValueBold]}>{ayahsPerWeek} Ayahs</Text>
+              <Text style={[s.summaryValue, s.summaryValueBold]}>{clampedAyahsPerWeek} Ayahs</Text>
             </View>
           </View>
 
@@ -1149,8 +1178,8 @@ export function AyahRangeModal({
           <View style={s.estimateCard}>
             <Text style={s.estimateLabel}>YOUR COMPLETION ESTIMATE</Text>
             <Text style={s.estimateText}>
-              At <Text style={s.estimateBold}>{ayahsPerWeek} Ayahs per week</Text>, you will finish memorizing your selected range in{" "}
-              <Text style={s.estimateBold}>{estimateCompletion(remainingRangeAyahs, ayahsPerWeek)}</Text>.
+              At <Text style={s.estimateBold}>{clampedAyahsPerWeek} Ayahs per week</Text>, you will finish memorizing your selected range in{" "}
+              <Text style={s.estimateBold}>{estimateCompletion(remainingRangeAyahs, clampedAyahsPerWeek)}</Text>.
             </Text>
           </View>
         </ScrollView>

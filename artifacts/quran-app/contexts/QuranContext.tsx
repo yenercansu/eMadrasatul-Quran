@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppState, Appearance, type AppStateStatus } from "react-native";
 import type { ArabicFontKey } from "@/constants/arabicFonts";
-import { getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
+import { getJuzAyahs, getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNetworkStatus } from "@/contexts/NetworkContext";
 import * as madeenanApi from "@/services/madeenanApi";
@@ -170,6 +170,39 @@ export function getAyahAtLinearIndex(index: number): { surahNumber: number; sura
     pos -= s.ayahCount;
   }
   return { surahNumber: 1, surahName: "Al-Faatiha", ayahNumber: 1 };
+}
+
+function getActiveGoalRangeKeySet(goal: Goal, memorizationGoal: MemorizationGoal | null): Set<string> | null {
+  if (
+    goal.startSurahNumber == null ||
+    goal.startAyahNumber == null ||
+    goal.endSurahNumber == null ||
+    goal.endAyahNumber == null
+  ) {
+    return null;
+  }
+
+  const source = memorizationGoal?.path === "juz" && memorizationGoal.targetJuz
+    ? getJuzAyahs(memorizationGoal.targetJuz)
+    : (() => {
+        const surah = SURAH_DATA.find((s) => s.number === goal.startSurahNumber);
+        if (!surah) return [];
+        return Array.from({ length: surah.ayahCount }, (_, index) => ({
+          surahNumber: surah.number,
+          surahName: surah.englishName,
+          ayahNumber: index + 1,
+        }));
+      })();
+
+  const startIdx = source.findIndex(
+    (ayah) => ayah.surahNumber === goal.startSurahNumber && ayah.ayahNumber === goal.startAyahNumber
+  );
+  const endIdx = source.findIndex(
+    (ayah) => ayah.surahNumber === goal.endSurahNumber && ayah.ayahNumber === goal.endAyahNumber
+  );
+  if (startIdx < 0 || endIdx < startIdx) return null;
+
+  return new Set(source.slice(startIdx, endIdx + 1).map((ayah) => `${ayah.surahNumber}:${ayah.ayahNumber}`));
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -595,12 +628,14 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const getWeekGoalAyahs = useCallback((): GoalAyah[] => {
     if (!goal) return [];
     if (goal.weeklyTargetAyahKeys?.length) {
+      const activeRangeKeys = getActiveGoalRangeKeySet(goal, memorizationGoal);
       return goal.weeklyTargetAyahKeys.map((key) => {
         const [surahRaw, ayahRaw] = key.split(":");
         const surahNumber = Number(surahRaw);
         const ayahNumber = Number(ayahRaw);
         const surah = SURAH_DATA[surahNumber - 1];
         if (!surah || !Number.isFinite(ayahNumber)) return null;
+        if (activeRangeKeys && !activeRangeKeys.has(`${surahNumber}:${ayahNumber}`)) return null;
         return { surahNumber, surahName: surah.englishName, ayahNumber };
       }).filter((ayah): ayah is GoalAyah => ayah !== null);
     }
@@ -632,11 +667,15 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     const target = memorizationGoal?.path === "juz" && memorizationGoal.targetJuz
       ? { path: "juz" as const, juz: memorizationGoal.targetJuz }
       : { path: "surah" as const };
+    const activeRangeKeys = getActiveGoalRangeKeySet(goal, memorizationGoal);
     const goalAyahsList = goal.weeklyTargetAyahKeys?.length
       ? goal.weeklyTargetAyahKeys.map((key) => {
           const [surahRaw, ayahRaw] = key.split(":");
           return { surahNumber: Number(surahRaw), ayahNumber: Number(ayahRaw) };
-        }).filter((ayah) => Number.isFinite(ayah.surahNumber) && Number.isFinite(ayah.ayahNumber))
+        }).filter((ayah) => {
+          if (!Number.isFinite(ayah.surahNumber) || !Number.isFinite(ayah.ayahNumber)) return false;
+          return !activeRangeKeys || activeRangeKeys.has(`${ayah.surahNumber}:${ayah.ayahNumber}`);
+        })
       : getWeeklyGoalAyahsFrom(
           goal.startSurahNumber,
           goal.startAyahNumber,
