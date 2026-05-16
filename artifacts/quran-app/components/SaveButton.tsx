@@ -31,7 +31,7 @@ export function SaveButton({
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={[s.base, s[size], saved && s.saved, style]}
+      style={[s.base, s[size], style]}
       activeOpacity={0.7}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       accessibilityRole="button"
@@ -51,10 +51,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     base: {
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: colors.borders.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: "transparent",
     },
     sm: {
       width: 28,
@@ -63,8 +59,5 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     md: {
       width: 32,
       height: 32,
-    },
-    saved: {
-      backgroundColor: colors.appSecondarySurface,
     },
   });

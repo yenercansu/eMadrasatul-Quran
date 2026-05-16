@@ -67,7 +67,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       justifyContent: "center",
       gap: 6,
-      borderRadius: 999,
+      borderRadius: 14,
     },
     sm: {
       minHeight: 42,

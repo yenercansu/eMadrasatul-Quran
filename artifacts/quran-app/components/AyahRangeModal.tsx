@@ -1310,7 +1310,7 @@ const s = StyleSheet.create({
   },
   resetPrimaryBtn: {
     minHeight: 52,
-    borderRadius: 999,
+    borderRadius: 14,
     backgroundColor: "#1A1A1A",
     alignItems: "center",
     justifyContent: "center",
@@ -1324,7 +1324,7 @@ const s = StyleSheet.create({
   },
   resetCancelBtn: {
     minHeight: 48,
-    borderRadius: 999,
+    borderRadius: 14,
     backgroundColor: "#F6F2EA",
     alignItems: "center",
     justifyContent: "center",

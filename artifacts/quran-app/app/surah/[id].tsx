@@ -576,6 +576,79 @@ const cb = StyleSheet.create({
   tajweedUnderline: { width: 12, height: 1.5, marginTop: 1 },
 });
 
+// ─── Floating top nav (Mushaf menu hidden) ───────────────────────────────────
+function FloatingTopNav({
+  surahName, onPrev, onNext, onLongPress, topInset,
+}: {
+  surahName: string; onPrev: () => void; onNext: () => void;
+  onLongPress: () => void; topInset: number;
+}) {
+  return (
+    <View style={[fn.wrap, { top: topInset + 8 }]}>
+      <TouchableOpacity style={fn.pillBtn} onPress={onNext} activeOpacity={0.75}>
+        <Feather name="chevron-left" size={14} color="#1A1A1A" />
+        <Text style={fn.pillBtnText}>Next</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onLongPress={onLongPress}
+        delayLongPress={350}
+        activeOpacity={0.85}
+        style={fn.titlePill}
+      >
+        <Text style={fn.titleText} numberOfLines={1}>{surahName}</Text>
+        <Text style={fn.hintText} numberOfLines={1}>Long press for more options</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={fn.pillBtn} onPress={onPrev} activeOpacity={0.75}>
+        <Text style={fn.pillBtnText}>Back</Text>
+        <Feather name="chevron-right" size={14} color="#1A1A1A" />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const fn = StyleSheet.create({
+  wrap: {
+    position: "absolute",
+    left: 8,
+    right: 8,
+    zIndex: 100,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 6,
+  },
+  pillBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F2EE",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+    gap: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  pillBtnText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  titlePill: {
+    flex: 1,
+    backgroundColor: "#F5F2EE",
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  titleText: { fontSize: 14, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  hintText: { fontSize: 10, color: "#5D4A37", fontFamily: "Inter_400Regular", marginTop: 1, opacity: 0.85 },
+});
+
 // ─── Edit Sheet ───────────────────────────────────────────────────────────────
 function EditSheet({
   visible, onClose,
@@ -1927,6 +2000,24 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         </View>
       )}
 
+      {/* ── Floating top nav (Mushaf mode, menu hidden) ──────── */}
+      {!menuVisible && settings.mushafMode && (
+        <FloatingTopNav
+          surahName={arabic?.englishName ?? ""}
+          topInset={insets.top}
+          onPrev={goToPrevSurah}
+          onNext={goToNextSurah}
+          onLongPress={() => setRangeVisible(true)}
+        />
+      )}
+      {/* ── Compact info bar (Verses mode, menu hidden) ───────── */}
+      {!menuVisible && !settings.mushafMode && (
+        <View style={[scr.versesInfoBar, { paddingTop: insets.top }]}>
+          <Text style={scr.versesInfoLeft}>{`Juz' ${pageAyahs[0]?.juz ?? 1}`}</Text>
+          <Text style={scr.versesInfoRight} numberOfLines={1}>{arabic?.englishName ?? ""}</Text>
+        </View>
+      )}
+
       {/* ── Content ──────────────────────────────────────────── */}
       {loading ? (
         <ActivityIndicator color="#1A1A1A" style={{ flex: 1 }} size="large" />
@@ -2389,5 +2480,47 @@ const scr = StyleSheet.create({
   mushafSplitText: {
     flex: 1, fontSize: 14, lineHeight: 22,
     color: "#2C2C2C", fontFamily: "Inter_400Regular",
+  },
+  swipeHintBar: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  swipeHintText: {
+    fontSize: 11,
+    color: "#AAAAAA",
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 16,
+    letterSpacing: 0.1,
+  },
+  versesInfoBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    zIndex: 100,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    backgroundColor: "#FAF9F7",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E2DDD6",
+  },
+  versesInfoLeft: {
+    fontSize: 12,
+    color: "#1A1A1A",
+    fontFamily: "Inter_400Regular",
+    opacity: 0.55,
+  },
+  versesInfoRight: {
+    fontSize: 12,
+    color: "#1A1A1A",
+    fontFamily: "Inter_400Regular",
+    opacity: 0.55,
+    flexShrink: 1,
+    marginLeft: 8,
   },
 });
