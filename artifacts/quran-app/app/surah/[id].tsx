@@ -1974,6 +1974,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
   const basmala = surahNum !== 1 && surahNum !== 9;
   const memorizationGoalAyahKeys = useMemo(() => {
     if (!goal?.startSurahNumber || !goal.startAyahNumber) return null;
+    if (goal.weeklyTargetAyahKeys?.length) return new Set(goal.weeklyTargetAyahKeys);
     const target = memorizationGoal?.path === "juz" && memorizationGoal.targetJuz
       ? { path: "juz" as const, juz: memorizationGoal.targetJuz }
       : { path: "surah" as const };

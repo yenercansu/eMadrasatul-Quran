@@ -21,13 +21,70 @@ import { useQuran } from "@/contexts/QuranContext";
 import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
 import { getJuzAyahs, SURAH_DATA, type AyahRef } from "@/constants/surahData";
 import { GoalSetupModal } from "@/components/GoalSetupModal";
-import { EditDailyGoalModal } from "@/components/EditDailyGoalModal";
 import { AyahRangeModal } from "@/components/AyahRangeModal";
 import { SubSectionTitle } from "@/components/Typography";
 import { MemorizedBadge } from "@/components/SurahCard";
 import { ActionPill } from "@/components/ActionPill";
 
 const TOTAL_AYAHS = 6236;
+const MAX_WEEKLY_AYAHS = 70;
+
+function getAyahKey(ayah: Pick<AyahRef, "surahNumber" | "ayahNumber">) {
+  return `${ayah.surahNumber}:${ayah.ayahNumber}`;
+}
+
+function getGoalRangeAyahs(options: {
+  path: "surah" | "juz";
+  targetJuz?: number;
+  startSurahNumber: number;
+  startAyahNumber: number;
+  endSurahNumber?: number;
+  endAyahNumber?: number;
+}): AyahRef[] {
+  const source = options.path === "juz" && options.targetJuz
+    ? getJuzAyahs(options.targetJuz)
+    : (() => {
+        const surah = SURAH_DATA.find(s => s.number === options.startSurahNumber);
+        if (!surah) return [];
+        return Array.from({ length: surah.ayahCount }, (_, index) => ({
+          surahNumber: surah.number,
+          surahName: surah.englishName,
+          ayahNumber: index + 1,
+        }));
+      })();
+  const startIdx = source.findIndex(
+    a => a.surahNumber === options.startSurahNumber && a.ayahNumber === options.startAyahNumber
+  );
+  const fallbackEndIdx = source.length - 1;
+  const endIdx = options.endSurahNumber != null && options.endAyahNumber != null
+    ? source.findIndex(a => a.surahNumber === options.endSurahNumber && a.ayahNumber === options.endAyahNumber)
+    : fallbackEndIdx;
+  if (startIdx < 0) return [];
+  return source.slice(startIdx, endIdx >= startIdx ? endIdx + 1 : undefined);
+}
+
+function buildWeeklyGoal(options: {
+  path: "surah" | "juz";
+  targetJuz?: number;
+  startSurahNumber: number;
+  startAyahNumber: number;
+  endSurahNumber?: number;
+  endAyahNumber?: number;
+  requestedAyahsPerWeek: number;
+  memorizedAyahKeys: string[];
+}) {
+  const memorized = new Set(options.memorizedAyahKeys);
+  const remaining = getGoalRangeAyahs(options).filter(ayah => !memorized.has(getAyahKey(ayah)));
+  const target = remaining.slice(0, Math.min(MAX_WEEKLY_AYAHS, options.requestedAyahsPerWeek));
+  const first = target[0];
+
+  return {
+    ayahsPerWeek: Math.max(1, target.length || Math.min(MAX_WEEKLY_AYAHS, options.requestedAyahsPerWeek)),
+    startSurahNumber: first?.surahNumber ?? options.startSurahNumber,
+    startAyahNumber: first?.ayahNumber ?? options.startAyahNumber,
+    weeklyTargetAyahKeys: target.map(getAyahKey),
+  };
+}
 
 function CircularRing({
   percent, size = 60, strokeWidth = 5,
@@ -80,7 +137,6 @@ export default function HomeScreen() {
   } = useQuran();
   const [refreshing, setRefreshing] = useState(false);
   const [goalSetupVisible, setGoalSetupVisible] = useState(false);
-  const [editDailyGoalVisible, setEditDailyGoalVisible] = useState(false);
   const [showMilestoneToast, setShowMilestoneToast] = useState(false);
   const [showHifzCompleteToast, setShowHifzCompleteToast] = useState(false);
   const [hifzCompleteToastText, setHifzCompleteToastText] = useState({
@@ -199,9 +255,6 @@ export default function HomeScreen() {
     ? (effectiveGoalCount > 0 ? Math.min(100, Math.round((weekGoalProgress / effectiveGoalCount) * 100)) : 100)
     : 0;
 
-  const editableGoalSurahNumber = (goal?.startSurahNumber ?? memorizationGoal?.startSurahNumber) ?? 1;
-  const editableGoalSurah = SURAH_DATA.find(s => s.number === editableGoalSurahNumber) ?? SURAH_DATA[0];
-
   // Sync widget with current goal whenever goal changes
   useEffect(() => {
     if (memorizationGoal && goal) {
@@ -213,11 +266,37 @@ export default function HomeScreen() {
       if (goal.endSurahNumber && goal.endAyahNumber) {
         const surahMeta = SURAH_DATA.find(s => s.number === goal.endSurahNumber);
         setWidgetLastAyah({ surahNumber: goal.endSurahNumber, surahName: surahMeta?.englishName ?? "", ayahNumber: goal.endAyahNumber });
+      } else if (memorizationGoal.endSurahNumber && memorizationGoal.endAyahNumber) {
+        const surahMeta = SURAH_DATA.find(s => s.number === memorizationGoal.endSurahNumber);
+        setWidgetLastAyah({
+          surahNumber: memorizationGoal.endSurahNumber,
+          surahName: surahMeta?.englishName ?? "",
+          ayahNumber: memorizationGoal.endAyahNumber,
+        });
+      } else if (memorizationGoal.path === "juz" && memorizationGoal.targetJuz) {
+        const juzAyahs = getJuzAyahs(memorizationGoal.targetJuz);
+        setWidgetLastAyah(juzAyahs[juzAyahs.length - 1] ?? null);
+      } else {
+        const surahMeta = SURAH_DATA.find(s => s.number === memorizationGoal.startSurahNumber);
+        setWidgetLastAyah(surahMeta
+          ? { surahNumber: surahMeta.number, surahName: surahMeta.englishName, ayahNumber: surahMeta.ayahCount }
+          : null
+        );
       }
       if (memorizationGoal.targetJuz) setWidgetJuz(memorizationGoal.targetJuz);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [memorizationGoal?.path, memorizationGoal?.targetJuz, goal?.startSurahNumber, goal?.startAyahNumber, goal?.endSurahNumber, goal?.endAyahNumber]);
+  }, [
+    memorizationGoal?.path,
+    memorizationGoal?.targetJuz,
+    memorizationGoal?.startSurahNumber,
+    memorizationGoal?.endSurahNumber,
+    memorizationGoal?.endAyahNumber,
+    goal?.startSurahNumber,
+    goal?.startAyahNumber,
+    goal?.endSurahNumber,
+    goal?.endAyahNumber,
+  ]);
 
   const totalRangeAyahs = useMemo(() => {
     if (!widgetFirstAyah || !widgetLastAyah) return 0;
@@ -246,21 +325,25 @@ export default function HomeScreen() {
 
   const canStartMemorizing = widgetFirstAyah !== null && widgetLastAyah !== null;
 
-  const totalRangeMemorized = useMemo(() => {
-    if (!memorizationGoal || !goal) return 0;
-    if (memorizationGoal.path === "juz") return totalMemorized;
-    const memorized = new Set(memorizedAyahKeys);
-    const surahNum = memorizationGoal.startSurahNumber;
-    const startAyah = goal.startAyahNumber ?? 1;
-    const endAyah = memorizationGoal.endAyahNumber ?? (targetSurah?.ayahCount ?? 1);
-    let count = 0;
-    for (let i = startAyah; i <= endAyah; i++) {
-      if (memorized.has(`${surahNum}:${i}`)) count++;
-    }
-    return count;
-  }, [memorizationGoal, goal, memorizedAyahKeys, totalMemorized, targetSurah]);
+  const activeGoalAyahs = useMemo(() => {
+    if (!memorizationGoal || !goal) return [];
+    return getGoalRangeAyahs({
+      path: memorizationGoal.path,
+      targetJuz: memorizationGoal.targetJuz,
+      startSurahNumber: goal.startSurahNumber ?? memorizationGoal.startSurahNumber,
+      startAyahNumber: goal.startAyahNumber ?? 1,
+      endSurahNumber: memorizationGoal.endSurahNumber,
+      endAyahNumber: memorizationGoal.endAyahNumber,
+    });
+  }, [memorizationGoal, goal]);
 
-  const remainingRangeAyahs = Math.max(0, (totalRangeAyahs || targetTotal) - totalRangeMemorized);
+  const totalRangeMemorized = useMemo(() => {
+    const memorized = new Set(memorizedAyahKeys);
+    return activeGoalAyahs.filter(a => memorized.has(`${a.surahNumber}:${a.ayahNumber}`)).length;
+  }, [activeGoalAyahs, memorizedAyahKeys]);
+
+  const activeRangeTotal = activeGoalAyahs.length || totalRangeAyahs || targetTotal;
+  const remainingRangeAyahs = Math.max(0, activeRangeTotal - totalRangeMemorized);
 
   const activeGoalTargetDate = useMemo(() => {
     if (!goal?.ayahsPerWeek || !memorizationGoal) return null;
@@ -274,8 +357,8 @@ export default function HomeScreen() {
     memorizationGoal !== null &&
     goal !== null &&
     memorizationPercent < 100 &&
-    totalRangeAyahs > 0 &&
-    totalRangeMemorized >= totalRangeAyahs;
+    activeRangeTotal > 0 &&
+    totalRangeMemorized >= activeRangeTotal;
 
   const selectedRangeLabel = goal
     ? `Ayah ${goal.startAyahNumber ?? 1}–${goal.endAyahNumber ?? memorizationGoal?.endAyahNumber ?? targetTotal}`
@@ -301,59 +384,21 @@ export default function HomeScreen() {
   const nextAyahInRange = useMemo(() => {
     if (!memorizationGoal || !goal) return null;
     const memorized = new Set(memorizedAyahKeys);
-    if (memorizationGoal.path === "juz" && memorizationGoal.targetJuz) {
-      const juzAyahs = getJuzAyahs(memorizationGoal.targetJuz);
-      const candidates = juzAyahs.filter(a => !memorized.has(`${a.surahNumber}:${a.ayahNumber}`));
-      return hifzDirection === "reverse" ? candidates[candidates.length - 1] ?? null : candidates[0] ?? null;
-    }
-    const surahNum = memorizationGoal.startSurahNumber;
-    const surahMeta = SURAH_DATA.find(s => s.number === surahNum);
-    if (!surahMeta) return null;
-    const startAyah = goal.startAyahNumber ?? 1;
-    const endAyah = memorizationGoal.endAyahNumber ?? surahMeta.ayahCount;
-    if (hifzDirection === "reverse") {
-      for (let i = endAyah; i >= startAyah; i--) {
-        if (!memorized.has(`${surahNum}:${i}`)) {
-          return { surahNumber: surahNum, surahName: surahMeta.englishName, ayahNumber: i };
-        }
-      }
-      return null;
-    }
-    for (let i = startAyah; i <= endAyah; i++) {
-      if (!memorized.has(`${surahNum}:${i}`)) {
-        return { surahNumber: surahNum, surahName: surahMeta.englishName, ayahNumber: i };
-      }
-    }
-    return null;
-  }, [memorizationGoal, goal, memorizedAyahKeys, hifzDirection]);
+    const candidates = activeGoalAyahs.filter(a => !memorized.has(`${a.surahNumber}:${a.ayahNumber}`));
+    return hifzDirection === "reverse" ? candidates[candidates.length - 1] ?? null : candidates[0] ?? null;
+  }, [memorizationGoal, goal, activeGoalAyahs, memorizedAyahKeys, hifzDirection]);
 
   const upNextAyahNums = useMemo(() => {
     if (!nextAyahInRange || !memorizationGoal || !goal) return [];
-    if (memorizationGoal.path === "juz" && memorizationGoal.targetJuz) {
-      const juzAyahs = getJuzAyahs(memorizationGoal.targetJuz);
-      const idx = juzAyahs.findIndex(a => a.surahNumber === nextAyahInRange.surahNumber && a.ayahNumber === nextAyahInRange.ayahNumber);
-      const adjacent = hifzDirection === "reverse"
-        ? juzAyahs.slice(Math.max(0, idx - 2), idx).reverse()
-        : juzAyahs.slice(idx + 1, idx + 3);
-      return adjacent.map(a => a.ayahNumber);
-    }
-    const surahNum = memorizationGoal.startSurahNumber;
-    const surahMeta = SURAH_DATA.find(s => s.number === surahNum);
-    if (!surahMeta) return [];
-    const endAyah = memorizationGoal.endAyahNumber ?? surahMeta.ayahCount;
-    const nums: number[] = [];
-    if (hifzDirection === "reverse") {
-      const startAyah = goal.startAyahNumber ?? 1;
-      for (let i = nextAyahInRange.ayahNumber - 1; i >= startAyah && nums.length < 2; i--) {
-        nums.push(i);
-      }
-    } else {
-      for (let i = nextAyahInRange.ayahNumber + 1; i <= endAyah && nums.length < 2; i++) {
-        nums.push(i);
-      }
-    }
-    return nums;
-  }, [nextAyahInRange, memorizationGoal, goal, hifzDirection]);
+    const idx = activeGoalAyahs.findIndex(
+      a => a.surahNumber === nextAyahInRange.surahNumber && a.ayahNumber === nextAyahInRange.ayahNumber
+    );
+    if (idx < 0) return [];
+    const adjacent = hifzDirection === "reverse"
+      ? activeGoalAyahs.slice(Math.max(0, idx - 2), idx).reverse()
+      : activeGoalAyahs.slice(idx + 1, idx + 3);
+    return adjacent.map(a => a.ayahNumber);
+  }, [nextAyahInRange, memorizationGoal, goal, activeGoalAyahs, hifzDirection]);
 
   const widgetPresetConfig = canStartMemorizing
     ? {
@@ -711,7 +756,7 @@ export default function HomeScreen() {
                       iconPosition="right"
                       variant="soft"
                       size="sm"
-                      onPress={() => setEditDailyGoalVisible(true)}
+                      onPress={() => setGoalSetupVisible(true)}
                     />
                   )}
                 </View>
@@ -784,9 +829,18 @@ export default function HomeScreen() {
                           key={count}
                           style={s.weekAddOption}
                           onPress={() => {
-                            if (!goal) return;
-                            const nextCount = goal.ayahsPerWeek + count;
-                            setGoal({ ...goal, ayahsPerWeek: nextCount });
+                            if (!goal || !memorizationGoal) return;
+                            const weeklyGoal = buildWeeklyGoal({
+                              path: memorizationGoal.path,
+                              targetJuz: memorizationGoal.targetJuz,
+                              startSurahNumber: goal.startSurahNumber ?? memorizationGoal.startSurahNumber,
+                              startAyahNumber: goal.startAyahNumber ?? 1,
+                              endSurahNumber: memorizationGoal.endSurahNumber,
+                              endAyahNumber: memorizationGoal.endAyahNumber,
+                              requestedAyahsPerWeek: count,
+                              memorizedAyahKeys,
+                            });
+                            setGoal({ ...goal, ...weeklyGoal });
                             setShowWeeklyToast(false);
                           }}
                           activeOpacity={0.8}
@@ -807,7 +861,7 @@ export default function HomeScreen() {
                         {"Ayah "}{goal.startAyahNumber ?? 1}{" – "}{memorizationGoal!.endAyahNumber ?? targetTotal}
                       </Text>
                       <Text style={s.currentGoalProgress}>
-                        {totalRangeMemorized} of {totalRangeAyahs || (memorizationGoal!.endAyahNumber ?? targetTotal)} memorized
+                        {totalRangeMemorized} of {activeRangeTotal} memorized
                       </Text>
                     </View>
                     <View style={s.currentGoalRight}>
@@ -1095,7 +1149,7 @@ export default function HomeScreen() {
 
       {/* ── Week Done Toast (floating overlay) ──────────────────────── */}
       {showWeeklyToast && (
-        <View style={[s.weekDoneToast, { bottom: insets.bottom + 20 }]} pointerEvents="box-none">
+        <View style={[s.weekDoneToast, { top: insets.top + 12 }]} pointerEvents="box-none">
           <Text style={s.toastEmoji}>🎉</Text>
           <View style={{ flex: 1 }}>
             <Text style={s.weekDoneTitle}>Weekly target complete!</Text>
@@ -1108,7 +1162,7 @@ export default function HomeScreen() {
       )}
 
       {showMilestoneToast && (
-        <View style={[s.weekDoneToast, { bottom: insets.bottom + 20 }]} pointerEvents="box-none">
+        <View style={[s.weekDoneToast, { top: insets.top + 12 }]} pointerEvents="box-none">
           <Text style={s.toastEmoji}>🎉</Text>
           <View style={{ flex: 1 }}>
             <Text style={s.weekDoneTitle}>Ayah milestone complete!</Text>
@@ -1123,7 +1177,7 @@ export default function HomeScreen() {
       )}
 
       {showHifzCompleteToast && (
-        <View style={[s.weekDoneToast, { bottom: insets.bottom + 20 }]} pointerEvents="box-none">
+        <View style={[s.weekDoneToast, { top: insets.top + 12 }]} pointerEvents="box-none">
           <Text style={s.toastEmoji}>🎉</Text>
           <View style={{ flex: 1 }}>
             <Text style={s.weekDoneTitle}>{hifzCompleteToastText.title}</Text>
@@ -1142,29 +1196,20 @@ export default function HomeScreen() {
         onComplete={(memGoal, weeklyGoal) => {
           setShowHifzGoalOptions(false);
           setMemorizationGoal({ ...memGoal, ayahsReadAtStart: todayEntry?.ayahsRead ?? 0 });
-          setGoal({ ...weeklyGoal });
-        }}
-      />
-      <EditDailyGoalModal
-        visible={editDailyGoalVisible}
-        surahName={editableGoalSurah.englishName}
-        surahNumber={editableGoalSurah.number}
-        ayahCount={editableGoalSurah.ayahCount}
-        targetPath={memorizationGoal?.path ?? "surah"}
-        targetJuz={memorizationGoal?.targetJuz}
-        currentStartAyah={goal?.startAyahNumber ?? 1}
-        currentAyahsPerWeek={goal?.ayahsPerWeek ?? 10}
-        memorizedAyahKeys={memorizedAyahKeys}
-        onSave={({ startSurahNumber, startAyahNumber, ayahsPerWeek }) => {
-          const today = new Date().toISOString().split("T")[0];
           setGoal({
-            ayahsPerWeek,
-            startDate: goal?.startDate ?? today,
-            startSurahNumber,
-            startAyahNumber,
+            ...weeklyGoal,
+            ...buildWeeklyGoal({
+              path: memGoal.path,
+              targetJuz: memGoal.targetJuz,
+              startSurahNumber: weeklyGoal.startSurahNumber ?? memGoal.startSurahNumber,
+              startAyahNumber: weeklyGoal.startAyahNumber ?? 1,
+              endSurahNumber: weeklyGoal.endSurahNumber ?? memGoal.endSurahNumber,
+              endAyahNumber: weeklyGoal.endAyahNumber ?? memGoal.endAyahNumber,
+              requestedAyahsPerWeek: weeklyGoal.ayahsPerWeek,
+              memorizedAyahKeys,
+            }),
           });
         }}
-        onClose={() => setEditDailyGoalVisible(false)}
       />
       <AyahRangeModal
         visible={ayahRangeVisible}
@@ -1187,11 +1232,19 @@ export default function HomeScreen() {
             endSurahNumber: last.surahNumber,
             endAyahNumber: last.ayahNumber,
           });
-          setGoal({
-            ayahsPerWeek,
-            startDate: today,
+          const weeklyGoal = buildWeeklyGoal({
+            path: widgetPath,
+            targetJuz,
             startSurahNumber: first.surahNumber,
             startAyahNumber: first.ayahNumber,
+            endSurahNumber: last.surahNumber,
+            endAyahNumber: last.ayahNumber,
+            requestedAyahsPerWeek: ayahsPerWeek,
+            memorizedAyahKeys,
+          });
+          setGoal({
+            ...weeklyGoal,
+            startDate: today,
             endSurahNumber: last.surahNumber,
             endAyahNumber: last.ayahNumber,
           });
@@ -2401,6 +2454,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       position: "absolute",
       left: 16,
       right: 16,
+      zIndex: 50,
       backgroundColor: "#1C1C1E",
       borderRadius: 14,
       flexDirection: "row",

@@ -58,6 +58,7 @@ export interface Goal {
   startAyahNumber?: number;
   endSurahNumber?: number;
   endAyahNumber?: number;
+  weeklyTargetAyahKeys?: string[];
 }
 
 export interface MemorizationGoal {
@@ -559,6 +560,16 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
 
   const getWeekGoalAyahs = useCallback((): GoalAyah[] => {
     if (!goal) return [];
+    if (goal.weeklyTargetAyahKeys?.length) {
+      return goal.weeklyTargetAyahKeys.map((key) => {
+        const [surahRaw, ayahRaw] = key.split(":");
+        const surahNumber = Number(surahRaw);
+        const ayahNumber = Number(ayahRaw);
+        const surah = SURAH_DATA[surahNumber - 1];
+        if (!surah || !Number.isFinite(ayahNumber)) return null;
+        return { surahNumber, surahName: surah.englishName, ayahNumber };
+      }).filter((ayah): ayah is GoalAyah => ayah !== null);
+    }
     if (goal.startSurahNumber != null && goal.startAyahNumber != null) {
       const target = memorizationGoal?.path === "juz" && memorizationGoal.targetJuz
         ? { path: "juz" as const, juz: memorizationGoal.targetJuz }
@@ -587,12 +598,17 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     const target = memorizationGoal?.path === "juz" && memorizationGoal.targetJuz
       ? { path: "juz" as const, juz: memorizationGoal.targetJuz }
       : { path: "surah" as const };
-    const goalAyahsList = getWeeklyGoalAyahsFrom(
-      goal.startSurahNumber,
-      goal.startAyahNumber,
-      goal.ayahsPerWeek,
-      target
-    );
+    const goalAyahsList = goal.weeklyTargetAyahKeys?.length
+      ? goal.weeklyTargetAyahKeys.map((key) => {
+          const [surahRaw, ayahRaw] = key.split(":");
+          return { surahNumber: Number(surahRaw), ayahNumber: Number(ayahRaw) };
+        }).filter((ayah) => Number.isFinite(ayah.surahNumber) && Number.isFinite(ayah.ayahNumber))
+      : getWeeklyGoalAyahsFrom(
+          goal.startSurahNumber,
+          goal.startAyahNumber,
+          goal.ayahsPerWeek,
+          target
+        );
     const goalKeys = new Set(goalAyahsList.map(a => `${a.surahNumber}:${a.ayahNumber}`));
     const allReadKeys = new Set<string>();
     for (const entry of weekEntries) {

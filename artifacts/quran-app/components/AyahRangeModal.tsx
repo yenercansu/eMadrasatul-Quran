@@ -9,6 +9,7 @@ import {
   FlatList,
   ScrollView,
   PanResponder,
+  TouchableWithoutFeedback,
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,6 +17,8 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { getJuzAyahs, JUZ_STARTS, SURAH_DATA, type AyahRef } from "@/constants/surahData";
 import { searchByType } from "@/services/search";
+import { ActionPill } from "@/components/ActionPill";
+import { useQuran } from "@/contexts/QuranContext";
 
 const COMMITMENT_STEPS = [1, 2, 3, 5, 7, 10, 15, 25, 45, 70];
 const MAX_WEEKLY = 70;
@@ -108,6 +111,7 @@ interface Props {
 
 export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, onClose }: Props) {
   const insets = useSafeAreaInsets();
+  const { removeMemorizedAyahKeys } = useQuran();
   const { width: windowWidth } = useWindowDimensions();
   const infoPageWidth = windowWidth - 40;
 
@@ -121,6 +125,7 @@ export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, on
   const [firstAyah, setFirstAyah] = useState<AyahRef | null>(null);
   const [lastAyah, setLastAyah] = useState<AyahRef | null>(null);
   const [activePhase, setActivePhase] = useState<"first" | "last">("first");
+  const [resetVisible, setResetVisible] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -132,6 +137,7 @@ export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, on
       setLastAyah(null);
       setActivePhase("first");
       setAyahsPerWeek(10);
+      setResetVisible(false);
     }
   }, [visible]);
 
@@ -151,6 +157,18 @@ export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, on
     }
     return groups;
   }, [juzAyahs]);
+
+  const resetTargetAyahs = useMemo(() => {
+    if (path === "juz" && selectedJuz != null) return juzAyahs;
+    if (path === "surah" && selectedSurah) {
+      return Array.from({ length: selectedSurah.ayahCount }, (_, i) => ({
+        surahNumber: selectedSurah.number,
+        surahName: selectedSurah.englishName,
+        ayahNumber: i + 1,
+      }));
+    }
+    return [];
+  }, [path, selectedJuz, juzAyahs, selectedSurah]);
 
   const filteredSurahs = useMemo(() => searchByType("surah", search, SURAH_DATA), [search]);
 
@@ -190,7 +208,32 @@ export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, on
     return 0;
   }, [firstAyah, lastAyah, path, juzAyahs]);
 
-  const dynamicMax = totalRangeAyahs > 0 ? Math.min(MAX_WEEKLY, totalRangeAyahs) : MAX_WEEKLY;
+  const unmemorizedRangeAyahs = useMemo(() => {
+    if (!firstAyah || !lastAyah) return [];
+    const memorized = new Set(memorizedAyahKeys);
+    const source = path === "juz"
+      ? juzAyahs
+      : (() => {
+          const surah = SURAH_DATA.find((s) => s.number === firstAyah.surahNumber);
+          if (!surah) return [];
+          return Array.from({ length: surah.ayahCount }, (_, i) => ({
+            surahNumber: surah.number,
+            surahName: surah.englishName,
+            ayahNumber: i + 1,
+          }));
+        })();
+    const firstIdx = source.findIndex(
+      (a) => a.surahNumber === firstAyah.surahNumber && a.ayahNumber === firstAyah.ayahNumber
+    );
+    const lastIdx = source.findIndex(
+      (a) => a.surahNumber === lastAyah.surahNumber && a.ayahNumber === lastAyah.ayahNumber
+    );
+    if (firstIdx < 0 || lastIdx < firstIdx) return [];
+    return source.slice(firstIdx, lastIdx + 1).filter((ayah) => !memorized.has(`${ayah.surahNumber}:${ayah.ayahNumber}`));
+  }, [firstAyah, lastAyah, path, juzAyahs, memorizedAyahKeys]);
+
+  const remainingRangeAyahs = unmemorizedRangeAyahs.length;
+  const dynamicMax = remainingRangeAyahs > 0 ? Math.min(MAX_WEEKLY, remainingRangeAyahs) : MAX_WEEKLY;
 
   const isAyahAfterFirst = (surahNum: number, ayahNum: number, first: AyahRef): boolean => {
     if (surahNum !== first.surahNumber) return surahNum > first.surahNumber;
@@ -278,8 +321,7 @@ export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, on
   const handleConfirm = () => {
     if (!canConfirm) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const max = totalRangeAyahs > 0 ? Math.min(MAX_WEEKLY, totalRangeAyahs) : MAX_WEEKLY;
-    setAyahsPerWeek((prev) => Math.max(1, Math.min(prev, max)));
+    setAyahsPerWeek((prev) => Math.max(1, Math.min(prev, dynamicMax)));
     setStep(3);
   };
 
@@ -288,6 +330,15 @@ export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, on
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onConfirm({ first: firstAyah!, last: lastAyah!, juz: selectedJuz ?? undefined, ayahsPerWeek });
     onClose();
+  };
+
+  const handleReset = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    removeMemorizedAyahKeys(resetTargetAyahs.map((ayah) => `${ayah.surahNumber}:${ayah.ayahNumber}`));
+    setFirstAyah(null);
+    setLastAyah(null);
+    setActivePhase("first");
+    setResetVisible(false);
   };
 
   const getJuzSubtitle = (): string => {
@@ -308,7 +359,7 @@ export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, on
     const isLast = lastAyah?.surahNumber === surahNumber && lastAyah?.ayahNumber === ayahNumber;
     const inRange = isInRange(surahNumber, ayahNumber);
     const disabled = isDisabledBubble(surahNumber, ayahNumber);
-    const showGreen = isMemorized && !isFirst && !isLast && !inRange && !disabled && activePhase === "first";
+    const showMemorized = isMemorized && !isFirst && !isLast && !disabled;
 
     return (
       <TouchableOpacity
@@ -318,12 +369,12 @@ export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, on
           (isFirst || isLast) && s.ayahBubbleSelected,
           inRange && s.ayahBubbleInRange,
           disabled && s.ayahBubbleDisabled,
-          showGreen && s.ayahBubbleMemorized,
+          showMemorized && s.ayahBubbleMemorized,
         ]}
         onPress={() => !disabled && handleAyahTap(surahNumber, surahName, ayahNumber)}
         activeOpacity={disabled ? 1 : 0.7}
       >
-        {showGreen ? (
+        {showMemorized ? (
           <Feather name="check" size={12} color="#FFFFFF" />
         ) : (
           <Text
@@ -537,6 +588,17 @@ export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, on
 
         {renderProgressBar()}
 
+        <View style={s.resetCtaWrap}>
+          <ActionPill
+            label="Reset Progress"
+            icon="rotate-ccw"
+            variant="soft"
+            size="md"
+            style={s.resetCta}
+            onPress={() => setResetVisible(true)}
+          />
+        </View>
+
         <ScrollView
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
@@ -742,19 +804,19 @@ export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, on
           />
 
           {/* Finish date card — updates live as slider moves */}
-          {totalRangeAyahs > 0 && (
+          {remainingRangeAyahs > 0 && (
             <View style={s.finishDateCard}>
               <Feather name="calendar" size={18} color="#78716C" style={{ marginBottom: 6 }} />
               <Text style={s.finishDateCardLabel}>FINISH DATE</Text>
               <Text style={s.finishDateCardDate}>
                 {(() => {
                   const d = new Date();
-                  d.setDate(d.getDate() + Math.ceil(totalRangeAyahs / ayahsPerWeek) * 7);
+                  d.setDate(d.getDate() + Math.ceil(remainingRangeAyahs / ayahsPerWeek) * 7);
                   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
                 })()}
               </Text>
               <Text style={s.finishDateCardSub}>
-                {Math.ceil(totalRangeAyahs / ayahsPerWeek)} weeks · {ayahsPerWeek} ayahs/week
+                {Math.ceil(remainingRangeAyahs / ayahsPerWeek)} weeks · {ayahsPerWeek} ayahs/week
               </Text>
             </View>
           )}
@@ -821,7 +883,7 @@ export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, on
             <Text style={s.estimateLabel}>YOUR COMPLETION ESTIMATE</Text>
             <Text style={s.estimateText}>
               At <Text style={s.estimateBold}>{ayahsPerWeek} Ayahs per week</Text>, you will finish memorizing your selected range in{" "}
-              <Text style={s.estimateBold}>{estimateCompletion(totalRangeAyahs, ayahsPerWeek)}</Text>.
+              <Text style={s.estimateBold}>{estimateCompletion(remainingRangeAyahs, ayahsPerWeek)}</Text>.
             </Text>
           </View>
         </ScrollView>
@@ -845,6 +907,27 @@ export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, on
           : step === 2
           ? renderAyahSelection()
           : renderWeeklyGoal()}
+
+        <Modal visible={resetVisible} transparent animationType="fade" onRequestClose={() => setResetVisible(false)}>
+          <TouchableWithoutFeedback onPress={() => setResetVisible(false)}>
+            <View style={s.resetOverlay}>
+              <TouchableWithoutFeedback>
+                <View style={s.resetCard}>
+                  <Text style={s.resetTitle}>Reset Progress?</Text>
+                  <Text style={s.resetMessage}>
+                    This will remove memorized marks from this {path === "juz" ? "Juz" : "Surah"}. You can mark them again anytime.
+                  </Text>
+                  <TouchableOpacity style={s.resetPrimaryBtn} onPress={handleReset} activeOpacity={0.85}>
+                    <Text style={s.resetPrimaryBtnText}>Reset My Progress</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={s.resetCancelBtn} onPress={() => setResetVisible(false)} activeOpacity={0.7}>
+                    <Text style={s.resetCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
       </View>
     </Modal>
   );
@@ -1169,6 +1252,71 @@ const s = StyleSheet.create({
   stepLabelActive: {
     color: "#1A1A1A",
     fontFamily: "Inter_600SemiBold",
+  },
+  resetCtaWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 8,
+  },
+  resetCta: {
+    width: "100%",
+  },
+  resetOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  resetCard: {
+    width: "100%",
+    maxWidth: 360,
+    backgroundColor: "#FDFBF7",
+    borderRadius: 18,
+    padding: 20,
+  },
+  resetTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  resetMessage: {
+    fontSize: 14,
+    color: "#78716C",
+    fontFamily: "Inter_400Regular",
+    lineHeight: 20,
+    textAlign: "center",
+    marginBottom: 18,
+  },
+  resetPrimaryBtn: {
+    minHeight: 52,
+    borderRadius: 999,
+    backgroundColor: "#1A1A1A",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  resetPrimaryBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    fontFamily: "Inter_700Bold",
+  },
+  resetCancelBtn: {
+    minHeight: 48,
+    borderRadius: 999,
+    backgroundColor: "#F6F2EA",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  resetCancelText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
   },
 
   // ── Step 3: Weekly Goal ─────────────────────────────────────────────────────

@@ -15,7 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { getJuzAyahs, getWeeklyGoalAyahsFrom, JUZ_STARTS, SURAH_DATA } from "@/constants/surahData";
+import { getJuzAyahs, JUZ_STARTS, SURAH_DATA } from "@/constants/surahData";
 import type { Goal, MemorizationGoal } from "@/contexts/QuranContext";
 import { useQuran } from "@/contexts/QuranContext";
 import colors from "@/constants/colors";
@@ -191,18 +191,32 @@ export function GoalSetupModal({ visible, onClose, onComplete, presetConfig }: P
   }, [selectedJuzAyahs]);
 
   // ── Dynamic max for Step 4 ────────────────────────────────────────────────
-  // Remaining ayahs from the selected starting point to the end of the surah/juz
-  const remainingAyahsFromStart = useMemo(() => {
-    if (!selectedSurah) return MAX_WEEKLY;
-    if (path === "surah") {
-      return Math.max(1, selectedSurah.ayahCount - startAyahNumber + 1);
-    }
-    const idx = selectedJuzAyahs.findIndex(
+  // Remaining unmemorized ayahs from the selected starting point.
+  const availableAyahsFromStart = useMemo(() => {
+    if (!selectedSurah) return [];
+    const memorized = new Set(memorizedAyahKeys);
+    const source = path === "juz"
+      ? selectedJuzAyahs
+      : Array.from({ length: selectedSurah.ayahCount }, (_, i) => ({
+          surahNumber: selectedSurah.number,
+          surahName: selectedSurah.englishName,
+          ayahNumber: i + 1,
+        }));
+    const idx = source.findIndex(
       (a) => a.surahNumber === selectedSurah.number && a.ayahNumber === startAyahNumber
     );
-    return idx >= 0 ? Math.max(1, selectedJuzAyahs.length - idx) : 1;
-  }, [selectedSurah, startAyahNumber, path, selectedJuzAyahs]);
+    if (idx < 0) return [];
+    const endIdx = presetConfig
+      ? source.findIndex(
+          (a) => a.surahNumber === presetConfig.lastSurahNumber && a.ayahNumber === presetConfig.lastAyahNumber
+        )
+      : -1;
+    return source
+      .slice(idx, endIdx >= idx ? endIdx + 1 : undefined)
+      .filter((ayah) => !memorized.has(`${ayah.surahNumber}:${ayah.ayahNumber}`));
+  }, [selectedSurah, startAyahNumber, path, selectedJuzAyahs, memorizedAyahKeys, presetConfig]);
 
+  const remainingAyahsFromStart = Math.max(1, availableAyahsFromStart.length);
   const dynamicMax = Math.min(MAX_WEEKLY, remainingAyahsFromStart);
 
   // Clamp ayahsPerWeek whenever the dynamic max changes
@@ -232,13 +246,8 @@ export function GoalSetupModal({ visible, onClose, onComplete, presetConfig }: P
 
   const weeklySelection = useMemo(() => {
     if (!selectedSurah) return [];
-    return getWeeklyGoalAyahsFrom(
-      selectedSurah.number,
-      startAyahNumber,
-      Math.min(ayahsPerWeek, dynamicMax),
-      path === "juz" && selectedJuz != null ? { path: "juz", juz: selectedJuz } : { path: "surah" }
-    );
-  }, [selectedSurah, startAyahNumber, ayahsPerWeek, dynamicMax, path, selectedJuz]);
+    return availableAyahsFromStart.slice(0, Math.min(ayahsPerWeek, dynamicMax));
+  }, [selectedSurah, availableAyahsFromStart, ayahsPerWeek, dynamicMax]);
   const endingAyah = weeklySelection[weeklySelection.length - 1];
 
   const targetAyahs = useMemo(() => {
@@ -770,7 +779,7 @@ export function GoalSetupModal({ visible, onClose, onComplete, presetConfig }: P
                     {presetConfig ? (
                       <Text style={s.estimateText}>
                         At <Text style={s.estimateBold}>{ayahsPerWeek} Ayahs per week</Text>, you will finish memorizing your selected range in{" "}
-                        <Text style={s.estimateBold}>{estimateCompletion(presetConfig.totalRangeAyahs, ayahsPerWeek)}</Text>.
+                        <Text style={s.estimateBold}>{estimateCompletion(availableAyahsFromStart.length, ayahsPerWeek)}</Text>.
                       </Text>
                     ) : (
                       <>
