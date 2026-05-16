@@ -1,0 +1,1286 @@
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  StyleSheet,
+  TextInput,
+  FlatList,
+  ScrollView,
+  PanResponder,
+  useWindowDimensions,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { getJuzAyahs, JUZ_STARTS, SURAH_DATA, type AyahRef } from "@/constants/surahData";
+import { searchByType } from "@/services/search";
+
+const COMMITMENT_STEPS = [1, 2, 3, 5, 7, 10, 15, 25, 45, 70];
+const MAX_WEEKLY = 70;
+
+function estimateCompletion(remaining: number, weeklyGoal: number): string {
+  if (weeklyGoal <= 0 || remaining <= 0) return "completed";
+  const days = Math.ceil(remaining / weeklyGoal) * 7;
+  if (days >= 730) return `approximately ${Math.round(days / 365)} years`;
+  if (days >= 365) return "approximately 1 year";
+  if (days >= 60) return `approximately ${Math.round(days / 30)} months`;
+  if (days >= 30) return "approximately 1 month";
+  return `approximately ${days} days`;
+}
+
+function AyahSlider({
+  value, onChange, maxValue = MAX_WEEKLY, onDragStart, onDragEnd,
+}: {
+  value: number; onChange: (v: number) => void; maxValue?: number;
+  onDragStart?: () => void; onDragEnd?: () => void;
+}) {
+  const trackWidthRef = useRef(0);
+  const [trackWidth, setTrackWidth] = useState(0);
+  const onChangeRef = useRef(onChange);
+  const maxValueRef = useRef(maxValue);
+  const onDragStartRef = useRef(onDragStart);
+  const onDragEndRef = useRef(onDragEnd);
+  useEffect(() => { onChangeRef.current = onChange; });
+  useEffect(() => { maxValueRef.current = maxValue; });
+  useEffect(() => { onDragStartRef.current = onDragStart; });
+  useEffect(() => { onDragEndRef.current = onDragEnd; });
+  const THUMB = 26;
+  const resolve = (locationX: number) => {
+    const max = maxValueRef.current;
+    const w = trackWidthRef.current || 1;
+    const x = Math.max(0, Math.min(trackWidthRef.current, locationX));
+    onChangeRef.current(Math.max(1, Math.min(max, Math.round((x / w) * (max - 1)) + 1)));
+  };
+  const pan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => { onDragStartRef.current?.(); resolve(evt.nativeEvent.locationX); },
+      onPanResponderMove: (evt) => { resolve(evt.nativeEvent.locationX); },
+      onPanResponderRelease: () => { onDragEndRef.current?.(); },
+      onPanResponderTerminate: () => { onDragEndRef.current?.(); },
+    })
+  ).current;
+  const thumbLeft = trackWidth > 0 && maxValue > 1 ? ((value - 1) / (maxValue - 1)) * (trackWidth - THUMB) : 0;
+  return (
+    <View
+      style={s.sliderContainer}
+      onLayout={(e) => { const w = e.nativeEvent.layout.width; setTrackWidth(w); trackWidthRef.current = w; }}
+      {...pan.panHandlers}
+    >
+      <View style={s.sliderTrack}>
+        <View style={[s.sliderFill, { width: thumbLeft + THUMB / 2 }]} />
+      </View>
+      {trackWidth > 0 && <View style={[s.sliderThumb, { left: thumbLeft }]} />}
+    </View>
+  );
+}
+
+const JUZ_NAMES: string[] = [
+  "Alif Lam Mim", "Sayaqool", "Tilka ar-Rusul", "Lan Tanaloo", "Wal Mohsanat",
+  "La Youhibullah", "Wa Idha Samioo", "Wa Lau Annana", "Qalal Malao", "Wa Alamu",
+  "Yatazeroon", "Wa Ma Min", "Wa Ma Ubarri'u", "Rubama", "Subhanalladhi",
+  "Qala Alam", "Iqtaraba", "Qad Aflaha", "Wa Qalalladhina", "Aman Khalaq",
+  "Utlu Ma Oohiya", "Wa Man Yaqnut", "Wa Mali", "Faman Azlam", "Ilayhi Yuraddu",
+  "Ha Meem", "Qala Fama Khatbukum", "Qad Sami Allah", "Tabarakalladhi", "Amma",
+];
+
+export interface AyahRangeResult {
+  first: AyahRef;
+  last: AyahRef;
+  juz?: number;
+  ayahsPerWeek: number;
+}
+
+interface Props {
+  visible: boolean;
+  path: "surah" | "juz";
+  memorizedAyahKeys: string[];
+  onConfirm: (result: AyahRangeResult) => void;
+  onClose: () => void;
+}
+
+export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, onClose }: Props) {
+  const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  const infoPageWidth = windowWidth - 40;
+
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [search, setSearch] = useState("");
+  const [ayahsPerWeek, setAyahsPerWeek] = useState(10);
+  const [infoPage, setInfoPage] = useState(0);
+  const [weeklyScrollEnabled, setWeeklyScrollEnabled] = useState(true);
+  const [selectedSurah, setSelectedSurah] = useState<typeof SURAH_DATA[0] | null>(null);
+  const [selectedJuz, setSelectedJuz] = useState<number | null>(null);
+  const [firstAyah, setFirstAyah] = useState<AyahRef | null>(null);
+  const [lastAyah, setLastAyah] = useState<AyahRef | null>(null);
+  const [activePhase, setActivePhase] = useState<"first" | "last">("first");
+
+  useEffect(() => {
+    if (visible) {
+      setStep(1);
+      setSearch("");
+      setSelectedSurah(null);
+      setSelectedJuz(null);
+      setFirstAyah(null);
+      setLastAyah(null);
+      setActivePhase("first");
+      setAyahsPerWeek(10);
+    }
+  }, [visible]);
+
+  const juzAyahs = useMemo(() => {
+    if (path === "juz" && selectedJuz != null) return getJuzAyahs(selectedJuz);
+    return [];
+  }, [path, selectedJuz]);
+
+  const juzGroups = useMemo(() => {
+    const groups: { surah: typeof SURAH_DATA[0]; ayahs: number[] }[] = [];
+    for (const ayah of juzAyahs) {
+      const surah = SURAH_DATA[ayah.surahNumber - 1];
+      if (!surah) continue;
+      const last = groups[groups.length - 1];
+      if (last?.surah.number === surah.number) last.ayahs.push(ayah.ayahNumber);
+      else groups.push({ surah, ayahs: [ayah.ayahNumber] });
+    }
+    return groups;
+  }, [juzAyahs]);
+
+  const filteredSurahs = useMemo(() => searchByType("surah", search, SURAH_DATA), [search]);
+
+  const juzList = useMemo(() => JUZ_STARTS.map((juz) => ({
+    juz: juz.juz,
+    ayahCount: getJuzAyahs(juz.juz).length,
+    startsAt: juz,
+    name: JUZ_NAMES[juz.juz - 1] ?? "",
+  })), []);
+
+  const filteredJuzList = useMemo(() => {
+    if (!search.trim()) return juzList;
+    const matchingSurahNumbers = new Set(
+      searchByType("surah", search, SURAH_DATA).map((s) => s.number)
+    );
+    return juzList.filter((group) => {
+      const ayahs = getJuzAyahs(group.juz);
+      return (
+        String(group.juz).includes(search.trim()) ||
+        ayahs.some((a) => matchingSurahNumbers.has(a.surahNumber))
+      );
+    });
+  }, [search, juzList]);
+
+  const totalRangeAyahs = useMemo(() => {
+    if (!firstAyah || !lastAyah) return 0;
+    if (path === "surah") {
+      return Math.max(1, lastAyah.ayahNumber - firstAyah.ayahNumber + 1);
+    }
+    const firstIdx = juzAyahs.findIndex(
+      (a) => a.surahNumber === firstAyah.surahNumber && a.ayahNumber === firstAyah.ayahNumber
+    );
+    const lastIdx = juzAyahs.findIndex(
+      (a) => a.surahNumber === lastAyah.surahNumber && a.ayahNumber === lastAyah.ayahNumber
+    );
+    if (firstIdx >= 0 && lastIdx >= firstIdx) return lastIdx - firstIdx + 1;
+    return 0;
+  }, [firstAyah, lastAyah, path, juzAyahs]);
+
+  const dynamicMax = totalRangeAyahs > 0 ? Math.min(MAX_WEEKLY, totalRangeAyahs) : MAX_WEEKLY;
+
+  const isAyahAfterFirst = (surahNum: number, ayahNum: number, first: AyahRef): boolean => {
+    if (surahNum !== first.surahNumber) return surahNum > first.surahNumber;
+    return ayahNum > first.ayahNumber;
+  };
+
+  const isInRange = (surahNum: number, ayahNum: number): boolean => {
+    if (!firstAyah || !lastAyah) return false;
+    const pos = surahNum * 10000 + ayahNum;
+    const firstPos = firstAyah.surahNumber * 10000 + firstAyah.ayahNumber;
+    const lastPos = lastAyah.surahNumber * 10000 + lastAyah.ayahNumber;
+    return pos > firstPos && pos < lastPos;
+  };
+
+  const isDisabledBubble = (surahNum: number, ayahNum: number): boolean => {
+    if (activePhase !== "last" || !firstAyah) return false;
+    const pos = surahNum * 10000 + ayahNum;
+    const firstPos = firstAyah.surahNumber * 10000 + firstAyah.ayahNumber;
+    return pos < firstPos;
+  };
+
+  const handleAyahTap = (surahNumber: number, surahName: string, ayahNumber: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const isCurrentFirst = firstAyah?.surahNumber === surahNumber && firstAyah?.ayahNumber === ayahNumber;
+    const isCurrentLast = lastAyah?.surahNumber === surahNumber && lastAyah?.ayahNumber === ayahNumber;
+
+    if (isCurrentFirst) {
+      setFirstAyah(null);
+      setLastAyah(null);
+      setActivePhase("first");
+      return;
+    }
+    if (isCurrentLast) {
+      setLastAyah(null);
+      return;
+    }
+
+    if (activePhase === "first") {
+      setFirstAyah({ surahNumber, surahName, ayahNumber });
+      setLastAyah(null);
+      setActivePhase("last");
+    } else {
+      if (!firstAyah) return;
+      if (!isAyahAfterFirst(surahNumber, ayahNumber, firstAyah)) return;
+      setLastAyah({ surahNumber, surahName, ayahNumber });
+    }
+  };
+
+  const getAyahsBetween = (): number => {
+    if (!firstAyah || !lastAyah) return 0;
+    if (path === "surah" && firstAyah.surahNumber === lastAyah.surahNumber) {
+      return Math.max(0, lastAyah.ayahNumber - firstAyah.ayahNumber - 1);
+    }
+    const firstIdx = juzAyahs.findIndex(
+      (a) => a.surahNumber === firstAyah.surahNumber && a.ayahNumber === firstAyah.ayahNumber
+    );
+    const lastIdx = juzAyahs.findIndex(
+      (a) => a.surahNumber === lastAyah.surahNumber && a.ayahNumber === lastAyah.ayahNumber
+    );
+    return Math.max(0, lastIdx - firstIdx - 1);
+  };
+
+  const getLeadingMemorizedRange = (): string | null => {
+    if (path !== "surah" || !selectedSurah) return null;
+    const memorized = new Set(memorizedAyahKeys);
+    let count = 0;
+    for (let i = 1; i <= selectedSurah.ayahCount; i++) {
+      if (memorized.has(`${selectedSurah.number}:${i}`)) count++;
+      else break;
+    }
+    if (count <= 0) return null;
+    return `Ayahs 1–${count}`;
+  };
+
+  const hintText = (): string => {
+    if (activePhase === "first") return "Tap an ayah to set the starting point";
+    if (!lastAyah) {
+      return `Must be after Ayah ${firstAyah?.ayahNumber} · disabled ayahs are before your start`;
+    }
+    return `= range (${getAyahsBetween()} ayahs between)`;
+  };
+
+  const canConfirm = firstAyah !== null && lastAyah !== null;
+
+  const handleConfirm = () => {
+    if (!canConfirm) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const max = totalRangeAyahs > 0 ? Math.min(MAX_WEEKLY, totalRangeAyahs) : MAX_WEEKLY;
+    setAyahsPerWeek((prev) => Math.max(1, Math.min(prev, max)));
+    setStep(3);
+  };
+
+  const handleFinalConfirm = () => {
+    if (!canConfirm) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onConfirm({ first: firstAyah!, last: lastAyah!, juz: selectedJuz ?? undefined, ayahsPerWeek });
+    onClose();
+  };
+
+  const getJuzSubtitle = (): string => {
+    if (selectedJuz == null) return "";
+    const juzStart = JUZ_STARTS[selectedJuz - 1];
+    if (!juzStart) return "";
+    const startSurah = SURAH_DATA[juzStart.surah - 1];
+    const juzAyahList = getJuzAyahs(selectedJuz);
+    const lastRef = juzAyahList[juzAyahList.length - 1];
+    const endSurah = lastRef ? SURAH_DATA[lastRef.surahNumber - 1] : null;
+    return `${startSurah?.englishName ?? ""} ${juzStart.ayah} – ${endSurah?.englishName ?? ""} ${lastRef?.ayahNumber ?? ""}`;
+  };
+
+  const renderAyahBubble = (surahNumber: number, surahName: string, ayahNumber: number) => {
+    const key = `${surahNumber}:${ayahNumber}`;
+    const isMemorized = memorizedAyahKeys.includes(key);
+    const isFirst = firstAyah?.surahNumber === surahNumber && firstAyah?.ayahNumber === ayahNumber;
+    const isLast = lastAyah?.surahNumber === surahNumber && lastAyah?.ayahNumber === ayahNumber;
+    const inRange = isInRange(surahNumber, ayahNumber);
+    const disabled = isDisabledBubble(surahNumber, ayahNumber);
+    const showGreen = isMemorized && !isFirst && !isLast && !inRange && !disabled && activePhase === "first";
+
+    return (
+      <TouchableOpacity
+        key={key}
+        style={[
+          s.ayahBubble,
+          (isFirst || isLast) && s.ayahBubbleSelected,
+          inRange && s.ayahBubbleInRange,
+          disabled && s.ayahBubbleDisabled,
+          showGreen && s.ayahBubbleMemorized,
+        ]}
+        onPress={() => !disabled && handleAyahTap(surahNumber, surahName, ayahNumber)}
+        activeOpacity={disabled ? 1 : 0.7}
+      >
+        {showGreen ? (
+          <Feather name="check" size={12} color="#FFFFFF" />
+        ) : (
+          <Text
+            style={[
+              s.ayahBubbleText,
+              (isFirst || isLast) && s.ayahBubbleTextSelected,
+              inRange && s.ayahBubbleTextInRange,
+              disabled && s.ayahBubbleTextDisabled,
+            ]}
+          >
+            {ayahNumber}
+          </Text>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  // ── Progress bar (3-step: Select, Range, Goal) ─────────────────────────────
+  const renderProgressBar = () => (
+    <View style={s.stepProgress}>
+      <View style={s.stepProgressTrack}>
+        <View style={[s.stepSeg, s.stepSegFilled]} />
+        <View style={[s.stepSeg, step >= 2 && s.stepSegFilled]} />
+        <View style={[s.stepSeg, step >= 3 && s.stepSegFilled]} />
+      </View>
+      <View style={s.stepLabels}>
+        <View style={s.stepLabelCell}>
+          <Text style={[s.stepLabelText, step === 1 && s.stepLabelActive]}>
+            {path === "juz" ? "Juz" : "Surah"}
+          </Text>
+        </View>
+        <View style={[s.stepLabelCell, { alignItems: "center" }]}>
+          <Text style={[s.stepLabelText, step === 2 && s.stepLabelActive]}>Range</Text>
+        </View>
+        <View style={[s.stepLabelCell, { alignItems: "flex-end" }]}>
+          <Text style={[s.stepLabelText, step === 3 && s.stepLabelActive]}>Weekly Goal</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  // ── Step 1: Surah list ──────────────────────────────────────────────────────
+  const renderSurahList = () => (
+    <>
+      <View style={[s.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Feather name="chevron-left" size={22} color="#1A1A1A" />
+        </TouchableOpacity>
+        <Text style={s.screenTitle}>Select Surah</Text>
+        <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Text style={s.cancelText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+      {renderProgressBar()}
+      <View style={s.searchWrap}>
+        <Feather name="search" size={15} color="#9A9A9A" />
+        <TextInput
+          style={s.searchInput}
+          placeholder="Search surahs..."
+          placeholderTextColor="#9A9A9A"
+          value={search}
+          onChangeText={setSearch}
+          clearButtonMode="while-editing"
+          autoCorrect={false}
+        />
+      </View>
+
+      <FlatList
+        data={filteredSurahs}
+        keyExtractor={(item) => String(item.number)}
+        showsVerticalScrollIndicator={false}
+        style={{ flex: 1 }}
+        keyboardShouldPersistTaps="handled"
+        renderItem={({ item }) => {
+          const isSelected = selectedSurah?.number === item.number;
+          return (
+            <TouchableOpacity
+              style={s.listRow}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setSelectedSurah(item);
+                setFirstAyah(null);
+                setLastAyah(null);
+                setActivePhase("first");
+                setStep(2);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={s.listRowInfo}>
+                <Text style={s.listRowTitle}>{item.englishName}</Text>
+                <Text style={s.listRowSub}>{item.ayahCount} ayahs</Text>
+              </View>
+              <Text style={s.listRowArabic}>{item.name}</Text>
+              {isSelected ? (
+                <View style={s.checkCircle}>
+                  <Feather name="check" size={14} color="#FFFFFF" />
+                </View>
+              ) : (
+                <Feather name="chevron-right" size={16} color="#C0C0C0" />
+              )}
+            </TouchableOpacity>
+          );
+        }}
+      />
+    </>
+  );
+
+  // ── Step 1: Juz list ───────────────────────────────────────────────────────
+  const renderJuzList = () => (
+    <>
+      <View style={[s.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Feather name="chevron-left" size={22} color="#1A1A1A" />
+        </TouchableOpacity>
+        <Text style={s.screenTitle}>Select Juz</Text>
+        <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Text style={s.cancelText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+      {renderProgressBar()}
+      <FlatList
+        data={filteredJuzList}
+        keyExtractor={(item) => String(item.juz)}
+        showsVerticalScrollIndicator={false}
+        style={{ flex: 1 }}
+        keyboardShouldPersistTaps="handled"
+        renderItem={({ item: group }) => {
+          const isSelected = selectedJuz === group.juz;
+          const juzAyahList = getJuzAyahs(group.juz);
+          const juzStart = JUZ_STARTS[group.juz - 1];
+          const startSurah = juzStart ? SURAH_DATA[juzStart.surah - 1] : null;
+          const lastRef = juzAyahList[juzAyahList.length - 1];
+          const endSurah = lastRef ? SURAH_DATA[lastRef.surahNumber - 1] : null;
+          const subText = `${startSurah?.englishName ?? ""} ${juzStart?.ayah ?? ""} – ${endSurah?.englishName ?? ""} ${lastRef?.ayahNumber ?? ""}`;
+
+          return (
+            <TouchableOpacity
+              style={s.listRow}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setSelectedJuz(group.juz);
+                setFirstAyah(null);
+                setLastAyah(null);
+                setActivePhase("first");
+                setStep(2);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={s.listRowInfo}>
+                <View style={s.juzTitleRow}>
+                  <Text style={s.listRowTitle}>Juz {group.juz}</Text>
+                  {group.name ? <Text style={s.juzNameText}>{group.name}</Text> : null}
+                </View>
+                <Text style={s.listRowSub}>{subText}</Text>
+              </View>
+              {isSelected ? (
+                <View style={s.checkCircle}>
+                  <Feather name="check" size={14} color="#FFFFFF" />
+                </View>
+              ) : (
+                <Feather name="chevron-right" size={16} color="#C0C0C0" />
+              )}
+            </TouchableOpacity>
+          );
+        }}
+      />
+    </>
+  );
+
+  // ── Step 2: Ayah range selection ───────────────────────────────────────────
+  const renderAyahSelection = () => {
+    const backLabel =
+      path === "juz" ? `Juz ${selectedJuz}` : (selectedSurah?.englishName ?? "");
+    const cardTitle =
+      path === "surah"
+        ? selectedSurah?.englishName ?? ""
+        : `Juz ${selectedJuz} — ${JUZ_NAMES[(selectedJuz ?? 1) - 1] ?? ""}`;
+    const cardSub =
+      path === "surah" ? `${selectedSurah?.ayahCount} ayahs` : getJuzSubtitle();
+
+    const memorizedRange = getLeadingMemorizedRange();
+    const firstIsSet = firstAyah !== null;
+    const lastIsSet = lastAyah !== null;
+    const between = getAyahsBetween();
+
+    const firstLabel =
+      firstAyah
+        ? path === "juz"
+          ? `${firstAyah.surahName}, Ayah ${firstAyah.ayahNumber}`
+          : `Ayah ${firstAyah.ayahNumber}`
+        : "Tap to select";
+
+    const lastLabel =
+      lastAyah
+        ? path === "juz"
+          ? `${lastAyah.surahName}, Ayah ${lastAyah.ayahNumber}`
+          : `Ayah ${lastAyah.ayahNumber}`
+        : "Tap to select";
+
+    return (
+      <>
+        <View style={[s.header, { paddingTop: insets.top + 8 }]}>
+          <TouchableOpacity onPress={() => setStep(1)} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Feather name="chevron-left" size={22} color="#1A1A1A" />
+          </TouchableOpacity>
+          <Text style={s.screenTitle}>{backLabel}</Text>
+          <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={s.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+
+        {renderProgressBar()}
+
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={s.ayahScrollContent}
+        >
+          {/* Surah / Juz info card */}
+          <View style={s.infoCard}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.infoCardTitle}>{cardTitle}</Text>
+              <Text style={s.infoCardSub}>{cardSub}</Text>
+            </View>
+            {path === "surah" && (
+              <Text style={s.infoCardArabic}>{selectedSurah?.name}</Text>
+            )}
+            {path === "juz" && (
+              <View style={s.juzBadge}>
+                <Text style={s.juzBadgeText}>{selectedJuz}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* First / Last mini-cards */}
+          <View style={s.phaseCardsRow}>
+            <TouchableOpacity
+              style={[s.phaseCard, activePhase === "first" && s.phaseCardActive]}
+              onPress={() => setActivePhase("first")}
+              activeOpacity={0.8}
+            >
+              {firstIsSet ? (
+                <Feather name="check-circle" size={10} color="#16A34A" style={s.phaseCardIcon} />
+              ) : (
+                <View style={s.phaseDot} />
+              )}
+              <Text style={s.phaseLabel}>FIRST AYAH</Text>
+              <Text style={firstIsSet ? s.phaseValue : s.phasePlaceholder}>{firstLabel}</Text>
+            </TouchableOpacity>
+
+            <Feather name="arrow-right" size={14} color="#C0C0C0" style={s.phaseArrow} />
+
+            <TouchableOpacity
+              style={[
+                s.phaseCard,
+                activePhase === "last" && firstIsSet && s.phaseCardActive,
+                !firstIsSet && s.phaseCardMuted,
+              ]}
+              onPress={() => firstIsSet && setActivePhase("last")}
+              activeOpacity={firstIsSet ? 0.8 : 1}
+            >
+              <View
+                style={[
+                  s.phaseDot,
+                  lastIsSet
+                    ? { backgroundColor: "#1A1A1A" }
+                    : firstIsSet
+                    ? { backgroundColor: "#A8A29E" }
+                    : { backgroundColor: "#D6D3D1" },
+                ]}
+              />
+              <Text style={[s.phaseLabel, !firstIsSet && { color: "#C0C0C0" }]}>LAST AYAH</Text>
+              <Text
+                style={[
+                  lastIsSet ? s.phaseValue : s.phasePlaceholder,
+                  !firstIsSet && { color: "#D6D3D1" },
+                ]}
+              >
+                {lastLabel}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Hint row */}
+          {firstIsSet && lastIsSet ? (
+            <View style={s.hintRow}>
+              <View style={s.hintDot} />
+              <Text style={s.hintText}>{`= range (${between} ayahs between)`}</Text>
+            </View>
+          ) : (
+            <View style={s.hintRow}>
+              <Feather name="clock" size={12} color="#9A9A9A" />
+              <Text style={s.hintText}>{hintText()}</Text>
+            </View>
+          )}
+
+          {/* Memorized banner — surah path, first phase only */}
+          {path === "surah" && activePhase === "first" && memorizedRange && (
+            <View style={s.memorizedBanner}>
+              <Feather name="check-circle" size={14} color="#16A34A" />
+              <Text style={s.memorizedBannerText}>{memorizedRange} already memorized</Text>
+            </View>
+          )}
+
+          {/* Ayah grid */}
+          {path === "surah" ? (
+            <>
+              <View style={s.ayahGrid}>
+                {Array.from({ length: selectedSurah?.ayahCount ?? 0 }, (_, i) => i + 1).map(
+                  (n) => renderAyahBubble(selectedSurah!.number, selectedSurah!.englishName, n)
+                )}
+              </View>
+              {(selectedSurah?.ayahCount ?? 0) > 56 && (
+                <Text style={s.gridCaption}>
+                  Showing 1–56 · scroll to see all {selectedSurah?.ayahCount} ayahs
+                </Text>
+              )}
+            </>
+          ) : (
+            juzGroups.map((group) => (
+              <View key={group.surah.number} style={s.juzGroupSection}>
+                <View style={s.juzGroupHeader}>
+                  <Text style={s.juzGroupTitle}>{group.surah.englishName}</Text>
+                  <Text style={s.juzGroupArabic}>{group.surah.name}</Text>
+                </View>
+                <View style={s.ayahGrid}>
+                  {group.ayahs.map((n) =>
+                    renderAyahBubble(group.surah.number, group.surah.englishName, n)
+                  )}
+                </View>
+              </View>
+            ))
+          )}
+        </ScrollView>
+
+        {/* Confirm button */}
+        <View style={[s.confirmWrap, { paddingBottom: insets.bottom + 16 }]}>
+          <TouchableOpacity
+            style={[s.confirmBtn, !canConfirm && s.confirmBtnDisabled]}
+            onPress={handleConfirm}
+            disabled={!canConfirm}
+            activeOpacity={0.85}
+          >
+            <Text style={[s.confirmBtnText, !canConfirm && s.confirmBtnTextDisabled]}>
+              {canConfirm ? "Next: Weekly Goal →" : "Select First & Last Ayah"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </>
+    );
+  };
+
+  // ── Step 3: Weekly Goal ─────────────────────────────────────────────────────
+  const renderWeeklyGoal = () => {
+    const isJuz = path === "juz";
+    const surahOrJuzLabel = isJuz ? `Juz ${selectedJuz}` : (selectedSurah?.englishName ?? "");
+    const startingAyahLabel = firstAyah
+      ? isJuz
+        ? `${firstAyah.surahName} ${firstAyah.ayahNumber}`
+        : `${selectedSurah?.englishName ?? ""} ${firstAyah.ayahNumber}`
+      : "—";
+    const endingAyahLabel = lastAyah
+      ? isJuz
+        ? `${lastAyah.surahName} ${lastAyah.ayahNumber}`
+        : `${selectedSurah?.englishName ?? ""} ${lastAyah.ayahNumber}`
+      : "—";
+
+    return (
+      <>
+        <View style={[s.header, { paddingTop: insets.top + 8 }]}>
+          <TouchableOpacity onPress={() => setStep(2)} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Feather name="chevron-left" size={22} color="#1A1A1A" />
+          </TouchableOpacity>
+          <Text style={s.screenTitle}>Set Your Weekly Goal</Text>
+          <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={s.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+
+        {renderProgressBar()}
+
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={s.weeklyContent}
+          scrollEnabled={weeklyScrollEnabled}
+        >
+          {/* Surah / Juz title */}
+          <Text style={s.weeklyGoalTitle}>
+            {isJuz
+              ? `Juz ${selectedJuz} — ${JUZ_NAMES[(selectedJuz ?? 1) - 1] ?? ""}`
+              : (selectedSurah?.englishName ?? "")}
+          </Text>
+
+          <Text style={s.targetLabel}>TARGET VOLUME</Text>
+          <Text style={s.targetNum}>{ayahsPerWeek}</Text>
+          <Text style={s.targetUnit}>Ayahs per week</Text>
+
+          <View style={s.dynamicLimitChip}>
+            <Feather name="info" size={12} color="#8E8E93" />
+            <Text style={s.dynamicLimitText}>
+              Max <Text style={s.dynamicLimitBold}>{dynamicMax}</Text> ayahs available in your selected range
+            </Text>
+          </View>
+
+          <View style={s.sliderRangeRow}>
+            <Text style={s.sliderRangeText}>1</Text>
+            <Text style={s.sliderRangeText}>{dynamicMax}</Text>
+          </View>
+          <AyahSlider
+            value={ayahsPerWeek}
+            onChange={(v) => setAyahsPerWeek(Math.min(v, dynamicMax))}
+            maxValue={dynamicMax}
+            onDragStart={() => setWeeklyScrollEnabled(false)}
+            onDragEnd={() => setWeeklyScrollEnabled(true)}
+          />
+
+          {/* Finish date card — updates live as slider moves */}
+          {totalRangeAyahs > 0 && (
+            <View style={s.finishDateCard}>
+              <Feather name="calendar" size={18} color="#78716C" style={{ marginBottom: 6 }} />
+              <Text style={s.finishDateCardLabel}>FINISH DATE</Text>
+              <Text style={s.finishDateCardDate}>
+                {(() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() + Math.ceil(totalRangeAyahs / ayahsPerWeek) * 7);
+                  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                })()}
+              </Text>
+              <Text style={s.finishDateCardSub}>
+                {Math.ceil(totalRangeAyahs / ayahsPerWeek)} weeks · {ayahsPerWeek} ayahs/week
+              </Text>
+            </View>
+          )}
+
+          <Text style={s.commitmentLabel}>WEEKLY COMMITMENT STEPS</Text>
+          <View style={s.dots}>
+            {COMMITMENT_STEPS.filter((cs) => cs <= dynamicMax).map((cs) => (
+              <View key={cs} style={[s.dot, ayahsPerWeek >= cs && s.dotFilled]} />
+            ))}
+          </View>
+
+          <View style={s.summaryCard}>
+            <View style={s.summaryRow}>
+              <Text style={s.summaryLabel}>{isJuz ? "Juz" : "Surah"}</Text>
+              <Text style={s.summaryValue}>{surahOrJuzLabel}</Text>
+            </View>
+            <View style={s.summaryDivider} />
+            <View style={s.summaryRow}>
+              <Text style={s.summaryLabel}>Starting Ayah</Text>
+              <Text style={s.summaryValue}>{startingAyahLabel}</Text>
+            </View>
+            <View style={s.summaryDivider} />
+            <View style={s.summaryRow}>
+              <Text style={s.summaryLabel}>Ending Ayah</Text>
+              <Text style={s.summaryValue}>{endingAyahLabel}</Text>
+            </View>
+            <View style={s.summaryDivider} />
+            <View style={s.summaryRow}>
+              <Text style={s.summaryLabel}>Weekly Goal</Text>
+              <Text style={[s.summaryValue, s.summaryValueBold]}>{ayahsPerWeek} Ayahs</Text>
+            </View>
+          </View>
+
+          <View style={s.infoPager}>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(e) =>
+                setInfoPage(Math.round(e.nativeEvent.contentOffset.x / infoPageWidth))
+              }
+            >
+              <View style={[s.wkInfoCard, { width: infoPageWidth }]}>
+                <Text style={s.wkInfoCardTitle}>SUSTAINABLE PACE</Text>
+                <Text style={s.wkInfoCardText}>
+                  3 to 10 Ayahs daily is considered a sustainable memorization pace and may lead to completing the Quran in approximately 2 to 6 years.
+                </Text>
+              </View>
+              <View style={[s.wkInfoCard, { width: infoPageWidth }]}>
+                <Text style={s.wkInfoCardTitle}>WEEKLY MAXIMUM</Text>
+                <Text style={s.wkInfoCardText}>
+                  We recommend a maximum of <Text style={s.wkInfoCardBold}>70 Ayahs per week</Text>. If you want to learn more, you can always come back and set a new goal upon completion.
+                </Text>
+              </View>
+            </ScrollView>
+            <View style={s.infoPagerDots}>
+              {[0, 1].map((i) => (
+                <View key={i} style={[s.infoPagerDot, i === infoPage && s.infoPagerDotActive]} />
+              ))}
+            </View>
+          </View>
+
+          <View style={s.estimateCard}>
+            <Text style={s.estimateLabel}>YOUR COMPLETION ESTIMATE</Text>
+            <Text style={s.estimateText}>
+              At <Text style={s.estimateBold}>{ayahsPerWeek} Ayahs per week</Text>, you will finish memorizing your selected range in{" "}
+              <Text style={s.estimateBold}>{estimateCompletion(totalRangeAyahs, ayahsPerWeek)}</Text>.
+            </Text>
+          </View>
+        </ScrollView>
+
+        <View style={[s.confirmWrap, { paddingBottom: insets.bottom + 16 }]}>
+          <TouchableOpacity style={s.confirmBtn} onPress={handleFinalConfirm} activeOpacity={0.85}>
+            <Text style={s.confirmBtnText}>Start Memorizing →</Text>
+          </TouchableOpacity>
+        </View>
+      </>
+    );
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={s.sheet}>
+        {step === 1
+          ? path === "surah"
+            ? renderSurahList()
+            : renderJuzList()
+          : step === 2
+          ? renderAyahSelection()
+          : renderWeeklyGoal()}
+      </View>
+    </Modal>
+  );
+}
+
+const s = StyleSheet.create({
+  sheet: { flex: 1, backgroundColor: "#FDFBF7" },
+
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E7E5DB",
+  },
+  navBtn: {
+    width: 64,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  screenTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+  },
+  cancelText: {
+    fontSize: 15,
+    color: "#71717A",
+    fontFamily: "Inter_400Regular",
+    textAlign: "right",
+  },
+
+  searchWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginVertical: 12,
+    backgroundColor: "#F0ECE4",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: "#1A1A1A",
+    fontFamily: "Inter_400Regular",
+  },
+
+  listRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E7E5DB",
+    gap: 12,
+  },
+  listRowInfo: { flex: 1 },
+  listRowTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    fontFamily: "Inter_600SemiBold",
+  },
+  listRowSub: {
+    fontSize: 12,
+    color: "#78716C",
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  listRowArabic: { fontSize: 16, color: "#78716C" },
+  checkCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#1A1A1A",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  juzTitleRow: { flexDirection: "row", alignItems: "baseline", gap: 8 },
+  juzNameText: { fontSize: 13, color: "#78716C", fontFamily: "Inter_400Regular" },
+
+  // ── Step 2 ─────────────────────────────────────────────────────────────────
+  ayahScrollContent: { paddingHorizontal: 16, paddingBottom: 24 },
+
+  infoCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 14,
+    marginVertical: 12,
+    borderWidth: 1,
+    borderColor: "#E7E5DB",
+  },
+  infoCardTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+  },
+  infoCardSub: {
+    fontSize: 12,
+    color: "#78716C",
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  infoCardArabic: { fontSize: 20, color: "#78716C", marginLeft: 12 },
+  juzBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: "#F0ECE4",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 12,
+  },
+  juzBadgeText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+  },
+
+  phaseCardsRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 6,
+    marginBottom: 10,
+  },
+  phaseCard: {
+    flex: 1,
+    backgroundColor: "#F6F2EA",
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1.5,
+    borderColor: "transparent",
+    minHeight: 68,
+  },
+  phaseCardActive: { borderColor: "#1A1A1A", backgroundColor: "#FFFFFF" },
+  phaseCardMuted: { opacity: 0.5 },
+  phaseCardIcon: { marginBottom: 4 },
+  phaseDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#A8A29E",
+    marginBottom: 4,
+  },
+  phaseLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#78716C",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  phaseValue: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    fontFamily: "Inter_600SemiBold",
+    lineHeight: 18,
+  },
+  phasePlaceholder: {
+    fontSize: 13,
+    color: "#A8A29E",
+    fontFamily: "Inter_400Regular",
+  },
+  phaseArrow: { alignSelf: "center", flexShrink: 0 },
+
+  hintRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 10,
+  },
+  hintDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#C9A02A",
+  },
+  hintText: {
+    fontSize: 12,
+    color: "#78716C",
+    fontFamily: "Inter_400Regular",
+    flex: 1,
+  },
+
+  memorizedBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#F0FDF4",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+  },
+  memorizedBannerText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#16A34A",
+    fontFamily: "Inter_600SemiBold",
+  },
+
+  ayahGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 6 },
+  ayahBubble: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#EEE8DF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ayahBubbleSelected: { backgroundColor: "#1A1A1A" },
+  ayahBubbleInRange: { backgroundColor: "#C9B9A4" },
+  ayahBubbleDisabled: { backgroundColor: "#F0EDE8", opacity: 0.45 },
+  ayahBubbleMemorized: { backgroundColor: "#16A34A" },
+  ayahBubbleText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    fontFamily: "Inter_600SemiBold",
+  },
+  ayahBubbleTextSelected: { color: "#FFFFFF" },
+  ayahBubbleTextInRange: { color: "#5C3D1A" },
+  ayahBubbleTextDisabled: { color: "#C0C0C0" },
+
+  gridCaption: {
+    fontSize: 11,
+    color: "#A8A29E",
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+
+  juzGroupSection: { marginBottom: 16 },
+  juzGroupHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E7E5DB",
+  },
+  juzGroupTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+  },
+  juzGroupArabic: { fontSize: 16, color: "#78716C" },
+
+  confirmWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#E7E5DB",
+    backgroundColor: "#FDFBF7",
+  },
+  confirmBtn: {
+    backgroundColor: "#1A1A1A",
+    borderRadius: 16,
+    paddingVertical: 17,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  confirmBtnDisabled: { backgroundColor: "#E7E5DB" },
+  confirmBtnText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    fontFamily: "Inter_600SemiBold",
+  },
+  confirmBtnTextDisabled: { color: "#A8A29E" },
+
+  // ── Progress bar ────────────────────────────────────────────────────────────
+  stepProgress: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  stepProgressTrack: {
+    flexDirection: "row",
+    gap: 4,
+    marginBottom: 6,
+  },
+  stepSeg: {
+    flex: 1,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "#E7E5DB",
+  },
+  stepSegFilled: {
+    backgroundColor: "#1A1A1A",
+  },
+  stepLabels: {
+    flexDirection: "row",
+  },
+  stepLabelCell: {
+    flex: 1,
+    alignItems: "flex-start",
+  },
+  stepLabelText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "#A8A29E",
+  },
+  stepLabelActive: {
+    color: "#1A1A1A",
+    fontFamily: "Inter_600SemiBold",
+  },
+
+  // ── Step 3: Weekly Goal ─────────────────────────────────────────────────────
+  weeklyContent: { paddingHorizontal: 20, paddingBottom: 16 },
+
+  weeklyGoalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+    marginTop: 4,
+    marginBottom: 20,
+  },
+
+  targetLabel: {
+    fontSize: 11, fontWeight: "700", color: "#78716C",
+    letterSpacing: 1.5, fontFamily: "Inter_700Bold",
+    textTransform: "uppercase", textAlign: "center", marginBottom: 6,
+  },
+  targetNum: {
+    fontSize: 80, fontWeight: "700", color: "#1A1A1A",
+    fontFamily: "Inter_700Bold", textAlign: "center", lineHeight: 90,
+  },
+  targetUnit: {
+    fontSize: 15, color: "#78716C", fontFamily: "Inter_400Regular",
+    textAlign: "center", marginBottom: 10,
+  },
+  dynamicLimitChip: {
+    flexDirection: "row", alignItems: "flex-start", gap: 7,
+    backgroundColor: "#F6F2EA", borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 9, marginBottom: 14,
+  },
+  dynamicLimitText: { flex: 1, fontSize: 12, color: "#78716C", fontFamily: "Inter_400Regular", lineHeight: 17 },
+  dynamicLimitBold: { fontFamily: "Inter_700Bold", color: "#1A1A1A" },
+  sliderRangeRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 2 },
+  sliderRangeText: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular" },
+  sliderContainer: { height: 44, justifyContent: "center", marginBottom: 4 },
+  sliderTrack: { height: 3, backgroundColor: "#E7E5DB", borderRadius: 2 },
+  sliderFill: { position: "absolute", height: 3, backgroundColor: "#1A1A1A", borderRadius: 2 },
+  sliderThumb: {
+    position: "absolute", top: -11.5,
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: "#1A1A1A",
+    shadowColor: "#000", shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 4,
+  },
+  finishDateCard: {
+    backgroundColor: "#F6F2EA",
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  finishDateCardLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#78716C",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  finishDateCardDate: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+    marginBottom: 4,
+  },
+  finishDateCardSub: {
+    fontSize: 12,
+    color: "#78716C",
+    fontFamily: "Inter_400Regular",
+  },
+
+  commitmentLabel: {
+    fontSize: 11, fontWeight: "700", color: "#78716C", letterSpacing: 1.2,
+    fontFamily: "Inter_700Bold", textTransform: "uppercase",
+    textAlign: "center", marginTop: 12, marginBottom: 10,
+  },
+  dots: { flexDirection: "row", gap: 7, justifyContent: "center", marginBottom: 22 },
+  dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: "#D6D3D1" },
+  dotFilled: { backgroundColor: "#1A1A1A" },
+  summaryCard: {
+    backgroundColor: "#FDFBF7", borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: "#D6D3D1",
+    paddingHorizontal: 16, marginBottom: 20,
+  },
+  summaryRow: {
+    flexDirection: "row", alignItems: "center",
+    justifyContent: "space-between", paddingVertical: 12,
+  },
+  summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: "#D6D3D1" },
+  summaryLabel: { fontSize: 13, color: "#78716C", fontFamily: "Inter_400Regular" },
+  summaryValue: { fontSize: 13, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
+  summaryValueBold: { fontFamily: "Inter_700Bold" },
+  infoPager: { marginBottom: 12, overflow: "hidden" },
+  infoPagerDots: { flexDirection: "row", justifyContent: "center", gap: 5, marginTop: 8 },
+  infoPagerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#D6D3D1" },
+  infoPagerDotActive: { backgroundColor: "#1A1A1A" },
+  wkInfoCard: { backgroundColor: "#F6F2EA", borderRadius: 12, padding: 16 },
+  wkInfoCardTitle: {
+    fontSize: 11, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold",
+    letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4,
+  },
+  wkInfoCardText: { fontSize: 12, color: "#71717A", fontFamily: "Inter_400Regular", lineHeight: 20 },
+  wkInfoCardBold: { fontFamily: "Inter_700Bold", color: "#1A1A1A" },
+  estimateCard: {
+    backgroundColor: "#1A1A1A", borderRadius: 12, padding: 16, marginBottom: 16, gap: 4,
+  },
+  estimateLabel: {
+    fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.55)", fontFamily: "Inter_700Bold",
+    letterSpacing: 0.8, textTransform: "uppercase",
+  },
+  estimateText: { fontSize: 14, color: "#FFFFFF", fontFamily: "Inter_400Regular", lineHeight: 22 },
+  estimateBold: { fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+});

@@ -94,13 +94,24 @@ function ProgressBar({ step }: { step: 1 | 2 | 3 | 4 }) {
   );
 }
 
+interface PresetConfig {
+  path: "surah" | "juz";
+  firstSurahNumber: number;
+  firstAyahNumber: number;
+  lastSurahNumber: number;
+  lastAyahNumber: number;
+  juz?: number;
+  totalRangeAyahs: number;
+}
+
 interface Props {
   visible: boolean;
   onClose: () => void;
   onComplete: (memorizationGoal: MemorizationGoal, weeklyGoal: Goal) => void;
+  presetConfig?: PresetConfig;
 }
 
-export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
+export function GoalSetupModal({ visible, onClose, onComplete, presetConfig }: Props) {
   const insets = useSafeAreaInsets();
   const { memorizedAyahKeys, removeMemorizedAyahKeys } = useQuran();
   const { width: windowWidth } = useWindowDimensions();
@@ -116,17 +127,28 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
   const [search, setSearch] = useState("");
   const [resetVisible, setResetVisible] = useState(false);
 
-  // Reset everything when modal opens
+  // Reset (or initialize from preset) when modal opens
   useEffect(() => {
     if (visible) {
-      setStep(1);
-      setPath(null);
-      setSelectedJuz(null);
-      setSelectedSurah(null);
-      setStartAyahNumber(1);
-      setAyahsPerWeek(3);
-      setSearch("");
-      setResetVisible(false);
+      if (presetConfig) {
+        setStep(4);
+        setPath(presetConfig.path);
+        setSelectedJuz(presetConfig.juz ?? null);
+        setSelectedSurah(SURAH_DATA.find((s) => s.number === presetConfig.firstSurahNumber) ?? null);
+        setStartAyahNumber(presetConfig.firstAyahNumber);
+        setAyahsPerWeek(3);
+        setSearch("");
+        setResetVisible(false);
+      } else {
+        setStep(1);
+        setPath(null);
+        setSelectedJuz(null);
+        setSelectedSurah(null);
+        setStartAyahNumber(1);
+        setAyahsPerWeek(3);
+        setSearch("");
+        setResetVisible(false);
+      }
     }
   }, [visible]);
 
@@ -235,12 +257,16 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
         startSurahName: path === "juz" && targetJuz ? `Juz ${targetJuz}` : selectedSurah.englishName,
         startDate: new Date().toISOString().split("T")[0],
         targetJuz,
+        endSurahNumber: presetConfig?.lastSurahNumber,
+        endAyahNumber: presetConfig?.lastAyahNumber,
       },
       {
         ayahsPerWeek: cappedAyahsPerWeek,
         startDate: new Date().toISOString().split("T")[0],
         startSurahNumber: selectedSurah.number,
         startAyahNumber,
+        endSurahNumber: presetConfig?.lastSurahNumber,
+        endAyahNumber: presetConfig?.lastAyahNumber,
       }
     );
     onClose();
@@ -624,7 +650,11 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                 <>
                 <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={s.stepPad}>
                   <View style={s.stepHeader}>
-                    <TouchableOpacity onPress={() => setStep(3)} style={s.backBtn} activeOpacity={0.7}>
+                    <TouchableOpacity
+                      onPress={() => (presetConfig ? onClose() : setStep(3))}
+                      style={s.backBtn}
+                      activeOpacity={0.7}
+                    >
                       <Feather name="chevron-left" size={22} color="#1A1A1A" />
                     </TouchableOpacity>
                     <Text style={s.stepTitle}>Set Your Weekly Goal</Text>
@@ -632,7 +662,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                       <Feather name="x" size={20} color="#1A1A1A" />
                     </TouchableOpacity>
                   </View>
-                  <ProgressBar step={4} />
+                  {!presetConfig && <ProgressBar step={4} />}
 
                   <Text style={s.targetLabel}>TARGET VOLUME</Text>
                   <Text style={s.targetNum}>{ayahsPerWeek}</Text>
@@ -679,7 +709,11 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                     <View style={s.summaryDivider} />
                     <View style={s.summaryRow}>
                       <Text style={s.summaryLabel}>Ending Ayah</Text>
-                      <Text style={s.summaryValue}>{endingAyah ? `${endingAyah.surahName} ${endingAyah.ayahNumber}` : startAyahNumber}</Text>
+                      <Text style={s.summaryValue}>
+                        {presetConfig
+                          ? `${SURAH_DATA.find(s => s.number === presetConfig.lastSurahNumber)?.englishName ?? ""} ${presetConfig.lastAyahNumber}`
+                          : endingAyah ? `${endingAyah.surahName} ${endingAyah.ayahNumber}` : startAyahNumber}
+                      </Text>
                     </View>
                     <View style={s.summaryDivider} />
                     <View style={s.summaryRow}>
@@ -720,12 +754,21 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
 
                   <View style={s.estimateCard}>
                     <Text style={s.estimateLabel}>YOUR COMPLETION ESTIMATE</Text>
-                    <Text style={s.estimateText}>
-                      At <Text style={s.estimateBold}>{ayahsPerWeek} Ayahs per week</Text>, you will finish memorizing the Quran in{" "}
-                      <Text style={s.estimateBold}>{estimateCompletion(TOTAL_AYAHS - memorizedAyahKeys.length, ayahsPerWeek)}</Text>.
-                    </Text>
-                    {memorizedAyahKeys.length > 0 && (
-                      <Text style={s.estimateSub}>{memorizedAyahKeys.length} of {TOTAL_AYAHS} Ayahs already memorized.</Text>
+                    {presetConfig ? (
+                      <Text style={s.estimateText}>
+                        At <Text style={s.estimateBold}>{ayahsPerWeek} Ayahs per week</Text>, you will finish memorizing your selected range in{" "}
+                        <Text style={s.estimateBold}>{estimateCompletion(presetConfig.totalRangeAyahs, ayahsPerWeek)}</Text>.
+                      </Text>
+                    ) : (
+                      <>
+                        <Text style={s.estimateText}>
+                          At <Text style={s.estimateBold}>{ayahsPerWeek} Ayahs per week</Text>, you will finish memorizing the Quran in{" "}
+                          <Text style={s.estimateBold}>{estimateCompletion(TOTAL_AYAHS - memorizedAyahKeys.length, ayahsPerWeek)}</Text>.
+                        </Text>
+                        {memorizedAyahKeys.length > 0 && (
+                          <Text style={s.estimateSub}>{memorizedAyahKeys.length} of {TOTAL_AYAHS} Ayahs already memorized.</Text>
+                        )}
+                      </>
                     )}
                   </View>
 
@@ -735,7 +778,7 @@ export function GoalSetupModal({ visible, onClose, onComplete }: Props) {
                     <Text style={s.primaryBtnText}>Start Learning</Text>
                     <Feather name="check" size={17} color="#FFFFFF" />
                   </TouchableOpacity>
-                  <Text style={s.stepLabel}>STEP 4 OF 4</Text>
+                  {!presetConfig && <Text style={s.stepLabel}>STEP 4 OF 4</Text>}
                 </View>
                 </>
               )}

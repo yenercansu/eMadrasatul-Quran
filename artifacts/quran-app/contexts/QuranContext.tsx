@@ -56,6 +56,8 @@ export interface Goal {
   startDate: string;
   startSurahNumber?: number;
   startAyahNumber?: number;
+  endSurahNumber?: number;
+  endAyahNumber?: number;
 }
 
 export interface MemorizationGoal {
@@ -65,6 +67,8 @@ export interface MemorizationGoal {
   startDate: string;
   ayahsReadAtStart?: number;
   targetJuz?: number;
+  endSurahNumber?: number;
+  endAyahNumber?: number;
 }
 
 export interface GoalAyah {
