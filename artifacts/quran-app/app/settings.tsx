@@ -17,6 +17,7 @@ import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { BackButton } from "@/components/BackButton";
+import { ReadingThemeSelector } from "@/components/ReadingThemeSelector";
 import { SettingsCard, SettingsRow } from "@/components/SettingsRow";
 import { deleteAccount, getQuranFoundationOAuthStatus, startQuranFoundationOAuth } from "@/services/madeenanApi";
 import { clearOfflineCaches } from "@/services/offlineQuranCache";
@@ -137,20 +138,12 @@ export default function SettingsScreen() {
             label="Reading Theme"
             last
             right={
-              <View style={s.themeRow}>
-                {(["light", "dark", "auto"] as const).map(theme => (
-                  <TouchableOpacity
-                    key={theme}
-                    style={[s.themeChip, accountSettings.theme === theme && s.themeChipActive]}
-                    onPress={() => updateAccountSettings({ theme })}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[s.themeChipText, accountSettings.theme === theme && s.themeChipTextActive]}>
-                      {theme === "light" ? "Light" : theme === "dark" ? "Dark" : "Auto"}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <ReadingThemeSelector
+                value={accountSettings.theme}
+                onChange={(theme) => updateAccountSettings({ theme })}
+                size="compact"
+                style={s.themeRow}
+              />
             }
           />
         </Section>
@@ -230,11 +223,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     scroll: { flex: 1 },
     section: { marginTop: 24 },
     sectionTitle: { fontSize: 11, fontWeight: "700", color: colors.mutedForeground, letterSpacing: 1.2, textTransform: "uppercase", fontFamily: "Inter_700Bold", marginBottom: 8, paddingHorizontal: 20 },
-    themeRow: { flexDirection: "row", gap: 4 },
-    themeChip: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background },
-    themeChipActive: { borderColor: colors.primary, backgroundColor: colors.primary },
-    themeChipText: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
-    themeChipTextActive: { color: colors.primaryForeground, fontFamily: "Inter_600SemiBold" },
+    themeRow: { justifyContent: "flex-end" },
     dangerLabel: { color: colors.destructive },
     appInfo: { alignItems: "center", paddingVertical: 24, gap: 4 },
     appInfoText: { fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },

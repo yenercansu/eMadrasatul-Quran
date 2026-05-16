@@ -14,6 +14,7 @@ import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
 import { RECITERS } from "@/contexts/AudioContext";
 import { FullScreenPage } from "@/components/FullScreenPage";
+import { ReadingThemeSelector } from "@/components/ReadingThemeSelector";
 import { ARABIC_FONT_OPTIONS } from "@/constants/arabicFonts";
 import type { TafsirKey } from "@/services/tafsirApi";
 
@@ -120,12 +121,6 @@ export function SettingsSheet({ visible, onClose }: Props) {
     fn();
   };
 
-  const THEMES: { key: "auto" | "light" | "dark"; label: string }[] = [
-    { key: "light", label: "Light" },
-    { key: "dark", label: "Dark" },
-    { key: "auto", label: "Auto" },
-  ];
-
   const arabicSize = accountSettings.fontSize ?? 28;
   const romanSize = accountSettings.romanFontSize ?? 14;
   const currentReciter = RECITERS.find(r => r.id === settings.selectedReciter) ?? RECITERS[0];
@@ -136,20 +131,11 @@ export function SettingsSheet({ visible, onClose }: Props) {
         <FullScreenPage title="Reader Settings" onClose={onClose}>
           <View style={s.scrollContent}>
             <Text style={s.sectionLabel}>Theme</Text>
-            <View style={s.themeRow}>
-              {THEMES.map(t => (
-                <TouchableOpacity
-                  key={t.key}
-                  style={[s.themeChip, accountSettings.theme === t.key && s.themeChipActive]}
-                  onPress={() => { toggle(() => updateAccountSettings({ theme: t.key })); }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[s.themeChipText, accountSettings.theme === t.key && s.themeChipTextActive]}>
-                    {t.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <ReadingThemeSelector
+              value={accountSettings.theme}
+              onChange={(theme) => toggle(() => updateAccountSettings({ theme }))}
+              style={s.themeRow}
+            />
 
             <FontSizeBar
               label="Arabic Font Size"
@@ -302,20 +288,7 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
       marginTop: 22,
       marginBottom: 10,
     },
-    themeRow: { flexDirection: "row", gap: 8, marginBottom: 6 },
-    themeChip: {
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.secondary,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    themeChipActive: { borderColor: colors.primary, backgroundColor: colors.primary },
-    themeChipText: { fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
-    themeChipTextActive: { color: colors.primaryForeground, fontFamily: "Inter_600SemiBold" },
+    themeRow: { marginBottom: 6 },
     fontSizeRow: {
       flexDirection: "row",
       alignItems: "center",

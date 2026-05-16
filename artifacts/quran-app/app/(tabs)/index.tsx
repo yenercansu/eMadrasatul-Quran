@@ -24,9 +24,15 @@ import { AyahRangeModal, type AyahRangeResult } from "@/components/AyahRangeModa
 import { SubSectionTitle } from "@/components/Typography";
 import { MemorizedBadge } from "@/components/SurahCard";
 import { ActionPill } from "@/components/ActionPill";
+import { SegmentedToggle } from "@/components/SegmentedToggle";
+import { Tag } from "@/components/Tag";
 
 const TOTAL_AYAHS = 6236;
 const MAX_WEEKLY_AYAHS = 70;
+const GOAL_PATH_OPTIONS = [
+  { value: "juz", label: "By Juz" },
+  { value: "surah", label: "By Surah" },
+] as const;
 
 function getAyahKey(ayah: Pick<AyahRef, "surahNumber" | "ayahNumber">) {
   return `${ayah.surahNumber}:${ayah.ayahNumber}`;
@@ -534,18 +540,17 @@ export default function HomeScreen() {
         >
           {/* ── Header Row ──────────────────────────────────────────────── */}
           <View style={s.headerRow}>
-            <View style={s.badge}>
-              <View style={s.badgeDot} />
-              <Text style={s.badgeText}>{onlineUsers > 0 ? `${onlineUsers.toLocaleString()} memorizing` : "No active listeners"}</Text>
-            </View>
-            {/* FIX #2: gear icon wrapped in white rounded container */}
+            <Tag
+              label={onlineUsers > 0 ? `${onlineUsers.toLocaleString()} memorizing` : "No active listeners"}
+              selected={onlineUsers > 0}
+            />
             <TouchableOpacity
               onPress={() => router.push("/settings")}
               activeOpacity={0.6}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={s.settingsBtn}
             >
-               <Feather name="settings" size={18} color={colors.appLightText} strokeWidth={1.5} />
+               <Feather name="user" size={18} color={colors.appLightText} strokeWidth={1.7} />
             </TouchableOpacity>
           </View>
 
@@ -555,31 +560,19 @@ export default function HomeScreen() {
             {showSelectionWidget ? (
               <View style={s.goalWidgetCard}>
                 {/* Juz / Surah toggle */}
-                <View style={s.goalToggleWrap}>
-                  {(["juz", "surah"] as const).map((p, idx) => (
-                    <TouchableOpacity
-                      key={p}
-                      style={[
-                        s.goalToggleBtn,
-                        idx === 0 ? s.goalToggleBtnLeft : s.goalToggleBtnRight,
-                        widgetPath === p && s.goalToggleBtnActive,
-                      ]}
-                      onPress={() => {
-                        if (widgetPath !== p) {
-                          setWidgetPath(p);
-                          setWidgetFirstAyah(null);
-                          setWidgetLastAyah(null);
-                          setWidgetJuz(null);
-                        }
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={[s.goalToggleBtnText, widgetPath === p && s.goalToggleBtnTextActive]}>
-                        {p === "juz" ? "By Juz" : "By Surah"}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                <SegmentedToggle
+                  options={GOAL_PATH_OPTIONS}
+                  value={widgetPath}
+                  onChange={(path) => {
+                    if (widgetPath !== path) {
+                      setWidgetPath(path);
+                      setWidgetFirstAyah(null);
+                      setWidgetLastAyah(null);
+                      setWidgetJuz(null);
+                    }
+                  }}
+                  style={s.goalToggleWrap}
+                />
 
                 {/* First Ayah Row */}
                 <TouchableOpacity
@@ -733,7 +726,7 @@ export default function HomeScreen() {
                     <ActionPill
                       label="Set New"
                       icon="plus"
-                      variant="soft"
+                      variant="secondary"
                       size="md"
                       style={s.hifzActionPill}
                       onPress={() => setShowHifzGoalOptions(true)}
@@ -773,6 +766,7 @@ export default function HomeScreen() {
                       label="Set Target"
                       variant="primary"
                       size="sm"
+                      style={s.thisWeekActionPill}
                       onPress={() => setWeeklyGoalVisible(true)}
                     />
                   ) : (
@@ -780,8 +774,9 @@ export default function HomeScreen() {
                       label="Edit"
                       icon="edit-2"
                       iconPosition="right"
-                      variant="soft"
+                      variant="secondary"
                       size="sm"
+                      style={s.thisWeekActionPill}
                       onPress={() => setWeeklyGoalVisible(true)}
                     />
                   )}
@@ -924,8 +919,8 @@ export default function HomeScreen() {
                       onPress={() => setHifzDirection((current) => current === "forward" ? "reverse" : "forward")}
                       activeOpacity={0.75}
                     >
-                      <Feather name="chevron-up" size={13} color={colors.appLightText} />
-                      <Feather name="chevron-down" size={13} color={colors.appLightText} />
+                      <Feather name="chevron-up" size={13} color={colors.appWhite} />
+                      <Feather name="chevron-down" size={13} color={colors.appWhite} />
                     </TouchableOpacity>
                   </View>
                 )}
@@ -1316,19 +1311,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: 20,
       paddingBottom: 16,
     },
-    badge: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 12,
-      paddingVertical: 4,
-      borderRadius: 20,
-      gap: 8,
-      borderWidth: 1,
-      borderColor: colors.appNeutral950,
-    },
-    badgeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.appNeutral950 },
-    badgeText: { fontSize: 10, fontWeight: "700", color: colors.appNeutral950, fontFamily: "Inter_700Bold" },
-
     settingsBtn: {
       width: 40,
       height: 40,
@@ -1336,13 +1318,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       backgroundColor: "transparent",
       alignItems: "center",
       justifyContent: "center",
-      shadowColor: colors.appBlack,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 1,
-      borderWidth: 1,
-      borderColor: colors.appStone,
     },
 
     // ── Audio Card ─────────────────────────────────────────────────────────────
@@ -1809,39 +1784,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       ...colors.shadows.warmWidgetLift,
     },
     goalToggleWrap: {
-      flexDirection: "row",
       margin: 12,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: colors.appDarkerGray,
-      overflow: "hidden",
-    },
-    goalToggleBtn: {
-      flex: 1,
-      paddingVertical: 10,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.appSecondarySurface,
-    },
-    goalToggleBtnLeft: {
-      borderTopLeftRadius: 9,
-      borderBottomLeftRadius: 9,
-    },
-    goalToggleBtnRight: {
-      borderTopRightRadius: 9,
-      borderBottomRightRadius: 9,
-    },
-    goalToggleBtnActive: {
-      backgroundColor: colors.appBlack,
-    },
-    goalToggleBtnText: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: colors.appLightText,
-      fontFamily: "Inter_600SemiBold",
-    },
-    goalToggleBtnTextActive: {
-      color: colors.appWhite,
     },
     widgetAyahRow: {
       flexDirection: "row",
@@ -2094,6 +2037,9 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingTop: 16,
       paddingBottom: 12,
     },
+    thisWeekActionPill: {
+      minWidth: 92,
+    },
     thisWeekHeaderText: { flex: 1 },
     thisWeekAyahCount: {
       fontSize: 22,
@@ -2331,7 +2277,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     nextAyahChevrons: {
       alignItems: "center",
       borderWidth: 1,
-      borderColor: colors.appBorderLighter,
+      borderColor: colors.appBlack,
+      backgroundColor: colors.appBlack,
       borderRadius: 8,
       paddingHorizontal: 8,
       paddingVertical: 5,

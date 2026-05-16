@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
+import { SaveButton } from "@/components/SaveButton";
 import type { ApiSurah } from "@/services/quranApi";
 
 interface Props {
@@ -50,18 +51,11 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, isChecked
           </TouchableOpacity>
         )}
         {onSave && (
-          <TouchableOpacity
+          <SaveButton
+            saved={isSaved}
             onPress={(e) => { e.stopPropagation(); onSave(); }}
-            style={s.saveBtn}
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons
-              name={isSaved ? "bookmark" : "bookmark-outline"}
-              size={16}
-              color={isSaved ? colors.appText : colors.appBorderMid}
-            />
-          </TouchableOpacity>
+            accessibilityLabel={`${isSaved ? "Unsave" : "Save"} ${surah.englishName}`}
+          />
         )}
       </View>
 
@@ -102,15 +96,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontWeight: "600",
       color: colors.appBorderMid,
       fontFamily: "Inter_600SemiBold",
-    },
-    saveBtn: {
-      width: 28,
-      height: 28,
-      borderRadius: colors.borders.md,       // rounded-md → 8px token
-      borderWidth: 1,
-      borderColor: colors.border,
-      alignItems: "center",
-      justifyContent: "center",
     },
     checkBtn: {
       width: 28,                             // w-7

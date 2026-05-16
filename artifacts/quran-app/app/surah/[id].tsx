@@ -11,8 +11,6 @@ import {
   ScrollView,
   Modal,
   TouchableWithoutFeedback,
-  Dimensions,
-  Animated,
   PanResponder,
   Pressable,
   Switch,
@@ -42,6 +40,8 @@ import { CancelModeTag } from "@/components/CancelModeTag";
 import { SettingsCard, SettingsRow } from "@/components/SettingsRow";
 import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
+import { SaveButton } from "@/components/SaveButton";
+import { SegmentedToggle } from "@/components/SegmentedToggle";
 import { MushafPageView } from "@/components/mushaf/MushafPageView";
 import { TajweedWordsText } from "@/components/TajweedText";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -69,10 +69,13 @@ function normalizeArabic(s: string): string {
   return s.replace(/[ً-ٟؐ-ؚٰۖ-ۭـ]/g, "").trim();
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const AYAHS_PER_PAGE = 10;
 const MUSHAF_BG = "#FFFFFF";
 const WORD_COLORS = ["#E8507A", "#F2994A", "#27AE60", "#2F80ED", "#9B51E0", "#EB5757"];
+const READER_MODE_OPTIONS = [
+  { value: "verses", label: "Verses" },
+  { value: "mushaf", label: "Mushaf" },
+] as const;
 
 const TRANSLATION_OPTIONS = [
   { id: "en.sahih", name: "Sahih International" },
@@ -162,8 +165,6 @@ interface AyahCardProps {
   onWordLongPress?: (word: string, ayah: ApiAyah) => void;
 }
 
-const TAP_THRESHOLD = 8;
-
 function SwipeableAyahCard({
   ayah, surahNum, isPlaying, isRangeSelected,
   showMemorizedToggle, isMemorized,
@@ -174,53 +175,7 @@ function SwipeableAyahCard({
   colorCoding, tajweedMode, showBasmala, arabicFontSize, romanFontSize, arabicFontFamily,
   onSave, onCancelRepeat, onCancelUstadh, onToggleMemorized, onPress, onWordLongPress,
 }: AyahCardProps) {
-  const pan = useRef(new Animated.Value(0)).current;
-  const gestureStarted = useRef(false);
-  const suppressTapUntilRef = useRef(0);
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-        Math.abs(dx) > Math.abs(dy) * 1.2 && Math.abs(dx) > 5,
-      onMoveShouldSetPanResponderCapture: (_, { dx, dy }) =>
-        Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 10,
-      onPanResponderGrant: () => {
-        gestureStarted.current = true;
-      },
-      onPanResponderMove: (_, { dx }) => {
-        // Only allow leftward (save) movement
-        if (dx < 0) pan.setValue(Math.max(dx, -120));
-      },
-      onPanResponderRelease: (_, { dx, vx }) => {
-        const wasSignificantGesture = Math.abs(dx) > TAP_THRESHOLD;
-        if (wasSignificantGesture) suppressTapUntilRef.current = Date.now() + 350;
-        setTimeout(() => { gestureStarted.current = false; }, wasSignificantGesture ? 300 : 60);
-        if (dx < -20 || vx < -0.3) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          Animated.sequence([
-            Animated.timing(pan, { toValue: -100, duration: 180, useNativeDriver: true }),
-            Animated.delay(450),
-            Animated.timing(pan, { toValue: -SCREEN_WIDTH * 1.2, duration: 260, useNativeDriver: true }),
-          ]).start(() => {
-            pan.setValue(0);
-            onSave(ayah);
-          });
-        } else {
-          Animated.spring(pan, { toValue: 0, useNativeDriver: true }).start();
-        }
-      },
-      onPanResponderTerminate: () => {
-        suppressTapUntilRef.current = Date.now() + 350;
-        setTimeout(() => { gestureStarted.current = false; }, 300);
-        Animated.spring(pan, { toValue: 0, useNativeDriver: true }).start();
-      },
-    })
-  ).current;
-
   const handlePress = useCallback(() => {
-    if (Date.now() < suppressTapUntilRef.current) return;
-    if (gestureStarted.current) return;
     onPress();
   }, [onPress]);
 
@@ -228,16 +183,6 @@ function SwipeableAyahCard({
 
   return (
     <View style={cs.wrap}>
-      {/* Save reveal panel — full-height, visible as card slides left */}
-      <View style={cs.saveReveal}>
-        <Ionicons name="bookmark-outline" size={22} color="#FFFFFF" />
-        <Text style={cs.saveRevealText}>SAVE</Text>
-      </View>
-
-      <Animated.View
-        style={[{ transform: [{ translateX: pan }] }]}
-        {...panResponder.panHandlers}
-      >
         <Pressable
           onPress={handlePress}
           android_disableSound
@@ -255,9 +200,6 @@ function SwipeableAyahCard({
                 onCancel={onCancelUstadh}
               />
             ) : null}
-            <View style={cs.numBadge}>
-              <Text style={cs.numText}>{surahNum}:{ayah.numberInSurah}</Text>
-            </View>
             {showMemorizedToggle && (
               <TouchableOpacity
                 style={cs.memorizedCheckBtn}
@@ -277,18 +219,18 @@ function SwipeableAyahCard({
                 )}
               </TouchableOpacity>
             )}
-            <TouchableOpacity
-              style={cs.saveBtn}
+            <SaveButton
+              saved={isSaved}
+              size="md"
               onPress={() => {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 onSave(ayah);
               }}
-              activeOpacity={0.75}
-              accessibilityRole="button"
               accessibilityLabel={`Save ayah ${ayah.numberInSurah}`}
-            >
-              <Ionicons name={isSaved ? "bookmark" : "bookmark-outline"} size={21} color={isSaved ? "#1A1A1A" : "#6B6B6B"} />
-            </TouchableOpacity>
+            />
+            <View style={cs.numBadge}>
+              <Text style={cs.numText}>{surahNum}:{ayah.numberInSurah}</Text>
+            </View>
           </View>
 
           {showBasmala && (
@@ -320,32 +262,12 @@ function SwipeableAyahCard({
             </View>
           ))}
         </Pressable>
-      </Animated.View>
     </View>
   );
 }
 
 const cs = StyleSheet.create({
   wrap: { marginHorizontal: 0, marginBottom: 0, position: "relative" },
-  saveReveal: {
-    position: "absolute",
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 88,
-    backgroundColor: "#16A34A",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 6,
-    zIndex: 0,
-  },
-  saveRevealText: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.8,
-  },
   card: {
     paddingHorizontal: 20,
     paddingTop: 14,
@@ -369,12 +291,6 @@ const cs = StyleSheet.create({
   },
   numText: { fontSize: 14, fontWeight: "700", color: "#6B6B6B", fontFamily: "Inter_700Bold" },
   memorizedCheckBtn: {
-    width: 32,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  saveBtn: {
     width: 32,
     height: 32,
     alignItems: "center",
@@ -1500,19 +1416,23 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     })
   ).current;
 
-  // Normal-mode page nav: only captures rightward swipes so card save-swipe (leftward) still works.
+  // Normal-mode page nav mirrors Mushaf: swipe right advances, swipe left goes back.
   const normalPanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+        Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 12,
       onMoveShouldSetPanResponderCapture: (_, { dx, dy }) =>
-        dx > 30 && dx > Math.abs(dy) * 1.3,
+        Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 20,
       onPanResponderGrant: () => {},
       onPanResponderMove: () => {},
       onPanResponderRelease: (_, { dx, vx }) => {
         if (dx > 50 || vx > 0.4) {
           try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
           mushafGoNextRef.current();
+        } else if (dx < -50 || vx < -0.4) {
+          try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+          mushafGoPrevRef.current();
         }
       },
     })
@@ -2094,27 +2014,21 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       {/* ── Mode Switcher (centered, only Normal/Mushaf) ─────── */}
       {menuVisible && (
         <View style={scr.modeBar}>
-          <View style={scr.modeSwitcher}>
-            <TouchableOpacity
-              style={[scr.modeBtn, !settings.mushafMode && scr.modeBtnActive]}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); updateSettings({ mushafMode: false }); }}
-              activeOpacity={0.85}
-            >
-              <Text style={[scr.modeBtnText, !settings.mushafMode && scr.modeBtnTextActive]}>Verses</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[scr.modeBtn, settings.mushafMode && scr.modeBtnActive]}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          <SegmentedToggle
+            options={READER_MODE_OPTIONS}
+            value={settings.mushafMode ? "mushaf" : "verses"}
+            onChange={(mode) => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (mode === "verses") {
+                updateSettings({ mushafMode: false });
+              } else {
                 updateSettings({ mushafMode: true, showTranslation: false });
                 setSelectedTranslations([]);
                 setTajweedMode(false);
-              }}
-              activeOpacity={0.85}
-            >
-              <Text style={[scr.modeBtnText, settings.mushafMode && scr.modeBtnTextActive]}>Mushaf</Text>
-            </TouchableOpacity>
-          </View>
+              }
+            }}
+            style={scr.modeSwitcher}
+          />
         </View>
       )}
 
@@ -2253,7 +2167,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
                   <View style={{ height: 12 }} />
                 )}
                 <View style={scr.swipeHintBar}>
-                  <Text style={scr.swipeHintText}>← swipe left to save to quizzes</Text>
+                  <Text style={scr.swipeHintText}>Swipe right for next page · swipe left for previous page</Text>
                   <Text style={[scr.swipeHintText, { marginTop: 6 }]}>{"Long press to customize learning by\nrepeating sections, editing ranges & saving words"}</Text>
                 </View>
               </View>
@@ -2528,7 +2442,6 @@ const scr = StyleSheet.create({
   headerTitle: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", letterSpacing: -0.2 },
   headerSub: { fontSize: 12, color: "#A0A0A0", fontFamily: "Inter_400Regular", marginTop: 1 },
   modeBar: {
-    alignItems: "center",
     paddingVertical: 8,
     paddingHorizontal: 16,
     backgroundColor: "#FAF9F7",
@@ -2536,16 +2449,8 @@ const scr = StyleSheet.create({
     borderBottomColor: "#EDEAE5",
   },
   modeSwitcher: {
-    flexDirection: "row",
-    backgroundColor: "#EDEAE5",
-    borderRadius: 14,
-    padding: 3,
-    minWidth: 240,
+    alignSelf: "stretch",
   },
-  modeBtn: { flex: 1, paddingVertical: 9, borderRadius: 11, alignItems: "center" },
-  modeBtnActive: { backgroundColor: "#FFFFFF", shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 2 },
-  modeBtnText: { fontSize: 13, fontWeight: "700", color: "#AAAAAA", fontFamily: "Inter_700Bold" },
-  modeBtnTextActive: { color: "#1A1A1A" },
   bottom: {
     position: "absolute",
     left: 0, right: 0, bottom: 0,

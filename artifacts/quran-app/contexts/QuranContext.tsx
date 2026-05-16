@@ -278,7 +278,6 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       }
       if (map.quran_account) {
         const loaded = { ...DEFAULT_ACCOUNT, ...JSON.parse(map.quran_account) };
-        if (loaded.theme === "auto") loaded.theme = "light";
         setAccountSettings(loaded);
         applyTheme(loaded.theme);
       } else {
