@@ -11,12 +11,12 @@ import {
   ScrollView,
   Modal,
   TouchableWithoutFeedback,
-  PanResponder,
   Pressable,
   Switch,
   LayoutAnimation,
   UIManager,
   Alert,
+  Animated,
 } from "react-native";
 
 // Enable LayoutAnimation on Android
@@ -70,6 +70,12 @@ function normalizeArabic(s: string): string {
 }
 
 const AYAHS_PER_PAGE = 10;
+const PAGE_SWIPE_ACTIVATION_PX = 46;
+const PAGE_SWIPE_MIN_DISTANCE_PX = 110;
+const PAGE_SWIPE_DISTANCE_RATIO = 0.36;
+const PAGE_SWIPE_MIN_FLING_PX = 70;
+const PAGE_SWIPE_VELOCITY = 0.85;
+const PAGE_SWIPE_VERTICAL_REJECTION_PX = 18;
 const MUSHAF_BG = "#FFFFFF";
 const WORD_COLORS = ["#E8507A", "#F2994A", "#27AE60", "#2F80ED", "#9B51E0", "#EB5757"];
 const READER_MODE_OPTIONS = [
@@ -1280,6 +1286,13 @@ const [settingsVisible, setSettingsVisible] = useState(false);
   const mushafScrollRef = useRef<ScrollView>(null);
   const scrollYRef = useRef(0);
   const userScrollingRef = useRef(false);
+  const [pageWidth, setPageWidth] = useState(0);
+  const pageWidthRef = useRef(0);
+  const pageDragX = useRef(new Animated.Value(0)).current;
+  const pageTransitioningRef = useRef(false);
+  const pageTouchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const pageTouchLatestRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const pageSwipeActiveRef = useRef(false);
   const wordTranslationsCache = useRef<Record<string, WordTranslation[]>>({});
   const persistVisibleAyahRef = useRef<(ayahNumber: number) => void>(() => {});
   const viewabilityConfigRef = useRef({ itemVisiblePercentThreshold: 55 });
@@ -1291,50 +1304,75 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     if (visible[0]) persistVisibleAyahRef.current(visible[0].numberInSurah);
   });
 
-  // Horizontal swipe detector for Mushaf page navigation (via stable ref callbacks)
+  // Horizontal page navigation uses stable refs so touch tracking always sees fresh state.
   const mushafGoNextRef = useRef<() => void>(() => {});
   const mushafGoPrevRef = useRef<() => void>(() => {});
-  const mushafPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, { dx, dy }) => Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 12,
-      onMoveShouldSetPanResponderCapture: (_, { dx, dy }) => Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 20,
-      onPanResponderGrant: () => {},
-      onPanResponderMove: () => {},
-      onPanResponderRelease: (_, { dx, vx }) => {
-        // swipe RIGHT → next page, swipe LEFT → prev page
-        if (dx > 50 || vx > 0.4) {
-          try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
-          mushafGoNextRef.current();
-        } else if (dx < -50 || vx < -0.4) {
-          try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
-          mushafGoPrevRef.current();
-        }
-      },
-    })
-  ).current;
+  const canGoNextRef = useRef(false);
+  const canGoPrevRef = useRef(false);
+  const finishPageSwipeRef = useRef<(direction: "next" | "prev") => void>(() => {});
+  const cancelPageSwipeRef = useRef<() => void>(() => {});
+  const shouldStartPageSwipe = useCallback((dx: number, dy: number) => {
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+    if (pageTransitioningRef.current || pageWidthRef.current <= 0) return false;
+    if (absY > PAGE_SWIPE_VERTICAL_REJECTION_PX) return false;
+    if (absX < PAGE_SWIPE_ACTIVATION_PX || absX < absY * 2.2) return false;
+    return dx > 0 ? canGoNextRef.current : canGoPrevRef.current;
+  }, []);
 
-  // Normal-mode page nav mirrors Mushaf: swipe right advances, swipe left goes back.
-  const normalPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-        Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 12,
-      onMoveShouldSetPanResponderCapture: (_, { dx, dy }) =>
-        Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 20,
-      onPanResponderGrant: () => {},
-      onPanResponderMove: () => {},
-      onPanResponderRelease: (_, { dx, vx }) => {
-        if (dx > 50 || vx > 0.4) {
-          try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
-          mushafGoNextRef.current();
-        } else if (dx < -50 || vx < -0.4) {
-          try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
-          mushafGoPrevRef.current();
-        }
-      },
-    })
-  ).current;
+  const handlePageTouchStart = useCallback((event: any) => {
+    const { pageX, pageY } = event.nativeEvent;
+    const point = { x: pageX, y: pageY, t: Date.now() };
+    pageTouchStartRef.current = point;
+    pageTouchLatestRef.current = point;
+    pageSwipeActiveRef.current = false;
+  }, []);
+
+  const handlePageTouchMove = useCallback((event: any) => {
+    const start = pageTouchStartRef.current;
+    if (!start || pageTransitioningRef.current) return;
+    const { pageX, pageY } = event.nativeEvent;
+    const latest = { x: pageX, y: pageY, t: Date.now() };
+    pageTouchLatestRef.current = latest;
+    const dx = latest.x - start.x;
+    const dy = latest.y - start.y;
+
+    if (!pageSwipeActiveRef.current) {
+      if (!shouldStartPageSwipe(dx, dy)) return;
+      pageSwipeActiveRef.current = true;
+      pageDragX.stopAnimation();
+    }
+
+    menuToggleLockRef.current = Date.now() + 220;
+    if (dx > 0 && canGoNextRef.current) {
+      pageDragX.setValue(Math.min(dx, pageWidthRef.current));
+    } else if (dx < 0 && canGoPrevRef.current) {
+      pageDragX.setValue(Math.max(dx, -pageWidthRef.current));
+    }
+  }, [pageDragX, shouldStartPageSwipe]);
+
+  const handlePageTouchEnd = useCallback(() => {
+    const start = pageTouchStartRef.current;
+    const latest = pageTouchLatestRef.current;
+    const wasSwipeActive = pageSwipeActiveRef.current;
+    pageTouchStartRef.current = null;
+    pageTouchLatestRef.current = null;
+    pageSwipeActiveRef.current = false;
+    if (!start || !latest || !wasSwipeActive) return;
+
+    const dx = latest.x - start.x;
+    const elapsed = Math.max(1, latest.t - start.t);
+    const vx = dx / elapsed;
+    const width = pageWidthRef.current;
+    const distanceThreshold = Math.max(PAGE_SWIPE_MIN_DISTANCE_PX, width * PAGE_SWIPE_DISTANCE_RATIO);
+    if (dx > distanceThreshold || (dx > PAGE_SWIPE_MIN_FLING_PX && vx > PAGE_SWIPE_VELOCITY)) {
+      finishPageSwipeRef.current("next");
+    } else if (dx < -distanceThreshold || (dx < -PAGE_SWIPE_MIN_FLING_PX && vx < -PAGE_SWIPE_VELOCITY)) {
+      finishPageSwipeRef.current("prev");
+    } else {
+      cancelPageSwipeRef.current();
+    }
+  }, []);
 
   // Scroll to top when screen gains focus
   useFocusEffect(
@@ -1727,11 +1765,20 @@ const [settingsVisible, setSettingsVisible] = useState(false);
    }, [settings.mushafMode, updateSettings]);
 
   const totalPages = arabic ? Math.ceil(arabic.ayahs.length / AYAHS_PER_PAGE) : 1;
-  const pageAyahs = useMemo(() => {
+  const getAyahsForPage = useCallback((page: number) => {
     if (!arabic) return [];
-    const start = (currentPage - 1) * AYAHS_PER_PAGE;
+    const start = (page - 1) * AYAHS_PER_PAGE;
     return arabic.ayahs.slice(start, start + AYAHS_PER_PAGE);
-  }, [arabic, currentPage]);
+  }, [arabic]);
+  const pageAyahs = useMemo(() => {
+    return getAyahsForPage(currentPage);
+  }, [currentPage, getAyahsForPage]);
+  const previousPageAyahs = useMemo(() => {
+    return currentPage > 1 ? getAyahsForPage(currentPage - 1) : [];
+  }, [currentPage, getAyahsForPage]);
+  const nextPageAyahs = useMemo(() => {
+    return currentPage < totalPages ? getAyahsForPage(currentPage + 1) : [];
+  }, [currentPage, getAyahsForPage, totalPages]);
   const currentAyahForRange = audioState.currentSurah === surahNum && audioState.currentAyah ? audioState.currentAyah : parseInt(ayahParam ?? "1", 10) || 1;
 
   const currentTafsirVerseKey = useMemo(() => {
@@ -1784,9 +1831,37 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     }
   };
 
-  // Keep mushaf swipe refs up-to-date every render so PanResponder always has fresh callbacks
+  // Keep swipe refs up-to-date every render so touch tracking always has fresh callbacks.
   mushafGoNextRef.current = goToNextSurah;
   mushafGoPrevRef.current = goToPrevSurah;
+  canGoNextRef.current = currentPage < totalPages || surahNum < 114;
+  canGoPrevRef.current = currentPage > 1 || surahNum > 1;
+  finishPageSwipeRef.current = (direction) => {
+    if (pageTransitioningRef.current) return;
+    const width = pageWidthRef.current;
+    if (width <= 0) return;
+    pageTransitioningRef.current = true;
+    Animated.timing(pageDragX, {
+      toValue: direction === "next" ? width : -width,
+      duration: 190,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        if (direction === "next") mushafGoNextRef.current();
+        else mushafGoPrevRef.current();
+      }
+      pageDragX.setValue(0);
+      pageTransitioningRef.current = false;
+    });
+  };
+  cancelPageSwipeRef.current = () => {
+    Animated.spring(pageDragX, {
+      toValue: 0,
+      tension: 190,
+      friction: 24,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const topPad = insets.top;
   const basmala = surahNum !== 1 && surahNum !== 9;
@@ -1887,6 +1962,171 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         ? `some audio is missing (${offlineStatus.ready}/${offlineStatus.total}); tap to retry current Surah`
         : `download ${currentDownloadSurah?.englishName ?? "the current Surah"} for offline playback`;
 
+  const handlePageSlideLayout = (width: number) => {
+    if (width <= 0) return;
+    pageWidthRef.current = width;
+    if (Math.abs(width - pageWidth) > 1) setPageWidth(width);
+  };
+
+  const renderPageHeader = (ayahs: ApiAyah[]) => {
+    const juzNum = ayahs[0]?.juz ?? 1;
+    return (
+      <View style={scr.pageHeader}>
+        <Text style={scr.pageHeaderLeft}>{`Juz' ${juzNum}`}</Text>
+        <Text style={scr.pageHeaderRight} numberOfLines={1}>
+          {arabic?.englishName ?? ""}{"  "}{arabic?.name ?? ""}
+        </Text>
+      </View>
+    );
+  };
+
+  const renderAyahPage = (ayahs: ApiAyah[], active: boolean) => (
+    <FlatList
+      ref={active ? listRef : undefined}
+      data={ayahs}
+      extraData={flatListExtraData}
+      viewabilityConfig={active ? viewabilityConfigRef.current : undefined}
+      onViewableItemsChanged={active ? onViewableItemsChangedRef.current : undefined}
+      keyExtractor={(item) => String(item.numberInSurah)}
+      showsVerticalScrollIndicator={active}
+      scrollEnabled={active}
+      contentContainerStyle={{
+        paddingTop: menuVisible ? 4 : (insets.top + 12),
+        paddingBottom: menuVisible ? (bottomBarHeight + 8) : 24,
+      }}
+      style={{ flex: 1, backgroundColor: "#FAF9F7" }}
+      ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: "#EDEAE5" }} />}
+      onScrollBeginDrag={active ? (e) => {
+        userScrollingRef.current = true;
+        menuToggleLockRef.current = Date.now() + 600;
+        scrollYRef.current = e.nativeEvent.contentOffset.y;
+      } : undefined}
+      onScrollEndDrag={active ? () => {
+        setTimeout(() => { userScrollingRef.current = false; }, 250);
+      } : undefined}
+      onMomentumScrollEnd={active ? () => {
+        userScrollingRef.current = false;
+      } : undefined}
+      onScroll={active ? (e) => {
+        const y = e.nativeEvent.contentOffset.y;
+        if (menuVisible && userScrollingRef.current && Math.abs(y - scrollYRef.current) > 40) {
+          setMenuVisible(false);
+        }
+      } : undefined}
+      scrollEventThrottle={32}
+      ListHeaderComponent={renderPageHeader(ayahs)}
+      ListFooterComponent={<View style={{ height: menuVisible ? 12 : 0 }} />}
+      renderItem={({ item }) => {
+        const isCurrentAyah = audioState.currentSurah === surahNum && audioState.currentAyah === item.numberInSurah;
+        const isPlaying = isCurrentAyah && (audioState.isPlaying || audioState.isLoading);
+        const repeatVal = ayahRepeatCounts[item.numberInSurah];
+        const isOnRepeat = (repeatVal != null && repeatVal > 1) || (isPlaying && audioState.repeatCount > 1 && audioState.planMode !== "ustadh");
+        const isUstadhMode = audioState.planMode === "ustadh" && isPlaying;
+        const repeatCount = repeatVal ?? audioState.repeatCount;
+        const isRangeSelected = !!audioState.range
+          && surahNum >= audioState.range.startSurah
+          && surahNum <= audioState.range.endSurah
+          && item.numberInSurah >= (surahNum === audioState.range.startSurah ? audioState.range.startAyah : 1)
+          && item.numberInSurah <= (surahNum === audioState.range.endSurah ? audioState.range.endAyah : 999);
+        const isInMemorizationGoal = !!memorizationGoalAyahKeys?.has(`${surahNum}:${item.numberInSurah}`);
+        const showB = item.numberInSurah === 1 && basmala;
+
+        const translations = selectedTranslations
+          .map(ed => {
+            const td = translationsMap[ed];
+            const ta = td?.ayahs[item.numberInSurah - 1];
+            const opt = TRANSLATION_OPTIONS.find(o => o.id === ed);
+            if (!ta || !opt) return null;
+            return { editionId: ed, name: opt.name, text: ta.text };
+          })
+          .filter((x): x is { editionId: string; name: string; text: string } => !!x);
+
+        return (
+          <SwipeableAyahCard
+            ayah={item}
+            surahNum={surahNum}
+            isPlaying={isPlaying}
+            isOnRepeat={!!isOnRepeat}
+            repeatCount={repeatCount}
+            isUstadhMode={isUstadhMode}
+            isSaved={isAyahSaved(surahNum, item.numberInSurah)}
+            isRangeSelected={isRangeSelected && !isPlaying}
+            showMemorizedToggle={isInMemorizationGoal}
+            isMemorized={isAyahMemorized(surahNum, item.numberInSurah)}
+            translations={selectedTranslations.length > 0 ? translations : []}
+            transliterationText={transliteration?.ayahs[item.numberInSurah - 1]?.text ?? null}
+            showTransliteration={settings.showTransliteration}
+            colorCoding={settings.colorCoding}
+            tajweedMode={tajweedMode}
+            showBasmala={showB}
+            arabicFontSize={accountSettings.fontSize ?? 28}
+            romanFontSize={accountSettings.romanFontSize ?? 14}
+            arabicFontFamily={getArabicFontFamily(accountSettings.arabicFont)}
+            onSave={handleSaveAyah}
+            onCancelRepeat={handleCancelRepeat}
+            onCancelUstadh={() => {
+              stopAudio().catch(() => {});
+              resetSpecialPlaybackMode();
+            }}
+            onToggleMemorized={(ayah) => toggleAyahMemorized(surahNum, ayah.numberInSurah)}
+            onPress={() => {
+              if (isOffline) {
+                getCachedAyahAudioUri(getVerseKey(surahNum, item.numberInSurah), Number(settings.selectedReciter) || 7)
+                  .then((uri) => {
+                    if (!uri) warnOfflineUnavailable();
+                    else safeToggleMenu();
+                  })
+                  .catch(warnOfflineUnavailable);
+                return;
+              }
+              safeToggleMenu();
+            }}
+            onWordLongPress={handleWordLongPress}
+          />
+        );
+      }}
+    />
+  );
+
+  const renderMushafPage = (ayahs: ApiAyah[], page: number, active: boolean) => (
+    <ScrollView
+      ref={active ? mushafScrollRef : undefined}
+      style={{ flex: 1 }}
+      contentContainerStyle={{ paddingTop: menuVisible ? 0 : (insets.top + 12), paddingBottom: 24 }}
+      showsVerticalScrollIndicator={active}
+      scrollEnabled={active}
+      onTouchEnd={active ? safeToggleMenu : undefined}
+      onScrollBeginDrag={active ? (e) => {
+        userScrollingRef.current = true;
+        menuToggleLockRef.current = Date.now() + 600;
+        scrollYRef.current = e.nativeEvent.contentOffset.y;
+      } : undefined}
+      onScrollEndDrag={active ? () => {
+        setTimeout(() => { userScrollingRef.current = false; }, 250);
+      } : undefined}
+      onMomentumScrollEnd={active ? () => {
+        userScrollingRef.current = false;
+      } : undefined}
+      onScroll={active ? (e) => {
+        const y = e.nativeEvent.contentOffset.y;
+        if (menuVisible && userScrollingRef.current && Math.abs(y - scrollYRef.current) > 40) {
+          setMenuVisible(false);
+        }
+      } : undefined}
+      scrollEventThrottle={32}
+    >
+      <MushafPageView
+        ayahs={ayahs}
+        surahArabicName={arabic?.name ?? ""}
+        surahEnglishName={arabic?.englishName ?? ""}
+        isFirstPage={page === 1}
+        showBasmala={basmala}
+        activeAyah={active && audioState.currentSurah === surahNum ? audioState.currentAyah : null}
+        tajweedMode={tajweedMode}
+      />
+    </ScrollView>
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: "#F5F2EE" }}>
       {/* ── Fixed Header ─────────────────────────────────────── */}
@@ -1947,44 +2187,29 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         // If translations are off, the Mushaf takes the full panel and scrolls.
         <View style={{ flex: 1 }}>
           <View
-            style={settings.showTranslation ? { flex: 0.55, backgroundColor: MUSHAF_BG } : { flex: 1, backgroundColor: MUSHAF_BG }}
-            {...mushafPanResponder.panHandlers}
+            style={[
+              scr.pageSlideViewport,
+              settings.showTranslation ? { flex: 0.55, backgroundColor: MUSHAF_BG } : { flex: 1, backgroundColor: MUSHAF_BG },
+            ]}
+            onLayout={(e) => handlePageSlideLayout(e.nativeEvent.layout.width)}
+            onTouchStart={handlePageTouchStart}
+            onTouchMove={handlePageTouchMove}
+            onTouchEnd={handlePageTouchEnd}
+            onTouchCancel={handlePageTouchEnd}
           >
-            <ScrollView
-              ref={mushafScrollRef}
-              style={{ flex: 1 }}
-              contentContainerStyle={{ paddingTop: menuVisible ? 0 : (insets.top + 12), paddingBottom: 24 }}
-              showsVerticalScrollIndicator={false}
-              onTouchEnd={safeToggleMenu}
-              onScrollBeginDrag={(e) => {
-                userScrollingRef.current = true;
-                menuToggleLockRef.current = Date.now() + 600;
-                scrollYRef.current = e.nativeEvent.contentOffset.y;
-              }}
-              onScrollEndDrag={() => {
-                setTimeout(() => { userScrollingRef.current = false; }, 250);
-              }}
-              onMomentumScrollEnd={() => {
-                userScrollingRef.current = false;
-              }}
-              onScroll={(e) => {
-                const y = e.nativeEvent.contentOffset.y;
-                if (menuVisible && userScrollingRef.current && Math.abs(y - scrollYRef.current) > 40) {
-                  setMenuVisible(false);
-                }
-              }}
-              scrollEventThrottle={32}
-            >
-              <MushafPageView
-                ayahs={pageAyahs}
-                surahArabicName={arabic?.name ?? ""}
-                surahEnglishName={arabic?.englishName ?? ""}
-                isFirstPage={currentPage === 1}
-                showBasmala={basmala}
-                activeAyah={audioState.currentSurah === surahNum ? audioState.currentAyah : null}
-                tajweedMode={tajweedMode}
-              />
-            </ScrollView>
+            {pageWidth > 0 && nextPageAyahs.length > 0 && (
+              <Animated.View pointerEvents="none" style={[scr.pageSlidePage, { left: -pageWidth, transform: [{ translateX: pageDragX }] }]}>
+                {renderMushafPage(nextPageAyahs, currentPage + 1, false)}
+              </Animated.View>
+            )}
+            {pageWidth > 0 && previousPageAyahs.length > 0 && (
+              <Animated.View pointerEvents="none" style={[scr.pageSlidePage, { left: pageWidth, transform: [{ translateX: pageDragX }] }]}>
+                {renderMushafPage(previousPageAyahs, currentPage - 1, false)}
+              </Animated.View>
+            )}
+            <Animated.View style={[scr.pageSlidePage, { left: 0, transform: [{ translateX: pageDragX }] }]}>
+              {renderMushafPage(pageAyahs, currentPage, true)}
+            </Animated.View>
           </View>
           {settings.showTranslation && (
             <View style={scr.mushafSplitDivider} />
@@ -2013,110 +2238,27 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         </View>
       ) : (
         arabic ? (
-          <View style={{ flex: 1 }} {...normalPanResponder.panHandlers}>
-          <FlatList
-            ref={listRef}
-            data={pageAyahs}
-            extraData={flatListExtraData}
-            viewabilityConfig={viewabilityConfigRef.current}
-            onViewableItemsChanged={onViewableItemsChangedRef.current}
-            keyExtractor={(item) => String(item.numberInSurah)}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingTop: menuVisible ? 4 : (insets.top + 12),
-              paddingBottom: menuVisible ? (bottomBarHeight + 8) : 24,
-            }}
-            style={{ flex: 1, backgroundColor: "#FAF9F7" }}
-            ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: "#EDEAE5" }} />}
-            onScrollBeginDrag={(e) => {
-              userScrollingRef.current = true;
-              menuToggleLockRef.current = Date.now() + 600;
-              scrollYRef.current = e.nativeEvent.contentOffset.y;
-            }}
-            onScrollEndDrag={() => {
-              setTimeout(() => { userScrollingRef.current = false; }, 250);
-            }}
-            onMomentumScrollEnd={() => {
-              userScrollingRef.current = false;
-            }}
-            onScroll={(e) => {
-              const y = e.nativeEvent.contentOffset.y;
-              if (menuVisible && userScrollingRef.current && Math.abs(y - scrollYRef.current) > 40) {
-                setMenuVisible(false);
-              }
-            }}
-            scrollEventThrottle={32}
-            ListFooterComponent={<View style={{ height: menuVisible ? 12 : 0 }} />}
-            renderItem={({ item }) => {
-              const isCurrentAyah = audioState.currentSurah === surahNum && audioState.currentAyah === item.numberInSurah;
-              const isPlaying = isCurrentAyah && (audioState.isPlaying || audioState.isLoading);
-              const repeatVal = ayahRepeatCounts[item.numberInSurah];
-              const isOnRepeat = (repeatVal != null && repeatVal > 1) || (isPlaying && audioState.repeatCount > 1 && audioState.planMode !== "ustadh");
-              const isUstadhMode = audioState.planMode === "ustadh" && isPlaying;
-              const repeatCount = repeatVal ?? audioState.repeatCount;
-              const isRangeSelected = !!audioState.range
-                && surahNum >= audioState.range.startSurah
-                && surahNum <= audioState.range.endSurah
-                && item.numberInSurah >= (surahNum === audioState.range.startSurah ? audioState.range.startAyah : 1)
-                && item.numberInSurah <= (surahNum === audioState.range.endSurah ? audioState.range.endAyah : 999);
-              const isInMemorizationGoal = !!memorizationGoalAyahKeys?.has(`${surahNum}:${item.numberInSurah}`);
-              const showB = item.numberInSurah === 1 && basmala;
-
-              const translations = selectedTranslations
-                .map(ed => {
-                  const td = translationsMap[ed];
-                  const ta = td?.ayahs[item.numberInSurah - 1];
-                  const opt = TRANSLATION_OPTIONS.find(o => o.id === ed);
-                  if (!ta || !opt) return null;
-                  return { editionId: ed, name: opt.name, text: ta.text };
-                })
-                .filter((x): x is { editionId: string; name: string; text: string } => !!x);
-
-              return (
-                <SwipeableAyahCard
-                  ayah={item}
-                  surahNum={surahNum}
-                  isPlaying={isPlaying}
-                  isOnRepeat={!!isOnRepeat}
-                  repeatCount={repeatCount}
-                  isUstadhMode={isUstadhMode}
-                  isSaved={isAyahSaved(surahNum, item.numberInSurah)}
-                  isRangeSelected={isRangeSelected && !isPlaying}
-                  showMemorizedToggle={isInMemorizationGoal}
-                  isMemorized={isAyahMemorized(surahNum, item.numberInSurah)}
-                  translations={selectedTranslations.length > 0 ? translations : []}
-                  transliterationText={transliteration?.ayahs[item.numberInSurah - 1]?.text ?? null}
-                  showTransliteration={settings.showTransliteration}
-                  colorCoding={settings.colorCoding}
-                  tajweedMode={tajweedMode}
-                  showBasmala={showB}
-                  arabicFontSize={accountSettings.fontSize ?? 28}
-                  romanFontSize={accountSettings.romanFontSize ?? 14}
-                  arabicFontFamily={getArabicFontFamily(accountSettings.arabicFont)}
-                  onSave={handleSaveAyah}
-                  onCancelRepeat={handleCancelRepeat}
-                  onCancelUstadh={() => {
-                    stopAudio().catch(() => {});
-                    resetSpecialPlaybackMode();
-                  }}
-                  onToggleMemorized={(ayah) => toggleAyahMemorized(surahNum, ayah.numberInSurah)}
-                  onPress={() => {
-                    if (isOffline) {
-                      getCachedAyahAudioUri(getVerseKey(surahNum, item.numberInSurah), Number(settings.selectedReciter) || 7)
-                        .then((uri) => {
-                          if (!uri) warnOfflineUnavailable();
-                          else safeToggleMenu();
-                        })
-                        .catch(warnOfflineUnavailable);
-                      return;
-                    }
-                    safeToggleMenu();
-                  }}
-                  onWordLongPress={handleWordLongPress}
-                />
-              );
-            }}
-          />
+          <View
+            style={scr.pageSlideViewport}
+            onLayout={(e) => handlePageSlideLayout(e.nativeEvent.layout.width)}
+            onTouchStart={handlePageTouchStart}
+            onTouchMove={handlePageTouchMove}
+            onTouchEnd={handlePageTouchEnd}
+            onTouchCancel={handlePageTouchEnd}
+          >
+            {pageWidth > 0 && nextPageAyahs.length > 0 && (
+              <Animated.View pointerEvents="none" style={[scr.pageSlidePage, { left: -pageWidth, transform: [{ translateX: pageDragX }] }]}>
+                {renderAyahPage(nextPageAyahs, false)}
+              </Animated.View>
+            )}
+            {pageWidth > 0 && previousPageAyahs.length > 0 && (
+              <Animated.View pointerEvents="none" style={[scr.pageSlidePage, { left: pageWidth, transform: [{ translateX: pageDragX }] }]}>
+                {renderAyahPage(previousPageAyahs, false)}
+              </Animated.View>
+            )}
+            <Animated.View style={[scr.pageSlidePage, { left: 0, transform: [{ translateX: pageDragX }] }]}>
+              {renderAyahPage(pageAyahs, true)}
+            </Animated.View>
           </View>
         ) : null
       )}
@@ -2374,6 +2516,41 @@ const scr = StyleSheet.create({
     marginTop: 18,
   },
   errorRetryText: { fontSize: 13, color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+  pageSlideViewport: {
+    flex: 1,
+    overflow: "hidden",
+    backgroundColor: "#FAF9F7",
+  },
+  pageSlidePage: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: "100%",
+  },
+  pageHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E8E0D0",
+  },
+  pageHeaderLeft: {
+    fontSize: 12,
+    color: "#1C1810",
+    fontFamily: "Inter_400Regular",
+    opacity: 0.55,
+  },
+  pageHeaderRight: {
+    fontSize: 12,
+    color: "#1C1810",
+    fontFamily: "Inter_400Regular",
+    opacity: 0.55,
+    flexShrink: 1,
+    marginLeft: 8,
+  },
   mushafTranslations: { padding: 16, gap: 8, backgroundColor: "#FFFFFF" },
   mushafTranslation: { fontSize: 14, color: "#4A4A4A", fontFamily: "Inter_400Regular", lineHeight: 22 },
   mushafTranslationNum: { fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
