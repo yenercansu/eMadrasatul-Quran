@@ -23,6 +23,15 @@ import { useQuran } from "@/contexts/QuranContext";
 const COMMITMENT_STEPS = [1, 2, 3, 5, 7, 10, 15, 25, 45, 70];
 const MAX_WEEKLY = 70;
 
+const FINISH_DURATION_OPTIONS = [
+  { label: "1 wk", weeks: 1 },
+  { label: "2 wks", weeks: 2 },
+  { label: "1 mo", weeks: 4 },
+  { label: "3 mo", weeks: 13 },
+  { label: "6 mo", weeks: 26 },
+  { label: "1 yr", weeks: 52 },
+];
+
 function estimateCompletion(remaining: number, weeklyGoal: number): string {
   if (weeklyGoal <= 0 || remaining <= 0) return "completed";
   const days = Math.ceil(remaining / weeklyGoal) * 7;
@@ -107,6 +116,7 @@ interface Props {
   memorizedAyahKeys: string[];
   initialSelection?: AyahRangeResult;
   startAtWeeklyGoal?: boolean;
+  startAtPaceDate?: boolean;
   confirmLabel?: string;
   onConfirm: (result: AyahRangeResult) => void;
   onClose: () => void;
@@ -118,6 +128,7 @@ export function AyahRangeModal({
   memorizedAyahKeys,
   initialSelection,
   startAtWeeklyGoal = false,
+  startAtPaceDate = false,
   confirmLabel = "Start Memorizing →",
   onConfirm,
   onClose,
@@ -127,7 +138,8 @@ export function AyahRangeModal({
   const { width: windowWidth } = useWindowDimensions();
   const infoPageWidth = windowWidth - 40;
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(1);
+  const [selectedFinishWeeks, setSelectedFinishWeeks] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [ayahsPerWeek, setAyahsPerWeek] = useState(10);
   const [infoPage, setInfoPage] = useState(0);
@@ -141,7 +153,8 @@ export function AyahRangeModal({
 
   useEffect(() => {
     if (visible) {
-      setStep(startAtWeeklyGoal && initialSelection ? 3 : 1);
+      setStep(startAtPaceDate ? 0 : startAtWeeklyGoal && initialSelection ? 3 : 1);
+      setSelectedFinishWeeks(null);
       setSearch("");
       setSelectedSurah(initialSelection ? SURAH_DATA[initialSelection.first.surahNumber - 1] ?? null : null);
       setSelectedJuz(initialSelection?.juz ?? null);
@@ -247,6 +260,17 @@ export function AyahRangeModal({
   const remainingRangeAyahs = unmemorizedRangeAyahs.length;
   const dynamicMax = remainingRangeAyahs > 0 ? Math.min(MAX_WEEKLY, remainingRangeAyahs) : MAX_WEEKLY;
 
+  // ── PaceDate flow helpers ──────────────────────────────────────────────────
+  const autoCapacity = startAtPaceDate && selectedFinishWeeks ? ayahsPerWeek * selectedFinishWeeks : 0;
+  const selectedDurationLabel = FINISH_DURATION_OPTIONS.find(o => o.weeks === selectedFinishWeeks)?.label ?? "";
+  const finishDateDisplay = selectedFinishWeeks
+    ? (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + selectedFinishWeeks * 7);
+        return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      })()
+    : null;
+
   const isAyahAfterFirst = (surahNum: number, ayahNum: number, first: AyahRef): boolean => {
     if (surahNum !== first.surahNumber) return surahNum > first.surahNumber;
     return ayahNum > first.ayahNumber;
@@ -269,6 +293,31 @@ export function AyahRangeModal({
 
   const handleAyahTap = (surahNumber: number, surahName: string, ayahNumber: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // Auto-last mode: tapping sets first and auto-calculates last
+    if (startAtPaceDate && autoCapacity > 0) {
+      const isCurrentFirst = firstAyah?.surahNumber === surahNumber && firstAyah?.ayahNumber === ayahNumber;
+      if (isCurrentFirst) {
+        setFirstAyah(null);
+        setLastAyah(null);
+        return;
+      }
+      if (path === "juz" && juzAyahs.length > 0) {
+        const firstIdx = juzAyahs.findIndex(a => a.surahNumber === surahNumber && a.ayahNumber === ayahNumber);
+        if (firstIdx >= 0) {
+          const lastIdx = Math.min(firstIdx + autoCapacity - 1, juzAyahs.length - 1);
+          setFirstAyah({ surahNumber, surahName, ayahNumber });
+          setLastAyah(juzAyahs[lastIdx] ?? { surahNumber, surahName, ayahNumber });
+        }
+      } else {
+        const surahData = SURAH_DATA.find(s => s.number === surahNumber);
+        const maxAyah = surahData?.ayahCount ?? ayahNumber;
+        setFirstAyah({ surahNumber, surahName, ayahNumber });
+        setLastAyah({ surahNumber, surahName, ayahNumber: Math.min(ayahNumber + autoCapacity - 1, maxAyah) });
+      }
+      return;
+    }
+
     const isCurrentFirst = firstAyah?.surahNumber === surahNumber && firstAyah?.ayahNumber === ayahNumber;
     const isCurrentLast = lastAyah?.surahNumber === surahNumber && lastAyah?.ayahNumber === ayahNumber;
 
@@ -333,6 +382,10 @@ export function AyahRangeModal({
   const handleConfirm = () => {
     if (!canConfirm) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (startAtPaceDate) {
+      handleFinalConfirm();
+      return;
+    }
     setAyahsPerWeek((prev) => Math.max(1, Math.min(prev, dynamicMax)));
     setStep(3);
   };
@@ -373,6 +426,8 @@ export function AyahRangeModal({
     const disabled = isDisabledBubble(surahNumber, ayahNumber);
     const showMemorized = isMemorized && !isFirst && !isLast && !disabled;
 
+    const isAutoLast = startAtPaceDate && isLast;
+
     return (
       <TouchableOpacity
         key={key}
@@ -400,39 +455,160 @@ export function AyahRangeModal({
             {ayahNumber}
           </Text>
         )}
+        {isAutoLast && (
+          <View style={s.autoLastBubbleBadge}>
+            <Text style={s.autoLastBubbleBadgeText}>A</Text>
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
 
-  // ── Progress bar (3-step: Select, Range, Goal) ─────────────────────────────
-  const renderProgressBar = () => (
-    <View style={s.stepProgress}>
-      <View style={s.stepProgressTrack}>
-        <View style={[s.stepSeg, s.stepSegFilled]} />
-        <View style={[s.stepSeg, step >= 2 && s.stepSegFilled]} />
-        <View style={[s.stepSeg, step >= 3 && s.stepSegFilled]} />
+  // ── Progress bar (3-step) ──────────────────────────────────────────────────
+  const renderProgressBar = () => {
+    const fillCount = startAtPaceDate ? step + 1 : step;
+    const labels = startAtPaceDate
+      ? ["Pace + Date", path === "juz" ? "Juz" : "Surah", "Range"]
+      : [path === "juz" ? "Juz" : "Surah", "Range", "Weekly Goal"];
+    const activeIdx = startAtPaceDate ? (step as number) : step - 1;
+    return (
+      <View style={s.stepProgress}>
+        <View style={s.stepProgressTrack}>
+          <View style={[s.stepSeg, s.stepSegFilled]} />
+          <View style={[s.stepSeg, fillCount >= 2 && s.stepSegFilled]} />
+          <View style={[s.stepSeg, fillCount >= 3 && s.stepSegFilled]} />
+        </View>
+        <View style={s.stepLabels}>
+          <View style={s.stepLabelCell}>
+            <Text style={[s.stepLabelText, activeIdx === 0 && s.stepLabelActive]}>{labels[0]}</Text>
+          </View>
+          <View style={[s.stepLabelCell, { alignItems: "center" }]}>
+            <Text style={[s.stepLabelText, activeIdx === 1 && s.stepLabelActive]}>{labels[1]}</Text>
+          </View>
+          <View style={[s.stepLabelCell, { alignItems: "flex-end" }]}>
+            <Text style={[s.stepLabelText, activeIdx === 2 && s.stepLabelActive]}>{labels[2]}</Text>
+          </View>
+        </View>
       </View>
-      <View style={s.stepLabels}>
-        <View style={s.stepLabelCell}>
-          <Text style={[s.stepLabelText, step === 1 && s.stepLabelActive]}>
-            {path === "juz" ? "Juz" : "Surah"}
-          </Text>
+    );
+  };
+
+  // ── Step 0: Pace + Date (alternative flow) ────────────────────────────────
+  const renderPaceDate = () => {
+    const canProceed = selectedFinishWeeks !== null;
+    return (
+      <>
+        <View style={[s.header, { paddingTop: insets.top + 8 }]}>
+          <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Feather name="chevron-left" size={22} color="#1A1A1A" />
+          </TouchableOpacity>
+          <Text style={s.screenTitle}>Set Your Goal</Text>
+          <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={s.cancelText}>Cancel</Text>
+          </TouchableOpacity>
         </View>
-        <View style={[s.stepLabelCell, { alignItems: "center" }]}>
-          <Text style={[s.stepLabelText, step === 2 && s.stepLabelActive]}>Range</Text>
+        {renderProgressBar()}
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={s.paceDateContent}
+          scrollEnabled={weeklyScrollEnabled}
+        >
+          {/* Weekly Pace Card */}
+          <View style={s.paceSectionCard}>
+            <View style={s.paceSectionTopRow}>
+              <Text style={s.paceSectionLabel}>WEEKLY PACE</Text>
+              <View style={s.pacePill}>
+                <Text style={s.pacePillText}>{ayahsPerWeek} ayahs / wk</Text>
+              </View>
+            </View>
+            <View style={s.sliderRangeRow}>
+              <Text style={s.sliderRangeText}>1</Text>
+              <Text style={s.sliderRangeText}>{MAX_WEEKLY}</Text>
+            </View>
+            <AyahSlider
+              value={ayahsPerWeek}
+              onChange={setAyahsPerWeek}
+              maxValue={MAX_WEEKLY}
+              onDragStart={() => setWeeklyScrollEnabled(false)}
+              onDragEnd={() => setWeeklyScrollEnabled(true)}
+            />
+          </View>
+
+          {/* Finish Date Card */}
+          <View style={[s.finishDateSection, !selectedFinishWeeks && s.finishDateSectionDashed]}>
+            <View style={s.finishDateTopRow}>
+              <Text style={s.paceSectionLabel}>FINISH DATE</Text>
+              {selectedFinishWeeks ? (
+                <View style={s.finishDatePill}>
+                  <Text style={s.finishDatePillText}>{finishDateDisplay}</Text>
+                </View>
+              ) : (
+                <Text style={s.finishDateNotSet}>not set</Text>
+              )}
+            </View>
+            <View style={s.durationChipsRow}>
+              {FINISH_DURATION_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.label}
+                  style={[s.durationChip, selectedFinishWeeks === opt.weeks && s.durationChipSelected]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setSelectedFinishWeeks(opt.weeks);
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[s.durationChipText, selectedFinishWeeks === opt.weeks && s.durationChipTextSelected]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {!selectedFinishWeeks && (
+              <Text style={s.finishDateHint}>Tap a duration above to set your finish date</Text>
+            )}
+          </View>
+
+          {/* Range Capacity Card — shown after date is selected */}
+          {selectedFinishWeeks && (
+            <View style={s.rangeCapCard}>
+              <Text style={s.rangeCapTitle}>RANGE CAPACITY</Text>
+              <Text style={s.rangeCapText}>
+                At{" "}
+                <Text style={s.rangeCapBold}>{ayahsPerWeek} ayahs/wk</Text>
+                {" "}for{" "}
+                <Text style={s.rangeCapBold}>{selectedDurationLabel}</Text>
+                , you can cover up to{" "}
+                <Text style={s.rangeCapBold}>{autoCapacity} ayahs</Text>
+                . After picking your first ayah, the last is set automatically.
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+
+        <View style={[s.confirmWrap, { paddingBottom: insets.bottom + 16 }]}>
+          <TouchableOpacity
+            style={[s.confirmBtn, !canProceed && s.confirmBtnDisabled]}
+            onPress={() => canProceed && setStep(1)}
+            disabled={!canProceed}
+            activeOpacity={0.85}
+          >
+            <Text style={[s.confirmBtnText, !canProceed && s.confirmBtnTextDisabled]}>
+              {canProceed
+                ? `Continue to Select ${path === "juz" ? "Juz" : "Surah"} →`
+                : "Set a finish date to continue"}
+            </Text>
+          </TouchableOpacity>
         </View>
-        <View style={[s.stepLabelCell, { alignItems: "flex-end" }]}>
-          <Text style={[s.stepLabelText, step === 3 && s.stepLabelActive]}>Weekly Goal</Text>
-        </View>
-      </View>
-    </View>
-  );
+      </>
+    );
+  };
 
   // ── Step 1: Surah list ──────────────────────────────────────────────────────
   const renderSurahList = () => (
     <>
       <View style={[s.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity onPress={startAtPaceDate ? () => setStep(0) : onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Feather name="chevron-left" size={22} color="#1A1A1A" />
         </TouchableOpacity>
         <Text style={s.screenTitle}>Select Surah</Text>
@@ -498,7 +674,7 @@ export function AyahRangeModal({
   const renderJuzList = () => (
     <>
       <View style={[s.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity onPress={startAtPaceDate ? () => setStep(0) : onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Feather name="chevron-left" size={22} color="#1A1A1A" />
         </TouchableOpacity>
         <Text style={s.screenTitle}>Select Juz</Text>
@@ -589,7 +765,18 @@ export function AyahRangeModal({
     return (
       <>
         <View style={[s.header, { paddingTop: insets.top + 8 }]}>
-          <TouchableOpacity onPress={() => setStep(1)} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <TouchableOpacity
+            onPress={() => {
+              if (startAtPaceDate) {
+                setFirstAyah(null);
+                setLastAyah(null);
+                setActivePhase("first");
+              }
+              setStep(1);
+            }}
+            style={s.navBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Feather name="chevron-left" size={22} color="#1A1A1A" />
           </TouchableOpacity>
           <Text style={s.screenTitle}>{backLabel}</Text>
@@ -634,9 +821,9 @@ export function AyahRangeModal({
           {/* First / Last mini-cards */}
           <View style={s.phaseCardsRow}>
             <TouchableOpacity
-              style={[s.phaseCard, activePhase === "first" && s.phaseCardActive]}
-              onPress={() => setActivePhase("first")}
-              activeOpacity={0.8}
+              style={[s.phaseCard, (startAtPaceDate ? !firstIsSet : activePhase === "first") && s.phaseCardActive]}
+              onPress={() => !startAtPaceDate && setActivePhase("first")}
+              activeOpacity={startAtPaceDate ? 1 : 0.8}
             >
               {firstIsSet ? (
                 <Feather name="check-circle" size={10} color="#16A34A" style={s.phaseCardIcon} />
@@ -649,39 +836,73 @@ export function AyahRangeModal({
 
             <Feather name="arrow-right" size={14} color="#C0C0C0" style={s.phaseArrow} />
 
-            <TouchableOpacity
-              style={[
-                s.phaseCard,
-                activePhase === "last" && firstIsSet && s.phaseCardActive,
-                !firstIsSet && s.phaseCardMuted,
-              ]}
-              onPress={() => firstIsSet && setActivePhase("last")}
-              activeOpacity={firstIsSet ? 0.8 : 1}
-            >
-              <View
+            {startAtPaceDate ? (
+              <View style={[s.phaseCard, lastIsSet && s.phaseCardActive]}>
+                {lastIsSet ? (
+                  <>
+                    <View style={s.autoLastTopRow}>
+                      <View style={s.autoBadgePill}><Text style={s.autoBadgePillText}>AUTO</Text></View>
+                      <Text style={s.phaseLabel}>LAST AYAH</Text>
+                    </View>
+                    <Text style={s.phaseValue}>{lastLabel}</Text>
+                  </>
+                ) : (
+                  <>
+                    <View style={[s.phaseDot, { backgroundColor: "#D6D3D1" }]} />
+                    <Text style={[s.phaseLabel, { color: "#C0C0C0" }]}>LAST AYAH</Text>
+                    <Text style={[s.phasePlaceholder, { color: "#D6D3D1" }]}>Auto-calculated</Text>
+                  </>
+                )}
+              </View>
+            ) : (
+              <TouchableOpacity
                 style={[
-                  s.phaseDot,
-                  lastIsSet
-                    ? { backgroundColor: "#1A1A1A" }
-                    : firstIsSet
-                    ? { backgroundColor: "#A8A29E" }
-                    : { backgroundColor: "#D6D3D1" },
+                  s.phaseCard,
+                  activePhase === "last" && firstIsSet && s.phaseCardActive,
+                  !firstIsSet && s.phaseCardMuted,
                 ]}
-              />
-              <Text style={[s.phaseLabel, !firstIsSet && { color: "#C0C0C0" }]}>LAST AYAH</Text>
-              <Text
-                style={[
-                  lastIsSet ? s.phaseValue : s.phasePlaceholder,
-                  !firstIsSet && { color: "#D6D3D1" },
-                ]}
+                onPress={() => firstIsSet && setActivePhase("last")}
+                activeOpacity={firstIsSet ? 0.8 : 1}
               >
-                {lastLabel}
-              </Text>
-            </TouchableOpacity>
+                <View
+                  style={[
+                    s.phaseDot,
+                    lastIsSet
+                      ? { backgroundColor: "#1A1A1A" }
+                      : firstIsSet
+                      ? { backgroundColor: "#A8A29E" }
+                      : { backgroundColor: "#D6D3D1" },
+                  ]}
+                />
+                <Text style={[s.phaseLabel, !firstIsSet && { color: "#C0C0C0" }]}>LAST AYAH</Text>
+                <Text
+                  style={[
+                    lastIsSet ? s.phaseValue : s.phasePlaceholder,
+                    !firstIsSet && { color: "#D6D3D1" },
+                  ]}
+                >
+                  {lastLabel}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Hint row */}
-          {firstIsSet && lastIsSet ? (
+          {startAtPaceDate ? (
+            firstIsSet && lastIsSet ? (
+              <View style={s.autoRangeBanner}>
+                <Feather name="check-circle" size={12} color="#16A34A" />
+                <Text style={s.autoRangeBannerText}>
+                  {`Range auto-set: Ayah ${firstAyah!.ayahNumber} → ${lastAyah!.ayahNumber} · ${totalRangeAyahs} ayahs match your ${ayahsPerWeek}/wk × ${selectedFinishWeeks}-week goal`}
+                </Text>
+              </View>
+            ) : (
+              <View style={s.hintRow}>
+                <Feather name="info" size={12} color="#9A9A9A" />
+                <Text style={s.hintText}>Tap your starting ayah — last ayah will auto-calculate based on your goal</Text>
+              </View>
+            )
+          ) : firstIsSet && lastIsSet ? (
             <View style={s.hintRow}>
               <View style={s.hintDot} />
               <Text style={s.hintText}>{`= range (${between} ayahs between)`}</Text>
@@ -694,7 +915,7 @@ export function AyahRangeModal({
           )}
 
           {/* Memorized banner — surah path, first phase only */}
-          {path === "surah" && activePhase === "first" && memorizedRange && (
+          {path === "surah" && (startAtPaceDate ? !firstIsSet : activePhase === "first") && memorizedRange && (
             <View style={s.memorizedBanner}>
               <Feather name="check-circle" size={14} color="#16A34A" />
               <Text style={s.memorizedBannerText}>{memorizedRange} already memorized</Text>
@@ -741,7 +962,13 @@ export function AyahRangeModal({
             activeOpacity={0.85}
           >
             <Text style={[s.confirmBtnText, !canConfirm && s.confirmBtnTextDisabled]}>
-              {canConfirm ? "Next: Weekly Goal →" : "Select First & Last Ayah"}
+              {startAtPaceDate
+                ? canConfirm
+                  ? `Confirm Range — ${totalRangeAyahs} Ayahs ✓`
+                  : "Select First Ayah to Continue"
+                : canConfirm
+                ? "Next: Weekly Goal →"
+                : "Select First & Last Ayah"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -915,7 +1142,9 @@ export function AyahRangeModal({
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={s.sheet}>
-        {step === 1
+        {step === 0
+          ? renderPaceDate()
+          : step === 1
           ? path === "surah"
             ? renderSurahList()
             : renderJuzList()
@@ -1452,4 +1681,191 @@ const s = StyleSheet.create({
   },
   estimateText: { fontSize: 14, color: "#FFFFFF", fontFamily: "Inter_400Regular", lineHeight: 22 },
   estimateBold: { fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+
+  // ── Step 0: Pace + Date ─────────────────────────────────────────────────────
+  paceDateContent: { paddingHorizontal: 16, paddingBottom: 24, gap: 12 },
+
+  paceSectionCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E7E5DB",
+    padding: 16,
+  },
+  paceSectionTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  paceSectionLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#78716C",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  pacePill: {
+    backgroundColor: "#1A1A1A",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  pacePillText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    fontFamily: "Inter_600SemiBold",
+  },
+
+  finishDateSection: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E7E5DB",
+    padding: 16,
+  },
+  finishDateSectionDashed: {
+    borderStyle: "dashed",
+    borderColor: "#C9B9A4",
+  },
+  finishDateTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  finishDatePill: {
+    backgroundColor: "#1A1A1A",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  finishDatePillText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    fontFamily: "Inter_600SemiBold",
+  },
+  finishDateNotSet: {
+    fontSize: 13,
+    color: "#A8A29E",
+    fontFamily: "Inter_400Regular",
+  },
+  durationChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 4,
+  },
+  durationChip: {
+    backgroundColor: "#F0ECE4",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  durationChipSelected: {
+    backgroundColor: "#1A1A1A",
+  },
+  durationChipText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#1A1A1A",
+    fontFamily: "Inter_600SemiBold",
+  },
+  durationChipTextSelected: {
+    color: "#FFFFFF",
+  },
+  finishDateHint: {
+    fontSize: 12,
+    color: "#A8A29E",
+    fontFamily: "Inter_400Regular",
+    marginTop: 10,
+  },
+
+  rangeCapCard: {
+    backgroundColor: "#1A1A1A",
+    borderRadius: 14,
+    padding: 16,
+    gap: 6,
+  },
+  rangeCapTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.55)",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  rangeCapText: {
+    fontSize: 14,
+    color: "#FFFFFF",
+    fontFamily: "Inter_400Regular",
+    lineHeight: 22,
+  },
+  rangeCapBold: {
+    fontFamily: "Inter_700Bold",
+    color: "#FFFFFF",
+  },
+
+  // ── Auto-last ayah (paceDate flow) ──────────────────────────────────────────
+  autoLastTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
+  autoBadgePill: {
+    backgroundColor: "#1A1A1A",
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  autoBadgePillText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.5,
+  },
+  autoRangeBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    backgroundColor: "#F0FDF4",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+  },
+  autoRangeBannerText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#16A34A",
+    fontFamily: "Inter_600SemiBold",
+    flex: 1,
+    lineHeight: 18,
+  },
+  autoLastBubbleBadge: {
+    position: "absolute",
+    top: -3,
+    left: -3,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#1A1A1A",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#FDFBF7",
+  },
+  autoLastBubbleBadgeText: {
+    fontSize: 8,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    fontFamily: "Inter_700Bold",
+  },
 });

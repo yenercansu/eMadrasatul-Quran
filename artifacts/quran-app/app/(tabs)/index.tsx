@@ -161,6 +161,7 @@ export default function HomeScreen() {
   const [widgetLastAyah, setWidgetLastAyah] = useState<AyahRef | null>(null);
   const [widgetJuz, setWidgetJuz] = useState<number | null>(null);
   const [ayahRangeVisible, setAyahRangeVisible] = useState(false);
+  const [paceDateVisible, setPaceDateVisible] = useState(false);
 
   const surahsQuery = useQuery({ queryKey: ["chapters"], queryFn: fetchSurahs });
   const surahs = surahsQuery.data ?? [];
@@ -389,21 +390,27 @@ export default function HomeScreen() {
   const nextAyahInRange = useMemo(() => {
     if (!memorizationGoal || !goal) return null;
     const memorized = new Set(memorizedAyahKeys);
+    if (hifzDirection === "reverse") {
+      // Reverse: last unmemorized ayah within THIS WEEK's target only
+      const weekCandidates = weekGoalAyahs.filter(a => !memorized.has(`${a.surahNumber}:${a.ayahNumber}`));
+      return weekCandidates[weekCandidates.length - 1] ?? null;
+    }
     const candidates = activeGoalAyahs.filter(a => !memorized.has(`${a.surahNumber}:${a.ayahNumber}`));
-    return hifzDirection === "reverse" ? candidates[candidates.length - 1] ?? null : candidates[0] ?? null;
-  }, [memorizationGoal, goal, activeGoalAyahs, memorizedAyahKeys, hifzDirection]);
+    return candidates[0] ?? null;
+  }, [memorizationGoal, goal, activeGoalAyahs, weekGoalAyahs, memorizedAyahKeys, hifzDirection]);
 
   const upNextAyahNums = useMemo(() => {
     if (!nextAyahInRange || !memorizationGoal || !goal) return [];
-    const idx = activeGoalAyahs.findIndex(
+    const sourceAyahs = hifzDirection === "reverse" ? weekGoalAyahs : activeGoalAyahs;
+    const idx = sourceAyahs.findIndex(
       a => a.surahNumber === nextAyahInRange.surahNumber && a.ayahNumber === nextAyahInRange.ayahNumber
     );
     if (idx < 0) return [];
     const adjacent = hifzDirection === "reverse"
-      ? activeGoalAyahs.slice(Math.max(0, idx - 2), idx).reverse()
-      : activeGoalAyahs.slice(idx + 1, idx + 3);
+      ? sourceAyahs.slice(Math.max(0, idx - 2), idx).reverse()
+      : sourceAyahs.slice(idx + 1, idx + 3);
     return adjacent.map(a => a.ayahNumber);
-  }, [nextAyahInRange, memorizationGoal, goal, activeGoalAyahs, hifzDirection]);
+  }, [nextAyahInRange, memorizationGoal, goal, activeGoalAyahs, weekGoalAyahs, hifzDirection]);
 
   const widgetWeeklySelection = useMemo<AyahRangeResult | undefined>(() => {
     if (!widgetFirstAyah || !widgetLastAyah) return undefined;
@@ -620,22 +627,26 @@ export default function HomeScreen() {
 
                 <View style={s.widgetRowDivider} />
 
-                {/* Weekly Pace + Target Date */}
-                <View style={s.widgetPaceRow}>
+                {/* Weekly Pace + Target Date — tap to open goal-first flow */}
+                <TouchableOpacity
+                  style={s.widgetPaceRow}
+                  onPress={() => setPaceDateVisible(true)}
+                  activeOpacity={0.7}
+                >
                   <View style={{ flex: 1 }}>
                     <Text style={s.widgetPaceLabel}>WEEKLY PACE</Text>
                     <Text style={goal?.ayahsPerWeek ? s.widgetPaceValue : s.widgetPacePlaceholder}>
-                      {goal?.ayahsPerWeek ? `${goal.ayahsPerWeek}/week` : "Select pace"}
+                      {goal?.ayahsPerWeek ? `${goal.ayahsPerWeek}/week` : "Set pace & date →"}
                     </Text>
                   </View>
                   <View style={s.widgetPaceDivider} />
                   <View style={{ flex: 1, paddingLeft: 16 }}>
                     <Text style={s.widgetPaceLabel}>TARGET DATE</Text>
                     <Text style={widgetTargetDate ? s.widgetPaceValue : s.widgetPacePlaceholder}>
-                      {widgetTargetDate ? formatTargetDate(widgetTargetDate) : "Select date"}
+                      {widgetTargetDate ? formatTargetDate(widgetTargetDate) : "Then pick range"}
                     </Text>
                   </View>
-                </View>
+                </TouchableOpacity>
 
                 {/* Start Memorizing */}
                 <TouchableOpacity
@@ -879,16 +890,22 @@ export default function HomeScreen() {
                     <View style={s.currentGoalLeft}>
                       <Text style={s.currentGoalLabel}>CURRENT GOAL</Text>
                       <Text style={s.currentGoalRange}>
-                        {"Ayah "}{goal.startAyahNumber ?? 1}{" – "}{memorizationGoal!.endAyahNumber ?? targetTotal}
+                        {"Ayah "}{weekGoalAyahs[0]?.ayahNumber ?? goal.startAyahNumber ?? 1}
+                        {" – "}
+                        {weekGoalAyahs[weekGoalAyahs.length - 1]?.ayahNumber ?? goal.startAyahNumber ?? 1}
                       </Text>
                       <Text style={s.currentGoalProgress}>
-                        {totalRangeMemorized} of {activeRangeTotal} memorized
+                        {weekGoalProgress} of {effectiveGoalCount} this week
                       </Text>
                     </View>
                     <View style={s.currentGoalRight}>
                       <Text style={s.currentGoalDateLabel}>Finish date</Text>
                       <Text style={s.currentGoalDate}>
                         {activeGoalTargetDate ? formatTargetDate(activeGoalTargetDate) : "—"}
+                      </Text>
+                      <Text style={s.currentGoalMilestoneLabel}>Milestone goal</Text>
+                      <Text style={s.currentGoalMilestoneRange}>
+                        {"Ayah "}{goal.startAyahNumber ?? 1}{" – "}{memorizationGoal!.endAyahNumber ?? targetTotal}
                       </Text>
                     </View>
                   </View>
@@ -915,12 +932,26 @@ export default function HomeScreen() {
                       )}
                     </View>
                     <TouchableOpacity
-                      style={s.nextAyahChevrons}
+                      style={[
+                        s.nextAyahChevrons,
+                        hifzDirection === "forward" && {
+                          backgroundColor: colors.appSecondarySurface,
+                          borderColor: colors.appSecondarySurface,
+                        },
+                      ]}
                       onPress={() => setHifzDirection((current) => current === "forward" ? "reverse" : "forward")}
                       activeOpacity={0.75}
                     >
-                      <Feather name="chevron-up" size={13} color={colors.appWhite} />
-                      <Feather name="chevron-down" size={13} color={colors.appWhite} />
+                      <Feather
+                        name="chevron-up"
+                        size={13}
+                        color={hifzDirection === "reverse" ? colors.appWhite : colors.appBlack}
+                      />
+                      <Feather
+                        name="chevron-down"
+                        size={13}
+                        color={hifzDirection === "reverse" ? colors.appWhite : colors.appBlack}
+                      />
                     </TouchableOpacity>
                   </View>
                 )}
@@ -929,10 +960,13 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   style={s.continueHifzBtn}
                   onPress={() => {
+                    const lastWeekAyah = weekGoalAyahs[weekGoalAyahs.length - 1];
                     const target = nextAyahInRange ?? {
-                      surahNumber: memorizationGoal!.startSurahNumber,
+                      surahNumber: hifzDirection === "reverse"
+                        ? (lastWeekAyah?.surahNumber ?? memorizationGoal!.startSurahNumber)
+                        : memorizationGoal!.startSurahNumber,
                       ayahNumber: hifzDirection === "reverse"
-                        ? memorizationGoal!.endAyahNumber ?? targetTotal
+                        ? (lastWeekAyah?.ayahNumber ?? goal?.endAyahNumber ?? targetTotal)
                         : goal?.startAyahNumber ?? 1,
                     };
                     router.push(`/surah/${target.surahNumber}?ayah=${target.ayahNumber}`);
@@ -1253,6 +1287,49 @@ export default function HomeScreen() {
           setWeeklyGoalVisible(false);
         }}
         onClose={() => setWeeklyGoalVisible(false)}
+      />
+      {/* Pace-first flow: Weekly Goal → Finish Date → Surah → First Ayah → Last Ayah auto */}
+      <AyahRangeModal
+        visible={paceDateVisible}
+        path={widgetPath}
+        memorizedAyahKeys={memorizedAyahKeys}
+        startAtPaceDate
+        onConfirm={({ first, last, juz, ayahsPerWeek }) => {
+          const today = new Date().toISOString().split("T")[0];
+          setWidgetFirstAyah(first);
+          setWidgetLastAyah(last);
+          setWidgetJuz(juz ?? null);
+          setShowHifzGoalOptions(false);
+          const targetJuz = widgetPath === "juz" ? (juz ?? undefined) : undefined;
+          setMemorizationGoal({
+            path: widgetPath,
+            startSurahNumber: first.surahNumber,
+            startSurahName: widgetPath === "juz" && targetJuz != null ? `Juz ${targetJuz}` : first.surahName,
+            startDate: today,
+            ayahsReadAtStart: todayEntry?.ayahsRead ?? 0,
+            targetJuz,
+            endSurahNumber: last.surahNumber,
+            endAyahNumber: last.ayahNumber,
+          });
+          const weeklyGoal = buildWeeklyGoal({
+            path: widgetPath,
+            targetJuz,
+            startSurahNumber: first.surahNumber,
+            startAyahNumber: first.ayahNumber,
+            endSurahNumber: last.surahNumber,
+            endAyahNumber: last.ayahNumber,
+            requestedAyahsPerWeek: ayahsPerWeek,
+            memorizedAyahKeys,
+          });
+          setGoal({
+            ...weeklyGoal,
+            startDate: today,
+            endSurahNumber: last.surahNumber,
+            endAyahNumber: last.ayahNumber,
+          });
+          setPaceDateVisible(false);
+        }}
+        onClose={() => setPaceDateVisible(false)}
       />
       <AyahRangeModal
         visible={ayahRangeVisible}
@@ -2242,6 +2319,19 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontWeight: "700",
       color: colors.appTextPrimary,
       fontFamily: "Inter_700Bold",
+    },
+    currentGoalMilestoneLabel: {
+      fontSize: 11,
+      color: colors.appLightText,
+      fontFamily: "Inter_400Regular",
+      marginTop: 10,
+      marginBottom: 2,
+    },
+    currentGoalMilestoneRange: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.appLightText,
+      fontFamily: "Inter_600SemiBold",
     },
 
     // Next ayah row
