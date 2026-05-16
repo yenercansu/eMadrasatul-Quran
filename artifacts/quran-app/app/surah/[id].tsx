@@ -1927,17 +1927,6 @@ const [settingsVisible, setSettingsVisible] = useState(false);
         </View>
       )}
 
-      {/* ── Floating top nav (menu hidden) ───────────────────── */}
-      {!menuVisible && (
-        <FloatingTopNav
-          surahName={arabic?.englishName ?? ""}
-          topInset={insets.top}
-          onPrev={goToPrevSurah}
-          onNext={goToNextSurah}
-          onLongPress={() => setRangeVisible(true)}
-        />
-      )}
-
       {/* ── Content ──────────────────────────────────────────── */}
       {loading ? (
         <ActivityIndicator color="#1A1A1A" style={{ flex: 1 }} size="large" />
