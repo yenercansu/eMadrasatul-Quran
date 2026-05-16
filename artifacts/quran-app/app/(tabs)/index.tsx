@@ -20,8 +20,7 @@ import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
 import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
 import { getJuzAyahs, SURAH_DATA, type AyahRef } from "@/constants/surahData";
-import { GoalSetupModal } from "@/components/GoalSetupModal";
-import { AyahRangeModal } from "@/components/AyahRangeModal";
+import { AyahRangeModal, type AyahRangeResult } from "@/components/AyahRangeModal";
 import { SubSectionTitle } from "@/components/Typography";
 import { MemorizedBadge } from "@/components/SurahCard";
 import { ActionPill } from "@/components/ActionPill";
@@ -136,7 +135,7 @@ export default function HomeScreen() {
     memorizedAyahKeys,
   } = useQuran();
   const [refreshing, setRefreshing] = useState(false);
-  const [goalSetupVisible, setGoalSetupVisible] = useState(false);
+  const [weeklyGoalVisible, setWeeklyGoalVisible] = useState(false);
   const [showMilestoneToast, setShowMilestoneToast] = useState(false);
   const [showHifzCompleteToast, setShowHifzCompleteToast] = useState(false);
   const [hifzCompleteToastText, setHifzCompleteToastText] = useState({
@@ -400,17 +399,44 @@ export default function HomeScreen() {
     return adjacent.map(a => a.ayahNumber);
   }, [nextAyahInRange, memorizationGoal, goal, activeGoalAyahs, hifzDirection]);
 
-  const widgetPresetConfig = canStartMemorizing
-    ? {
-        path: widgetPath,
-        firstSurahNumber: widgetFirstAyah!.surahNumber,
-        firstAyahNumber: widgetFirstAyah!.ayahNumber,
-        lastSurahNumber: widgetLastAyah!.surahNumber,
-        lastAyahNumber: widgetLastAyah!.ayahNumber,
-        juz: widgetJuz ?? undefined,
-        totalRangeAyahs,
-      }
-    : undefined;
+  const widgetWeeklySelection = useMemo<AyahRangeResult | undefined>(() => {
+    if (!widgetFirstAyah || !widgetLastAyah) return undefined;
+    return {
+      first: widgetFirstAyah,
+      last: widgetLastAyah,
+      juz: widgetJuz ?? undefined,
+      ayahsPerWeek: goal?.ayahsPerWeek ?? 10,
+    };
+  }, [widgetFirstAyah, widgetLastAyah, widgetJuz, goal?.ayahsPerWeek]);
+
+  const currentWeeklySelection = useMemo<AyahRangeResult | undefined>(() => {
+    if (!memorizationGoal || !goal) return undefined;
+    const startSurahNumber = goal.startSurahNumber ?? memorizationGoal.startSurahNumber;
+    const startAyahNumber = goal.startAyahNumber ?? 1;
+    const range = getGoalRangeAyahs({
+      path: memorizationGoal.path,
+      targetJuz: memorizationGoal.targetJuz,
+      startSurahNumber,
+      startAyahNumber,
+      endSurahNumber: memorizationGoal.endSurahNumber,
+      endAyahNumber: memorizationGoal.endAyahNumber,
+    });
+    const last = range[range.length - 1];
+    if (!last) return undefined;
+    const firstSurah = SURAH_DATA[startSurahNumber - 1];
+    return {
+      first: {
+        surahNumber: startSurahNumber,
+        surahName: firstSurah?.englishName ?? "",
+        ayahNumber: startAyahNumber,
+      },
+      last,
+      juz: memorizationGoal.targetJuz,
+      ayahsPerWeek: goal.ayahsPerWeek,
+    };
+  }, [memorizationGoal, goal]);
+  const weeklyGoalPath = currentWeeklySelection ? memorizationGoal?.path ?? widgetPath : widgetPath;
+  const weeklyInitialSelection = currentWeeklySelection ?? widgetWeeklySelection;
 
   const resetHifzFlow = useCallback(() => {
     setGoal(null);
@@ -621,7 +647,7 @@ export default function HomeScreen() {
                 {/* Start Memorizing */}
                 <TouchableOpacity
                   style={[s.widgetStartBtn, !canStartMemorizing && s.widgetStartBtnDisabled]}
-                  onPress={() => canStartMemorizing && setGoalSetupVisible(true)}
+                  onPress={() => canStartMemorizing && setWeeklyGoalVisible(true)}
                   disabled={!canStartMemorizing}
                   activeOpacity={0.85}
                 >
@@ -747,7 +773,7 @@ export default function HomeScreen() {
                       label="Set Target"
                       variant="primary"
                       size="sm"
-                      onPress={() => setGoalSetupVisible(true)}
+                      onPress={() => setWeeklyGoalVisible(true)}
                     />
                   ) : (
                     <ActionPill
@@ -756,7 +782,7 @@ export default function HomeScreen() {
                       iconPosition="right"
                       variant="soft"
                       size="sm"
-                      onPress={() => setGoalSetupVisible(true)}
+                      onPress={() => setWeeklyGoalVisible(true)}
                     />
                   )}
                 </View>
@@ -1189,27 +1215,49 @@ export default function HomeScreen() {
         </View>
       )}
 
-      <GoalSetupModal
-        visible={goalSetupVisible}
-        onClose={() => setGoalSetupVisible(false)}
-        presetConfig={widgetPresetConfig}
-        onComplete={(memGoal, weeklyGoal) => {
+      <AyahRangeModal
+        visible={weeklyGoalVisible}
+        path={weeklyGoalPath}
+        memorizedAyahKeys={memorizedAyahKeys}
+        initialSelection={weeklyInitialSelection}
+        startAtWeeklyGoal
+        confirmLabel="Set Weekly Target"
+        onConfirm={({ first, last, juz, ayahsPerWeek }) => {
+          const today = new Date().toISOString().split("T")[0];
+          const targetJuz = weeklyGoalPath === "juz" ? (juz ?? memorizationGoal?.targetJuz ?? undefined) : undefined;
+          setWidgetFirstAyah(first);
+          setWidgetLastAyah(last);
+          setWidgetJuz(targetJuz ?? null);
           setShowHifzGoalOptions(false);
-          setMemorizationGoal({ ...memGoal, ayahsReadAtStart: todayEntry?.ayahsRead ?? 0 });
+          setMemorizationGoal({
+            path: weeklyGoalPath,
+            startSurahNumber: first.surahNumber,
+            startSurahName: weeklyGoalPath === "juz" && targetJuz != null ? `Juz ${targetJuz}` : first.surahName,
+            startDate: memorizationGoal?.startDate ?? today,
+            ayahsReadAtStart: memorizationGoal?.ayahsReadAtStart ?? todayEntry?.ayahsRead ?? 0,
+            targetJuz,
+            endSurahNumber: last.surahNumber,
+            endAyahNumber: last.ayahNumber,
+          });
+          const weeklyGoal = buildWeeklyGoal({
+            path: weeklyGoalPath,
+            targetJuz,
+            startSurahNumber: first.surahNumber,
+            startAyahNumber: first.ayahNumber,
+            endSurahNumber: last.surahNumber,
+            endAyahNumber: last.ayahNumber,
+            requestedAyahsPerWeek: ayahsPerWeek,
+            memorizedAyahKeys,
+          });
           setGoal({
             ...weeklyGoal,
-            ...buildWeeklyGoal({
-              path: memGoal.path,
-              targetJuz: memGoal.targetJuz,
-              startSurahNumber: weeklyGoal.startSurahNumber ?? memGoal.startSurahNumber,
-              startAyahNumber: weeklyGoal.startAyahNumber ?? 1,
-              endSurahNumber: weeklyGoal.endSurahNumber ?? memGoal.endSurahNumber,
-              endAyahNumber: weeklyGoal.endAyahNumber ?? memGoal.endAyahNumber,
-              requestedAyahsPerWeek: weeklyGoal.ayahsPerWeek,
-              memorizedAyahKeys,
-            }),
+            startDate: goal?.startDate ?? today,
+            endSurahNumber: last.surahNumber,
+            endAyahNumber: last.ayahNumber,
           });
+          setWeeklyGoalVisible(false);
         }}
+        onClose={() => setWeeklyGoalVisible(false)}
       />
       <AyahRangeModal
         visible={ayahRangeVisible}

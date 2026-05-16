@@ -105,11 +105,23 @@ interface Props {
   visible: boolean;
   path: "surah" | "juz";
   memorizedAyahKeys: string[];
+  initialSelection?: AyahRangeResult;
+  startAtWeeklyGoal?: boolean;
+  confirmLabel?: string;
   onConfirm: (result: AyahRangeResult) => void;
   onClose: () => void;
 }
 
-export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, onClose }: Props) {
+export function AyahRangeModal({
+  visible,
+  path,
+  memorizedAyahKeys,
+  initialSelection,
+  startAtWeeklyGoal = false,
+  confirmLabel = "Start Memorizing →",
+  onConfirm,
+  onClose,
+}: Props) {
   const insets = useSafeAreaInsets();
   const { removeMemorizedAyahKeys } = useQuran();
   const { width: windowWidth } = useWindowDimensions();
@@ -129,17 +141,17 @@ export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, on
 
   useEffect(() => {
     if (visible) {
-      setStep(1);
+      setStep(startAtWeeklyGoal && initialSelection ? 3 : 1);
       setSearch("");
-      setSelectedSurah(null);
-      setSelectedJuz(null);
-      setFirstAyah(null);
-      setLastAyah(null);
+      setSelectedSurah(initialSelection ? SURAH_DATA[initialSelection.first.surahNumber - 1] ?? null : null);
+      setSelectedJuz(initialSelection?.juz ?? null);
+      setFirstAyah(initialSelection?.first ?? null);
+      setLastAyah(initialSelection?.last ?? null);
       setActivePhase("first");
-      setAyahsPerWeek(10);
+      setAyahsPerWeek(initialSelection?.ayahsPerWeek ?? 10);
       setResetVisible(false);
     }
-  }, [visible]);
+  }, [visible, startAtWeeklyGoal, initialSelection]);
 
   const juzAyahs = useMemo(() => {
     if (path === "juz" && selectedJuz != null) return getJuzAyahs(selectedJuz);
@@ -590,10 +602,9 @@ export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, on
 
         <View style={s.resetCtaWrap}>
           <ActionPill
-            label="Reset Progress"
-            icon="rotate-ccw"
+            label="Reset"
             variant="soft"
-            size="md"
+            size="sm"
             style={s.resetCta}
             onPress={() => setResetVisible(true)}
           />
@@ -756,7 +767,11 @@ export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, on
     return (
       <>
         <View style={[s.header, { paddingTop: insets.top + 8 }]}>
-          <TouchableOpacity onPress={() => setStep(2)} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <TouchableOpacity
+            onPress={() => startAtWeeklyGoal ? onClose() : setStep(2)}
+            style={s.navBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Feather name="chevron-left" size={22} color="#1A1A1A" />
           </TouchableOpacity>
           <Text style={s.screenTitle}>Set Your Weekly Goal</Text>
@@ -890,7 +905,7 @@ export function AyahRangeModal({ visible, path, memorizedAyahKeys, onConfirm, on
 
         <View style={[s.confirmWrap, { paddingBottom: insets.bottom + 16 }]}>
           <TouchableOpacity style={s.confirmBtn} onPress={handleFinalConfirm} activeOpacity={0.85}>
-            <Text style={s.confirmBtnText}>Start Memorizing →</Text>
+            <Text style={s.confirmBtnText}>{confirmLabel}</Text>
           </TouchableOpacity>
         </View>
       </>
@@ -1254,12 +1269,14 @@ const s = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
   },
   resetCtaWrap: {
+    alignItems: "flex-end",
     paddingHorizontal: 16,
     paddingTop: 6,
     paddingBottom: 8,
   },
   resetCta: {
-    width: "100%",
+    minHeight: 34,
+    paddingHorizontal: 14,
   },
   resetOverlay: {
     flex: 1,
