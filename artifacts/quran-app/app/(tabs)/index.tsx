@@ -149,6 +149,7 @@ export default function HomeScreen() {
     sub: "Start a new memorization goal",
   });
   const [showWeeklyToast, setShowWeeklyToast] = useState(false);
+  const [showWeekCompleteCard, setShowWeekCompleteCard] = useState(false);
   const [showHifzGoalOptions, setShowHifzGoalOptions] = useState(false);
   const [hifzDirection, setHifzDirection] = useState<"forward" | "reverse">("forward");
   const prevMemPercentRef = useRef<number | null>(null);
@@ -456,6 +457,7 @@ export default function HomeScreen() {
     setMemorizationGoal(null);
     setShowHifzGoalOptions(false);
     setShowWeeklyToast(false);
+    setShowWeekCompleteCard(false);
     setShowMilestoneToast(false);
     setHifzDirection("forward");
     setWidgetPath("surah");
@@ -499,6 +501,7 @@ export default function HomeScreen() {
     if (prev !== null && !prev && milestoneComplete) {
       setShowMilestoneToast(true);
       setShowWeeklyToast(false);
+      setShowWeekCompleteCard(false);
       const t = setTimeout(() => setShowMilestoneToast(false), 5000);
       return () => clearTimeout(t);
     }
@@ -509,6 +512,9 @@ export default function HomeScreen() {
     prevWeekPercentRef.current = weekPercent;
     if (prev !== null && prev < 100 && weekPercent >= 100 && goal && !milestoneComplete) {
       setShowWeeklyToast(true);
+      setShowWeekCompleteCard(true);
+      const t = setTimeout(() => setShowWeeklyToast(false), 4000);
+      return () => clearTimeout(t);
     }
   }, [goal, milestoneComplete, weekPercent]);
 
@@ -829,7 +835,7 @@ export default function HomeScreen() {
                   </View>
                 )}
 
-                {weekPercent >= 100 && showWeeklyToast && (
+                {weekPercent >= 100 && showWeekCompleteCard && (
                   <View style={s.weekCompleteCard}>
                     <View style={s.weekCompleteTopRow}>
                       <View style={s.weekCompleteIcon}>
@@ -841,7 +847,7 @@ export default function HomeScreen() {
                       </View>
                       <TouchableOpacity
                         style={s.weekCompleteClose}
-                        onPress={() => setShowWeeklyToast(false)}
+                        onPress={() => setShowWeekCompleteCard(false)}
                         activeOpacity={0.75}
                       >
                         <Feather name="x" size={14} color={colors.appLightText} />
@@ -865,7 +871,7 @@ export default function HomeScreen() {
                               memorizedAyahKeys,
                             });
                             setGoal({ ...goal, ...weeklyGoal });
-                            setShowWeeklyToast(false);
+                            setShowWeekCompleteCard(false);
                           }}
                           activeOpacity={0.8}
                         >
