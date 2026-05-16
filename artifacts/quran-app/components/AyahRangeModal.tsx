@@ -139,6 +139,7 @@ export function AyahRangeModal({
   const infoPageWidth = windowWidth - 40;
 
   const [step, setStep] = useState<0 | 1 | 2 | 3>(1);
+  const [maxStepReached, setMaxStepReached] = useState<0 | 1 | 2 | 3>(1);
   const [selectedFinishWeeks, setSelectedFinishWeeks] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [ayahsPerWeek, setAyahsPerWeek] = useState(10);
@@ -153,7 +154,9 @@ export function AyahRangeModal({
 
   useEffect(() => {
     if (visible) {
-      setStep(startAtPaceDate ? 0 : startAtWeeklyGoal && initialSelection ? 3 : 1);
+      const initialStep = (startAtPaceDate ? 0 : startAtWeeklyGoal && initialSelection ? 3 : 1) as 0 | 1 | 2 | 3;
+      setStep(initialStep);
+      setMaxStepReached(initialStep);
       setSelectedFinishWeeks(null);
       setSearch("");
       setSelectedSurah(initialSelection ? SURAH_DATA[initialSelection.first.surahNumber - 1] ?? null : null);
@@ -165,6 +168,11 @@ export function AyahRangeModal({
       setResetVisible(false);
     }
   }, [visible, startAtWeeklyGoal, initialSelection]);
+
+  const advanceStep = (target: 0 | 1 | 2 | 3) => {
+    setStep(target);
+    setMaxStepReached((prev) => (Math.max(prev, target) as 0 | 1 | 2 | 3));
+  };
 
   const juzAyahs = useMemo(() => {
     if (path === "juz" && selectedJuz != null) return getJuzAyahs(selectedJuz);
@@ -387,7 +395,7 @@ export function AyahRangeModal({
       return;
     }
     setAyahsPerWeek((prev) => Math.max(1, Math.min(prev, dynamicMax)));
-    setStep(3);
+    advanceStep(3);
   };
 
   const handleFinalConfirm = () => {
@@ -471,6 +479,10 @@ export function AyahRangeModal({
       ? ["Pace + Date", path === "juz" ? "Juz" : "Surah", "Range"]
       : [path === "juz" ? "Juz" : "Surah", "Range", "Weekly Goal"];
     const activeIdx = startAtPaceDate ? (step as number) : step - 1;
+    const stepForIdx = (i: number): 0 | 1 | 2 | 3 =>
+      (startAtPaceDate ? i : i + 1) as 0 | 1 | 2 | 3;
+    const labelAlignments: Array<"flex-start" | "center" | "flex-end"> = ["flex-start", "center", "flex-end"];
+
     return (
       <View style={s.stepProgress}>
         <View style={s.stepProgressTrack}>
@@ -479,15 +491,28 @@ export function AyahRangeModal({
           <View style={[s.stepSeg, fillCount >= 3 && s.stepSegFilled]} />
         </View>
         <View style={s.stepLabels}>
-          <View style={s.stepLabelCell}>
-            <Text style={[s.stepLabelText, activeIdx === 0 && s.stepLabelActive]}>{labels[0]}</Text>
-          </View>
-          <View style={[s.stepLabelCell, { alignItems: "center" }]}>
-            <Text style={[s.stepLabelText, activeIdx === 1 && s.stepLabelActive]}>{labels[1]}</Text>
-          </View>
-          <View style={[s.stepLabelCell, { alignItems: "flex-end" }]}>
-            <Text style={[s.stepLabelText, activeIdx === 2 && s.stepLabelActive]}>{labels[2]}</Text>
-          </View>
+          {([0, 1, 2] as const).map((i) => {
+            const targetStep = stepForIdx(i);
+            const isActive = activeIdx === i;
+            const canNav = targetStep !== step && targetStep <= maxStepReached;
+            return (
+              <TouchableOpacity
+                key={i}
+                style={[s.stepLabelCell, { alignItems: labelAlignments[i] }]}
+                onPress={canNav ? () => setStep(targetStep) : undefined}
+                activeOpacity={canNav ? 0.55 : 1}
+                disabled={!canNav}
+              >
+                <Text style={[
+                  s.stepLabelText,
+                  isActive && s.stepLabelActive,
+                  canNav && s.stepLabelTappable,
+                ]}>
+                  {labels[i]}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
     );
@@ -589,7 +614,7 @@ export function AyahRangeModal({
         <View style={[s.confirmWrap, { paddingBottom: insets.bottom + 16 }]}>
           <TouchableOpacity
             style={[s.confirmBtn, !canProceed && s.confirmBtnDisabled]}
-            onPress={() => canProceed && setStep(1)}
+            onPress={() => canProceed && advanceStep(1)}
             disabled={!canProceed}
             activeOpacity={0.85}
           >
@@ -647,7 +672,7 @@ export function AyahRangeModal({
                 setFirstAyah(null);
                 setLastAyah(null);
                 setActivePhase("first");
-                setStep(2);
+                advanceStep(2);
               }}
               activeOpacity={0.7}
             >
@@ -707,7 +732,7 @@ export function AyahRangeModal({
                 setFirstAyah(null);
                 setLastAyah(null);
                 setActivePhase("first");
-                setStep(2);
+                advanceStep(2);
               }}
               activeOpacity={0.7}
             >
@@ -1495,7 +1520,13 @@ const s = StyleSheet.create({
   },
   stepLabelActive: {
     color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+    fontSize: 13,
+  },
+  stepLabelTappable: {
+    color: "#1A1A1A",
     fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
   },
   resetCtaWrap: {
     alignItems: "flex-end",

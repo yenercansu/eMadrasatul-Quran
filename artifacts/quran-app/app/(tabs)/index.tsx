@@ -509,8 +509,6 @@ export default function HomeScreen() {
     prevWeekPercentRef.current = weekPercent;
     if (prev !== null && prev < 100 && weekPercent >= 100 && goal && !milestoneComplete) {
       setShowWeeklyToast(true);
-      const t = setTimeout(() => setShowWeeklyToast(false), 5000);
-      return () => clearTimeout(t);
     }
   }, [goal, milestoneComplete, weekPercent]);
 
@@ -596,13 +594,7 @@ export default function HomeScreen() {
                       {widgetFirstAyah ? widgetFirstAyah.surahName : "Select surah & ayah"}
                     </Text>
                   </View>
-                  {!widgetFirstAyah && (
-                    <View style={s.widgetStep1Badge}>
-                      <Text style={s.widgetStep1Text}>Step 1</Text>
-                      <Feather name="chevron-right" size={11} color={colors.appLightText} />
-                    </View>
-                  )}
-                  {widgetFirstAyah && <Feather name="chevron-right" size={16} color={colors.appLightText} />}
+                  <Feather name="chevron-right" size={16} color={colors.appLightText} />
                 </TouchableOpacity>
 
                 <View style={s.widgetRowDivider} />
@@ -636,7 +628,7 @@ export default function HomeScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={s.widgetPaceLabel}>WEEKLY PACE</Text>
                     <Text style={goal?.ayahsPerWeek ? s.widgetPaceValue : s.widgetPacePlaceholder}>
-                      {goal?.ayahsPerWeek ? `${goal.ayahsPerWeek}/week` : "Set pace & date →"}
+                      {goal?.ayahsPerWeek ? `${goal.ayahsPerWeek}/week` : "Set pace & date"}
                     </Text>
                   </View>
                   <View style={s.widgetPaceDivider} />
