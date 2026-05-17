@@ -1506,7 +1506,7 @@ export default function SurahScreen() {
     saveProgress, recordVisit, recordAyahRead,
     saveAyah, saveWord, isAyahSaved, savedAyahs,
     surahPositions, saveSurahPosition,
-    goal, memorizationGoal, isAyahMemorized, toggleAyahMemorized,
+    goal, memorizationGoal, memorizedAyahKeys, isAyahMemorized, toggleAyahMemorized,
   } = useQuran();
   mushafModeRef.current = settings.mushafMode;
 
@@ -2008,6 +2008,7 @@ export default function SurahScreen() {
   const topPad = insets.top;
   const basmala = surahNum !== 1 && surahNum !== 9;
   const memorizationGoalAyahKeys = useMemo(() => {
+    if (memorizationGoal?.path === "pace") return null;
     if (!goal?.startSurahNumber || !goal.startAyahNumber) return null;
     if (goal.weeklyTargetAyahKeys?.length) return new Set(goal.weeklyTargetAyahKeys);
     const target = memorizationGoal?.path === "juz" && memorizationGoal.targetJuz
@@ -2041,7 +2042,10 @@ export default function SurahScreen() {
     range: audioState.range,
     ayahRepeatCounts,
     savedAyahs,
-  }), [audioState.currentAyah, audioState.currentSurah, audioState.repeatCount, audioState.range, ayahRepeatCounts, savedAyahs]);
+    memorizedAyahKeys,
+    memorizationGoal,
+    goal,
+  }), [audioState.currentAyah, audioState.currentSurah, audioState.repeatCount, audioState.range, ayahRepeatCounts, savedAyahs, memorizedAyahKeys, memorizationGoal, goal]);
 
   const refreshOfflineStatus = useCallback(async () => {
     if (currentDownloadAyahs.length === 0) return;
@@ -2174,7 +2178,7 @@ export default function SurahScreen() {
           && surahNum <= audioState.range.endSurah
           && item.numberInSurah >= (surahNum === audioState.range.startSurah ? audioState.range.startAyah : 1)
           && item.numberInSurah <= (surahNum === audioState.range.endSurah ? audioState.range.endAyah : 999);
-        const isInMemorizationGoal = !!memorizationGoalAyahKeys?.has(`${surahNum}:${item.numberInSurah}`);
+        const isInMemorizationGoal = memorizationGoal?.path === "pace" || !!memorizationGoalAyahKeys?.has(`${surahNum}:${item.numberInSurah}`);
         const showB = item.numberInSurah === 1 && basmala;
 
         const translations = selectedTranslations
@@ -2359,6 +2363,7 @@ export default function SurahScreen() {
               { flex: settings.showTranslation ? 0.75 : 1, backgroundColor: MUSHAF_BG },
             ]}
             onLayout={(e) => handlePageSlideLayout(e.nativeEvent.layout.width)}
+            {...pagePanResponder.panHandlers}
           >
             {pageWidth > 0 && nextPageAyahs.length > 0 && (
               <Animated.View pointerEvents="none" style={[scr.pageSlidePage, { left: -pageWidth, transform: [{ translateX: pageDragX }] }]}>
@@ -2373,8 +2378,6 @@ export default function SurahScreen() {
             <Animated.View style={[scr.pageSlidePage, { left: 0, transform: [{ translateX: pageDragX }] }]}>
               {renderMushafPage(pageAyahs, currentPage, true)}
             </Animated.View>
-            <View style={[scr.pageSwipeEdge, scr.pageSwipeEdgeLeft]} {...pagePanResponder.panHandlers} />
-            <View style={[scr.pageSwipeEdge, scr.pageSwipeEdgeRight]} {...pagePanResponder.panHandlers} />
           </View>
           {settings.showTranslation && (
             <View style={scr.mushafTranslationPanel}>
@@ -2409,6 +2412,7 @@ export default function SurahScreen() {
             onTouchStart={handlePageTouchStart}
             onTouchEnd={handlePageTouchEnd}
             onTouchCancel={handlePageTouchEnd}
+            {...pagePanResponder.panHandlers}
           >
             {pageWidth > 0 && nextPageAyahs.length > 0 && (
               <Animated.View pointerEvents="none" style={[scr.pageSlidePage, { left: -pageWidth, transform: [{ translateX: pageDragX }] }]}>
@@ -2423,8 +2427,6 @@ export default function SurahScreen() {
             <Animated.View style={[scr.pageSlidePage, { left: 0, transform: [{ translateX: pageDragX }] }]}>
               {renderAyahPage(pageAyahs, true)}
             </Animated.View>
-            <View style={[scr.pageSwipeEdge, scr.pageSwipeEdgeLeft]} {...pagePanResponder.panHandlers} />
-            <View style={[scr.pageSwipeEdge, scr.pageSwipeEdgeRight]} {...pagePanResponder.panHandlers} />
           </View>
         ) : null
       )}
@@ -2712,19 +2714,6 @@ const scr = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: "100%",
-  },
-  pageSwipeEdge: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    width: 44,
-    zIndex: 5,
-  },
-  pageSwipeEdgeLeft: {
-    left: 0,
-  },
-  pageSwipeEdgeRight: {
-    right: 0,
   },
   pageHeader: {
     flexDirection: "row",

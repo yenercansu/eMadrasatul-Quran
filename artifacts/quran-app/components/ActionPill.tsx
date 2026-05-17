@@ -13,7 +13,7 @@ import { useColors } from "@/hooks/useColors";
 
 type FeatherIconName = React.ComponentProps<typeof Feather>["name"];
 
-type ActionPillVariant = "primary" | "secondary" | "soft" | "outline" | "ghost";
+type ActionPillVariant = "primary" | "secondary" | "soft" | "outline" | "ghost" | "border";
 type ActionPillSize = "sm" | "md" | "lg";
 
 interface ActionPillProps extends Omit<TouchableOpacityProps, "style"> {
@@ -101,6 +101,11 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     ghost: {
       backgroundColor: "transparent",
       borderWidth: 0,
+    },
+    border: {
+      backgroundColor: "transparent",
+      borderWidth: 1,
+      borderColor: colors.appBorderMid,
     },
     label: {
       fontSize: 13,

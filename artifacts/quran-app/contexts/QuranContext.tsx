@@ -55,6 +55,7 @@ export interface DailyEntry {
 export interface Goal {
   ayahsPerWeek: number;
   targetAyahsPerWeek?: number;
+  measurementStyle?: "visual" | "ayah";
   memorizationStyle?: "steady" | "gradual";
   gradualIncreaseStyle?: "gentle" | "medium" | "fast";
   gradualWeeklyPlan?: number[];
@@ -68,7 +69,7 @@ export interface Goal {
 }
 
 export interface MemorizationGoal {
-  path: "juz" | "surah";
+  path: "juz" | "surah" | "pace";
   startSurahNumber: number;
   startSurahName: string;
   startDate: string;
@@ -178,6 +179,8 @@ export function getAyahAtLinearIndex(index: number): { surahNumber: number; sura
 }
 
 function getActiveGoalRangeKeySet(goal: Goal, memorizationGoal: MemorizationGoal | null): Set<string> | null {
+  if (memorizationGoal?.path === "pace") return null;
+
   if (
     goal.startSurahNumber == null ||
     goal.startAyahNumber == null ||
@@ -632,6 +635,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
 
   const getWeekGoalAyahs = useCallback((): GoalAyah[] => {
     if (!goal) return [];
+    if (memorizationGoal?.path === "pace") return [];
     if (goal.weeklyTargetAyahKeys?.length) {
       const activeRangeKeys = getActiveGoalRangeKeySet(goal, memorizationGoal);
       return goal.weeklyTargetAyahKeys.map((key) => {
@@ -665,6 +669,13 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     if (!goal) return 0;
     const weekStart = getWeekStartStr();
     const weekEntries = dailyEntries.filter(e => e.date >= weekStart);
+    if (memorizationGoal?.path === "pace") {
+      const allReadKeys = new Set<string>();
+      for (const entry of weekEntries) {
+        for (const k of (entry.readAyahKeys ?? [])) allReadKeys.add(k);
+      }
+      return allReadKeys.size || weekEntries.reduce((sum, e) => sum + e.ayahsRead, 0);
+    }
 
     if (goal.startSurahNumber == null || goal.startAyahNumber == null) {
       return weekEntries.reduce((sum, e) => sum + e.ayahsRead, 0);
@@ -831,13 +842,44 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const markAyahsMemorized = useCallback((keys: string[]) => {
+    const newKeysForDailyEntry: string[] = [];
     setMemorizedAyahKeys((prev) => {
       const newKeys = keys.filter(k => !prev.includes(k));
       if (newKeys.length === 0) return prev;
+      newKeysForDailyEntry.push(...newKeys);
       const next = [...prev, ...newKeys];
       AsyncStorage.setItem("quran_memorized_ayahs", JSON.stringify(next));
       return next;
     });
+    if (newKeysForDailyEntry.length > 0) {
+      const today = getTodayStr();
+      setDailyEntries((prev) => {
+        const idx = prev.findIndex(e => e.date === today);
+        if (idx >= 0) {
+          const entry = prev[idx];
+          const existingKeys = entry.readAyahKeys ?? [];
+          const mergedKeys = Array.from(new Set([...existingKeys, ...newKeysForDailyEntry]));
+          const increment = mergedKeys.length - existingKeys.length;
+          if (increment <= 0) return prev;
+          const next = prev.map((e, i) => i === idx ? {
+            ...e,
+            ayahsRead: e.ayahsRead + increment,
+            readAyahKeys: mergedKeys,
+          } : e);
+          AsyncStorage.setItem("quran_daily_entries", JSON.stringify(next));
+          return next;
+        }
+        const next = [{
+          date: today,
+          ayahsRead: newKeysForDailyEntry.length,
+          kahfCompleted: false,
+          quizCompleted: false,
+          readAyahKeys: newKeysForDailyEntry,
+        }, ...prev].slice(0, 365);
+        AsyncStorage.setItem("quran_daily_entries", JSON.stringify(next));
+        return next;
+      });
+    }
   }, []);
 
   const removeMemorizedAyahKeys = useCallback((keys: string[]) => {
@@ -860,10 +902,12 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
 
   const toggleAyahMemorized = useCallback((surahNumber: number, ayahNumber: number) => {
     const key = `${surahNumber}:${ayahNumber}`;
+    let added = false;
     setMemorizedAyahKeys((prev) => {
+      added = !prev.includes(key);
       const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key];
       AsyncStorage.setItem("quran_memorized_ayahs", JSON.stringify(next));
-      if (isAuthenticated && !prev.includes(key)) {
+      if (isAuthenticated && added) {
         madeenanApi.updateProgress({
           goalDate: getTodayStr(),
           ayahs: [{
@@ -876,7 +920,8 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       }
       return next;
     });
-  }, [isAuthenticated]);
+    if (added) recordAyahRead(surahNumber, ayahNumber);
+  }, [isAuthenticated, recordAyahRead]);
 
   const isAyahMemorized = useCallback((surahNumber: number, ayahNumber: number) =>
     memorizedAyahKeys.includes(`${surahNumber}:${ayahNumber}`), [memorizedAyahKeys]);
