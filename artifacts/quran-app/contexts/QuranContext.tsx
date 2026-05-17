@@ -54,6 +54,11 @@ export interface DailyEntry {
 
 export interface Goal {
   ayahsPerWeek: number;
+  targetAyahsPerWeek?: number;
+  memorizationStyle?: "steady" | "gradual";
+  gradualIncreaseStyle?: "gentle" | "medium" | "fast";
+  gradualWeeklyPlan?: number[];
+  finishWeeks?: number;
   startDate: string;
   startSurahNumber?: number;
   startAyahNumber?: number;

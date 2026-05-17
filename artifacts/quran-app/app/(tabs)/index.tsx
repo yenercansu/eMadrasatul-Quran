@@ -469,8 +469,13 @@ export default function HomeScreen() {
       last: widgetLastAyah,
       juz: widgetJuz ?? undefined,
       ayahsPerWeek: goal?.ayahsPerWeek ?? 10,
+      targetAyahsPerWeek: goal?.targetAyahsPerWeek,
+      finishWeeks: goal?.finishWeeks,
+      memorizationStyle: goal?.memorizationStyle,
+      gradualIncreaseStyle: goal?.gradualIncreaseStyle,
+      gradualWeeklyPlan: goal?.gradualWeeklyPlan,
     };
-  }, [widgetFirstAyah, widgetLastAyah, widgetJuz, goal?.ayahsPerWeek]);
+  }, [widgetFirstAyah, widgetLastAyah, widgetJuz, goal]);
 
   const currentWeeklySelection = useMemo<AyahRangeResult | undefined>(() => {
     if (!memorizationGoal || !goal) return undefined;
@@ -496,6 +501,11 @@ export default function HomeScreen() {
       last,
       juz: memorizationGoal.targetJuz,
       ayahsPerWeek: effectiveGoalCount || goal.ayahsPerWeek,
+      targetAyahsPerWeek: goal.targetAyahsPerWeek,
+      finishWeeks: goal.finishWeeks,
+      memorizationStyle: goal.memorizationStyle,
+      gradualIncreaseStyle: goal.gradualIncreaseStyle,
+      gradualWeeklyPlan: goal.gradualWeeklyPlan,
     };
   }, [memorizationGoal, goal, effectiveGoalCount]);
   const weeklyGoalPath = currentWeeklySelection ? memorizationGoal?.path ?? widgetPath : widgetPath;
@@ -695,7 +705,11 @@ export default function HomeScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={s.widgetPaceLabel}>WEEKLY PACE</Text>
                     <Text style={goal?.ayahsPerWeek ? s.widgetPaceValue : s.widgetPacePlaceholder}>
-                      {goal?.ayahsPerWeek ? `${goal.ayahsPerWeek}/week` : "Set pace & date"}
+                      {goal?.ayahsPerWeek
+                        ? goal.memorizationStyle === "gradual" && goal.targetAyahsPerWeek
+                          ? `${goal.ayahsPerWeek} → ${goal.targetAyahsPerWeek}/week`
+                          : `${goal.ayahsPerWeek}/week`
+                        : "Set pace & date"}
                     </Text>
                   </View>
                   <View style={s.widgetPaceDivider} />
@@ -1425,7 +1439,17 @@ export default function HomeScreen() {
         path={widgetPath}
         memorizedAyahKeys={memorizedAyahKeys}
         startAtPaceDate
-        onConfirm={({ first, last, juz, ayahsPerWeek }) => {
+        onConfirm={({
+          first,
+          last,
+          juz,
+          ayahsPerWeek,
+          targetAyahsPerWeek,
+          finishWeeks,
+          memorizationStyle,
+          gradualIncreaseStyle,
+          gradualWeeklyPlan,
+        }) => {
           const today = new Date().toISOString().split("T")[0];
           setWidgetFirstAyah(first);
           setWidgetLastAyah(last);
@@ -1454,6 +1478,12 @@ export default function HomeScreen() {
           });
           setGoal({
             ...weeklyGoal,
+            ayahsPerWeek: weeklyGoal.ayahsPerWeek,
+            targetAyahsPerWeek,
+            finishWeeks,
+            memorizationStyle,
+            gradualIncreaseStyle,
+            gradualWeeklyPlan,
             startDate: today,
             endSurahNumber: last.surahNumber,
             endAyahNumber: last.ayahNumber,

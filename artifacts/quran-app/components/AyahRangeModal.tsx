@@ -32,6 +32,19 @@ const FINISH_DURATION_OPTIONS = [
   { label: "1 yr", weeks: 52 },
 ];
 
+export type MemorizationStyle = "steady" | "gradual";
+export type GradualIncreaseStyle = "gentle" | "medium" | "fast";
+
+const INCREASE_STYLE_OPTIONS: Array<{
+  value: GradualIncreaseStyle;
+  label: string;
+  helper: string;
+}> = [
+  { value: "gentle", label: "Gentle", helper: "Slow build" },
+  { value: "medium", label: "Medium", helper: "Balanced" },
+  { value: "fast", label: "Fast", helper: "Early push" },
+];
+
 function estimateCompletion(remaining: number, weeklyGoal: number): string {
   if (weeklyGoal <= 0 || remaining <= 0) return "completed";
   const days = Math.ceil(remaining / weeklyGoal) * 7;
@@ -40,6 +53,31 @@ function estimateCompletion(remaining: number, weeklyGoal: number): string {
   if (days >= 60) return `approximately ${Math.round(days / 30)} months`;
   if (days >= 30) return "approximately 1 month";
   return `approximately ${days} days`;
+}
+
+function buildGradualWeeklyPlan({
+  targetAyahsPerWeek,
+  weeks,
+  increaseStyle,
+}: {
+  targetAyahsPerWeek: number;
+  weeks: number;
+  increaseStyle: GradualIncreaseStyle;
+}) {
+  const safeWeeks = Math.max(1, weeks);
+  const startWeekly = Math.max(1, targetAyahsPerWeek);
+  const settings = {
+    gentle: { endRatio: 1.35, curve: 1.2 },
+    medium: { endRatio: 1.7, curve: 1.45 },
+    fast: { endRatio: 2.25, curve: 1.9 },
+  }[increaseStyle];
+
+  return Array.from({ length: safeWeeks }, (_, index) => {
+    if (safeWeeks === 1) return startWeekly;
+    const t = index / (safeWeeks - 1);
+    const eased = Math.pow(t, settings.curve);
+    return Math.max(1, Math.round(startWeekly * (1 + (settings.endRatio - 1) * eased)));
+  });
 }
 
 function AyahSlider({
@@ -110,6 +148,11 @@ export interface AyahRangeResult {
   last: AyahRef;
   juz?: number;
   ayahsPerWeek: number;
+  targetAyahsPerWeek?: number;
+  finishWeeks?: number;
+  memorizationStyle?: MemorizationStyle;
+  gradualIncreaseStyle?: GradualIncreaseStyle;
+  gradualWeeklyPlan?: number[];
 }
 
 interface Props {
@@ -145,6 +188,8 @@ export function AyahRangeModal({
   const [selectedFinishWeeks, setSelectedFinishWeeks] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [ayahsPerWeek, setAyahsPerWeek] = useState(10);
+  const [memorizationStyle, setMemorizationStyle] = useState<MemorizationStyle>("steady");
+  const [gradualIncreaseStyle, setGradualIncreaseStyle] = useState<GradualIncreaseStyle>("medium");
   const [infoPage, setInfoPage] = useState(0);
   const [weeklyScrollEnabled, setWeeklyScrollEnabled] = useState(true);
   const [selectedSurah, setSelectedSurah] = useState<typeof SURAH_DATA[0] | null>(null);
@@ -167,9 +212,11 @@ export function AyahRangeModal({
       setLastAyah(initialSelection?.last ?? null);
       setActivePhase("first");
       setAyahsPerWeek(initialSelection?.ayahsPerWeek ?? 10);
+      setMemorizationStyle(initialSelection?.memorizationStyle ?? "steady");
+      setGradualIncreaseStyle(initialSelection?.gradualIncreaseStyle ?? "medium");
       setResetVisible(false);
     }
-  }, [visible, startAtWeeklyGoal, initialSelection]);
+  }, [visible, startAtPaceDate, startAtWeeklyGoal, initialSelection]);
 
   const advanceStep = (target: 0 | 1 | 2 | 3) => {
     setStep(target);
@@ -340,7 +387,22 @@ export function AyahRangeModal({
   }, [dynamicMax]);
 
   // ── PaceDate flow helpers ──────────────────────────────────────────────────
-  const autoCapacity = startAtPaceDate && selectedFinishWeeks ? ayahsPerWeek * selectedFinishWeeks : 0;
+  const gradualWeeklyPlan = useMemo(() => {
+    if (!startAtPaceDate || !selectedFinishWeeks || memorizationStyle !== "gradual") return [];
+    return buildGradualWeeklyPlan({
+      targetAyahsPerWeek: ayahsPerWeek,
+      weeks: selectedFinishWeeks,
+      increaseStyle: gradualIncreaseStyle,
+    });
+  }, [ayahsPerWeek, gradualIncreaseStyle, memorizationStyle, selectedFinishWeeks, startAtPaceDate]);
+  const autoCapacity = startAtPaceDate && selectedFinishWeeks
+    ? memorizationStyle === "gradual"
+      ? gradualWeeklyPlan.reduce((sum, week) => sum + week, 0)
+      : ayahsPerWeek * selectedFinishWeeks
+    : 0;
+  const currentPaceAyahsPerWeek = memorizationStyle === "gradual"
+    ? gradualWeeklyPlan[0] ?? buildGradualWeeklyPlan({ targetAyahsPerWeek: ayahsPerWeek, weeks: 5, increaseStyle: gradualIncreaseStyle })[0]
+    : clampedAyahsPerWeek;
   const selectedDurationLabel = FINISH_DURATION_OPTIONS.find(o => o.weeks === selectedFinishWeeks)?.label ?? "";
   const finishDateDisplay = selectedFinishWeeks
     ? (() => {
@@ -472,7 +534,17 @@ export function AyahRangeModal({
   const handleFinalConfirm = () => {
     if (!canConfirm) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onConfirm({ first: firstAyah!, last: lastAyah!, juz: selectedJuz ?? undefined, ayahsPerWeek: clampedAyahsPerWeek });
+    onConfirm({
+      first: firstAyah!,
+      last: lastAyah!,
+      juz: selectedJuz ?? undefined,
+      ayahsPerWeek: startAtPaceDate ? currentPaceAyahsPerWeek : clampedAyahsPerWeek,
+      targetAyahsPerWeek: clampedAyahsPerWeek,
+      finishWeeks: selectedFinishWeeks ?? undefined,
+      memorizationStyle,
+      gradualIncreaseStyle: memorizationStyle === "gradual" ? gradualIncreaseStyle : undefined,
+      gradualWeeklyPlan: memorizationStyle === "gradual" ? gradualWeeklyPlan : undefined,
+    });
     onClose();
   };
 
@@ -594,6 +666,21 @@ export function AyahRangeModal({
   // ── Step 0: Pace + Date (alternative flow) ────────────────────────────────
   const renderPaceDate = () => {
     const canProceed = selectedFinishWeeks !== null;
+    const hasFinishDate = selectedFinishWeeks !== null;
+    const previewPlan = selectedFinishWeeks
+      ? gradualWeeklyPlan
+      : buildGradualWeeklyPlan({
+          targetAyahsPerWeek: ayahsPerWeek,
+          weeks: 5,
+          increaseStyle: gradualIncreaseStyle,
+        });
+    const previewBars = Array.from({ length: Math.min(5, previewPlan.length) }, (_, index) => {
+      const planIndex = previewPlan.length <= 5
+        ? index
+        : Math.round(index * (previewPlan.length - 1) / 4);
+      return { week: planIndex + 1, count: previewPlan[planIndex] };
+    });
+    const previewMax = Math.max(1, ...previewBars.map((item) => item.count));
     return (
       <>
         <View style={[s.header, { paddingTop: insets.top + 8 }]}>
@@ -615,7 +702,10 @@ export function AyahRangeModal({
           {/* Weekly Pace Card */}
           <View style={s.paceSectionCard}>
             <View style={s.paceSectionTopRow}>
-              <Text style={s.paceSectionLabel}>WEEKLY PACE</Text>
+              <View>
+                <Text style={s.stepEyebrow}>STEP 1</Text>
+                <Text style={s.paceSectionLabel}>WEEKLY PACE</Text>
+              </View>
               <View style={s.pacePill}>
                 <Text style={s.pacePillText}>{ayahsPerWeek} ayahs / wk</Text>
               </View>
@@ -636,7 +726,10 @@ export function AyahRangeModal({
           {/* Finish Date Card */}
           <View style={[s.finishDateSection, !selectedFinishWeeks && s.finishDateSectionDashed]}>
             <View style={s.finishDateTopRow}>
-              <Text style={s.paceSectionLabel}>FINISH DATE</Text>
+              <View>
+                <Text style={s.stepEyebrow}>STEP 2</Text>
+                <Text style={s.paceSectionLabel}>FINISH DATE</Text>
+              </View>
               {selectedFinishWeeks ? (
                 <View style={s.finishDatePill}>
                   <Text style={s.finishDatePillText}>{finishDateDisplay}</Text>
@@ -663,7 +756,134 @@ export function AyahRangeModal({
               ))}
             </View>
             {!selectedFinishWeeks && (
-              <Text style={s.finishDateHint}>Tap a duration above to set your finish date</Text>
+              <Text style={s.finishDateHint}>Tap a duration above to unlock memorization style</Text>
+            )}
+          </View>
+
+          {/* Memorization Style Card */}
+          <View style={[s.styleSectionCard, !hasFinishDate && s.styleSectionCardLocked]}>
+            <View style={s.styleHeaderRow}>
+              <View>
+                <Text style={[s.stepEyebrow, !hasFinishDate && s.lockedLabel]}>STEP 3</Text>
+                <Text style={[s.paceSectionLabel, !hasFinishDate && s.lockedLabel]}>MEMORIZATION STYLE</Text>
+              </View>
+              {!hasFinishDate && (
+                <View style={s.lockPill}>
+                  <Feather name="lock" size={11} color="#A8A29E" />
+                  <Text style={s.lockPillText}>Choose date first</Text>
+                </View>
+              )}
+            </View>
+            {hasFinishDate && (
+              <View style={s.stepOverviewTags}>
+                <View style={s.stepOverviewTag}>
+                  <Text style={s.stepOverviewValue}>{ayahsPerWeek}/week</Text>
+                </View>
+                <View style={s.stepOverviewTag}>
+                  <Text style={s.stepOverviewValue}>{finishDateDisplay ?? selectedDurationLabel}</Text>
+                </View>
+              </View>
+            )}
+            <View style={s.styleOptions}>
+              <TouchableOpacity
+                style={[
+                  s.styleOption,
+                  memorizationStyle === "steady" && hasFinishDate && s.styleOptionSelected,
+                  !hasFinishDate && s.styleOptionDisabled,
+                ]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setMemorizationStyle("steady");
+                }}
+                disabled={!hasFinishDate}
+                activeOpacity={0.75}
+              >
+                <View style={s.styleOptionTop}>
+                  <View style={[s.radioOuter, memorizationStyle === "steady" && hasFinishDate && s.radioOuterSelected]}>
+                    {memorizationStyle === "steady" && hasFinishDate && <View style={s.radioInner} />}
+                  </View>
+                  <View style={s.styleTextWrap}>
+                    <Text style={[s.styleTitle, !hasFinishDate && s.styleTitleDisabled]}>Steady</Text>
+                    <Text style={[s.styleSub, !hasFinishDate && s.styleSubDisabled]}>Same pace throughout</Text>
+                  </View>
+                  <View style={s.miniBars}>
+                    {[4, 4, 4, 4, 4].map((height, index) => (
+                      <View key={`steady-${index}`} style={[s.miniBar, !hasFinishDate && s.miniBarDisabled, { height: height * 3 }]} />
+                    ))}
+                  </View>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  s.styleOption,
+                  memorizationStyle === "gradual" && hasFinishDate && s.styleOptionSelected,
+                  !hasFinishDate && s.styleOptionDisabled,
+                ]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setMemorizationStyle("gradual");
+                }}
+                disabled={!hasFinishDate}
+                activeOpacity={0.75}
+              >
+                <View style={s.styleOptionTop}>
+                  <View style={[s.radioOuter, memorizationStyle === "gradual" && hasFinishDate && s.radioOuterSelected]}>
+                    {memorizationStyle === "gradual" && hasFinishDate && <View style={s.radioInner} />}
+                  </View>
+                  <View style={s.styleTextWrap}>
+                    <Text style={[s.styleTitle, !hasFinishDate && s.styleTitleDisabled]}>Gradual Increase</Text>
+                    <Text style={[s.styleSub, !hasFinishDate && s.styleSubDisabled]}>Start lighter and build momentum over time</Text>
+                  </View>
+                  <View style={s.miniBars}>
+                    {[1, 2, 3, 5, 7].map((height, index) => (
+                      <View key={`gradual-${index}`} style={[s.miniBar, !hasFinishDate && s.miniBarDisabled, { height: height * 3 }]} />
+                    ))}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {memorizationStyle === "gradual" && (
+              <View style={s.gradualPanel}>
+                <Text style={s.gradualLabel}>INCREASE STYLE</Text>
+                <View style={s.increaseChips}>
+                  {INCREASE_STYLE_OPTIONS.map((option) => {
+                    const selected = gradualIncreaseStyle === option.value;
+                    return (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[s.increaseChip, selected && s.increaseChipSelected]}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setGradualIncreaseStyle(option.value);
+                        }}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={[s.increaseChipText, selected && s.increaseChipTextSelected]}>{option.label}</Text>
+                        <Text style={[s.increaseChipSub, selected && s.increaseChipSubSelected]}>{option.helper}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {previewBars.length > 0 && (
+                  <View style={s.weekPreview}>
+                    <View style={s.weekPreviewBars}>
+                      {previewBars.map((item) => (
+                        <View key={`${item.week}-${item.count}`} style={s.weekPreviewItem}>
+                          <View style={[s.weekPreviewBar, { height: Math.max(8, Math.round((item.count / previewMax) * 34)) }]} />
+                          <Text style={s.weekPreviewLabel}>W{item.week}</Text>
+                          <Text style={s.weekPreviewCount}>{item.count}</Text>
+                        </View>
+                      ))}
+                    </View>
+                    <Text style={s.weekPreviewText}>
+                      Starts at your selected {ayahsPerWeek}/week pace, then grows with a {gradualIncreaseStyle} curve.
+                    </Text>
+                  </View>
+                )}
+              </View>
             )}
           </View>
 
@@ -672,13 +892,20 @@ export function AyahRangeModal({
             <View style={s.rangeCapCard}>
               <Text style={s.rangeCapTitle}>RANGE CAPACITY</Text>
               <Text style={s.rangeCapText}>
-                At{" "}
-                <Text style={s.rangeCapBold}>{ayahsPerWeek} ayahs/wk</Text>
-                {" "}for{" "}
-                <Text style={s.rangeCapBold}>{selectedDurationLabel}</Text>
-                , you can cover up to{" "}
-                <Text style={s.rangeCapBold}>{autoCapacity} ayahs</Text>
-                . After picking your first ayah, the last is set automatically.
+                {memorizationStyle === "gradual" ? (
+                  <>
+                    Starting at <Text style={s.rangeCapBold}>{ayahsPerWeek} ayahs/wk</Text> and growing with a{" "}
+                    <Text style={s.rangeCapBold}>{gradualIncreaseStyle}</Text> build for{" "}
+                    <Text style={s.rangeCapBold}>{selectedDurationLabel}</Text>, you can cover up to{" "}
+                    <Text style={s.rangeCapBold}>{autoCapacity} ayahs</Text>. After picking your first ayah, the last is set automatically.
+                  </>
+                ) : (
+                  <>
+                    At <Text style={s.rangeCapBold}>{ayahsPerWeek} ayahs/wk</Text> for{" "}
+                    <Text style={s.rangeCapBold}>{selectedDurationLabel}</Text>, you can cover up to{" "}
+                    <Text style={s.rangeCapBold}>{autoCapacity} ayahs</Text>. After picking your first ayah, the last is set automatically.
+                  </>
+                )}
               </Text>
             </View>
           )}
@@ -1871,6 +2098,15 @@ const s = StyleSheet.create({
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
+  stepEyebrow: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#C9A02A",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.7,
+    textTransform: "uppercase",
+    marginBottom: 3,
+  },
   pacePill: {
     backgroundColor: "#1A1A1A",
     borderRadius: 20,
@@ -1882,6 +2118,237 @@ const s = StyleSheet.create({
     fontWeight: "600",
     color: "#FFFFFF",
     fontFamily: "Inter_600SemiBold",
+  },
+  styleSectionCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E7E5DB",
+    padding: 16,
+  },
+  styleSectionCardLocked: {
+    backgroundColor: "#F8F5EE",
+    borderStyle: "dashed",
+  },
+  styleHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  lockedLabel: {
+    color: "#A8A29E",
+  },
+  lockPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderRadius: 20,
+    backgroundColor: "#F0ECE4",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  lockPillText: {
+    fontSize: 11,
+    color: "#A8A29E",
+    fontFamily: "Inter_600SemiBold",
+  },
+  stepOverviewTags: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 12,
+  },
+  stepOverviewTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 20,
+    backgroundColor: "#F0ECE4",
+    borderWidth: 1,
+    borderColor: "#E7E5DB",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  stepOverviewValue: {
+    fontSize: 12,
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+  },
+  styleOptions: {
+    gap: 10,
+    marginTop: 12,
+  },
+  styleOption: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E7E5DB",
+    backgroundColor: "#FDFBF7",
+    padding: 12,
+  },
+  styleOptionSelected: {
+    borderColor: "#1A1A1A",
+    backgroundColor: "#FFFFFF",
+  },
+  styleOptionDisabled: {
+    backgroundColor: "#F4EFE7",
+    borderColor: "#E7E5DB",
+    opacity: 0.72,
+  },
+  styleOptionTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  radioOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#C9B9A4",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioOuterSelected: {
+    borderColor: "#1A1A1A",
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#1A1A1A",
+  },
+  styleTextWrap: {
+    flex: 1,
+  },
+  styleTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+    marginBottom: 2,
+  },
+  styleTitleDisabled: {
+    color: "#A8A29E",
+  },
+  styleSub: {
+    fontSize: 12,
+    color: "#78716C",
+    fontFamily: "Inter_400Regular",
+    lineHeight: 17,
+  },
+  styleSubDisabled: {
+    color: "#B9B2A8",
+  },
+  miniBars: {
+    width: 38,
+    height: 26,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "flex-end",
+    gap: 3,
+  },
+  miniBar: {
+    width: 4,
+    borderRadius: 2,
+    backgroundColor: "#1A1A1A",
+  },
+  miniBarDisabled: {
+    backgroundColor: "#CFC8BE",
+  },
+  gradualPanel: {
+    marginTop: 12,
+    borderRadius: 12,
+    backgroundColor: "#F6F2EA",
+    borderWidth: 1,
+    borderColor: "#E7E5DB",
+    padding: 12,
+    gap: 12,
+  },
+  gradualLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#78716C",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  increaseChips: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  increaseChip: {
+    flex: 1,
+    minHeight: 50,
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#DED6C9",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 6,
+  },
+  increaseChipSelected: {
+    backgroundColor: "#1A1A1A",
+    borderColor: "#1A1A1A",
+  },
+  increaseChipText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+    marginBottom: 2,
+  },
+  increaseChipTextSelected: {
+    color: "#FFFFFF",
+  },
+  increaseChipSub: {
+    fontSize: 10,
+    color: "#A8A29E",
+    fontFamily: "Inter_400Regular",
+  },
+  increaseChipSubSelected: {
+    color: "rgba(255,255,255,0.68)",
+  },
+  weekPreview: {
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E7E5DB",
+    padding: 10,
+    gap: 8,
+  },
+  weekPreviewBars: {
+    minHeight: 64,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 12,
+  },
+  weekPreviewItem: {
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 4,
+  },
+  weekPreviewBar: {
+    width: 12,
+    borderRadius: 6,
+    backgroundColor: "#1A1A1A",
+  },
+  weekPreviewLabel: {
+    fontSize: 9,
+    color: "#A8A29E",
+    fontFamily: "Inter_700Bold",
+  },
+  weekPreviewCount: {
+    fontSize: 10,
+    color: "#78716C",
+    fontFamily: "Inter_700Bold",
+  },
+  weekPreviewText: {
+    fontSize: 12,
+    color: "#78716C",
+    fontFamily: "Inter_400Regular",
+    lineHeight: 17,
   },
 
   finishDateSection: {
