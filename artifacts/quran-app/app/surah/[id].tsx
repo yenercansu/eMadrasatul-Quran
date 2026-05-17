@@ -17,6 +17,7 @@ import {
   UIManager,
   Alert,
   Animated,
+  PanResponder,
 } from "react-native";
 
 // Enable LayoutAnimation on Android
@@ -1226,6 +1227,26 @@ const [settingsVisible, setSettingsVisible] = useState(false);
    const [currentPage, setCurrentPage] = useState(1);
    const [tajweedMode, setTajweedMode] = useState(false);
    const [selectedTranslations, setSelectedTranslations] = useState<string[]>([]);
+  const [translationRatio, setTranslationRatio] = useState(0.33);
+  const translationRatioRef = useRef(0.33);
+  const dragStartRatioRef = useRef(0.33);
+  const splitContainerHeightRef = useRef(0);
+  const splitPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        dragStartRatioRef.current = translationRatioRef.current;
+      },
+      onPanResponderMove: (_, g) => {
+        if (splitContainerHeightRef.current === 0) return;
+        const delta = -g.dy / splitContainerHeightRef.current;
+        const next = Math.min(0.75, Math.max(0.15, dragStartRatioRef.current + delta));
+        translationRatioRef.current = next;
+        setTranslationRatio(next);
+      },
+    })
+  ).current;
   const [ayahRepeatCounts, setAyahRepeatCounts] = useState<Record<number, number>>({});
   const [wordModal, setWordModal] = useState<{
     word: string;
@@ -2190,11 +2211,16 @@ const [settingsVisible, setSettingsVisible] = useState(false);
       ) : settings.mushafMode ? (
         // Split view: TOP fixed Mushaf panel, BOTTOM scrollable translations.
         // If translations are off, the Mushaf takes the full panel and scrolls.
-        <View style={{ flex: 1 }}>
+        <View
+          style={{ flex: 1 }}
+          onLayout={(e) => { splitContainerHeightRef.current = e.nativeEvent.layout.height; }}
+        >
           <View
             style={[
               scr.pageSlideViewport,
-              settings.showTranslation ? { flex: 0.55, backgroundColor: MUSHAF_BG } : { flex: 1, backgroundColor: MUSHAF_BG },
+              settings.showTranslation
+                ? { height: splitContainerHeightRef.current > 0 ? splitContainerHeightRef.current * (1 - translationRatio) : undefined, flex: splitContainerHeightRef.current > 0 ? undefined : 2, backgroundColor: MUSHAF_BG }
+                : { flex: 1, backgroundColor: MUSHAF_BG },
             ]}
             onLayout={(e) => handlePageSlideLayout(e.nativeEvent.layout.width)}
             onTouchStart={handlePageTouchStart}
@@ -2217,11 +2243,13 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             </Animated.View>
           </View>
           {settings.showTranslation && (
-            <View style={scr.mushafSplitDivider} />
+            <View style={scr.splitHandle} {...splitPanResponder.panHandlers}>
+              <View style={scr.splitHandlePill} />
+            </View>
           )}
           {settings.showTranslation && (
             <ScrollView
-              style={{ flex: 0.45, backgroundColor: "#FFFFFF" }}
+              style={{ flex: 1, backgroundColor: "#FBF6F0" }}
               contentContainerStyle={{ padding: 16, paddingBottom: menuVisible ? (bottomBarHeight + 8) : 40 }}
               showsVerticalScrollIndicator={true}
             >
@@ -2567,6 +2595,20 @@ const scr = StyleSheet.create({
   mushafTranslation: { fontSize: 14, color: "#4A4A4A", fontFamily: "Inter_400Regular", lineHeight: 22 },
   mushafTranslationNum: { fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
   mushafSplitDivider: { height: 1, backgroundColor: "#E5E5E5" },
+  splitHandle: {
+    height: 28,
+    backgroundColor: "#F2EDE6",
+    alignItems: "center",
+    justifyContent: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#E5E5E5",
+  },
+  splitHandlePill: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#C5BCAF",
+  },
   mushafSplitHeader: {
     fontSize: 12, fontWeight: "700", color: "#1A1A1A",
     fontFamily: "Inter_700Bold", letterSpacing: 1.4,
