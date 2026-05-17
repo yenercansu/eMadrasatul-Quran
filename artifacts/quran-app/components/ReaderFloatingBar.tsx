@@ -153,21 +153,21 @@ export function ReaderFloatingBar({
 
       <View style={s.bar}>
         <BarButton
-          icon={<Feather name="book-open" size={17} color={showTranslation && !mushafMode ? "#FFFFFF" : "#9A9A9A"} />}
+          icon={<Feather name="book-open" size={20} color={showTranslation && !mushafMode ? "#FFFFFF" : "#AAAAAA"} />}
           label="Meaning"
           active={showTranslation && !mushafMode}
           disabled={mushafMode}
           onPress={() => toggle(onToggleTranslation)}
         />
         <BarButton
-          icon={<Feather name="type" size={17} color={showTransliteration && !mushafMode ? "#FFFFFF" : "#9A9A9A"} />}
+          icon={<Feather name="type" size={20} color={showTransliteration && !mushafMode ? "#FFFFFF" : "#AAAAAA"} />}
           label="Roman"
           active={showTransliteration && !mushafMode}
           disabled={mushafMode}
           onPress={() => toggle(onToggleTransliteration)}
         />
         <BarButton
-          icon={<Feather name="align-left" size={17} color={showTafsir && !mushafMode ? "#FFFFFF" : "#9A9A9A"} />}
+          icon={<Feather name="align-left" size={20} color={showTafsir && !mushafMode ? "#FFFFFF" : "#AAAAAA"} />}
           label="Tafsir"
           active={showTafsir && !mushafMode}
           disabled={mushafMode}
@@ -188,7 +188,7 @@ export function ReaderFloatingBar({
         />
         <View style={s.divider} />
         <BarButton
-          icon={<Ionicons name="repeat" size={18} color="#9A9A9A" />}
+          icon={<Ionicons name="repeat" size={20} color="#AAAAAA" />}
           label="Range"
           active={false}
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onPlayRange(); }}
@@ -228,7 +228,7 @@ const barBtnStyle = StyleSheet.create({
   btn: { alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12 },
   btnActive: { backgroundColor: "#1A1A1A" },
   btnDisabled: { opacity: 0.35 },
-  label: { fontSize: 10, fontWeight: "600", color: "#9A9A9A", fontFamily: "Inter_600SemiBold", letterSpacing: 0.2 },
+  label: { fontSize: 10, fontWeight: "600", color: "#AAAAAA", fontFamily: "Inter_600SemiBold", letterSpacing: 0.2 },
   labelActive: { color: "#FFFFFF" },
 });
 

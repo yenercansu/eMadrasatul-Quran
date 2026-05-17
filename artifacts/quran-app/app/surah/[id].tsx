@@ -2308,8 +2308,14 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             onPressMeaning={() => setMeaningPanelVisible(true)}
             onToggleTransliteration={() => updateSettings({ showTransliteration: !settings.showTransliteration })}
             onPressTafsir={handleTafsirPress}
-            onToggleColors={() => updateSettings({ colorCoding: !settings.colorCoding })}
-            onToggleTajweed={() => setTajweedMode(v => !v)}
+            onToggleColors={() => {
+              if (!settings.colorCoding) setTajweedMode(false);
+              updateSettings({ colorCoding: !settings.colorCoding });
+            }}
+            onToggleTajweed={() => {
+              if (!tajweedMode) updateSettings({ colorCoding: false });
+              setTajweedMode(v => !v);
+            }}
           />
           {offlineStatus.status === "ready" && (
             <View style={scr.offlineToast} pointerEvents="none">
