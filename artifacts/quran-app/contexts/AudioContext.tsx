@@ -22,16 +22,6 @@ export interface Reciter {
   style: string;
 }
 
-export const RECITERS: Reciter[] = [
-  { id: "7", name: "Mishary Rashid Alafasy", style: "Murattal" },
-  { id: "1", name: "Abdurrahman Al-Sudais", style: "Murattal" },
-  { id: "2", name: "Abdul Basit Abdul Samad", style: "Murattal" },
-  { id: "3", name: "Mahmoud Khalil Al-Husary", style: "Murattal" },
-  { id: "4", name: "Mohamed Siddiq Al-Minshawi", style: "Murattal" },
-  { id: "5", name: "Saud Al-Shuraim", style: "Murattal" },
-  { id: "6", name: "Abu Bakr Al-Shatri", style: "Murattal" },
-];
-
 export const PLAYBACK_RATES = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
 export interface AyahRange {
@@ -664,14 +654,20 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, [settings.autoPauseMinutes, pauseAudio]);
 
   const resumeAudio = useCallback(async () => {
-    if (soundRef.current) {
-      await soundRef.current.setRateAsync(
+    const sound = soundRef.current;
+    if (!sound) return;
+    try {
+      await sound.setRateAsync(
         playbackRateRef.current,
         true,
         Audio.PitchCorrectionQuality.High,
       ).catch(() => {});
-      await soundRef.current.playAsync();
+      await sound.playAsync();
       setAudioState((prev) => ({ ...prev, isPlaying: true }));
+    } catch {
+      if (soundRef.current === sound) soundRef.current = null;
+      await sound.unloadAsync().catch(() => {});
+      setAudioState((prev) => ({ ...prev, isPlaying: false, isLoading: false }));
     }
   }, []);
 

@@ -28,8 +28,9 @@ import { useLocalSearchParams, router } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
+import { useReciters } from "@/hooks/useReciters";
 import { useQuran } from "@/contexts/QuranContext";
-import { useAudio, RECITERS, PLAYBACK_RATES } from "@/contexts/AudioContext";
+import { useAudio, PLAYBACK_RATES } from "@/contexts/AudioContext";
 import { useNetworkStatus } from "@/contexts/NetworkContext";
 import { SettingsSheet, TAFSIR_EDITIONS } from "@/components/SettingsSheet";
 import { FullScreenPage } from "@/components/FullScreenPage";
@@ -45,7 +46,7 @@ import { SegmentedToggle } from "@/components/SegmentedToggle";
 import { MushafPageView } from "@/components/mushaf/MushafPageView";
 import { TajweedWordsText } from "@/components/TajweedText";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { cacheSurahContentForOffline, fetchSurahWithTranslations, fetchTranslation, fetchWordTranslations, type SurahDetail, type ApiAyah, type WordTranslation } from "@/services/quranApi";
+import { cacheSurahContentForOffline, fetchSurahWithTranslations, fetchTranslation, fetchWordTranslations, type SurahDetail, type ApiAyah, type WordTranslation, type QuranReciter } from "@/services/quranApi";
 import { fetchTafsirPage, normalizeTafsirKeys, type TafsirEntry } from "@/services/tafsirApi";
 import { getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
 import { getArabicFontFamily } from "@/constants/arabicFonts";
@@ -592,7 +593,7 @@ function EditSheet({
   playbackRate, onSpeedChange,
   surahName, totalAyahs,
   config, onConfigChange, onPlay,
-  onDownloadCurrentSurah, offlineStatusLabel,
+  onDownloadCurrentSurah, offlineStatusLabel, reciters,
 }: {
   visible: boolean; onClose: () => void;
   settings: { selectedReciter: string };
@@ -605,6 +606,7 @@ function EditSheet({
   onPlay: () => void;
   onDownloadCurrentSurah: () => void;
   offlineStatusLabel: string;
+  reciters: QuranReciter[];
 }) {
   const [recentReciterIds, setRecentReciterIds] = useState<string[]>([]);
   const [pickerTarget, setPickerTarget] = useState<"start" | "end" | null>(null);
@@ -763,7 +765,7 @@ function EditSheet({
               <>
                 <Text style={es.secHeader}>Recently Listened Reciters</Text>
                 {recentReciterIds.map((id) => {
-                  const reciter = RECITERS.find(r => r.id === id);
+                  const reciter = reciters.find(r => r.id === id);
                   if (!reciter) return null;
                   const isActive = settings.selectedReciter === id;
                   return (
@@ -1393,6 +1395,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
 
   const { audioState, playAyah, playRange, playSection, playUstadhMode, playWordByWord, pauseAudio, resumeAudio, stopAudio, setPlaybackRate, playNextAyah, playPrevAyah, setOnNextAyah, setOnPlanFinish } = useAudio();
   const { isOffline } = useNetworkStatus();
+  const { reciters } = useReciters();
   persistVisibleAyahRef.current = (ayahNumber) => saveSurahPosition(surahNum, ayahNumber - 1);
 
   const warnOfflineUnavailable = useCallback(() => {
@@ -1716,6 +1719,8 @@ const [settingsVisible, setSettingsVisible] = useState(false);
     } else if (audioState.currentAyah && audioState.currentSurah === surahNum && arabic) {
       if (!(await canPlayOfflineRange(audioState.currentAyah, audioState.currentAyah))) return;
       playAyah(surahNum, audioState.currentAyah, arabic.ayahs.length, 1);
+    } else if (arabic) {
+      await triggerPlayback(playbackConfigRef.current);
     } else {
       resumeAudio();
     }
@@ -2275,7 +2280,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
           <PlayerBar
             audioState={audioState}
             playbackRate={audioState.playbackRate}
-            reciterName={RECITERS.find(r => r.id === settings.selectedReciter)?.name ?? ""}
+            reciterName={reciters.find(r => r.id === settings.selectedReciter)?.name ?? ""}
             firstPageAyah={pageAyahs[0]?.numberInSurah ?? 1}
             onPlayFromStart={() => {
               if (!arabic) return;
@@ -2335,6 +2340,7 @@ const [settingsVisible, setSettingsVisible] = useState(false);
           });
         }}
         offlineStatusLabel={offlineStatusLabel}
+        reciters={reciters}
       />
 
       <RepeatSectionSheet

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -7,15 +7,17 @@ import {
   Modal,
   FlatList,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
+import { useReciters } from "@/hooks/useReciters";
 import { useQuran } from "@/contexts/QuranContext";
-import { RECITERS } from "@/contexts/AudioContext";
 import { FullScreenPage } from "@/components/FullScreenPage";
 import { ReadingThemeSelector } from "@/components/ReadingThemeSelector";
 import { ARABIC_FONT_OPTIONS } from "@/constants/arabicFonts";
+import type { QuranReciter } from "@/services/quranApi";
 import type { TafsirKey } from "@/services/tafsirApi";
 
 export const TAFSIR_EDITIONS = [
@@ -66,47 +68,66 @@ function FontSizeBar({
 }
 
 function ReciterSheet({
-  visible, onClose, selected, onSelect,
+  onClose, selected, onSelect, reciters, isLoading, error, onRetry,
 }: {
-  visible: boolean; onClose: () => void;
+  onClose: () => void;
   selected: string; onSelect: (id: string) => void;
+  reciters: QuranReciter[];
+  isLoading: boolean;
+  error: string | null;
+  onRetry: () => void;
 }) {
   const colors = useColors();
   const rs = makeRsStyles(colors);
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <FullScreenPage title="Select Reciter" onClose={onClose} scrollable={false}>
-        <FlatList
-          data={RECITERS}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40 }}
-          renderItem={({ item }) => {
-            const active = item.id === selected;
-            return (
-              <TouchableOpacity
-                style={[rs.row, active && rs.rowActive]}
-                activeOpacity={0.75}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  onSelect(item.id);
-                  onClose();
-                }}
-              >
-                <View style={[rs.avatar, active && rs.avatarActive]}>
-                  <Ionicons name="mic" size={18} color={active ? colors.primaryForeground : colors.mutedForeground} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[rs.name, active && rs.nameActive]}>{item.name}</Text>
-                  <Text style={rs.style}>{item.style}</Text>
-                </View>
-                {active && <Ionicons name="checkmark-circle" size={22} color={colors.foreground} />}
-              </TouchableOpacity>
-            );
-          }}
-        />
-      </FullScreenPage>
-    </Modal>
+    <FullScreenPage title="Select Reciter" onClose={onClose} scrollable={false}>
+      <FlatList
+        data={reciters}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40 }}
+        ListEmptyComponent={
+          <View style={rs.emptyState}>
+            {isLoading ? (
+              <>
+                <ActivityIndicator color={colors.foreground} />
+                <Text style={rs.emptyText}>Loading reciters...</Text>
+              </>
+            ) : (
+              <>
+                <Text style={rs.emptyText}>{error ?? "No reciters found."}</Text>
+                <TouchableOpacity style={rs.retryButton} onPress={onRetry} activeOpacity={0.75}>
+                  <Text style={rs.retryText}>Retry</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        }
+        renderItem={({ item }) => {
+          const active = item.id === selected;
+          return (
+            <TouchableOpacity
+              style={[rs.row, active && rs.rowActive]}
+              activeOpacity={0.75}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onSelect(item.id);
+                onClose();
+              }}
+            >
+              <View style={[rs.avatar, active && rs.avatarActive]}>
+                <Ionicons name="mic" size={18} color={active ? colors.primaryForeground : colors.mutedForeground} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[rs.name, active && rs.nameActive]}>{item.name}</Text>
+                <Text style={rs.style}>{item.style}</Text>
+              </View>
+              {active && <Ionicons name="checkmark-circle" size={22} color={colors.foreground} />}
+            </TouchableOpacity>
+          );
+        }}
+      />
+    </FullScreenPage>
   );
 }
 
@@ -114,7 +135,12 @@ export function SettingsSheet({ visible, onClose }: Props) {
   const colors = useColors();
   const s = makeStyles(colors);
   const { settings, updateSettings, accountSettings, updateAccountSettings } = useQuran();
-  const [reciterSheetVisible, setReciterSheetVisible] = useState(false);
+  const [page, setPage] = useState<"settings" | "reciters">("settings");
+  const { reciters, isLoading: recitersLoading, error: recitersError, reload: reloadReciters } = useReciters();
+
+  useEffect(() => {
+    if (!visible) setPage("settings");
+  }, [visible]);
 
   const toggle = (fn: () => void) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -123,11 +149,21 @@ export function SettingsSheet({ visible, onClose }: Props) {
 
   const arabicSize = accountSettings.fontSize ?? 28;
   const romanSize = accountSettings.romanFontSize ?? 14;
-  const currentReciter = RECITERS.find(r => r.id === settings.selectedReciter) ?? RECITERS[0];
+  const currentReciter = reciters.find(r => r.id === settings.selectedReciter);
 
   return (
-    <>
-      <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" onRequestClose={page === "reciters" ? () => setPage("settings") : onClose}>
+      {page === "reciters" ? (
+        <ReciterSheet
+          onClose={() => setPage("settings")}
+          selected={settings.selectedReciter}
+          onSelect={(id) => updateSettings({ selectedReciter: id })}
+          reciters={reciters}
+          isLoading={recitersLoading}
+          error={recitersError}
+          onRetry={reloadReciters}
+        />
+      ) : (
         <FullScreenPage title="Reader Settings" onClose={onClose}>
           <View style={s.scrollContent}>
             <Text style={s.sectionLabel}>Theme</Text>
@@ -192,15 +228,15 @@ export function SettingsSheet({ visible, onClose }: Props) {
             <Text style={s.sectionLabel}>Reciter</Text>
             <TouchableOpacity
               style={s.reciterRow}
-              onPress={() => setReciterSheetVisible(true)}
+              onPress={() => setPage("reciters")}
               activeOpacity={0.75}
             >
               <View style={s.reciterAvatar}>
                 <Ionicons name="mic" size={20} color={colors.foreground} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.reciterName}>{currentReciter?.name}</Text>
-                <Text style={s.reciterStyle}>{currentReciter?.style}</Text>
+                <Text style={s.reciterName}>{currentReciter?.name ?? "Loading reciters..."}</Text>
+                <Text style={s.reciterStyle}>{currentReciter?.style ?? "Quran.com recitations"}</Text>
               </View>
               <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
             </TouchableOpacity>
@@ -263,15 +299,8 @@ export function SettingsSheet({ visible, onClose }: Props) {
             <Text style={s.autoPauseHint}>Audio will automatically pause after the selected duration.</Text>
           </View>
         </FullScreenPage>
-      </Modal>
-
-      <ReciterSheet
-        visible={reciterSheetVisible}
-        onClose={() => setReciterSheetVisible(false)}
-        selected={settings.selectedReciter}
-        onSelect={(id) => updateSettings({ selectedReciter: id })}
-      />
-    </>
+      )}
+    </Modal>
   );
 }
 
@@ -418,4 +447,8 @@ const makeRsStyles = (colors: ReturnType<typeof useColors>) =>
     name: { fontSize: 14, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
     nameActive: { color: colors.foreground },
     style: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
+    emptyState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 24 },
+    emptyText: { fontSize: 14, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center" },
+    retryButton: { borderRadius: 12, backgroundColor: colors.primary, paddingHorizontal: 18, paddingVertical: 10 },
+    retryText: { fontSize: 13, color: colors.primaryForeground, fontFamily: "Inter_600SemiBold" },
   });

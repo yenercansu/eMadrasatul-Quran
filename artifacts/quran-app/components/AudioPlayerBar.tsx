@@ -10,7 +10,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
-import { useAudio, PLAYBACK_RATES, RECITERS } from "@/contexts/AudioContext";
+import { useReciters } from "@/hooks/useReciters";
+import { useAudio, PLAYBACK_RATES } from "@/contexts/AudioContext";
 import { useQuran } from "@/contexts/QuranContext";
 import { SURAH_DATA } from "@/constants/surahData";
 
@@ -19,6 +20,7 @@ export function AudioPlayerBar() {
   const s = useMemo(() => styles(colors), [colors]);
   const { audioState, pauseAudio, resumeAudio, stopAudio, playNextAyah, playPrevAyah, setPlaybackRate } = useAudio();
   const { settings } = useQuran();
+  const { reciters } = useReciters();
   const [showRates, setShowRates] = useState(false);
 
   if (!audioState.currentAyah && !audioState.isLoading) return null;
@@ -28,7 +30,7 @@ export function AudioPlayerBar() {
     ? (SURAH_DATA[audioState.currentSurah - 1]?.englishName ?? `Surah ${audioState.currentSurah}`)
     : "";
   const rateLabel = audioState.playbackRate === 1.0 ? "1×" : `${audioState.playbackRate}×`;
-  const reciter = RECITERS.find(r => r.id === settings.selectedReciter);
+  const reciter = reciters.find(r => r.id === settings.selectedReciter);
   const reciterName = reciter?.name ?? (audioState.isLoading ? "Loading…" : "");
 
   const trackLine = audioState.currentAyah

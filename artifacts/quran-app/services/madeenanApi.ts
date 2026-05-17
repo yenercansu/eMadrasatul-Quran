@@ -136,6 +136,7 @@ export async function apiRequest<T>(
     query?: Record<string, QueryValue>;
     auth?: boolean;
     headers?: HeadersInit;
+    suppressErrorLog?: boolean;
   } = {},
 ): Promise<T> {
   const method = options.method ?? "GET";
@@ -185,7 +186,7 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const details = getErrorMessage(parsed, `Request failed with HTTP ${response.status}`);
-    if (__DEV__) {
+    if (__DEV__ && !options.suppressErrorLog) {
       console.error(`[Madeenan API] ERROR ${response.status} ${details.code}: ${details.message}`, {
         method,
         url,
@@ -526,7 +527,7 @@ export const deleteSavedWord = (id: string | number) =>
   apiRequest<unknown>(`/user/saved-words/${id}`, { method: "DELETE" });
 export const getReciterPreferences = () => apiRequest<ReciterPreferencesBody | null>("/user/reciter-preferences");
 export const updateReciterPreferences = (body: ReciterPreferencesBody) =>
-  apiRequest<ReciterPreferencesBody>("/user/reciter-preferences", { method: "PUT", body });
+  apiRequest<ReciterPreferencesBody>("/user/reciter-preferences", { method: "PUT", body, suppressErrorLog: true });
 export const sendHeartbeat = () => apiRequest<{ status?: string }>("/user/heartbeat", { method: "POST" });
 export const getActiveUserCount = () => apiRequest<ActiveUsersResponse>("/users/active-count");
 export const createOfflinePackage = (body: OfflinePackageBody) =>
