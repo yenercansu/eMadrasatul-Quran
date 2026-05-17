@@ -524,6 +524,15 @@ export default function HomeScreen() {
     setAyahRangeVisible(true);
   }, []);
 
+  const openPaceHifzSelection = useCallback(() => {
+    setWidgetPath("surah");
+    setWidgetFirstAyah(null);
+    setWidgetLastAyah(null);
+    setWidgetJuz(null);
+    setShowHifzGoalOptions(false);
+    setPaceDateVisible(true);
+  }, []);
+
   useEffect(() => {
     const prev = prevMemPercentRef.current;
     prevMemPercentRef.current = memorizationPercent;
@@ -773,6 +782,13 @@ export default function HomeScreen() {
                       activeOpacity={0.85}
                     >
                       <Text style={s.hifzInlineOptionText}>By Surah</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={s.hifzInlineOptionBtn}
+                      onPress={openPaceHifzSelection}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={s.hifzInlineOptionText}>By Pace</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={s.hifzInlineCloseBtn}
@@ -2180,7 +2196,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     hifzInlineOptionsRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 10,
+      gap: 8,
       paddingHorizontal: 14,
       paddingVertical: 14,
     },
@@ -2193,7 +2209,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       justifyContent: "center",
     },
     hifzInlineOptionText: {
-      fontSize: 16,
+      fontSize: 14,
       fontWeight: "700",
       color: colors.appBlack,
       fontFamily: "Inter_700Bold",

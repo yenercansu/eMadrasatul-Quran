@@ -1623,8 +1623,8 @@ const s = StyleSheet.create({
   resetCtaWrap: {
     alignItems: "flex-end",
     paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 8,
+    paddingTop: 14,
+    paddingBottom: 4,
   },
   resetCta: {
     minHeight: 34,
