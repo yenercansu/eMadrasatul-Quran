@@ -2227,8 +2227,8 @@ const [settingsVisible, setSettingsVisible] = useState(false);
             >
               <Text style={scr.mushafSplitHeader}>Translation</Text>
               {pageAyahs.map((ayah) => {
-                const sahih = translationsMap["en.sahih"];
-                const ta = sahih?.ayahs[ayah.numberInSurah - 1];
+                const translation = translationsMap[selectedTranslations[0]];
+                const ta = translation?.ayahs[ayah.numberInSurah - 1];
                 return ta ? (
                   <View key={ayah.numberInSurah} style={scr.mushafSplitRow}>
                     <View style={scr.mushafSplitNumBadge}>
