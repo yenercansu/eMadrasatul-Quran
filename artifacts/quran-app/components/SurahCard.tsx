@@ -1,8 +1,15 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { SaveButton } from "@/components/SaveButton";
+import { AppCard, AppChip } from "@/components/DesignSystem";
 import type { ApiSurah } from "@/services/quranApi";
 
 interface Props {
@@ -28,76 +35,110 @@ export function MemorizedBadge() {
   );
 }
 
-export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, memorizedCount = 0, isManuallyCompleted, onToggleComplete }: Props) {
+export function SurahCard({
+  surah,
+  onPress,
+  isRecent,
+  isSaved,
+  onSave,
+  memorizedCount = 0,
+  isManuallyCompleted,
+  onToggleComplete,
+}: Props) {
   const colors = useColors();
   const s = styles(colors);
 
-  const isCompleted = memorizedCount === surah.numberOfAyahs || isManuallyCompleted;
+  const isCompleted =
+    memorizedCount === surah.numberOfAyahs || isManuallyCompleted;
   const hasPartialProgress = !isCompleted && memorizedCount > 0;
-  const progressRatio = surah.numberOfAyahs > 0 ? memorizedCount / surah.numberOfAyahs : 0;
+  const progressRatio =
+    surah.numberOfAyahs > 0 ? memorizedCount / surah.numberOfAyahs : 0;
 
   return (
-    <TouchableOpacity onPress={onPress} style={s.card} activeOpacity={0.82}>
-      <View style={s.topRow}>
-        <View style={s.meta}>
-          <Text style={s.type}>{surah.revelationType}</Text>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.82}>
+      <AppCard style={s.card}>
+        <View style={s.topRow}>
+          <View style={s.meta}>
+            <Text style={s.type}>{surah.revelationType}</Text>
+          </View>
+          {onSave && (
+            <SaveButton
+              saved={isSaved}
+              onPress={(e) => {
+                e.stopPropagation();
+                onSave();
+              }}
+              accessibilityLabel={`${isSaved ? "Unsave" : "Save"} ${surah.englishName}`}
+            />
+          )}
         </View>
-        {onSave && (
-          <SaveButton
-            saved={isSaved}
-            onPress={(e) => { e.stopPropagation(); onSave(); }}
-            accessibilityLabel={`${isSaved ? "Unsave" : "Save"} ${surah.englishName}`}
-          />
+
+        <View style={s.body}>
+          <View style={s.names}>
+            <Text style={s.englishName}>{surah.englishName}</Text>
+            <Text style={s.translation}>{surah.englishNameTranslation}</Text>
+            <View style={s.footerMeta}>
+              <Text style={s.ayahCount}>{surah.numberOfAyahs} ayahs</Text>
+              {isRecent && <View style={s.metaDot} />}
+              {isRecent && <Text style={s.ayahCount}>Recent</Text>}
+            </View>
+          </View>
+          <View style={s.arabicWrap}>
+            <Text style={s.arabicName}>{surah.name}</Text>
+          </View>
+        </View>
+
+        {hasPartialProgress && (
+          <View style={s.progressSection}>
+            <AppChip
+              label={`${memorizedCount}/${surah.numberOfAyahs} memorized`}
+              variant="default"
+              size="sm"
+              style={s.progressTag}
+              textStyle={s.progressTagText}
+            />
+            <View style={s.progressTrack}>
+              <View
+                style={[
+                  s.progressFill,
+                  { width: `${Math.round(progressRatio * 100)}%` as any },
+                ]}
+              />
+            </View>
+          </View>
         )}
-      </View>
 
-      <View style={s.body}>
-        <View style={s.names}>
-          <Text style={s.englishName}>{surah.englishName}</Text>
-          <Text style={s.translation}>{surah.englishNameTranslation}</Text>
-          <View style={s.footerMeta}>
-            <Text style={s.ayahCount}>{surah.numberOfAyahs} ayahs</Text>
-            {isRecent && <View style={s.metaDot} />}
-            {isRecent && <Text style={s.ayahCount}>Recent</Text>}
-          </View>
-        </View>
-        <View style={s.arabicWrap}>
-          <Text style={s.arabicName}>{surah.name}</Text>
-        </View>
-      </View>
-
-      {hasPartialProgress && (
-        <View style={s.progressSection}>
-          <View style={s.progressTag}>
-            <Ionicons name="bookmarks-outline" size={11} color={colors.appIconMuted} />
-            <Text style={s.progressTagText}>{memorizedCount}/{surah.numberOfAyahs} memorized</Text>
-          </View>
-          <View style={s.progressTrack}>
-            <View style={[s.progressFill, { width: `${Math.round(progressRatio * 100)}%` as any }]} />
-          </View>
-        </View>
-      )}
-
-      {isCompleted ? (
-        <TouchableOpacity
-          onPress={(e) => { e.stopPropagation(); onToggleComplete?.(); }}
-          activeOpacity={0.72}
-          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          style={{ alignSelf: "flex-start" }}
-        >
-          <MemorizedBadge />
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity
-          onPress={(e) => { e.stopPropagation(); onToggleComplete?.(); }}
-          style={s.markCompleteRow}
-          activeOpacity={0.7}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="checkmark-circle-outline" size={14} color={colors.appIconMuted} />
-          <Text style={s.markCompleteText}>Mark as completed</Text>
-        </TouchableOpacity>
-      )}
+        {isCompleted ? (
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation();
+              onToggleComplete?.();
+            }}
+            activeOpacity={0.72}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            style={{ alignSelf: "flex-start" }}
+          >
+            <MemorizedBadge />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation();
+              onToggleComplete?.();
+            }}
+            style={s.markCompleteRow}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={14}
+              color={colors.appIconMuted}
+            />
+            <Text style={s.markCompleteText}>Mark as completed</Text>
+          </TouchableOpacity>
+        )}
+      </AppCard>
     </TouchableOpacity>
   );
 }
@@ -107,12 +148,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     card: {
       marginHorizontal: 16,
       marginBottom: 12,
-      backgroundColor: colors.appCardWarm,
-      borderRadius: 22,
-      padding: 18,
-      borderWidth: 1,
-      borderColor: colors.appSoftBorder,
-      ...colors.shadows.premiumCard,
     },
     topRow: {
       flexDirection: "row",
@@ -212,16 +247,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       gap: 6,
     },
     progressTag: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 5,
       alignSelf: "flex-start",
-      backgroundColor: colors.appSoftPill,
-      borderWidth: 1,
-      borderColor: colors.appSoftBorder,
-      paddingHorizontal: 9,
-      paddingVertical: 4,
-      borderRadius: 999,
     },
     progressTagText: {
       fontSize: 11,

@@ -1,7 +1,7 @@
 import React from "react";
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { type StyleProp, type ViewStyle } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { useColors } from "@/hooks/useColors";
+import { AppChip, type AppChipVariant } from "@/components/DesignSystem";
 
 type FeatherIconName = React.ComponentProps<typeof Feather>["name"];
 
@@ -21,64 +21,24 @@ interface ValuePillProps {
  * - `soft`: warm surface with border — for summary tags (e.g. "1 yr")
  * - `muted`: light surface, dimmed text — for locked/inactive state (e.g. "Choose date first")
  */
-export function ValuePill({ label, variant = "dark", icon, style }: ValuePillProps) {
-  const c = useColors();
-
-  const containerStyle = [
-    styles.base,
-    variant === "dark" && { backgroundColor: c.appSelectedPill, borderWidth: 0 },
-    variant === "soft" && {
-      backgroundColor: c.appSecondarySurface,
-      borderWidth: 1,
-      borderColor: c.appProgressRail,
-    },
-    variant === "muted" && {
-      backgroundColor: c.appSecondarySurface,
-      borderWidth: 0,
-    },
-    style,
-  ];
-
-  const textColor =
-    variant === "dark"
-      ? c.appText
-      : variant === "muted"
-      ? c.appBorderMid
-      : c.appText;
-
-  const iconColor = variant === "muted" ? c.appBorderMid : c.appText;
-
+export function ValuePill({
+  label,
+  variant = "dark",
+  icon,
+  style,
+}: ValuePillProps) {
+  const chipVariant: AppChipVariant =
+    variant === "soft" ? "outline" : variant === "muted" ? "muted" : "selected";
   return (
-    <View style={containerStyle}>
-      {icon && <Feather name={icon} size={11} color={iconColor} />}
-      <Text
-        style={[
-          styles.label,
-          variant === "soft" && styles.softLabel,
-          { color: textColor },
-        ]}
-      >
-        {label}
-      </Text>
-    </View>
+    <AppChip
+      label={label}
+      icon={icon}
+      variant={chipVariant}
+      size="sm"
+      style={style}
+      textStyle={{
+        fontFamily: variant === "soft" ? "Inter_700Bold" : "Inter_600SemiBold",
+      }}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  label: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-  },
-  softLabel: {
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
-  },
-});

@@ -1,7 +1,15 @@
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View, type StyleProp, type ViewStyle } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
+import { AppChip } from "@/components/DesignSystem";
 
 interface SelectChipProps {
   label: string;
@@ -39,6 +47,20 @@ export function SelectChip({
     flex && { flex: 1 },
     style,
   ];
+
+  if (!hasSubLabel && !recommended) {
+    return (
+      <AppChip
+        label={label}
+        selected={selected}
+        variant="muted"
+        size="lg"
+        onPress={handlePress}
+        disabled={!onPress}
+        style={[flex && { flex: 1 }, style]}
+      />
+    );
+  }
 
   return (
     <TouchableOpacity

@@ -13,7 +13,13 @@ import { useColors } from "@/hooks/useColors";
 
 type FeatherIconName = React.ComponentProps<typeof Feather>["name"];
 
-type ActionPillVariant = "primary" | "secondary" | "soft" | "outline" | "ghost" | "border";
+type ActionPillVariant =
+  | "primary"
+  | "secondary"
+  | "soft"
+  | "outline"
+  | "ghost"
+  | "border";
 type ActionPillSize = "sm" | "md" | "lg";
 
 interface ActionPillProps extends Omit<TouchableOpacityProps, "style"> {
@@ -43,7 +49,9 @@ export function ActionPill({
   const iconColor = isPrimary ? colors.appWhite : colors.appBlack;
   const iconSize = size === "sm" ? 12 : size === "lg" ? 16 : 14;
 
-  const iconNode = icon ? <Feather name={icon} size={iconSize} color={iconColor} /> : null;
+  const iconNode = icon ? (
+    <Feather name={icon} size={iconSize} color={iconColor} />
+  ) : null;
 
   return (
     <TouchableOpacity
@@ -52,7 +60,14 @@ export function ActionPill({
       style={[s.base, s[size], s[variant], style]}
     >
       {iconPosition === "left" ? iconNode : null}
-      <Text style={[s.label, isPrimary && s.primaryLabel, size === "sm" && s.smLabel, textStyle]}>
+      <Text
+        style={[
+          s.label,
+          isPrimary && s.primaryLabel,
+          size === "sm" && s.smLabel,
+          textStyle,
+        ]}
+      >
         {label}
       </Text>
       {iconPosition === "right" ? iconNode : null}
@@ -67,7 +82,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       justifyContent: "center",
       gap: 6,
-      borderRadius: 14,
+      borderRadius: colors.borders.lg,
     },
     sm: {
       minHeight: 42,

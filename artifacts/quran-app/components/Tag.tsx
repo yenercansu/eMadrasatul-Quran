@@ -2,7 +2,7 @@ import React from "react";
 import { TouchableOpacity, Text, View, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
-import colors from "@/constants/colors";
+import { AppChip } from "@/components/DesignSystem";
 
 interface TagProps {
   label: string;
@@ -16,32 +16,35 @@ interface TagProps {
   accentBgColor?: string;
 }
 
-export function Tag({ label, selected = false, onPress, onDismiss, accentColor, accentBgColor }: TagProps) {
+export function Tag({
+  label,
+  selected = false,
+  onPress,
+  onDismiss,
+  accentColor,
+  accentBgColor,
+}: TagProps) {
   const c = useColors();
 
-  const borderColor = accentColor ?? (selected ? c.appSelectedPill : c.appSoftBorder);
-  const backgroundColor = accentBgColor ?? (selected ? c.appSelectedPill : c.appCardWarm);
+  const customStyle =
+    accentColor || accentBgColor
+      ? {
+          borderColor: accentColor ?? c.appSoftBorder,
+          backgroundColor: accentBgColor ?? c.appCardWarm,
+        }
+      : undefined;
   const textColor = accentColor ?? (selected ? c.appText : c.appTextMuted);
-
-  const containerStyle = {
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: colors.borders.full,
-    borderWidth: 1,
-    borderColor,
-    backgroundColor,
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    gap: 6,
-  };
 
   const textElement = (
     <Text
-      style={{
-        fontSize: 13,
-        color: textColor,
-        fontFamily: (selected || accentColor) ? "Inter_600SemiBold" : "Inter_400Regular",
-      }}
+      style={[
+        s.label,
+        {
+          color: textColor,
+          fontFamily:
+            selected || accentColor ? "Inter_600SemiBold" : "Inter_400Regular",
+        },
+      ]}
     >
       {label}
     </Text>
@@ -56,25 +59,42 @@ export function Tag({ label, selected = false, onPress, onDismiss, accentColor, 
     />
   ) : null;
 
-  const inner = <>{textElement}{dismissBtn}</>;
-
-  if (!onPress && !onDismiss) return <View style={containerStyle}>{inner}</View>;
-
-  if (onPress && !onDismiss) {
+  if (!onDismiss) {
     return (
-      <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={containerStyle}>
-        {inner}
-      </TouchableOpacity>
+      <AppChip
+        label={label}
+        selected={selected}
+        onPress={onPress}
+        style={customStyle}
+        textStyle={{
+          color: textColor,
+          fontFamily:
+            selected || accentColor ? "Inter_600SemiBold" : "Inter_400Regular",
+        }}
+      />
     );
   }
 
   return (
-    <View style={containerStyle}>
+    <View
+      style={[
+        s.dismissibleContainer,
+        { backgroundColor: c.appCardWarm, borderColor: c.appSoftBorder },
+        selected &&
+          !customStyle && {
+            backgroundColor: c.appSelectedPill,
+            borderColor: c.appSelectedPill,
+          },
+        customStyle,
+      ]}
+    >
       {onPress ? (
         <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
           {textElement}
         </TouchableOpacity>
-      ) : textElement}
+      ) : (
+        textElement
+      )}
       <TouchableOpacity
         onPress={onDismiss}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -87,6 +107,19 @@ export function Tag({ label, selected = false, onPress, onDismiss, accentColor, 
 }
 
 const s = StyleSheet.create({
+  dismissibleContainer: {
+    minHeight: 36,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  label: {
+    fontSize: 13,
+  },
   dismissIcon: {
     marginLeft: 2,
   },

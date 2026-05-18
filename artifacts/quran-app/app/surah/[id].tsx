@@ -2150,7 +2150,7 @@ export default function SurahScreen() {
       showsVerticalScrollIndicator={active}
       scrollEnabled={active}
       contentContainerStyle={{
-        paddingTop: menuVisible ? 4 : (insets.top + 12),
+        paddingTop: menuVisible ? 4 : 12,
         paddingBottom: menuVisible ? (bottomBarHeight + 8) : 24,
       }}
       style={{ flex: 1, backgroundColor: "#FAF9F7" }}
@@ -2250,7 +2250,7 @@ export default function SurahScreen() {
       ref={active ? mushafScrollRef : undefined}
       style={{ flex: 1 }}
       contentContainerStyle={{
-        paddingTop: menuVisible ? mushafMenuTopInset : (insets.top + 12),
+        paddingTop: menuVisible ? mushafMenuTopInset : 12,
         paddingBottom: menuVisible ? (bottomBarHeight + 8) : 24,
       }}
       showsVerticalScrollIndicator={active}
@@ -2370,7 +2370,7 @@ export default function SurahScreen() {
       ) : settings.mushafMode ? (
         // Split view: TOP fixed Mushaf panel, BOTTOM scrollable translations.
         // If translations are off, the Mushaf takes the full panel and scrolls.
-        <View style={{ flex: 1 }}>
+        <View style={[{ flex: 1 }, !menuVisible && { marginTop: insets.top }]}>
           <View
             style={[
               scr.pageSlideViewport,
@@ -2421,7 +2421,7 @@ export default function SurahScreen() {
       ) : (
         arabic ? (
           <View
-            style={scr.pageSlideViewport}
+            style={[scr.pageSlideViewport, !menuVisible && { marginTop: insets.top }]}
             onLayout={(e) => handlePageSlideLayout(e.nativeEvent.layout.width)}
             onTouchStart={handlePageTouchStart}
             onTouchEnd={handlePageTouchEnd}
