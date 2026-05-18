@@ -71,6 +71,7 @@ export interface Goal {
   endSurahNumber?: number;
   endAyahNumber?: number;
   weeklyTargetAyahKeys?: string[];
+  isRevision?: boolean;
 }
 
 export interface MemorizationGoal {

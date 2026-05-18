@@ -228,6 +228,7 @@ export interface AyahRangeResult {
   last: AyahRef;
   juz?: number;
   ayahsPerWeek: number;
+  isRevision?: boolean;
   targetAyahsPerWeek?: number;
   measurementStyle?: MeasurementStyle;
   finishWeeks?: number;
@@ -288,7 +289,7 @@ export function AyahRangeModal({
   const [paceStep, setPaceStep] = useState<0 | 1 | 2 | 3>(0);
   const [paceRangeTab, setPaceRangeTab] = useState<"surah" | "juz">("surah");
   const [search, setSearch] = useState("");
-  const [ayahsPerWeek, setAyahsPerWeek] = useState(10);
+  const [ayahsPerWeek, setAyahsPerWeek] = useState(1);
   const [memorizationStyle, setMemorizationStyle] = useState<MemorizationStyle>("steady");
   const [gradualIncreaseStyle, setGradualIncreaseStyle] = useState<GradualIncreaseStyle>("medium");
   const [peakCapacityPerWeek, setPeakCapacityPerWeek] = useState(105);
@@ -333,7 +334,7 @@ export function AyahRangeModal({
       setFirstAyah(startAtAyahSelection ? null : initialSelection?.first ?? null);
       setLastAyah(startAtAyahSelection ? null : initialSelection?.last ?? null);
       setActivePhase("first");
-      const initialAyahsPerWeek = initialSelection?.ayahsPerWeek ?? 10;
+      const initialAyahsPerWeek = initialSelection?.ayahsPerWeek ?? 1;
       const initialPeak = initialSelection?.peakCapacityPerWeek ?? initialSelection?.targetAyahsPerWeek;
       const fallbackPeak = desiredCapacityOptions.find((option) => option.ayahsPerWeek > initialAyahsPerWeek)?.ayahsPerWeek
         ?? desiredCapacityOptions[desiredCapacityOptions.length - 1].ayahsPerWeek;
@@ -448,6 +449,17 @@ export function AyahRangeModal({
   }, [firstAyah, lastAyah, activePath, juzAyahs, memorizedAyahKeys]);
 
   const remainingRangeAyahs = unmemorizedRangeAyahs.length;
+  const isRevisionMode = firstAyah !== null && lastAyah !== null && totalRangeAyahs > 0 && remainingRangeAyahs === 0;
+
+  const memorizedSet = useMemo(() => new Set(memorizedAyahKeys), [memorizedAyahKeys]);
+  const memorizedCountBySurah = useMemo(() => {
+    const counts: Record<number, number> = {};
+    for (const key of memorizedAyahKeys) {
+      const surahNum = Number(key.split(":")[0]);
+      if (Number.isFinite(surahNum)) counts[surahNum] = (counts[surahNum] ?? 0) + 1;
+    }
+    return counts;
+  }, [memorizedAyahKeys]);
   const expandableWeeklyAyahs = useMemo(() => {
     if (!startAtWeeklyGoal || !firstAyah) return 0;
     const memorized = new Set(memorizedAyahKeys);
@@ -503,6 +515,15 @@ export function AyahRangeModal({
   }, [clampedAyahsPerWeek, firstAyah, lastAyah, juzAyahs, memorizedAyahKeys, path, startAtWeeklyGoal]);
 
   const weeklyPreviewRangeLabel = useMemo(() => {
+    if (isRevisionMode && firstAyah && lastAyah) {
+      if (firstAyah.surahNumber === lastAyah.surahNumber) {
+        const prefix = path === "juz" ? `${firstAyah.surahName}, ` : "";
+        return firstAyah.ayahNumber === lastAyah.ayahNumber
+          ? `${prefix}Ayah ${firstAyah.ayahNumber}`
+          : `${prefix}Ayah ${firstAyah.ayahNumber} – ${lastAyah.ayahNumber}`;
+      }
+      return `${firstAyah.surahName} ${firstAyah.ayahNumber} – ${lastAyah.surahName} ${lastAyah.ayahNumber}`;
+    }
     const first = weeklyPreviewAyahs[0];
     const last = weeklyPreviewAyahs[weeklyPreviewAyahs.length - 1];
     if (!first || !last) return "No ayahs available";
@@ -513,7 +534,7 @@ export function AyahRangeModal({
         : `${prefix}Ayah ${first.ayahNumber} – ${last.ayahNumber}`;
     }
     return `${first.surahName} ${first.ayahNumber} – ${last.surahName} ${last.ayahNumber}`;
-  }, [path, weeklyPreviewAyahs]);
+  }, [path, weeklyPreviewAyahs, isRevisionMode, firstAyah, lastAyah]);
 
   useEffect(() => {
     setAyahsPerWeek((prev) => Math.max(1, Math.min(prev, dynamicMax)));
@@ -706,6 +727,7 @@ export function AyahRangeModal({
       last,
       juz: activePath === "juz" ? selectedJuz ?? undefined : undefined,
       ayahsPerWeek: startAtPaceDate ? currentPaceAyahsPerWeek : clampedAyahsPerWeek,
+      isRevision: isRevisionMode,
       targetAyahsPerWeek: startAtPaceDate ? peakCapacityPerWeek : clampedAyahsPerWeek,
       finishWeeks: autoWeeksNeeded ?? undefined,
       measurementStyle: "visual",
@@ -768,7 +790,7 @@ export function AyahRangeModal({
         activeOpacity={disabled ? 1 : 0.7}
       >
         {showMemorized ? (
-          <Feather name="check" size={12} color={showDisabledMemorized ? "#16A34A" : "#FFFFFF"} />
+          <Feather name="check" size={11} color="#16A34A" />
         ) : (
           <Text
             style={[
@@ -1146,6 +1168,7 @@ export function AyahRangeModal({
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => {
           const isSelected = selectedSurah?.number === item.number;
+          const isCompleted = (memorizedCountBySurah[item.number] ?? 0) >= item.ayahCount;
           return (
             <TouchableOpacity
               style={s.listRow}
@@ -1162,6 +1185,11 @@ export function AyahRangeModal({
               <View style={s.listRowInfo}>
                 <Text style={s.listRowTitle}>{item.englishName}</Text>
                 <Text style={s.listRowSub}>{item.ayahCount} ayahs</Text>
+                {isCompleted && (
+                  <View style={s.completedListTag}>
+                    <Text style={s.completedListTagText}>Completed</Text>
+                  </View>
+                )}
               </View>
               <Text style={s.listRowArabic}>{item.name}</Text>
               {isSelected ? (
@@ -1203,6 +1231,8 @@ export function AyahRangeModal({
           const lastRef = juzAyahList[juzAyahList.length - 1];
           const endSurah = lastRef ? SURAH_DATA[lastRef.surahNumber - 1] : null;
           const subText = `${startSurah?.englishName ?? ""} ${juzStart?.ayah ?? ""} – ${endSurah?.englishName ?? ""} ${lastRef?.ayahNumber ?? ""}`;
+          const juzMemorizedCount = juzAyahList.filter(a => memorizedSet.has(`${a.surahNumber}:${a.ayahNumber}`)).length;
+          const isJuzCompleted = juzAyahList.length > 0 && juzMemorizedCount === juzAyahList.length;
 
           return (
             <TouchableOpacity
@@ -1223,6 +1253,11 @@ export function AyahRangeModal({
                   {group.name ? <Text style={s.juzNameText}>{group.name}</Text> : null}
                 </View>
                 <Text style={s.listRowSub}>{subText}</Text>
+                {isJuzCompleted && (
+                  <View style={s.completedListTag}>
+                    <Text style={s.completedListTagText}>Completed</Text>
+                  </View>
+                )}
               </View>
               {isSelected ? (
                 <View style={s.checkCircle}>
@@ -1551,6 +1586,16 @@ export function AyahRangeModal({
             </View>
           )}
 
+          {/* Revision intent banner — entire selected range is memorized */}
+          {isRevisionMode && (
+            <View style={s.revisionIntentBanner}>
+              <Feather name="refresh-cw" size={13} color="#92400E" />
+              <Text style={s.revisionIntentBannerText}>
+                This memorized range will become a revision track.
+              </Text>
+            </View>
+          )}
+
           {/* Ayah grid */}
           {activePath === "surah" ? (
             <>
@@ -1607,6 +1652,8 @@ export function AyahRangeModal({
 
   // ── Step 3: Weekly Goal ─────────────────────────────────────────────────────
   const renderWeeklyGoal = () => {
+    const isRevision = isRevisionMode;
+    const revisionMax = isRevision ? Math.min(MAX_WEEKLY, totalRangeAyahs) : dynamicMax;
     const isJuz = path === "juz";
     const surahOrJuzLabel = isJuz ? `Juz ${selectedJuz}` : (selectedSurah?.englishName ?? "");
     const startingAyahLabel = firstAyah
@@ -1624,7 +1671,7 @@ export function AyahRangeModal({
       <>
         <View style={[s.header, { paddingTop: insets.top + 8 }]}>
           {renderHeaderBack(() => startAtWeeklyGoal ? onClose() : setStep(2))}
-          <Text style={s.screenTitle}>Set Your Weekly Goal</Text>
+          <Text style={s.screenTitle}>{isRevision ? "Set Weekly Revision" : "Set Your Weekly Goal"}</Text>
           <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={s.cancelText}>Cancel</Text>
           </TouchableOpacity>
@@ -1645,38 +1692,45 @@ export function AyahRangeModal({
               : (selectedSurah?.englishName ?? "")}
           </Text>
 
-          <Text style={s.targetLabel}>TARGET VOLUME</Text>
+          <Text style={s.targetLabel}>{isRevision ? "REVISION VOLUME" : "TARGET VOLUME"}</Text>
           <Text style={s.targetNum}>{clampedAyahsPerWeek}</Text>
-          <Text style={s.targetUnit}>Ayahs per week</Text>
+          <Text style={s.targetUnit}>{isRevision ? "Ayahs to revisit" : "Ayahs per week"}</Text>
 
-          <View style={s.dynamicLimitChip}>
-            <Feather name="info" size={12} color="#8E8E93" />
-            <Text style={s.dynamicLimitText}>
-              Max <Text style={s.dynamicLimitBold}>{dynamicMax}</Text> ayahs available in your selected range
+          <View style={[s.dynamicLimitChip, isRevision && s.dynamicLimitChipRevision]}>
+            <Feather name={isRevision ? "refresh-cw" : "info"} size={12} color={isRevision ? "#92400E" : "#8E8E93"} />
+            <Text style={[s.dynamicLimitText, isRevision && s.dynamicLimitTextRevision]}>
+              {isRevision
+                ? <>All <Text style={[s.dynamicLimitBold, s.dynamicLimitTextRevision]}>{totalRangeAyahs}</Text> selected ayahs are already memorized</>
+                : <>Max <Text style={s.dynamicLimitBold}>{dynamicMax}</Text> ayahs available in your selected range</>
+              }
             </Text>
           </View>
 
           <View style={s.sliderRangeRow}>
             <Text style={s.sliderRangeText}>1</Text>
-            <Text style={s.sliderRangeText}>{dynamicMax}</Text>
+            <Text style={s.sliderRangeText}>{revisionMax}</Text>
           </View>
           <AyahSlider
             value={clampedAyahsPerWeek}
-            onChange={(v) => setAyahsPerWeek(Math.min(v, dynamicMax))}
-            maxValue={dynamicMax}
+            onChange={(v) => setAyahsPerWeek(Math.min(v, revisionMax))}
+            maxValue={revisionMax}
             onDragStart={() => setWeeklyScrollEnabled(false)}
             onDragEnd={() => setWeeklyScrollEnabled(true)}
           />
 
-          <View style={s.weeklyPreviewCard}>
+          <View style={[s.weeklyPreviewCard, isRevision && s.weeklyPreviewCardRevision]}>
             <View style={s.weeklyPreviewIcon}>
-              <Feather name="target" size={15} color="#1A1A1A" />
+              <Feather name={isRevision ? "refresh-cw" : "target"} size={15} color={isRevision ? "#92400E" : "#1A1A1A"} />
             </View>
             <View style={s.weeklyPreviewTextWrap}>
-              <Text style={s.weeklyPreviewLabel}>THIS WEEK</Text>
+              <Text style={[s.weeklyPreviewLabel, isRevision && s.weeklyPreviewLabelRevision]}>
+                {isRevision ? "REVISION FOCUS" : "THIS WEEK"}
+              </Text>
               <Text style={s.weeklyPreviewRange}>{weeklyPreviewRangeLabel}</Text>
               <Text style={s.weeklyPreviewSub}>
-                {weeklyPreviewAyahs.length} of {clampedAyahsPerWeek} ayahs selected
+                {isRevision
+                  ? `${totalRangeAyahs} ayahs to revisit`
+                  : `${weeklyPreviewAyahs.length} of ${clampedAyahsPerWeek} ayahs selected`}
               </Text>
             </View>
           </View>
@@ -1699,9 +1753,11 @@ export function AyahRangeModal({
             </View>
           )}
 
-          <Text style={s.commitmentLabel}>WEEKLY COMMITMENT STEPS</Text>
+          <Text style={[s.commitmentLabel, isRevision && s.commitmentLabelRevision]}>
+            {isRevision ? "REVISION RHYTHM" : "WEEKLY COMMITMENT STEPS"}
+          </Text>
           <View style={s.dots}>
-            {COMMITMENT_STEPS.filter((cs) => cs <= dynamicMax).map((cs) => (
+            {COMMITMENT_STEPS.filter((cs) => cs <= revisionMax).map((cs) => (
               <View key={cs} style={[s.dot, clampedAyahsPerWeek >= cs && s.dotFilled]} />
             ))}
           </View>
@@ -1757,18 +1813,30 @@ export function AyahRangeModal({
             </View>
           </View>
 
-          <View style={s.estimateCard}>
-            <Text style={s.estimateLabel}>YOUR COMPLETION ESTIMATE</Text>
-            <Text style={s.estimateText}>
-              At <Text style={s.estimateBold}>{clampedAyahsPerWeek} Ayahs per week</Text>, you will finish memorizing your selected range in{" "}
-              <Text style={s.estimateBold}>{estimateCompletion(remainingRangeAyahs, clampedAyahsPerWeek)}</Text>.
-            </Text>
-          </View>
+          {isRevision ? (
+            <View style={s.revisionEstimateCard}>
+              <Text style={s.revisionEstimateTitle}>YOU'RE STRENGTHENING YOUR HIFZ</Text>
+              <Text style={s.revisionEstimateText}>
+                Reviewing what you carry is as valuable as memorizing what's ahead.{"\n"}
+                Murajaah is a pillar of Hifz.
+              </Text>
+            </View>
+          ) : (
+            <View style={s.estimateCard}>
+              <Text style={s.estimateLabel}>YOUR COMPLETION ESTIMATE</Text>
+              <Text style={s.estimateText}>
+                At <Text style={s.estimateBold}>{clampedAyahsPerWeek} Ayahs per week</Text>, you will finish memorizing your selected range in{" "}
+                <Text style={s.estimateBold}>{estimateCompletion(remainingRangeAyahs, clampedAyahsPerWeek)}</Text>.
+              </Text>
+            </View>
+          )}
         </ScrollView>
 
         <View style={[s.confirmWrap, { paddingBottom: insets.bottom + 16 }]}>
           <TouchableOpacity style={s.confirmBtn} onPress={handleFinalConfirm} activeOpacity={0.85}>
-            <Text style={s.confirmBtnText}>{startAtPaceDate ? "Begin My Hifz Journey →" : confirmLabel}</Text>
+            <Text style={s.confirmBtnText}>
+              {isRevision ? "Begin Revision →" : startAtPaceDate ? "Begin My Hifz Journey →" : confirmLabel}
+            </Text>
           </TouchableOpacity>
         </View>
       </>
@@ -1962,6 +2030,21 @@ const s = StyleSheet.create({
   },
   juzTitleRow: { flexDirection: "row", alignItems: "baseline", gap: 8 },
   juzNameText: { fontSize: 13, color: "#78716C", fontFamily: "Inter_400Regular" },
+  completedListTag: {
+    alignSelf: "flex-start",
+    backgroundColor: "#F0FAF4",
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    marginTop: 4,
+  },
+  completedListTagText: {
+    fontSize: 11,
+    color: "#16A34A",
+    fontFamily: "Inter_600SemiBold",
+  },
 
   // ── Step 2 ─────────────────────────────────────────────────────────────────
   ayahScrollContent: { paddingHorizontal: 16, paddingBottom: 24 },
@@ -2103,12 +2186,16 @@ const s = StyleSheet.create({
   ayahBubbleSelected: { backgroundColor: "#1A1A1A" },
   ayahBubbleInRange: { backgroundColor: "#C9B9A4" },
   ayahBubbleDisabled: { backgroundColor: "#F0EDE8", opacity: 0.45 },
-  ayahBubbleMemorized: { backgroundColor: "#16A34A" },
+  ayahBubbleMemorized: {
+    backgroundColor: "#F0FAF4",
+    borderWidth: 1.5,
+    borderColor: "#16A34A",
+  },
   ayahBubbleMemorizedDisabled: {
-    backgroundColor: "#E4F3E8",
+    backgroundColor: "#F0FAF4",
     borderWidth: 1,
     borderColor: "#A7D8B5",
-    opacity: 0.7,
+    opacity: 0.55,
   },
   ayahBubbleText: {
     fontSize: 13,
@@ -2393,6 +2480,69 @@ const s = StyleSheet.create({
   },
   estimateText: { fontSize: 14, color: "#FFFFFF", fontFamily: "Inter_400Regular", lineHeight: 22 },
   estimateBold: { fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+
+  // ── Revision mode styles ─────────────────────────────────────────────────────
+  revisionIntentBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+  },
+  revisionIntentBannerText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#92400E",
+    fontFamily: "Inter_600SemiBold",
+    flex: 1,
+  },
+  dynamicLimitChipRevision: {
+    backgroundColor: "#FEF3C7",
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+  },
+  dynamicLimitTextRevision: {
+    color: "#92400E",
+  },
+  weeklyPreviewCardRevision: {
+    backgroundColor: "#FEF9EC",
+    borderColor: "#F59E0B",
+    borderWidth: 1,
+  },
+  weeklyPreviewLabelRevision: {
+    color: "#92400E",
+  },
+  commitmentLabelRevision: {
+    color: "#92400E",
+  },
+  revisionEstimateCard: {
+    backgroundColor: "#FEF3C7",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    padding: 16,
+    marginBottom: 16,
+    gap: 6,
+  },
+  revisionEstimateTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#92400E",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  revisionEstimateText: {
+    fontSize: 14,
+    color: "#78350F",
+    fontFamily: "Inter_400Regular",
+    lineHeight: 22,
+  },
 
   // ── Step 0: Pace + Date ─────────────────────────────────────────────────────
   paceDateContent: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 24, gap: 12 },
