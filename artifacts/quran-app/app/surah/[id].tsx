@@ -151,7 +151,6 @@ interface AyahCardProps {
   ayah: ApiAyah;
   surahNum: number;
   isPlaying: boolean;
-  isRangeSelected: boolean;
   showMemorizedToggle: boolean;
   isMemorized: boolean;
   translations: { editionId: string; name: string; text: string }[];
@@ -173,7 +172,7 @@ interface AyahCardProps {
 }
 
 function SwipeableAyahCard({
-  ayah, surahNum, isPlaying, isRangeSelected,
+  ayah, surahNum, isPlaying,
   showMemorizedToggle, isMemorized,
   playingAccentColor,
   isSectionLoop,
@@ -188,7 +187,7 @@ function SwipeableAyahCard({
   }, [onPress]);
 
   const accentColor = playingAccentColor ?? (isSectionLoop ? SECTION_LOOP_COLOR : undefined);
-  const cardBg = isSectionLoop ? "#F0FDF4" : isPlaying ? "#F7F4EF" : isRangeSelected ? "#F0F5EE" : "#FFFFFF";
+  const cardBg = isSectionLoop ? "#F0FDF4" : isPlaying ? "#F7F4EF" : "#FFFFFF";
 
   return (
     <View style={cs.wrap}>
@@ -2193,11 +2192,7 @@ export default function SurahScreen() {
         const isSectionLoop = audioState.planMode === "section"
           && audioState.currentSurah === surahNum
           && audioState.currentAyah === item.numberInSurah;
-        const isRangeSelected = !!audioState.range
-          && surahNum >= audioState.range.startSurah
-          && surahNum <= audioState.range.endSurah
-          && item.numberInSurah >= (surahNum === audioState.range.startSurah ? audioState.range.startAyah : 1)
-          && item.numberInSurah <= (surahNum === audioState.range.endSurah ? audioState.range.endAyah : 999);
+
         const isInMemorizationGoal = memorizationGoal?.path === "pace" || !!memorizationGoalAyahKeys?.has(`${surahNum}:${item.numberInSurah}`);
         const showB = item.numberInSurah === 1 && basmala;
 
@@ -2219,7 +2214,6 @@ export default function SurahScreen() {
             playingAccentColor={playingAccentColor}
             isSectionLoop={isSectionLoop}
             isSaved={isAyahSaved(surahNum, item.numberInSurah)}
-            isRangeSelected={isRangeSelected && !isPlaying}
             showMemorizedToggle={isInMemorizationGoal}
             isMemorized={isAyahMemorized(surahNum, item.numberInSurah)}
             translations={selectedTranslations.length > 0 ? translations : []}
