@@ -4,6 +4,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { HifzPrimaryButton, HifzSegmentedControl, hifzTokens } from "@/components/hifz/HifzUI";
 import { JUZ_STARTS, SURAH_DATA } from "@/constants/surahData";
+import { VerseCard } from "@/components/VerseCard";
+import { BackButton } from "@/components/BackButton";
 
 export type HifzSetupMode = "surah" | "juz" | "pace";
 export type PaceRhythm = "gentle" | "steady" | "deep";
@@ -79,9 +81,7 @@ export function HifzGoalSetupModal({
       <Modal visible={visible} animationType="none" onRequestClose={() => setPicker(null)}>
         <View style={m.screen}>
           <View style={[m.pickerHeader, { paddingTop: insets.top + 14 }]}>
-            <TouchableOpacity style={m.pickerIconButton} onPress={() => setPicker(null)} activeOpacity={0.72}>
-              <Feather name="chevron-left" size={22} color={hifzTokens.darkText} />
-            </TouchableOpacity>
+            <BackButton onPress={() => setPicker(null)} />
             <Text style={m.pickerTitle}>{picker === "surah" ? "Choose Surah" : "Choose Juz"}</Text>
             <TouchableOpacity style={m.pickerIconButton} onPress={onClose} activeOpacity={0.72}>
               <Feather name="x" size={18} color={hifzTokens.lightMuted} />
@@ -245,7 +245,10 @@ export function HifzGoalSetupModal({
               {mode === "surah" ? (
                 <View style={m.sequenceBlock}>
                   <Text style={m.sequenceText}>Al-Fatiha › Al-Baqara › Al-Imran › ... › An-Nas</Text>
-                  <Text style={m.quote}>"And We have certainly made the Quran easy for remembrance." — Al-Qamar 54:17</Text>
+                  <VerseCard
+                    verse='"And We have certainly made the Quran easy for remembrance."'
+                    reference="Al-Qamar 54:17"
+                  />
                 </View>
               ) : (
                 <View style={m.juzBlock}>

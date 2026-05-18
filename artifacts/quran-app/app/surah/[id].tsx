@@ -10,7 +10,6 @@ import {
   Platform,
   ScrollView,
   Modal,
-  TouchableWithoutFeedback,
   Pressable,
   Switch,
   LayoutAnimation,
@@ -239,7 +238,7 @@ function SwipeableAyahCard({
                   : `Mark ayah ${ayah.numberInSurah} as memorized`}
               >
                 {isMemorized ? (
-                  <Ionicons name="checkmark-circle" size={26} color="#1A1A1A" />
+                  <Ionicons name="checkmark-circle" size={26} color="#7B5C3E" />
                 ) : (
                   <View style={cs.memorizedCheckCircle} />
                 )}
@@ -296,12 +295,10 @@ const cs = StyleSheet.create({
     marginBottom: 4,
   },
   numBadge: {
-    backgroundColor: "#EDE6DA",
+    backgroundColor: "#F5F1EB",
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 7,
-    borderWidth: 1,
-    borderColor: "#D8CDBE",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -361,20 +358,18 @@ const cs = StyleSheet.create({
 });
 
 // ─── Player Bar ───────────────────────────────────────────────────────────────
-const PLAYER_BG = "#F2EDE6";
+const PLAYER_BG = "#EDE8DE";
 
 function PlayerBar({
   audioState,
   playbackRate,
   reciterName,
-  firstPageAyah,
   onPlayFromStart,
   onPlay, onPause, onStop, onNext, onPrev, onSpeedPress, onEditPress,
 }: {
   audioState: { isPlaying: boolean; isLoading: boolean; currentAyah: number | null };
   playbackRate: number;
   reciterName: string;
-  firstPageAyah: number;
   onPlayFromStart: () => void;
   onPlay: () => void; onPause: () => void; onStop: () => void;
   onNext: () => void; onPrev: () => void;
@@ -544,17 +539,17 @@ function ContentBar({
         >
           {tab.icon === "colors" ? (
             <View style={cb.dotsRow}>
-              <View style={[cb.dot, { backgroundColor: tab.active ? "#E8507A" : "#CCCCCC" }]} />
-              <View style={[cb.dot, { backgroundColor: tab.active ? "#27AE60" : "#CCCCCC" }]} />
-              <View style={[cb.dot, { backgroundColor: tab.active ? "#2F80ED" : "#CCCCCC" }]} />
+              <View style={[cb.dot, { backgroundColor: tab.active ? "#E8507A" : "#8A8070" }]} />
+              <View style={[cb.dot, { backgroundColor: tab.active ? "#27AE60" : "#8A8070" }]} />
+              <View style={[cb.dot, { backgroundColor: tab.active ? "#2F80ED" : "#8A8070" }]} />
             </View>
           ) : tab.icon === "tajweed" ? (
             <View style={cb.tajweedIcon}>
-              <Text style={[cb.tajweedU, { color: tab.active ? "#1A1A1A" : "#AAAAAA" }]}>U</Text>
-              <View style={[cb.tajweedUnderline, { backgroundColor: tab.active ? "#1A1A1A" : "#AAAAAA" }]} />
+              <Text style={[cb.tajweedU, { color: tab.active ? "#1A1A1A" : "#8A8070" }]}>U</Text>
+              <View style={[cb.tajweedUnderline, { backgroundColor: tab.active ? "#1A1A1A" : "#8A8070" }]} />
             </View>
           ) : (
-            <Feather name={tab.icon as any} size={18} color={tab.active ? "#1A1A1A" : "#AAAAAA"} />
+            <Feather name={tab.icon as any} size={18} color={tab.active ? "#1A1A1A" : "#8A8070"} />
           )}
           <Text style={[cb.label, tab.active && cb.labelActive]}>{tab.label}</Text>
         </TouchableOpacity>
@@ -566,7 +561,7 @@ function ContentBar({
 const cb = StyleSheet.create({
   bar: {
     flexDirection: "row",
-    backgroundColor: "#F9F8F6",
+    backgroundColor: "#FAF8F4",
     paddingTop: 8,
     paddingBottom: 6,
     paddingHorizontal: 4,
@@ -583,7 +578,7 @@ const cb = StyleSheet.create({
     borderRadius: 12,
   },
   tabActive: { backgroundColor: "#EDEAE5" },
-  label: { fontSize: 12, fontWeight: "600", color: "#BBBBBB", fontFamily: "Inter_600SemiBold" },
+  label: { fontSize: 12, fontWeight: "600", color: "#8A8070", fontFamily: "Inter_600SemiBold" },
   labelActive: { color: "#1A1A1A" },
   dotsRow: { flexDirection: "row", gap: 2, marginBottom: 1, height: 18, alignItems: "center" },
   dot: { width: 6, height: 6, borderRadius: 3 },
@@ -2446,7 +2441,6 @@ export default function SurahScreen() {
             audioState={audioState}
             playbackRate={audioState.playbackRate}
             reciterName={reciters.find(r => r.id === settings.selectedReciter)?.name ?? ""}
-            firstPageAyah={pageAyahs[0]?.numberInSurah ?? 1}
             onPlayFromStart={() => {
               if (!arabic) return;
               triggerPlayback(playbackConfigRef.current);
@@ -2627,7 +2621,7 @@ const scr = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 8,
     paddingBottom: 10,
-    backgroundColor: "#FAF9F7",
+    backgroundColor: "#FAF8F4",
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#E2DDD6",
   },
@@ -2645,7 +2639,7 @@ const scr = StyleSheet.create({
   modeBar: {
     paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: "#FAF9F7",
+    backgroundColor: "#FAF8F4",
     borderBottomWidth: 1,
     borderBottomColor: "#EDEAE5",
   },
@@ -2661,7 +2655,7 @@ const scr = StyleSheet.create({
   bottom: {
     position: "absolute",
     left: 0, right: 0, bottom: 0,
-    backgroundColor: "#F9F8F6",
+    backgroundColor: "#FAF8F4",
     borderTopWidth: 1,
     borderTopColor: "#E2D9CF",
     zIndex: 50,
@@ -2790,18 +2784,5 @@ const scr = StyleSheet.create({
   mushafSplitText: {
     flex: 1, fontSize: 14, lineHeight: 22,
     color: "#2C2C2C", fontFamily: "Inter_400Regular",
-  },
-  swipeHintBar: {
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  swipeHintText: {
-    fontSize: 12,
-    color: "#AAAAAA",
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    lineHeight: 16,
-    letterSpacing: 0.1,
   },
 });

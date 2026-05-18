@@ -833,7 +833,7 @@ const wordsViewStyles = StyleSheet.create({
   },
   surahBadgeNum: { fontSize: 13, fontFamily: "Inter_700Bold" },
   surahCardInfo: { flex: 1, gap: 4 },
-  surahCardName: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  surahCardName: { fontSize: 16, fontFamily: "Inter_700Bold" },
   surahCardMeta: { fontSize: 12, fontFamily: "Inter_400Regular" },
   progressTrack: { height: 3, borderRadius: 2, overflow: "hidden", marginTop: 2 },
   progressFill: { height: 3, borderRadius: 2 },

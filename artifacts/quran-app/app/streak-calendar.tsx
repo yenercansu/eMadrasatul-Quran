@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useQuran } from "@/contexts/QuranContext";
 import { useColors } from "@/hooks/useColors";
+import { BackButton } from "@/components/BackButton";
 
 const WEEK_DAYS = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -101,11 +102,9 @@ export default function StreakCalendarScreen() {
 
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.7}>
-          <Feather name="chevron-left" size={22} color={colors.appText} />
-        </TouchableOpacity>
+        <BackButton onPress={() => router.back()} />
         <Text style={s.headerTitle}>Streak Details</Text>
-        <View style={s.backBtn} />
+        <View style={{ width: 40 }} />
       </View>
 
       {/* Month navigation */}

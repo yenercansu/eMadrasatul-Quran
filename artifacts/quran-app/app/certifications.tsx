@@ -7,6 +7,7 @@ import { router } from "expo-router";
 import { useQuran } from "@/contexts/QuranContext";
 import { SURAH_DATA } from "@/constants/surahData";
 import { useColors } from "@/hooks/useColors";
+import { BackButton } from "@/components/BackButton";
 import colors from "@/constants/colors";
 
 const TOTAL_AYAHS = 6236;
@@ -97,9 +98,7 @@ export default function CertificationsScreen() {
     <View style={{ flex: 1, backgroundColor: c.appBackground, paddingTop: insets.top + sp.sm }}>
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: sp.lg, paddingBottom: sp.sm + 2 }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={22} color={c.appText} />
-        </TouchableOpacity>
+        <BackButton onPress={() => router.back()} />
         <Text style={{ fontSize: ty.fontSize.xl, fontWeight: "800", color: c.appText, fontFamily: "Inter_700Bold" }}>Certifications</Text>
         <View style={{ width: 40, height: 40 }} />
       </View>

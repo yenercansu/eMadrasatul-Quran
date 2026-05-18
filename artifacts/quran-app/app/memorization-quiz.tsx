@@ -21,6 +21,7 @@ import { Pagination } from "@/components/Pagination";
 import { Tag } from "@/components/Tag";
 import { QuestionNav } from "@/components/QuestionNav";
 import { searchByType } from "@/services/search";
+import { HifzSegmentedControl } from "@/components/hifz/HifzUI";
 
 const DEFAULT_SURAHS: { number: number; name: string; englishName: string; ayahs: string[]; translations: string[] }[] = [
   {
@@ -1134,11 +1135,13 @@ export default function MemorizationQuizScreen() {
     return (
       <View key={ayah.id} style={[s.selectionAyahCard, colors.cardStyle, excluded && s.selectionAyahCardExcluded]}>
         <TouchableOpacity
-          style={[s.checkbox, checked && s.checkboxActive]}
+          style={s.checkBtn}
           onPress={() => toggleSelected(ayah.id)}
           activeOpacity={0.75}
         >
-          {checked && <Feather name="check" size={13} color="#FFFFFF" />}
+          {checked
+            ? <Ionicons name="checkmark-circle" size={26} color="#7B5C3E" />
+            : <View style={s.checkCircle} />}
         </TouchableOpacity>
         <View style={s.selectionAyahInfo}>
           <Text style={s.selectionMeta}>{ayah.surahName} · Ayah {ayah.ayahNumber}</Text>
@@ -1244,18 +1247,14 @@ export default function MemorizationQuizScreen() {
         <View style={s.selectionWrap}>
           {/* Segmented toggle */}
           <View style={s.segmentWrapper}>
-            <View style={[s.segmentContainer, { borderColor: colors.border }]}>
-              {([{ key: "by-surah", label: "By Surah" }, { key: "by-ayah", label: "By Ayah" }] as const).map(item => (
-                <TouchableOpacity
-                  key={item.key}
-                  style={[s.segmentBtn, filterMode === item.key && s.segmentBtnActive]}
-                  onPress={() => { setFilterMode(item.key); setSelectedSurahNum(null); setSurahPage(0); setAyahPage(0); setSurahSearchQuery(""); setAyahSearchQuery(""); }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[s.segmentText, filterMode === item.key && s.segmentTextActive]}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <HifzSegmentedControl
+              options={[
+                { value: "by-surah" as AyahFilterMode, label: "By Surah" },
+                { value: "by-ayah" as AyahFilterMode, label: "By Ayah" },
+              ]}
+              value={filterMode}
+              onChange={(v) => { setFilterMode(v); setSelectedSurahNum(null); setSurahPage(0); setAyahPage(0); setSurahSearchQuery(""); setAyahSearchQuery(""); }}
+            />
           </View>
 
           {/* Search bar */}
@@ -1570,17 +1569,20 @@ const pageStyles = StyleSheet.create({
     alignItems: "flex-start",
   },
   selectionAyahCardExcluded: { opacity: 0.62, backgroundColor: "#F6F2EA" },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 7,
-    borderWidth: 1.5,
-    borderColor: "#D6D3D1",
+  checkBtn: {
+    width: 32,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 2,
   },
-  checkboxActive: { backgroundColor: "#1A1A1A", borderColor: "#1A1A1A" },
+  checkCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: "#B8B1A8",
+  },
   selectionAyahInfo: { flex: 1 },
   selectionMeta: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_700Bold", marginBottom: 4 },
   selectionArabic: {
@@ -1726,21 +1728,6 @@ const pageStyles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 10,
   },
-  segmentContainer: {
-    flexDirection: "row",
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  segmentBtn: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 12,
-    backgroundColor: "transparent",
-  },
-  segmentBtnActive: { backgroundColor: "#1A1A1A" },
-  segmentText: { fontSize: 14, color: "#78716C", fontFamily: "Inter_700Bold" },
-  segmentTextActive: { color: "#FFFFFF" },
 
   // ── Search ──
   searchWrapper: {

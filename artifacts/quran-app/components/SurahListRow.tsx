@@ -56,7 +56,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     rowLast: { borderBottomWidth: 0 },
     info: { flex: 1, justifyContent: "center" },
     name: {
-      fontSize: 14,
+      fontSize: 16,
       fontWeight: "700",
       color: colors.appTextPrimary,
       fontFamily: "Inter_700Bold",

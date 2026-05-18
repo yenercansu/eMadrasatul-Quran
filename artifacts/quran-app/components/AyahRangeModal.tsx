@@ -885,7 +885,7 @@ export function AyahRangeModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={s.paceDateContent}
           >
-            <Text style={s.paceStepHeadline}>What are you already consistently memorizing?</Text>
+            <Text style={s.paceStepHeadline}>On a typical day, how many ayahs can you memorize?</Text>
             <Text style={s.paceStepSub}>
               Don't choose your ideal pace.{"\n"}
               <Text style={s.paceStepSubStrong}>Choose your real current pace.</Text>

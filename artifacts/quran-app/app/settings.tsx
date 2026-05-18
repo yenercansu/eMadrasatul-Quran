@@ -11,7 +11,6 @@ import {
   Switch,
   Alert,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
@@ -120,13 +119,8 @@ export default function SettingsScreen() {
 
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={s.heroCard}>
-          <View style={s.heroIcon}>
-            <Feather name="settings" size={20} color={colors.appIconMuted} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={s.heroTitle}>Personalize your madrasa</Text>
-            <Text style={s.heroSub}>Keep your reading, reminders, and account links calm and intentional.</Text>
-          </View>
+          <Text style={s.heroTitle}>Personalize your madrasa</Text>
+          <Text style={s.heroSub}>Keep your reading, reminders, and account links calm and intentional.</Text>
         </View>
 
         <Section title="QURAN FOUNDATION">
@@ -237,24 +231,12 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginHorizontal: 20,
       marginTop: 8,
       marginBottom: 8,
-      padding: 18,
+      padding: 20,
       borderRadius: 24,
       borderWidth: 1,
       borderColor: colors.appSoftBorder,
       backgroundColor: colors.appCardWarm,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 14,
       ...colors.shadows.softLift,
-    },
-    heroIcon: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: colors.appSoftPill,
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: 0,
     },
     heroTitle: {
       fontSize: 17,

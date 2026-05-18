@@ -51,13 +51,15 @@ export function HifzModeTag({ label }: { label: string }) {
 export function HifzHeroCard({
   title,
   subtitle,
+  pill,
   tags,
   onPress,
   progress = 0.5,
   style,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
+  pill?: string;
   tags?: string[];
   onPress: () => void;
   progress?: number;
@@ -67,13 +69,21 @@ export function HifzHeroCard({
     <TouchableOpacity style={[ui.heroCard, style]} onPress={onPress} activeOpacity={0.88}>
       <View style={ui.heroRow}>
         <View style={{ flex: 1 }}>
-          {tags?.length ? (
-            <View style={ui.heroTags}>
-              {tags.map((tag) => <HifzModeTag key={tag} label={tag} />)}
+          {(pill || tags?.length) ? (
+            <View style={ui.heroTopRow}>
+              {pill ? (
+                <View style={ui.heroPill}>
+                  <Text style={ui.heroPillText}>{pill}</Text>
+                </View>
+              ) : (
+                <View style={ui.heroTags}>
+                  {tags!.map((tag) => <HifzModeTag key={tag} label={tag} />)}
+                </View>
+              )}
             </View>
           ) : null}
           <Text style={ui.heroTitle}>{title}</Text>
-          <Text style={ui.heroSubtitle}>{subtitle}</Text>
+          {subtitle ? <Text style={ui.heroSubtitle}>{subtitle}</Text> : null}
           <View style={ui.heroRail}>
             <View style={[ui.heroFill, { width: `${Math.max(0.5, Math.min(100, progress))}%` as any }]} />
           </View>
@@ -231,11 +241,30 @@ const ui = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
-  heroTags: {
+  heroTopRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
     marginBottom: 14,
+  },
+  heroTags: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  heroPill: {
+    backgroundColor: "rgba(0,0,0,0.10)",
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+  },
+  heroPillText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: hifzTokens.midBrown,
+    fontFamily: "Inter_700Bold",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
   },
   heroTitle: {
     fontSize: 24,
@@ -267,7 +296,6 @@ const ui = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "rgba(0,0,0,0.07)",
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,

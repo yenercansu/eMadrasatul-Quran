@@ -16,6 +16,8 @@ import { useReciters } from "@/hooks/useReciters";
 import { useQuran } from "@/contexts/QuranContext";
 import { FullScreenPage } from "@/components/FullScreenPage";
 import { ReadingThemeSelector } from "@/components/ReadingThemeSelector";
+import { SelectChip } from "@/components/SelectChip";
+import { FontChip } from "@/components/FontChip";
 import { ARABIC_FONT_OPTIONS } from "@/constants/arabicFonts";
 import type { QuranReciter } from "@/services/quranApi";
 import type { TafsirKey } from "@/services/tafsirApi";
@@ -199,30 +201,15 @@ export function SettingsSheet({ visible, onClose }: Props) {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={s.fontPickerRow}
             >
-              {ARABIC_FONT_OPTIONS.map((opt) => {
-                const active = (accountSettings.arabicFont ?? "system") === opt.key;
-                return (
-                  <TouchableOpacity
-                    key={opt.key}
-                    style={[s.fontChip, active && s.fontChipActive]}
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      updateAccountSettings({ arabicFont: opt.key });
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[s.fontChipLabel, active && s.fontChipLabelActive]}>
-                      {opt.label}
-                    </Text>
-                    <Text
-                      style={[s.fontChipSample, { fontFamily: opt.fontFamily }, active && s.fontChipSampleActive]}
-                      numberOfLines={1}
-                    >
-                      {"بِسْمِ"}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+              {ARABIC_FONT_OPTIONS.map((opt) => (
+                <FontChip
+                  key={opt.key}
+                  label={opt.label}
+                  fontFamily={opt.fontFamily}
+                  selected={(accountSettings.arabicFont ?? "system") === opt.key}
+                  onPress={() => updateAccountSettings({ arabicFont: opt.key })}
+                />
+              ))}
             </ScrollView>
 
             <Text style={s.sectionLabel}>Reciter</Text>
@@ -247,54 +234,39 @@ export function SettingsSheet({ visible, onClose }: Props) {
                 const key = ed.id as TafsirKey;
                 const active = settings.selectedTafsirs.includes(key);
                 return (
-                  <TouchableOpacity
+                  <SelectChip
                     key={ed.id}
-                    style={[s.tafsirChip, active && s.tafsirChipActive]}
+                    label={ed.name}
+                    sublabel={ed.author}
+                    selected={active}
+                    style={s.tafsirChipOverride}
                     onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       const next = active
                         ? settings.selectedTafsirs.filter((id) => id !== key)
                         : [...settings.selectedTafsirs, key];
                       updateSettings({ selectedTafsirs: next.length > 0 ? next : [key] });
                     }}
-                    activeOpacity={0.8}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.tafsirChipName, active && s.tafsirChipNameActive]}>{ed.name}</Text>
-                      <Text style={[s.tafsirChipAuthor, active && s.tafsirChipAuthorActive]} numberOfLines={1}>{ed.author}</Text>
-                    </View>
-                    {active && <Ionicons name="checkmark-circle" size={20} color={colors.primaryForeground} />}
-                  </TouchableOpacity>
+                  />
                 );
               })}
             </View>
 
             <Text style={s.sectionLabel}>Auto-pause Timer</Text>
             <View style={s.autoPauseRow}>
-              {[
+              {([
                 { mins: null, label: "Off" },
                 { mins: 5, label: "5m" },
                 { mins: 15, label: "15m" },
                 { mins: 30, label: "30m" },
                 { mins: 60, label: "1h" },
-              ].map((opt) => {
-                const active = settings.autoPauseMinutes === opt.mins;
-                return (
-                  <TouchableOpacity
-                    key={opt.label}
-                    style={[s.autoPauseChip, active && s.autoPauseChipActive]}
-                    activeOpacity={0.8}
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      updateSettings({ autoPauseMinutes: opt.mins });
-                    }}
-                  >
-                    <Text style={[s.autoPauseChipText, active && s.autoPauseChipTextActive]}>
-                      {opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+              ] as const).map((opt) => (
+                <SelectChip
+                  key={opt.label}
+                  label={opt.label}
+                  selected={settings.autoPauseMinutes === opt.mins}
+                  onPress={() => updateSettings({ autoPauseMinutes: opt.mins })}
+                />
+              ))}
             </View>
             <Text style={s.autoPauseHint}>Audio will automatically pause after the selected duration.</Text>
           </View>
@@ -352,33 +324,7 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
       borderRadius: 16,
     },
     tafsirGrid: { gap: 8 },
-    tafsirChip: {
-      minHeight: 58,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.secondary,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-    },
-    tafsirChipActive: { borderColor: colors.primary, backgroundColor: colors.primary },
-    tafsirChipName: {
-      fontSize: 14,
-      fontWeight: "700",
-      color: colors.foreground,
-      fontFamily: "Inter_700Bold",
-    },
-    tafsirChipNameActive: { color: colors.primaryForeground },
-    tafsirChipAuthor: {
-      fontSize: 12,
-      color: colors.mutedForeground,
-      fontFamily: "Inter_400Regular",
-      marginTop: 2,
-    },
-    tafsirChipAuthorActive: { color: colors.primaryForeground },
+    tafsirChipOverride: { flex: 0, width: "100%" as any, minHeight: 58 },
     reciterAvatar: {
       width: 44, height: 44, borderRadius: 22,
       backgroundColor: colors.card, alignItems: "center", justifyContent: "center",
@@ -386,45 +332,8 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
     reciterName: { fontSize: 15, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
     reciterStyle: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
     autoPauseRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-    autoPauseChip: {
-      minWidth: 56,
-      paddingVertical: 10,
-      paddingHorizontal: 14,
-      borderRadius: 14,
-      backgroundColor: colors.secondary,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    autoPauseChipActive: { backgroundColor: colors.primary },
-    autoPauseChipText: { fontSize: 13, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
-    autoPauseChipTextActive: { color: colors.primaryForeground },
     autoPauseHint: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 8, paddingHorizontal: 4 },
     fontPickerRow: { gap: 8, paddingBottom: 4 },
-    fontChip: {
-      width: 82,
-      paddingVertical: 10,
-      paddingHorizontal: 8,
-      borderRadius: 14,
-      borderWidth: 1.5,
-      borderColor: colors.border,
-      backgroundColor: colors.secondary,
-      alignItems: "center",
-      gap: 6,
-    },
-    fontChipActive: { borderColor: colors.primary, backgroundColor: colors.primary + "18" },
-    fontChipLabel: {
-      fontSize: 12,
-      color: colors.mutedForeground,
-      fontFamily: "Inter_500Medium",
-      textAlign: "center",
-    },
-    fontChipLabelActive: { color: colors.primary, fontFamily: "Inter_600SemiBold" },
-    fontChipSample: {
-      fontSize: 22,
-      color: colors.foreground,
-      lineHeight: 36,
-    },
-    fontChipSampleActive: { color: colors.primary },
   });
 
 const makeRsStyles = (colors: ReturnType<typeof useColors>) =>

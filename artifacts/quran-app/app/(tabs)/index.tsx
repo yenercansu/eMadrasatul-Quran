@@ -26,6 +26,7 @@ import { SubSectionTitle } from "@/components/Typography";
 import { MemorizedBadge } from "@/components/SurahCard";
 import { HifzGoalSetupModal, type PaceRhythm } from "@/components/hifz/HifzGoalSetupModal";
 import { HifzHeroCard } from "@/components/hifz/HifzUI";
+import { VerseCard } from "@/components/VerseCard";
 
 const TOTAL_AYAHS = 6236;
 const MAX_WEEKLY_AYAHS = 70;
@@ -231,6 +232,7 @@ export default function HomeScreen() {
   const [widgetJuz, setWidgetJuz] = useState<number | null>(null);
   const [ayahRangeVisible, setAyahRangeVisible] = useState(false);
   const [paceDateVisible, setPaceDateVisible] = useState(false);
+  const [pendingCheck, setPendingCheck] = useState(false);
 
   const surahsQuery = useQuery({ queryKey: ["chapters"], queryFn: fetchSurahs });
   const surahs = surahsQuery.data ?? [];
@@ -585,18 +587,22 @@ export default function HomeScreen() {
   const resumeHifzTarget = resumeSource
     ? { surahNumber: resumeSource.surahNumber, ayahNumber: resumeSource.ayahNumberInSurah }
     : { surahNumber: memorizationGoal?.startSurahNumber ?? 1, ayahNumber: goal?.startAyahNumber ?? 1 };
-  const resumeSurahMeta = SURAH_DATA[resumeHifzTarget.surahNumber - 1];
+  // Hero card displays last MEMORIZED position, not last listened
+  const heroTarget = lastMemorizedAyah
+    ? { surahNumber: lastMemorizedAyah.surahNumber, ayahNumber: lastMemorizedAyah.ayahNumber }
+    : { surahNumber: memorizationGoal?.startSurahNumber ?? 1, ayahNumber: goal?.startAyahNumber ?? 1 };
+  const heroSurahMeta = SURAH_DATA[heroTarget.surahNumber - 1];
   const activeModeLabel = isPaceGoal
     ? "Pace by Pace"
     : memorizationGoal?.path === "juz"
     ? "Juz by Juz"
     : "Surah by Surah";
-  const heroTitle = resumeSurahMeta
-    ? `${resumeSurahMeta.englishName} ${resumeHifzTarget.surahNumber}:${resumeHifzTarget.ayahNumber}`
-    : `${resumeHifzTarget.surahNumber}:${resumeHifzTarget.ayahNumber}`;
-  const heroSub = resumeSurahMeta
-    ? `Juz ${resumeSurahMeta.juz} · Ayah ${resumeHifzTarget.ayahNumber} of ${resumeSurahMeta.ayahCount}`
-    : `Ayah ${resumeHifzTarget.ayahNumber}`;
+  const heroTitle = heroSurahMeta
+    ? `${heroSurahMeta.englishName} ${heroTarget.surahNumber}:${heroTarget.ayahNumber}`
+    : `${heroTarget.surahNumber}:${heroTarget.ayahNumber}`;
+  const heroSub = heroSurahMeta
+    ? `${heroSurahMeta.name} · Juz ${heroSurahMeta.juz} · Ayah ${heroTarget.ayahNumber} of ${heroSurahMeta.ayahCount}`
+    : `Ayah ${heroTarget.ayahNumber}`;
   const nextPaceCount = goal?.gradualWeeklyPlan?.[1] ?? goal?.targetAyahsPerWeek;
   const paceWeeksLabel = goal?.finishWeeks ? ` · in ${goal.finishWeeks} wks` : "";
   const weeklySequence = weekGoalAyahs;
@@ -860,25 +866,13 @@ export default function HomeScreen() {
             ) : (
               /* Progress card — shown while a goal is active */
               <>
-              <TouchableOpacity
-                style={s.hifzHeroCard}
-                onPress={() => router.push(`/surah/${resumeHifzTarget.surahNumber}?ayah=${resumeHifzTarget.ayahNumber}`)}
-                activeOpacity={0.88}
-              >
-                <View style={s.hifzHeroTopRow}>
-                  <View style={s.hifzModePill}>
-                    <Text style={s.hifzModePillText}>{activeModeLabel}</Text>
-                  </View>
-                </View>
-                <Text style={s.hifzHeroTitle} numberOfLines={2}>{heroTitle}</Text>
-                <Text style={s.hifzHeroSub} numberOfLines={2}>{heroSub}</Text>
-                <View style={s.hifzHeroProgressRail}>
-                  <View style={[s.hifzHeroProgressFill, { width: `${memorizationPercent > 0 ? Math.max(2, memorizationPercent) : 0}%` as any }]} />
-                </View>
-                <View style={s.hifzHeroArrow}>
-                  <Feather name="chevron-right" size={30} color={colors.appDarkerGray} strokeWidth={2.2} />
-                </View>
-              </TouchableOpacity>
+              <HifzHeroCard
+                pill={activeModeLabel}
+                title={heroTitle}
+                subtitle={heroSub}
+                progress={memorizationPercent > 0 ? Math.max(2, memorizationPercent) : 0}
+                onPress={() => router.push(`/surah/${heroTarget.surahNumber}?ayah=${heroTarget.ayahNumber}`)}
+              />
               {showHifzGoalOptions && (
               <View style={s.hifzManageCard}>
                 {showHifzGoalOptions ? (
@@ -928,12 +922,11 @@ export default function HomeScreen() {
 
           {/* ── Quran Verse — shown only when no goal is set ─────────────── */}
           {showSelectionWidget && (
-            <View style={s.verseCard}>
-              <Text style={s.verseText}>
-                "Indeed, it is We who sent down the Quran and indeed, We will be its guardian."
-              </Text>
-              <Text style={s.verseRef}>— Al-Hijr 15:9</Text>
-            </View>
+            <VerseCard
+              verse='"Indeed, it is We who sent down the Quran and indeed, We will be its guardian."'
+              reference="Al-Hijr 15:9"
+              style={s.verseCard}
+            />
           )}
 
           {/* ── THIS WEEK ─────────────────────────────────────────────────── */}
@@ -1119,12 +1112,23 @@ export default function HomeScreen() {
                 {!isPaceGoal && weekPercent < 100 && nextAyahInRange && (
                   <View style={s.nextAyahRowNew}>
                     <TouchableOpacity
-                      onPress={() => markAyahsMemorized([`${nextAyahInRange.surahNumber}:${nextAyahInRange.ayahNumber}`])}
+                      onPress={() => {
+                        if (pendingCheck) return;
+                        setPendingCheck(true);
+                        setTimeout(() => {
+                          markAyahsMemorized([`${nextAyahInRange.surahNumber}:${nextAyahInRange.ayahNumber}`]);
+                          setPendingCheck(false);
+                        }, 520);
+                      }}
                       activeOpacity={0.7}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                      <View style={s.nextAyahCircleNew}>
-                        <Ionicons name="checkmark" size={15} color={colors.appIconMuted} />
+                      <View style={[s.nextAyahCircleNew, pendingCheck && { borderWidth: 0 }]}>
+                        {pendingCheck ? (
+                          <Ionicons name="checkmark-circle" size={28} color="#7B5C3E" />
+                        ) : (
+                          <Ionicons name="checkmark" size={15} color={colors.appIconMuted} />
+                        )}
                       </View>
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
@@ -2211,87 +2215,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    hifzHeroCard: {
-      minHeight: 166,
-      backgroundColor: "#C8C0B0",
-      borderRadius: 29,
-      paddingHorizontal: 20,
-      paddingTop: 22,
-      paddingBottom: 22,
-      overflow: "hidden",
-      shadowColor: "#000000",
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.10,
-      shadowRadius: 28,
-      elevation: 7,
-    },
-    hifzHeroTopRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-      marginBottom: 8,
-      paddingRight: 54,
-    },
-    hifzHeroEyebrow: {
-      fontSize: 13,
-      lineHeight: 18,
-      fontWeight: "700",
-      color: "#6A6058",
-      fontFamily: "Inter_700Bold",
-      letterSpacing: 1.8,
-    },
-    hifzModePill: {
-      backgroundColor: "rgba(137,128,113,0.26)",
-      borderRadius: 999,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-    },
-    hifzModePillText: {
-      fontSize: 12,
-      fontWeight: "700",
-      color: "#5A5248",
-      fontFamily: "Inter_700Bold",
-      textTransform: "uppercase",
-    },
-    hifzHeroTitle: {
-      maxWidth: "78%" as any,
-      fontSize: 36,
-      lineHeight: 42,
-      fontWeight: "700",
-      color: "#1A1A1A",
-      fontFamily: "Inter_700Bold",
-    },
-    hifzHeroSub: {
-      maxWidth: "78%" as any,
-      fontSize: 13,
-      lineHeight: 19,
-      color: "#8D8478",
-      fontFamily: "Inter_400Regular",
-      marginTop: 2,
-      marginBottom: 14,
-    },
-    hifzHeroProgressRail: {
-      width: "78%" as any,
-      height: 3,
-      borderRadius: 999,
-      backgroundColor: "rgba(127,117,101,0.28)",
-      overflow: "hidden",
-    },
-    hifzHeroProgressFill: {
-      height: "100%" as any,
-      borderRadius: 999,
-      backgroundColor: colors.appTextPrimary,
-    },
-    hifzHeroArrow: {
-      position: "absolute",
-      right: 22,
-      top: 66,
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      alignItems: "center",
-      justifyContent: "center",
-    },
     hifzManageCard: {
       marginTop: 14,
       backgroundColor: "transparent",
@@ -3313,26 +3236,5 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     verseCard: {
       marginHorizontal: 20,
       marginTop: 16,
-      backgroundColor: "#EDE8DE",
-      borderRadius: 16,
-      paddingHorizontal: 24,
-      paddingVertical: 20,
-      alignItems: "center",
-    },
-    verseText: {
-      fontSize: 15,
-      lineHeight: 24,
-      color: "#6B6150",
-      fontFamily: "Inter_400Regular",
-      fontStyle: "italic",
-      textAlign: "center",
-    },
-    verseRef: {
-      marginTop: 10,
-      fontSize: 13,
-      lineHeight: 18,
-      color: "#6B6150",
-      fontFamily: "Inter_700Bold",
-      textAlign: "center",
     },
   });
