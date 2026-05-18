@@ -36,6 +36,7 @@ import { FullScreenPage } from "@/components/FullScreenPage";
 import { PlayRangeSheet } from "@/components/PlayRangeSheet";
 import { RepeatSectionSheet } from "@/components/RepeatSectionSheet";
 import { GlobalPlaybackBar, type PlaybackBarConfig } from "@/components/GlobalPlaybackBar";
+import { SectionLoopChip, SECTION_LOOP_COLOR } from "@/components/SectionLoopChip";
 import { SettingsCard, SettingsRow } from "@/components/SettingsRow";
 import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
@@ -163,6 +164,7 @@ interface AyahCardProps {
   romanFontSize: number;
   arabicFontFamily: string | undefined;
   playingAccentColor?: string;
+  isSectionLoop?: boolean;
   isSaved: boolean;
   onSave: (ayah: ApiAyah) => void;
   onToggleMemorized: (ayah: ApiAyah) => void;
@@ -174,6 +176,7 @@ function SwipeableAyahCard({
   ayah, surahNum, isPlaying, isRangeSelected,
   showMemorizedToggle, isMemorized,
   playingAccentColor,
+  isSectionLoop,
   isSaved,
   translations, transliterationText,
   showTransliteration,
@@ -184,12 +187,13 @@ function SwipeableAyahCard({
     onPress();
   }, [onPress]);
 
-  const cardBg = isPlaying ? "#F7F4EF" : isRangeSelected ? "#F0F5EE" : "#FFFFFF";
+  const accentColor = playingAccentColor ?? (isSectionLoop ? SECTION_LOOP_COLOR : undefined);
+  const cardBg = isSectionLoop ? "#F0FDF4" : isPlaying ? "#F7F4EF" : isRangeSelected ? "#F0F5EE" : "#FFFFFF";
 
   return (
     <View style={cs.wrap}>
-      {isPlaying && playingAccentColor && (
-        <View style={[cs.playingAccent, { backgroundColor: playingAccentColor }]} />
+      {accentColor && (
+        <View style={[cs.playingAccent, { backgroundColor: accentColor }]} />
       )}
         <Pressable
           onPress={handlePress}
@@ -1210,6 +1214,7 @@ export default function SurahScreen() {
   const [rangeVisible, setRangeVisible] = useState(false);
   const [repeatSectionVisible, setRepeatSectionVisible] = useState(false);
   const [repeatSectionInitialAyah, setRepeatSectionInitialAyah] = useState<number | null>(null);
+  const [sectionWordCount, setSectionWordCount] = useState<number | null>(null);
   const menuToggleLockRef = useRef(0);
   const lastMenuToggleRef = useRef(0);
   const touchMovedRef = useRef(false);
@@ -1571,9 +1576,6 @@ export default function SurahScreen() {
     if (planMode === "word") {
       return { mode: "wordByWord", title: "Word by Word", subtitle: "Repeating each word" };
     }
-    if (planMode === "section") {
-      return { mode: "section", title: "Section Repeat", subtitle: `${audioState.repeatCount}x repeats` };
-    }
     if (planMode === "range" && audioState.repeatCount > 1) {
       return { mode: "range", title: "Repetition Mode", subtitle: `${audioState.repeatCount}x per ayah` };
     }
@@ -1591,6 +1593,7 @@ export default function SurahScreen() {
   const handleGlobalBarExit = useCallback(() => {
     stopAudio().catch(() => {});
     setAyahRepeatCounts({});
+    setSectionWordCount(null);
     if (audioState.planMode === "ustadh" || audioState.planMode === "word") {
       resetSpecialPlaybackMode();
     }
@@ -2184,8 +2187,12 @@ export default function SurahScreen() {
         const playingAccentColor = isPlaying
           ? audioState.planMode === "ustadh" ? "#C9A02A"
             : audioState.planMode === "word" ? "#E86A33"
+            : audioState.planMode === "section" ? SECTION_LOOP_COLOR
             : "#7B5C3E"
           : undefined;
+        const isSectionLoop = audioState.planMode === "section"
+          && audioState.currentSurah === surahNum
+          && audioState.currentAyah === item.numberInSurah;
         const isRangeSelected = !!audioState.range
           && surahNum >= audioState.range.startSurah
           && surahNum <= audioState.range.endSurah
@@ -2210,6 +2217,7 @@ export default function SurahScreen() {
             surahNum={surahNum}
             isPlaying={isPlaying}
             playingAccentColor={playingAccentColor}
+            isSectionLoop={isSectionLoop}
             isSaved={isAyahSaved(surahNum, item.numberInSurah)}
             isRangeSelected={isRangeSelected && !isPlaying}
             showMemorizedToggle={isInMemorizationGoal}
@@ -2504,6 +2512,17 @@ export default function SurahScreen() {
         </View>
       )}
 
+      {/* ── Section Loop Chip ───────────────────────────────── */}
+      <SectionLoopChip
+        visible={audioState.planMode === "section"}
+        repeatCount={audioState.repeatCount}
+        currentRepeat={audioState.currentRepeat}
+        wordCount={sectionWordCount}
+        ayahNumber={audioState.currentAyah}
+        bottom={menuVisible ? bottomBarHeight + 8 : insets.bottom + 16}
+        onStop={handleGlobalBarExit}
+      />
+
       {/* ── Modals ───────────────────────────────────────────── */}
       <EditSheet
         visible={editSheetVisible}
@@ -2540,6 +2559,7 @@ export default function SurahScreen() {
           const ayahN = repeatSectionInitialAyah ?? currentAyahForRange;
           if (!(await canPlayOfflineRange(ayahN, ayahN))) return;
           void totalWords;
+          setSectionWordCount(endWordIdx - startWordIdx + 1);
           playSection(surahNum, ayahN, startWordIdx + 1, endWordIdx + 1, repeatCount);
           setAyahRepeatCounts(prev => ({ ...prev, [ayahN]: repeatCount }));
           recordAyahRead(surahNum, ayahN);

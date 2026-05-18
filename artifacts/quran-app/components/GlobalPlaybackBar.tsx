@@ -10,7 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 
-export type PlaybackModeType = "ustadh" | "wordByWord" | "section" | "range";
+export type PlaybackModeType = "ustadh" | "wordByWord" | "range";
 
 export interface PlaybackBarConfig {
   mode: PlaybackModeType;
@@ -33,14 +33,12 @@ const BAR_CONTENT_HEIGHT = 56;
 const MODE_ACCENT_COLORS: Record<PlaybackModeType, string> = {
   ustadh: "#C9A02A",
   wordByWord: "#E86A33",
-  section: "#7B5C3E",
   range: "#7B5C3E",
 };
 
 const MODE_ICONS: Record<PlaybackModeType, React.ComponentProps<typeof Ionicons>["name"]> = {
   ustadh: "headset",
   wordByWord: "text-outline",
-  section: "repeat",
   range: "layers-outline",
 };
 
