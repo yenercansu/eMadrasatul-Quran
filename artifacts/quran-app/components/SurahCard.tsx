@@ -11,8 +11,9 @@ interface Props {
   isRecent?: boolean;
   isSaved?: boolean;
   onSave?: () => void;
-  isChecked?: boolean;
-  onCheck?: () => void;
+  memorizedCount?: number;
+  isManuallyCompleted?: boolean;
+  onToggleComplete?: () => void;
 }
 
 export function MemorizedBadge() {
@@ -22,14 +23,18 @@ export function MemorizedBadge() {
   return (
     <View style={s.memorizedBadge}>
       <Ionicons name="checkmark" size={10} color={colors.appText} />
-      <Text style={s.memorizedBadgeText}>Memorized</Text>
+      <Text style={s.memorizedBadgeText}>Completed</Text>
     </View>
   );
 }
 
-export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, isChecked, onCheck }: Props) {
+export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, memorizedCount = 0, isManuallyCompleted, onToggleComplete }: Props) {
   const colors = useColors();
   const s = styles(colors);
+
+  const isCompleted = memorizedCount === surah.numberOfAyahs || isManuallyCompleted;
+  const hasPartialProgress = !isCompleted && memorizedCount > 0;
+  const progressRatio = surah.numberOfAyahs > 0 ? memorizedCount / surah.numberOfAyahs : 0;
 
   return (
     <TouchableOpacity onPress={onPress} style={s.card} activeOpacity={0.82}>
@@ -37,20 +42,6 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, isChecked
         <View style={s.meta}>
           <Text style={s.type}>{surah.revelationType}</Text>
         </View>
-        {onCheck && (
-          <TouchableOpacity
-            onPress={(e) => { e.stopPropagation(); onCheck(); }}
-            style={[s.checkBtn, isChecked && s.checkBtnActive]}
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons
-              name="checkmark"
-              size={15}
-              color={isChecked ? colors.appWhite : colors.appIconMuted}
-            />
-          </TouchableOpacity>
-        )}
         {onSave && (
           <SaveButton
             saved={isSaved}
@@ -69,12 +60,41 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, isChecked
             {isRecent && <View style={s.metaDot} />}
             {isRecent && <Text style={s.ayahCount}>Recent</Text>}
           </View>
-          {isChecked && <MemorizedBadge />}
         </View>
         <View style={s.arabicWrap}>
           <Text style={s.arabicName}>{surah.name}</Text>
         </View>
       </View>
+
+      {hasPartialProgress && (
+        <View style={s.progressSection}>
+          <Text style={s.progressText}>{memorizedCount} / {surah.numberOfAyahs} memorized</Text>
+          <View style={s.progressTrack}>
+            <View style={[s.progressFill, { width: `${Math.round(progressRatio * 100)}%` as any }]} />
+          </View>
+        </View>
+      )}
+
+      {isCompleted ? (
+        <TouchableOpacity
+          onPress={(e) => { e.stopPropagation(); onToggleComplete?.(); }}
+          activeOpacity={0.72}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          style={{ alignSelf: "flex-start" }}
+        >
+          <MemorizedBadge />
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          onPress={(e) => { e.stopPropagation(); onToggleComplete?.(); }}
+          style={s.markCompleteRow}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="checkmark-circle-outline" size={14} color={colors.appIconMuted} />
+          <Text style={s.markCompleteText}>Mark as completed</Text>
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 }
@@ -103,20 +123,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontWeight: "500",
       color: colors.appTextMuted,
       fontFamily: "Inter_600SemiBold",
-    },
-    checkBtn: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: "transparent",
-      borderWidth: 1,
-      borderColor: colors.appIconMuted,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    checkBtnActive: {
-      backgroundColor: colors.appDarkerGray,
-      borderColor: colors.appDarkerGray,
     },
     memorizedBadge: {
       alignSelf: "flex-start",
@@ -185,5 +191,37 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       color: colors.appText,
       fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
       textAlign: "right",
+    },
+    markCompleteRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      marginTop: 8,
+      alignSelf: "flex-start",
+    },
+    markCompleteText: {
+      fontSize: 12,
+      color: colors.appIconMuted,
+      fontFamily: "Inter_400Regular",
+    },
+    progressSection: {
+      marginTop: 10,
+      gap: 5,
+    },
+    progressText: {
+      fontSize: 11,
+      color: colors.appIconMuted,
+      fontFamily: "Inter_400Regular",
+    },
+    progressTrack: {
+      height: 3,
+      borderRadius: 2,
+      backgroundColor: colors.appSoftBorder,
+      overflow: "hidden",
+    },
+    progressFill: {
+      height: 3,
+      borderRadius: 2,
+      backgroundColor: colors.primary,
     },
   });

@@ -9,6 +9,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Animated,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Swipeable from "react-native-gesture-handler/Swipeable";
@@ -33,8 +34,9 @@ function SwipeableSurahCard({
   isSaved,
   onSave,
   onPress,
-  isChecked,
-  onCheck,
+  memorizedCount,
+  isManuallyCompleted,
+  onToggleComplete,
   colors,
 }: {
   surah: ApiSurah;
@@ -42,8 +44,9 @@ function SwipeableSurahCard({
   isSaved: boolean;
   onSave: () => void;
   onPress: () => void;
-  isChecked: boolean;
-  onCheck: () => void;
+  memorizedCount: number;
+  isManuallyCompleted: boolean;
+  onToggleComplete: () => void;
   colors: ReturnType<typeof useColors>;
 }) {
   const s = styles(colors);
@@ -86,8 +89,9 @@ function SwipeableSurahCard({
         isRecent={isRecent}
         isSaved={isSaved}
         onSave={onSave}
-        isChecked={isChecked}
-        onCheck={onCheck}
+        memorizedCount={memorizedCount}
+        isManuallyCompleted={isManuallyCompleted}
+        onToggleComplete={onToggleComplete}
       />
     </Swipeable>
   );
@@ -99,7 +103,7 @@ export default function QuranScreen() {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<FilterType>("all");
-  const { recentProgress, saveSurah, removeSavedSurah, isSurahSaved, isSurahChecked, toggleCheckedSurah } = useQuran();
+  const { recentProgress, saveSurah, removeSavedSurah, isSurahSaved, isSurahChecked, toggleCheckedSurah, memorizedAyahKeys } = useQuran();
   const surahsQuery = useQuery({
     queryKey: ["chapters"],
     queryFn: fetchSurahs,
@@ -109,6 +113,15 @@ export default function QuranScreen() {
   const madeenanError = loadError instanceof MadeenanApiError ? loadError : null;
 
   const recentNumbers = useMemo(() => new Set(recentProgress.map(p => p.surahNumber)), [recentProgress]);
+
+  const memorizedCountBySurah = useMemo(() => {
+    const counts: Record<number, number> = {};
+    for (const key of memorizedAyahKeys) {
+      const surahNum = Number(key.split(":")[0]);
+      if (Number.isFinite(surahNum)) counts[surahNum] = (counts[surahNum] ?? 0) + 1;
+    }
+    return counts;
+  }, [memorizedAyahKeys]);
 
   const filtered = useMemo(() => {
     let list = searchByType("surah", search, surahs).filter((s) => {
@@ -189,7 +202,47 @@ export default function QuranScreen() {
           keyExtractor={(item) => String(item.number)}
           renderItem={({ item }) => {
             const saved = isSurahSaved(item.number);
-            const checked = isSurahChecked(item.number);
+            const memCount = memorizedCountBySurah[item.number] ?? 0;
+            const isCompleted = memCount === item.numberOfAyahs || isSurahChecked(item.number);
+
+            const handleToggleComplete = () => {
+              if (isCompleted) {
+                Alert.alert(
+                  "Remove memorized status?",
+                  `This will unmark all ${item.numberOfAyahs} ayahs of ${item.englishName} as memorized.`,
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Remove",
+                      style: "destructive",
+                      onPress: () => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        toggleCheckedSurah(item.number, item.numberOfAyahs);
+                      },
+                    },
+                  ]
+                );
+              } else if (memCount > 0) {
+                Alert.alert(
+                  `Mark ${item.englishName} as memorized?`,
+                  `You have ${memCount} of ${item.numberOfAyahs} ayahs memorized. This will mark all ${item.numberOfAyahs} ayahs as memorized. Are you sure?`,
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Mark as memorized",
+                      onPress: () => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        toggleCheckedSurah(item.number, item.numberOfAyahs);
+                      },
+                    },
+                  ]
+                );
+              } else {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                toggleCheckedSurah(item.number, item.numberOfAyahs);
+              }
+            };
+
             return (
               <SwipeableSurahCard
                 surah={item}
@@ -197,8 +250,9 @@ export default function QuranScreen() {
                 isSaved={saved}
                 onSave={() => saved ? removeSavedSurah(item.number) : saveSurah(item.number)}
                 onPress={() => router.push(`/surah/${item.number}`)}
-                isChecked={checked}
-                onCheck={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); toggleCheckedSurah(item.number, item.numberOfAyahs); }}
+                memorizedCount={memCount}
+                isManuallyCompleted={isSurahChecked(item.number)}
+                onToggleComplete={handleToggleComplete}
                 colors={colors}
               />
             );

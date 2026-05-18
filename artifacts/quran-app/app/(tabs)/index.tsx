@@ -294,20 +294,26 @@ export default function HomeScreen() {
   const totalMemorized = useMemo(() => {
     if (!memorizationGoal) return 0;
     if (memorizationGoal.path === "pace") return memorizedAyahKeys.length;
+    if (memorizationGoal.path === "surah") {
+      const targetSurahNum = memorizationGoal.startSurahNumber;
+      // Manually marked complete → count the full surah
+      if (isSurahChecked(targetSurahNum)) {
+        return SURAH_DATA.find(s => s.number === targetSurahNum)?.ayahCount ?? 0;
+      }
+      return memorizedAyahKeys.filter((key) => {
+        const [surahRaw, ayahRaw] = key.split(":");
+        return Number(surahRaw) === targetSurahNum && Number.isFinite(Number(ayahRaw));
+      }).length;
+    }
     const targetJuzAyahKeys = memorizationGoal.path === "juz" && memorizationGoal.targetJuz
       ? new Set(getJuzAyahs(memorizationGoal.targetJuz).map(a => `${a.surahNumber}:${a.ayahNumber}`))
       : null;
     return memorizedAyahKeys.filter((key) => {
       const [surahRaw, ayahRaw] = key.split(":");
-      const surahNumber = Number(surahRaw);
-      const ayahNumber = Number(ayahRaw);
-      if (!Number.isFinite(surahNumber) || !Number.isFinite(ayahNumber)) return false;
-      if (memorizationGoal.path === "surah") {
-        return surahNumber === memorizationGoal.startSurahNumber;
-      }
+      if (!Number.isFinite(Number(surahRaw)) || !Number.isFinite(Number(ayahRaw))) return false;
       return !!targetJuzAyahKeys?.has(key);
     }).length;
-  }, [memorizedAyahKeys, memorizationGoal]);
+  }, [memorizedAyahKeys, memorizationGoal, isSurahChecked]);
 
   const streakDays = useMemo(() => {
     const today = new Date();

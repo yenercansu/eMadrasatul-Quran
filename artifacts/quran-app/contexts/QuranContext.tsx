@@ -749,7 +749,6 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
 
-    // Keep memorizedAyahKeys in sync so Certifications reflects the same state
     const ayahKeys = Array.from({ length: ayahCount }, (_, i) => `${surahNum}:${i + 1}`);
     if (!wasChecked) {
       setMemorizedAyahKeys((prev) => {
