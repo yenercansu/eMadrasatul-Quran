@@ -845,7 +845,7 @@ export default function HomeScreen() {
                   activeOpacity={0.78}
                   style={s.manageCta}
                 >
-                  <Text style={s.manageLink}>Manage goal ...</Text>
+                  <Text style={s.manageLink}>Manage goal</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -866,7 +866,6 @@ export default function HomeScreen() {
                 activeOpacity={0.88}
               >
                 <View style={s.hifzHeroTopRow}>
-                  <Text style={s.hifzHeroEyebrow}>CONTINUE HIFZ</Text>
                   <View style={s.hifzModePill}>
                     <Text style={s.hifzModePillText}>{activeModeLabel}</Text>
                   </View>
@@ -927,6 +926,16 @@ export default function HomeScreen() {
             )}
           </View>
 
+          {/* ── Quran Verse — shown only when no goal is set ─────────────── */}
+          {showSelectionWidget && (
+            <View style={s.verseCard}>
+              <Text style={s.verseText}>
+                "Indeed, it is We who sent down the Quran and indeed, We will be its guardian."
+              </Text>
+              <Text style={s.verseRef}>— Al-Hijr 15:9</Text>
+            </View>
+          )}
+
           {/* ── THIS WEEK ─────────────────────────────────────────────────── */}
           {hasMemorizationGoal && memorizationPercent < 100 && !milestoneComplete && (
             <View style={s.thisWeekSection}>
@@ -937,7 +946,7 @@ export default function HomeScreen() {
                   activeOpacity={0.78}
                   style={s.manageCta}
                 >
-                  <Text style={s.manageLink}>Manage Weekly Goal ...</Text>
+                  <Text style={s.manageLink}>Manage Weekly Goal</Text>
                 </TouchableOpacity>
               </View>
               <View style={s.thisWeekCard}>
@@ -1114,7 +1123,9 @@ export default function HomeScreen() {
                       activeOpacity={0.7}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                      <View style={s.nextAyahCircleNew} />
+                      <View style={s.nextAyahCircleNew}>
+                        <Ionicons name="checkmark" size={15} color={colors.appIconMuted} />
+                      </View>
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
                       <Text style={s.nextAyahTitle}>
@@ -2159,7 +2170,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginBottom: 8,
     },
     sectionHeadingRowSelection: {
-      marginBottom: 8,
+      marginBottom: 14,
     },
     goalWidgetTitle: {
       fontSize: 13,
@@ -2175,11 +2186,11 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       letterSpacing: 1.9,
     },
     niyyahAcceptedText: {
-      fontSize: 12,
-      fontWeight: "700",
-      color: "#7A7268",
-      fontFamily: "Inter_700Bold",
-      letterSpacing: 0.9,
+      fontSize: 10,
+      fontWeight: "400",
+      color: "#A49A8D",
+      fontFamily: "Inter_400Regular",
+      letterSpacing: 0.4,
       textTransform: "uppercase",
       textAlign: "right",
       flexShrink: 1,
@@ -2278,7 +2289,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: 44,
       height: 44,
       borderRadius: 22,
-      backgroundColor: "rgba(0,0,0,0.07)",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -2978,9 +2988,12 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     nextAyahCircleNew: {
       width: 28,
       height: 28,
-      borderRadius: 6,
-      borderWidth: 1.5,
-      borderColor: "#BFB5A4",
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.appIconMuted,
+      backgroundColor: "transparent",
+      alignItems: "center",
+      justifyContent: "center",
       flexShrink: 0,
     },
     nextAyahToggleNew: {
@@ -3295,6 +3308,31 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontSize: 22,
       lineHeight: 28,
       width: 32,
+      textAlign: "center",
+    },
+    verseCard: {
+      marginHorizontal: 20,
+      marginTop: 16,
+      backgroundColor: "#EDE8DE",
+      borderRadius: 16,
+      paddingHorizontal: 24,
+      paddingVertical: 20,
+      alignItems: "center",
+    },
+    verseText: {
+      fontSize: 15,
+      lineHeight: 24,
+      color: "#6B6150",
+      fontFamily: "Inter_400Regular",
+      fontStyle: "italic",
+      textAlign: "center",
+    },
+    verseRef: {
+      marginTop: 10,
+      fontSize: 13,
+      lineHeight: 18,
+      color: "#6B6150",
+      fontFamily: "Inter_700Bold",
       textAlign: "center",
     },
   });

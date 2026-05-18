@@ -848,20 +848,20 @@ export default function QuizScreen() {
     const showingAyahs = selectionMode === "by-ayah";
     const currentSearch = showingAyahs ? ayahSearchQuery : wordSearchQuery;
     return (
-      <View style={[s.container, { backgroundColor: colors.background }]}>
-        <View style={[s.selectionPageHeader, { paddingTop: topPad + 12, backgroundColor: colors.background }]}>
+      <View style={[s.container, { backgroundColor: colors.appBackground }]}>
+        <View style={[s.selectionPageHeader, { paddingTop: topPad + 12, backgroundColor: colors.appBackground }]}>
           <View style={s.selectionHeaderTopRow}>
             <TouchableOpacity onPress={handleBack} style={s.circleBackBtn} activeOpacity={0.7}>
               <Feather name="arrow-left" size={22} color={colors.appText} />
             </TouchableOpacity>
-            <Text style={[s.selectionModeLabelText, { color: colors.mutedForeground }]}>WORDS QUIZ</Text>
+            <Text style={[s.selectionModeLabelText, { color: colors.appTextMuted }]}>WORDS QUIZ</Text>
           </View>
-          <Text style={[s.selectionPageTitle, { color: colors.foreground }]}>Select Words</Text>
+          <Text style={[s.selectionPageTitle, { color: colors.appText }]}>Select Words</Text>
         </View>
 
         <View style={s.selectionWrap}>
           <View style={s.segmentWrapper}>
-            <View style={[s.segmentContainer, { borderColor: colors.border }]}>
+            <View style={s.segmentContainer}>
               {([{ key: "by-ayah", label: "By Ayah" }, { key: "by-words", label: "By Words" }] as const).map(item => (
                 <TouchableOpacity
                   key={item.key}
@@ -882,12 +882,12 @@ export default function QuizScreen() {
           </View>
 
           <View style={s.searchWrapper}>
-            <View style={[s.searchContainer, { backgroundColor: colors.muted }]}>
-              <Feather name="search" size={15} color={colors.mutedForeground} />
+            <View style={s.searchContainer}>
+              <Feather name="search" size={15} color={colors.appIconMuted} />
               <TextInput
-                style={[s.searchInput, { color: colors.foreground }]}
+                style={[s.searchInput, { color: colors.appText }]}
                 placeholder={showingAyahs ? "Search ayahs..." : "Search words..."}
-                placeholderTextColor={colors.mutedForeground}
+                placeholderTextColor={colors.appIconMuted}
                 value={currentSearch}
                 onChangeText={text => {
                   if (showingAyahs) {
@@ -904,7 +904,7 @@ export default function QuizScreen() {
                   onPress={() => showingAyahs ? (setAyahSearchQuery(""), setAyahPage(0)) : (setWordSearchQuery(""), setWordPage(0))}
                   activeOpacity={0.7}
                 >
-                  <Feather name="x" size={15} color={colors.mutedForeground} />
+                  <Feather name="x" size={15} color={colors.appIconMuted} />
                 </TouchableOpacity>
               ) : null}
             </View>
@@ -923,10 +923,10 @@ export default function QuizScreen() {
             </View>
             <View style={s.tagActions}>
               <TouchableOpacity onPress={handleSelectAll} activeOpacity={0.7}>
-                <Text style={[s.tagActionText, { color: colors.foreground }]}>Select All</Text>
+                <Text style={s.tagActionText}>Select All</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleClearAll} activeOpacity={0.7}>
-                <Text style={[s.tagActionText, { color: colors.foreground }]}>Clear</Text>
+                <Text style={s.tagActionText}>Clear</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -935,7 +935,7 @@ export default function QuizScreen() {
             {showingAyahs ? (
               pagedAyahs.length === 0 ? (
                 <View style={s.infoBox}>
-                  <Ionicons name="information-circle-outline" size={18} color="#A8A29E" />
+                  <Ionicons name="information-circle-outline" size={18} color={colors.appIconMuted} />
                   <Text style={s.infoText}>{ayahSearchQuery.trim() ? "No ayahs match your search." : tagFilter === "all" ? "No saved ayahs. Swipe left on any ayah while reading to save it here." : "No ayahs match this filter."}</Text>
                 </View>
               ) : (
@@ -954,11 +954,11 @@ export default function QuizScreen() {
                       </View>
                       <View style={{ flex: 1 }}>
                         <View style={s.ayahCard2Header}>
-                          <Text style={[s.ayahCard2Meta, { color: colors.mutedForeground }]}>{ayah.surahName.toUpperCase()} · {ayah.ayahNumber}</Text>
-                          <Text style={[s.ayahCard2Meta, { color: colors.mutedForeground }]}>JUZ {juz}</Text>
+                          <Text style={[s.ayahCard2Meta, { color: colors.appTextMuted }]}>{ayah.surahName.toUpperCase()} · {ayah.ayahNumber}</Text>
+                          <Text style={[s.ayahCard2Meta, { color: colors.appTextMuted }]}>JUZ {juz}</Text>
                         </View>
-                        <Text style={[s.ayahCard2Arabic, { color: colors.foreground }]}>{ayah.arabicText}</Text>
-                        <Text style={[s.ayahCard2Translation, { color: colors.mutedForeground }]} numberOfLines={2}>{ayah.translationText || "No translation saved"}</Text>
+                        <Text style={[s.ayahCard2Arabic, { color: colors.appText }]}>{ayah.arabicText}</Text>
+                        <Text style={[s.ayahCard2Translation, { color: colors.appTextMuted }]} numberOfLines={2}>{ayah.translationText || "No translation saved"}</Text>
                       </View>
                     </TouchableOpacity>
                   );
@@ -967,7 +967,7 @@ export default function QuizScreen() {
             ) : (
               pagedWords.length === 0 ? (
                 <View style={s.infoBox}>
-                  <Ionicons name="information-circle-outline" size={18} color="#A8A29E" />
+                  <Ionicons name="information-circle-outline" size={18} color={colors.appIconMuted} />
                   <Text style={s.infoText}>{wordSearchQuery.trim() ? "No words match your search." : tagFilter === "all" ? "No standalone words saved yet. Long-press individual words while reading to save them here." : "No words match this filter."}</Text>
                 </View>
               ) : (
@@ -985,9 +985,9 @@ export default function QuizScreen() {
                         {checked && <Feather name="check" size={12} color={colors.appText} />}
                       </View>
                       <View style={s.wordSelectInfo}>
-                        <Text style={[s.wordSelectMeta, { color: colors.mutedForeground }]}>{surahName.toUpperCase()} · AYAH {word.ayahNumber}</Text>
-                        <Text style={[s.wordSelectArabic, { color: colors.foreground }]}>{word.arabic}</Text>
-                        <Text style={[s.wordSelectTranslation, { color: colors.mutedForeground }]} numberOfLines={1}>{word.translation || "No translation saved"}</Text>
+                        <Text style={[s.wordSelectMeta, { color: colors.appTextMuted }]}>{surahName.toUpperCase()} · AYAH {word.ayahNumber}</Text>
+                        <Text style={[s.wordSelectArabic, { color: colors.appText }]}>{word.arabic}</Text>
+                        <Text style={[s.wordSelectTranslation, { color: colors.appTextMuted }]} numberOfLines={1}>{word.translation || "No translation saved"}</Text>
                       </View>
                     </TouchableOpacity>
                   );
@@ -996,15 +996,27 @@ export default function QuizScreen() {
             )}
           </ScrollView>
 
-          <View style={[s.startPanel2, { paddingBottom: insets.bottom > 0 ? insets.bottom : 16, backgroundColor: colors.background, borderTopColor: colors.border }]}>
+          <View style={[s.startPanel2, { paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }]}>
             <View style={s.startStats}>
-              <Text style={[s.startStatText, { color: colors.mutedForeground }]}>
+              <Text style={s.startStatText}>
                 {selectedItemCount} {showingAyahs ? `ayah${selectedItemCount !== 1 ? "s" : ""}` : `word${selectedItemCount !== 1 ? "s" : ""}`} selected
               </Text>
-              <Text style={[s.startStatText, { color: colors.mutedForeground }]}>
+              <Text style={s.startStatText}>
                 {selectedQuizWordPool.length} test word{selectedQuizWordPool.length !== 1 ? "s" : ""}
               </Text>
             </View>
+            {selectedQuizWordPool.length < 1 && (
+              <View style={s.selectionHintCard}>
+                <View style={s.selectionHintIcon}>
+                  <Feather name="check-circle" size={16} color={colors.appIconMuted} />
+                </View>
+                <Text style={s.selectionHintText}>
+                  {showingAyahs
+                    ? "Choose saved ayahs that contain words you want to review."
+                    : "Choose at least one saved word to begin a gentle review."}
+                </Text>
+              </View>
+            )}
             {showingAyahs ? (
               <Pagination
                 page={ayahPage}
@@ -1030,7 +1042,7 @@ export default function QuizScreen() {
               activeOpacity={0.85}
               disabled={selectedQuizWordPool.length < 1}
             >
-              <Text style={s.startBtnText2}>Start the Test</Text>
+              <Text style={[s.startBtnText2, selectedQuizWordPool.length < 1 && s.startBtnText2Disabled]}>Start the Test</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.viewCardsBtn, selectedQuizWordPool.length < 1 && s.startBtn2Disabled]}
@@ -1038,7 +1050,7 @@ export default function QuizScreen() {
               activeOpacity={0.85}
               disabled={selectedQuizWordPool.length < 1}
             >
-              <Text style={[s.viewCardsBtnText, { color: colors.foreground }]}>Practice with Cards</Text>
+              <Text style={[s.viewCardsBtnText, selectedQuizWordPool.length < 1 && s.viewCardsBtnTextDisabled]}>Practice with Cards</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1404,19 +1416,23 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     segmentContainer: {
       flexDirection: "row",
-      borderRadius: 12,
+      borderRadius: 999,
       borderWidth: 1,
+      borderColor: colors.appSoftBorder,
+      backgroundColor: colors.appSoftPill,
+      padding: 3,
       overflow: "hidden",
     },
     segmentBtn: {
       flex: 1,
       alignItems: "center",
-      paddingVertical: 12,
+      paddingVertical: 10,
+      borderRadius: 999,
       backgroundColor: "transparent",
     },
-    segmentBtnActive: { backgroundColor: "#1A1A1A" },
-    segmentText: { fontSize: 14, color: "#78716C", fontFamily: "Inter_700Bold" },
-    segmentTextActive: { color: "#FFFFFF" },
+    segmentBtnActive: { backgroundColor: colors.appSelectedPill },
+    segmentText: { fontSize: 14, color: colors.appIconMuted, fontFamily: "Inter_600SemiBold" },
+    segmentTextActive: { color: colors.appText },
     searchWrapper: {
       paddingHorizontal: 16,
       paddingBottom: 8,
@@ -1425,9 +1441,13 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 10,
-      borderRadius: 12,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.appSoftBorder,
+      backgroundColor: colors.appCardWarm,
       paddingHorizontal: 14,
       paddingVertical: 11,
+      ...colors.shadows.softLift,
     },
     searchInput: {
       flex: 1,
@@ -1444,16 +1464,19 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     tagChipsRow: { flexDirection: "row", gap: 8 },
     tagActions: { flexDirection: "row", gap: 10, alignItems: "center" },
-    tagActionText: { fontSize: 13, fontFamily: "Inter_600SemiBold", textDecorationLine: "underline" },
+    tagActionText: { fontSize: 13, color: colors.appTextMuted, fontFamily: "Inter_600SemiBold" },
     infoBox: {
       flexDirection: "row",
       gap: 10,
-      backgroundColor: colors.secondary,
-      borderRadius: 14,
-      padding: 14,
+      backgroundColor: colors.appCardWarm,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.appSoftBorder,
+      padding: 16,
       alignItems: "flex-start",
+      ...colors.shadows.softLift,
     },
-    infoText: { flex: 1, fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular", lineHeight: 20 },
+    infoText: { flex: 1, fontSize: 13, color: colors.appTextMuted, fontFamily: "Inter_400Regular", lineHeight: 20 },
     selectionContent2: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24 },
     ayahCard2: {
       flexDirection: "row",
@@ -1507,35 +1530,71 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     wordSelectTranslation: { fontSize: 13, fontFamily: "Inter_400Regular" },
     startPanel2: {
       borderTopWidth: 1,
+      borderTopColor: colors.appSoftBorder,
+      backgroundColor: colors.appCardWarm,
       padding: 16,
       paddingTop: 12,
-      gap: 8,
+      gap: 10,
+      ...colors.shadows.softLift,
     },
     startStats: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
     },
-    startStatText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+    startStatText: { fontSize: 12, color: colors.appTextMuted, fontFamily: "Inter_400Regular" },
+    selectionHintCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      backgroundColor: colors.appSoftPill,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.appSoftBorder,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    selectionHintIcon: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.appCardWarm,
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0,
+    },
+    selectionHintText: {
+      flex: 1,
+      fontSize: 13,
+      lineHeight: 18,
+      color: colors.appTextMuted,
+      fontFamily: "Inter_400Regular",
+    },
     startBtn2: {
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "#1A1A1A",
-      borderRadius: 14,
+      backgroundColor: colors.appDarkerGray,
+      borderRadius: 16,
       paddingVertical: 16,
     },
-    startBtn2Disabled: { opacity: 0.45 },
+    startBtn2Disabled: {
+      backgroundColor: colors.appSoftPill,
+      borderWidth: 1,
+      borderColor: colors.appSoftBorder,
+    },
     startBtnText2: { fontSize: 15, color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+    startBtnText2Disabled: { color: colors.appIconMuted },
     viewCardsBtn: {
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: 14,
+      borderRadius: 16,
       paddingVertical: 14,
       borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.card,
+      borderColor: colors.appSoftBorder,
+      backgroundColor: colors.appCardWarm,
     },
-    viewCardsBtnText: { fontSize: 15, fontFamily: "Inter_700Bold" },
+    viewCardsBtnText: { fontSize: 15, color: colors.appText, fontFamily: "Inter_700Bold" },
+    viewCardsBtnTextDisabled: { color: colors.appIconMuted },
     reviewCardsContent: { padding: 16, paddingBottom: 80, gap: 10 },
     cardTabsWrap: { paddingHorizontal: 16, paddingBottom: 10 },
     cardTabs: {

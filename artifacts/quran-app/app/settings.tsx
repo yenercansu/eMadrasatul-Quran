@@ -11,6 +11,7 @@ import {
   Switch,
   Alert,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
@@ -28,7 +29,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   const s = styles(colors);
   return (
     <View style={s.section}>
-      <Text style={s.sectionTitle}>{title}</Text>
+      <View style={s.sectionHeader}>
+        <Text style={s.sectionTitle}>{title}</Text>
+      </View>
       <SettingsCard>{children}</SettingsCard>
     </View>
   );
@@ -116,6 +119,16 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        <View style={s.heroCard}>
+          <View style={s.heroIcon}>
+            <Feather name="settings" size={20} color={colors.appIconMuted} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.heroTitle}>Personalize your madrasa</Text>
+            <Text style={s.heroSub}>Keep your reading, reminders, and account links calm and intentional.</Text>
+          </View>
+        </View>
+
         <Section title="QURAN FOUNDATION">
           <SettingsRow
             label="Account Link"
@@ -156,8 +169,9 @@ export default function SettingsScreen() {
               <Switch
                 value={accountSettings.dailyNotifications}
                 onValueChange={v => updateAccountSettings({ dailyNotifications: v })}
-                trackColor={{ false: colors.muted, true: colors.primary }}
-                thumbColor={colors.primaryForeground}
+                trackColor={{ false: colors.appSoftPill, true: colors.appSelectedPill }}
+                thumbColor={colors.appCardWarm}
+                ios_backgroundColor={colors.appSoftPill}
               />
             }
           />
@@ -208,24 +222,62 @@ export default function SettingsScreen() {
 
 const styles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
-    root: { flex: 1, backgroundColor: colors.background },
+    root: { flex: 1, backgroundColor: colors.appBackground },
     header: {
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: 16,
-      paddingBottom: 14,
-      backgroundColor: colors.card,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      paddingHorizontal: 18,
+      paddingBottom: 12,
+      backgroundColor: colors.appBackground,
       gap: 10,
     },
-    headerTitle: { flex: 1, fontSize: 20, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold", textAlign: "center" },
+    headerTitle: { flex: 1, fontSize: 20, fontWeight: "700", color: colors.appText, fontFamily: "Inter_700Bold", textAlign: "center" },
     scroll: { flex: 1 },
-    section: { marginTop: 24 },
-    sectionTitle: { fontSize: 12, fontWeight: "700", color: colors.mutedForeground, letterSpacing: 1.2, textTransform: "uppercase", fontFamily: "Inter_700Bold", marginBottom: 8, paddingHorizontal: 20 },
+    heroCard: {
+      marginHorizontal: 20,
+      marginTop: 8,
+      marginBottom: 8,
+      padding: 18,
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: colors.appSoftBorder,
+      backgroundColor: colors.appCardWarm,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      ...colors.shadows.softLift,
+    },
+    heroIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: colors.appSoftPill,
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0,
+    },
+    heroTitle: {
+      fontSize: 17,
+      fontWeight: "700",
+      color: colors.appText,
+      fontFamily: "Inter_700Bold",
+      marginBottom: 3,
+    },
+    heroSub: {
+      fontSize: 13,
+      lineHeight: 19,
+      color: colors.appTextMuted,
+      fontFamily: "Inter_400Regular",
+    },
+    section: { marginTop: 22 },
+    sectionHeader: {
+      paddingHorizontal: 22,
+      marginBottom: 9,
+    },
+    sectionTitle: { fontSize: 12, fontWeight: "700", color: colors.appIconMuted, letterSpacing: 1.2, textTransform: "uppercase", fontFamily: "Inter_700Bold" },
     themeRow: { justifyContent: "flex-end" },
     dangerLabel: { color: colors.destructive },
-    appInfo: { alignItems: "center", paddingVertical: 24, gap: 4 },
-    appInfoText: { fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
-    appInfoSub: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
+    appInfo: { alignItems: "center", paddingVertical: 28, gap: 4 },
+    appInfoText: { fontSize: 13, color: colors.appTextMuted, fontFamily: "Inter_400Regular" },
+    appInfoSub: { fontSize: 12, color: colors.appIconMuted, fontFamily: "Inter_400Regular" },
   });

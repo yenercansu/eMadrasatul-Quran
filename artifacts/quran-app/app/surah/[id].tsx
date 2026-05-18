@@ -296,14 +296,16 @@ const cs = StyleSheet.create({
     marginBottom: 4,
   },
   numBadge: {
-    backgroundColor: "#EDEBE6",
+    backgroundColor: "#EDE6DA",
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: "#D8CDBE",
     alignItems: "center",
     justifyContent: "center",
   },
-  numText: { fontSize: 14, fontWeight: "700", color: "#6B6B6B", fontFamily: "Inter_700Bold" },
+  numText: { fontSize: 14, fontWeight: "700", color: "#5A5248", fontFamily: "Inter_700Bold" },
   memorizedCheckBtn: {
     width: 32,
     height: 32,

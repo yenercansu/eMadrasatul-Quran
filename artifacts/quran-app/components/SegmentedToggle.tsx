@@ -53,31 +53,31 @@ const styles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     wrap: {
       flexDirection: "row",
-      backgroundColor: colors.appSecondarySurface,
-      borderRadius: 10,
+      backgroundColor: colors.appSoftPill,
+      borderRadius: 999,
       borderWidth: 1,
-      borderColor: colors.appDarkerGray,
+      borderColor: colors.appSoftBorder,
       padding: 3,
     },
     button: {
       flex: 1,
       minHeight: 40,
-      borderRadius: 8,
+      borderRadius: 999,
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: 12,
     },
     buttonActive: {
-      backgroundColor: colors.appBlack,
+      backgroundColor: colors.appSelectedPill,
     },
     text: {
       fontSize: 14,
       fontWeight: "600",
-      color: colors.appLightText,
+      color: colors.appIconMuted,
       fontFamily: "Inter_600SemiBold",
     },
     textActive: {
-      color: colors.appWhite,
-      fontFamily: "Inter_700Bold",
+      color: colors.appText,
+      fontFamily: "Inter_600SemiBold",
     },
   });

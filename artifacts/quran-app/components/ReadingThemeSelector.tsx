@@ -62,14 +62,14 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingVertical: 10,
       borderRadius: 12,
       borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.secondary,
+      borderColor: colors.appSoftBorder,
+      backgroundColor: colors.appSoftPill,
       alignItems: "center",
       justifyContent: "center",
     },
     chipActive: {
-      borderColor: colors.primary,
-      backgroundColor: colors.primary,
+      borderColor: colors.appSelectedPill,
+      backgroundColor: colors.appSelectedPill,
     },
     chipCompact: {
       minWidth: 52,
@@ -80,14 +80,14 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     text: {
       fontSize: 14,
-      color: colors.mutedForeground,
+      color: colors.appIconMuted,
       fontFamily: "Inter_600SemiBold",
     },
     textCompact: {
       fontSize: 12,
     },
     textActive: {
-      color: colors.primaryForeground,
-      fontFamily: "Inter_700Bold",
+      color: colors.appText,
+      fontFamily: "Inter_600SemiBold",
     },
   });

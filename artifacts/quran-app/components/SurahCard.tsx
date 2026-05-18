@@ -47,7 +47,7 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, isChecked
             <Ionicons
               name="checkmark"
               size={15}
-              color={isChecked ? colors.appText : colors.appIconMuted}
+              color={isChecked ? colors.appWhite : colors.appIconMuted}
             />
           </TouchableOpacity>
         )}
@@ -108,15 +108,15 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: 28,
       height: 28,
       borderRadius: 14,
-      backgroundColor: colors.appSoftPill,
+      backgroundColor: "transparent",
       borderWidth: 1,
-      borderColor: colors.appSoftBorder,
+      borderColor: colors.appIconMuted,
       alignItems: "center",
       justifyContent: "center",
     },
     checkBtnActive: {
-      backgroundColor: colors.appSelectedPill,
-      borderColor: colors.appSelectedPill,
+      backgroundColor: colors.appDarkerGray,
+      borderColor: colors.appDarkerGray,
     },
     memorizedBadge: {
       alignSelf: "flex-start",

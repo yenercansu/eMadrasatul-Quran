@@ -160,6 +160,15 @@ function fallbackRevelationType(chapterNumber: number): string {
   return MEDINAN_SURAHS.has(chapterNumber) ? "Medinan" : "Meccan";
 }
 
+function normalizeRevelationType(value: unknown, chapterNumber?: number): string {
+  const raw = getString(value).trim().toLowerCase();
+  if (raw) {
+    if (raw.includes("mad") || raw.includes("med")) return "Medinan";
+    if (raw.includes("mak") || raw.includes("mec")) return "Meccan";
+  }
+  return chapterNumber ? fallbackRevelationType(chapterNumber) : "";
+}
+
 function fallbackTranslation(chapterNumber: number): string {
   return SURAH_TRANSLATION_FALLBACKS[chapterNumber - 1] ?? "";
 }
@@ -224,10 +233,11 @@ function normalizeChapter(chapter: Chapter | Record<string, unknown>): ApiSurah 
         (chapter as Record<string, unknown>).versesCount ??
         (chapter as Record<string, unknown>).verses_count,
     ),
-    revelationType: getString(
+    revelationType: normalizeRevelationType(
       (chapter as Record<string, unknown>).revelationType ??
         (chapter as Record<string, unknown>).revelationPlace ??
         (chapter as Record<string, unknown>).revelation_place,
+      number,
     ),
   };
 }
@@ -518,7 +528,7 @@ function pageToSurahDetail(page: QuranPage, chapterNumber: number, kind: "arabic
     name: getString(chapter.name ?? chapter.nameArabic ?? chapter.name_arabic, fallbackMeta?.name ?? ""),
     englishName: getString(chapter.englishName ?? chapter.nameSimple ?? chapter.name_simple, fallbackMeta?.englishName ?? `Surah ${chapterNumber}`),
     englishNameTranslation: getTextValue(chapter.englishNameTranslation ?? chapter.translatedName ?? chapter.translated_name),
-    revelationType: getString(chapter.revelationType ?? chapter.revelationPlace ?? chapter.revelation_place),
+    revelationType: normalizeRevelationType(chapter.revelationType ?? chapter.revelationPlace ?? chapter.revelation_place, chapterNumber),
     numberOfAyahs: getNumber(chapter.numberOfAyahs ?? chapter.versesCount ?? chapter.verses_count, fallbackMeta?.ayahCount ?? verses.length),
     ayahs: verses.map((verse, idx) => verseToAyah(verse, idx, kind)),
     rawPage: page,
@@ -541,7 +551,7 @@ export async function fetchSurahs(): Promise<ApiSurah[]> {
     englishName: remoteByNumber.get(meta.number)?.englishName || meta.englishName,
     englishNameTranslation: remoteByNumber.get(meta.number)?.englishNameTranslation || fallbackTranslation(meta.number),
     numberOfAyahs: remoteByNumber.get(meta.number)?.numberOfAyahs || meta.ayahCount,
-    revelationType: remoteByNumber.get(meta.number)?.revelationType || fallbackRevelationType(meta.number),
+    revelationType: normalizeRevelationType(remoteByNumber.get(meta.number)?.revelationType, meta.number),
   }));
   if (__DEV__) {
     console.info("[Madeenan Quran Mapper] chapters", {
