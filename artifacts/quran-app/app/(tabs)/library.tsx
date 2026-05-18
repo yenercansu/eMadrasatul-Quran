@@ -237,21 +237,14 @@ function AyahListView({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: 
     />
   );
 
-  const hint = (
-    <Text style={[listViewStyles.hint, { color: colors.mutedForeground }]}>
-      ← swipe left to remove · swipe right to open →
-    </Text>
-  );
-
   if (ayahs.length === 0) {
     return (
       <View style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={listViewStyles.emptyContent} showsVerticalScrollIndicator={false}>
-          {hint}
           <View style={listViewStyles.empty}>
             <Text style={[listViewStyles.emptyTitle, { color: colors.foreground }]}>No saved ayahs</Text>
             <Text style={[listViewStyles.emptySubtitle, { color: colors.mutedForeground }]}>
-              Swipe left on any ayah while reading to save it here
+              Save ayahs while reading to build your library
             </Text>
           </View>
           {infoBoxFooter}
@@ -268,7 +261,6 @@ function AyahListView({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: 
         renderItem={({ item }) => <AyahCard ayah={item} onRemove={onRemove} isTop={true} />}
         contentContainerStyle={listViewStyles.listContent}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={hint}
         ListFooterComponent={infoBoxFooter}
       />
       <View style={{
@@ -295,8 +287,7 @@ function AyahListView({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: 
 const listViewStyles = StyleSheet.create({
   listContent: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 80, gap: 12 },
   emptyContent: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 80 },
-  hint: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 14, marginTop: 4 },
-  empty: { alignItems: "center", paddingVertical: 48, paddingHorizontal: 24, gap: 8 },
+empty: { alignItems: "center", paddingVertical: 48, paddingHorizontal: 24, gap: 8 },
   emptyTitle: { fontSize: 18, fontFamily: "Inter_700Bold", textAlign: "center" },
   emptySubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
 });

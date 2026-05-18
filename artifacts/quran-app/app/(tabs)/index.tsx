@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
-import { useQuran } from "@/contexts/QuranContext";
+import { useQuran, type Goal, type MemorizationGoal } from "@/contexts/QuranContext";
 import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
 import { getJuzAyahs, SURAH_DATA, type AyahRef } from "@/constants/surahData";
 import { AyahRangeModal, type AyahRangeResult } from "@/components/AyahRangeModal";
@@ -27,6 +27,7 @@ import { MemorizedBadge } from "@/components/SurahCard";
 import { HifzGoalSetupModal, type PaceRhythm } from "@/components/hifz/HifzGoalSetupModal";
 import { HifzHeroCard } from "@/components/hifz/HifzUI";
 import { VerseCard } from "@/components/VerseCard";
+import { ActionPill } from "@/components/ActionPill";
 
 const TOTAL_AYAHS = 6236;
 const MAX_WEEKLY_AYAHS = 70;
@@ -86,6 +87,45 @@ function buildWeeklyGoal(options: {
     startAyahNumber: first?.ayahNumber ?? options.startAyahNumber,
     weeklyTargetAyahKeys: target.map(getAyahKey),
   };
+}
+
+function isSurahFullyMemorized(surahNumber: number, memorized: Set<string>) {
+  const surah = SURAH_DATA[surahNumber - 1];
+  if (!surah) return false;
+  for (let ayah = 1; ayah <= surah.ayahCount; ayah++) {
+    if (!memorized.has(`${surahNumber}:${ayah}`)) return false;
+  }
+  return true;
+}
+
+function isJuzFullyMemorized(juz: number, memorized: Set<string>) {
+  const ayahs = getJuzAyahs(juz);
+  return ayahs.length > 0 && ayahs.every((ayah) => memorized.has(getAyahKey(ayah)));
+}
+
+function findNextIncompleteSurah(currentSurahNumber: number, memorizedAyahKeys: string[]) {
+  const memorized = new Set(memorizedAyahKeys);
+  const after = SURAH_DATA.find(
+    (surah) => surah.number > currentSurahNumber && !isSurahFullyMemorized(surah.number, memorized)
+  );
+  if (after) return after;
+  return SURAH_DATA.find((surah) => !isSurahFullyMemorized(surah.number, memorized)) ?? null;
+}
+
+function findNextIncompleteJuz(currentJuz: number, memorizedAyahKeys: string[]) {
+  const memorized = new Set(memorizedAyahKeys);
+  for (let juz = currentJuz + 1; juz <= 30; juz++) {
+    if (!isJuzFullyMemorized(juz, memorized)) return juz;
+  }
+  for (let juz = 1; juz <= 30; juz++) {
+    if (!isJuzFullyMemorized(juz, memorized)) return juz;
+  }
+  return null;
+}
+
+function getFirstUnmemorizedAyah(ayahs: AyahRef[], memorizedAyahKeys: string[]) {
+  const memorized = new Set(memorizedAyahKeys);
+  return ayahs.find((ayah) => !memorized.has(getAyahKey(ayah))) ?? null;
 }
 
 function getNextAyahAfter(ayah: Pick<AyahRef, "surahNumber" | "ayahNumber">): AyahRef | null {
@@ -198,7 +238,7 @@ export default function HomeScreen() {
   const {
     lastListened, goal, setGoal, memorizationGoal, setMemorizationGoal,
     todayEntry, dailyEntries, onlineUsers, recentProgress, savedSurahs,
-    getWeekGoalAyahs, isSurahChecked, markAyahsMemorized,
+    getWeekGoalAyahs, isSurahChecked, markAyahsMemorized, recordMilestoneCompletion,
     memorizedAyahKeys,
   } = useQuran();
   const [refreshing, setRefreshing] = useState(false);
@@ -206,9 +246,26 @@ export default function HomeScreen() {
   const [showMilestoneToast, setShowMilestoneToast] = useState(false);
   const [showHifzCompleteToast, setShowHifzCompleteToast] = useState(false);
   const [hifzCompleteToastText, setHifzCompleteToastText] = useState({
-    title: "Hifz goal complete!",
-    sub: "Start a new memorization goal",
+    title: "Hifz step complete",
+    sub: "Your journey is continuing.",
   });
+  const [continuationNotice, setContinuationNotice] = useState<{
+    completed: string;
+    upNext: string;
+    copy: string;
+  } | null>(null);
+  const [hifzTransition, setHifzTransition] = useState<{
+    completed: string;
+    upNext: string;
+    nextGoal: Goal;
+    nextMemorizationGoal: MemorizationGoal;
+    nextWidgetPath: "surah" | "juz";
+    nextFirstAyah: AyahRef;
+    nextLastAyah: AyahRef;
+    nextJuz: number | null;
+    totalAyahs: number;
+  } | null>(null);
+  const [hifzTransitionProgress, setHifzTransitionProgress] = useState(0);
   const [showWeeklyToast, setShowWeeklyToast] = useState(false);
   const [showWeekCompleteCard, setShowWeekCompleteCard] = useState(false);
   const [showHifzGoalOptions, setShowHifzGoalOptions] = useState(false);
@@ -353,6 +410,15 @@ export default function HomeScreen() {
     return savedSurahs.map(n => SURAH_DATA[n - 1]).filter(Boolean);
   }, [savedSurahs]);
 
+  const fullyMemorizedSurahs = useMemo(() => {
+    const memorized = new Set(memorizedAyahKeys);
+    return new Set(
+      SURAH_DATA
+        .filter((surah) => isSurahChecked(surah.number) || isSurahFullyMemorized(surah.number, memorized))
+        .map((surah) => surah.number)
+    );
+  }, [isSurahChecked, memorizedAyahKeys]);
+
   const targetTotal = memorizationGoal?.path === "pace"
     ? TOTAL_AYAHS
     : memorizationGoal?.path === "juz"
@@ -464,6 +530,49 @@ export default function HomeScreen() {
     return activeGoalAyahs.filter(a => memorized.has(`${a.surahNumber}:${a.ayahNumber}`)).length;
   }, [activeGoalAyahs, memorizedAyahKeys]);
 
+  const currentGoalSurfaceAyahs = useMemo(() => {
+    if (!memorizationGoal || memorizationGoal.path === "pace") return [];
+    if (memorizationGoal.path === "juz" && memorizationGoal.targetJuz) {
+      return getJuzAyahs(memorizationGoal.targetJuz);
+    }
+    const surah = SURAH_DATA.find(s => s.number === memorizationGoal.startSurahNumber);
+    if (!surah) return [];
+    return Array.from({ length: surah.ayahCount }, (_, index) => ({
+      surahNumber: surah.number,
+      surahName: surah.englishName,
+      ayahNumber: index + 1,
+    }));
+  }, [memorizationGoal]);
+
+  const canExtendCurrentGoal = useMemo(() => {
+    if (!goal || !memorizationGoal || memorizationGoal.path === "pace") return false;
+    const memorized = new Set(memorizedAyahKeys);
+    const existingTargets = new Set(goal.weeklyTargetAyahKeys ?? []);
+    return currentGoalSurfaceAyahs.some((ayah) => {
+      const key = getAyahKey(ayah);
+      return !memorized.has(key) && !existingTargets.has(key);
+    });
+  }, [currentGoalSurfaceAyahs, goal, memorizationGoal, memorizedAyahKeys]);
+
+  const extensionRemainingCount = useMemo(() => {
+    if (!goal || !memorizationGoal || memorizationGoal.path === "pace") return 0;
+    const memorized = new Set(memorizedAyahKeys);
+    const existingTargets = new Set(goal.weeklyTargetAyahKeys ?? []);
+    return currentGoalSurfaceAyahs.filter((ayah) => {
+      const key = getAyahKey(ayah);
+      return !memorized.has(key) && !existingTargets.has(key);
+    }).length;
+  }, [currentGoalSurfaceAyahs, goal, memorizationGoal, memorizedAyahKeys]);
+
+  const extensionOptionCounts = useMemo(() => {
+    if (extensionRemainingCount <= 0) return [];
+    if (extensionRemainingCount <= 4) {
+      return Array.from({ length: extensionRemainingCount }, (_, index) => index + 1);
+    }
+    const presets = [5, 7, 10, 15].filter((count) => count <= extensionRemainingCount);
+    return Array.from(new Set([...presets, extensionRemainingCount])).slice(0, 4);
+  }, [extensionRemainingCount]);
+
   const activeRangeTotal = activeGoalAyahs.length || totalRangeAyahs || targetTotal;
   const remainingRangeAyahs = Math.max(0, activeRangeTotal - totalRangeMemorized);
 
@@ -527,6 +636,66 @@ export default function HomeScreen() {
       : sourceAyahs.slice(idx + 1, idx + 3);
     return adjacent.map(a => a.ayahNumber);
   }, [nextAyahInRange, memorizationGoal, goal, activeGoalAyahs, weekGoalAyahs, hifzDirection]);
+
+  const extendCurrentGoal = useCallback((count: number) => {
+    if (!goal || !memorizationGoal || memorizationGoal.path === "pace") return;
+    const existingKeys = goal.weeklyTargetAyahKeys ?? [];
+    const existingKeySet = new Set(existingKeys);
+    const memorized = new Set(memorizedAyahKeys);
+    const firstTargetIdx = currentGoalSurfaceAyahs.findIndex((ayah) => existingKeySet.has(getAyahKey(ayah)));
+    const lastTargetIdx = (() => {
+      for (let i = currentGoalSurfaceAyahs.length - 1; i >= 0; i--) {
+        if (existingKeySet.has(getAyahKey(currentGoalSurfaceAyahs[i]))) return i;
+      }
+      return -1;
+    })();
+    const after = lastTargetIdx >= 0 ? currentGoalSurfaceAyahs.slice(lastTargetIdx + 1) : currentGoalSurfaceAyahs;
+    const before = firstTargetIdx >= 0 ? currentGoalSurfaceAyahs.slice(0, firstTargetIdx) : [];
+    const orderedCandidates = hifzDirection === "reverse"
+      ? [...before.reverse(), ...after]
+      : [...after, ...before];
+    const newExtraKeys = orderedCandidates
+      .map(getAyahKey)
+      .filter((key) => !existingKeySet.has(key) && !memorized.has(key))
+      .slice(0, count);
+    if (newExtraKeys.length === 0) return;
+
+    const combinedKeySet = new Set([...existingKeys, ...newExtraKeys]);
+    const sortedKeys = currentGoalSurfaceAyahs
+      .map(getAyahKey)
+      .filter((key) => combinedKeySet.has(key));
+    const first = currentGoalSurfaceAyahs.find((ayah) => getAyahKey(ayah) === sortedKeys[0]);
+    const last = currentGoalSurfaceAyahs.find((ayah) => getAyahKey(ayah) === sortedKeys[sortedKeys.length - 1]);
+    if (!first || !last) return;
+
+    setGoal({
+      ...goal,
+      ayahsPerWeek: sortedKeys.length,
+      weeklyTargetAyahKeys: sortedKeys,
+      startSurahNumber: first.surahNumber,
+      startAyahNumber: first.ayahNumber,
+      endSurahNumber: last.surahNumber,
+      endAyahNumber: last.ayahNumber,
+    });
+    setMemorizationGoal({
+      ...memorizationGoal,
+      startSurahNumber: memorizationGoal.path === "surah" ? first.surahNumber : memorizationGoal.startSurahNumber,
+      startSurahName: memorizationGoal.path === "surah" ? first.surahName : memorizationGoal.startSurahName,
+      endSurahNumber: last.surahNumber,
+      endAyahNumber: last.ayahNumber,
+    });
+    setWidgetFirstAyah(first);
+    setWidgetLastAyah(last);
+    setShowWeekCompleteCard(false);
+  }, [
+    currentGoalSurfaceAyahs,
+    goal,
+    hifzDirection,
+    memorizationGoal,
+    memorizedAyahKeys,
+    setGoal,
+    setMemorizationGoal,
+  ]);
 
   const widgetWeeklySelection = useMemo<AyahRangeResult | undefined>(() => {
     if (!widgetFirstAyah || !widgetLastAyah) return undefined;
@@ -593,10 +762,16 @@ export default function HomeScreen() {
   const resumeHifzTarget = resumeSource
     ? { surahNumber: resumeSource.surahNumber, ayahNumber: resumeSource.ayahNumberInSurah }
     : { surahNumber: memorizationGoal?.startSurahNumber ?? 1, ayahNumber: goal?.startAyahNumber ?? 1 };
-  // Hero card displays last MEMORIZED position, not last listened
-  const heroTarget = lastMemorizedAyah
-    ? { surahNumber: lastMemorizedAyah.surahNumber, ayahNumber: lastMemorizedAyah.ayahNumber }
-    : { surahNumber: memorizationGoal?.startSurahNumber ?? 1, ayahNumber: goal?.startAyahNumber ?? 1 };
+  const activeGoalHeroTarget = !isPaceGoal && memorizationGoal && goal
+    ? {
+        surahNumber: nextAyahInRange?.surahNumber ?? goal.startSurahNumber ?? memorizationGoal.startSurahNumber,
+        ayahNumber: nextAyahInRange?.ayahNumber ?? goal.startAyahNumber ?? 1,
+      }
+    : null;
+  const heroTarget = activeGoalHeroTarget
+    ?? (lastMemorizedAyah
+      ? { surahNumber: lastMemorizedAyah.surahNumber, ayahNumber: lastMemorizedAyah.ayahNumber }
+      : { surahNumber: memorizationGoal?.startSurahNumber ?? 1, ayahNumber: goal?.startAyahNumber ?? 1 });
   const heroSurahMeta = SURAH_DATA[heroTarget.surahNumber - 1];
   const activeModeLabel = isPaceGoal
     ? "Pace by Pace"
@@ -647,6 +822,9 @@ export default function HomeScreen() {
     setShowWeeklyToast(false);
     setShowWeekCompleteCard(false);
     setShowMilestoneToast(false);
+    setContinuationNotice(null);
+    setHifzTransition(null);
+    setHifzTransitionProgress(0);
     setHifzDirection("forward");
     setWidgetPath("surah");
     setWidgetFirstAyah(null);
@@ -655,6 +833,9 @@ export default function HomeScreen() {
   }, [setGoal, setMemorizationGoal]);
 
   const openNewHifzSelection = useCallback((path: "surah" | "juz", options?: { surahNumber?: number; juz?: number; startAtAyahSelection?: boolean }) => {
+    setContinuationNotice(null);
+    setHifzTransition(null);
+    setHifzTransitionProgress(0);
     setWidgetPath(path);
     setWidgetFirstAyah(null);
     setWidgetLastAyah(null);
@@ -672,6 +853,9 @@ export default function HomeScreen() {
     daysPerWeek?: number;
     targetDaysPerWeek?: number;
   }) => {
+    setContinuationNotice(null);
+    setHifzTransition(null);
+    setHifzTransitionProgress(0);
     setWidgetPath("surah");
     setWidgetFirstAyah(null);
     setWidgetLastAyah(null);
@@ -691,51 +875,216 @@ export default function HomeScreen() {
     const prev = prevMemPercentRef.current;
     prevMemPercentRef.current = memorizationPercent;
     if (memorizationGoal && (prev === null || prev < 100) && memorizationPercent >= 100) {
-      const completedName = memorizationGoal?.path === "juz"
+      if (hifzTransition) return;
+      if (memorizationGoal.path === "pace") return;
+      if (fullQuranComplete) return;
+      setContinuationNotice(null);
+      recordMilestoneCompletion();
+
+      const completedName = memorizationGoal.path === "juz"
         ? `Juz ${targetJuz}`
         : targetSurah?.englishName ?? "Hifz goal";
+      const today = new Date().toISOString().split("T")[0];
+      const requestedAyahsPerWeek = Math.max(1, goal?.targetAyahsPerWeek ?? goal?.ayahsPerWeek ?? 7);
+
+      if (memorizationGoal.path === "juz") {
+        const nextJuz = findNextIncompleteJuz(targetJuz, memorizedAyahKeys);
+        const juzAyahs = nextJuz ? getJuzAyahs(nextJuz) : [];
+        const first = getFirstUnmemorizedAyah(juzAyahs, memorizedAyahKeys);
+        const last = juzAyahs[juzAyahs.length - 1];
+        if (!nextJuz || !first || !last) return;
+        const weeklyGoal = buildWeeklyGoal({
+          path: "juz",
+          targetJuz: nextJuz,
+          startSurahNumber: first.surahNumber,
+          startAyahNumber: first.ayahNumber,
+          endSurahNumber: last.surahNumber,
+          endAyahNumber: last.ayahNumber,
+          requestedAyahsPerWeek,
+          memorizedAyahKeys,
+        });
+        const nextMemorizationGoal: MemorizationGoal = {
+          path: "juz",
+          startSurahNumber: first.surahNumber,
+          startSurahName: `Juz ${nextJuz}`,
+          startDate: today,
+          ayahsReadAtStart: todayEntry?.ayahsRead ?? 0,
+          targetJuz: nextJuz,
+          endSurahNumber: last.surahNumber,
+          endAyahNumber: last.ayahNumber,
+        };
+        const nextGoal: Goal = {
+          ...weeklyGoal,
+          targetAyahsPerWeek: goal?.targetAyahsPerWeek,
+          measurementStyle: goal?.measurementStyle,
+          memorizationStyle: goal?.memorizationStyle,
+          gradualIncreaseStyle: goal?.gradualIncreaseStyle,
+          hifzDaysPerWeek: goal?.hifzDaysPerWeek,
+          targetHifzDaysPerWeek: goal?.targetHifzDaysPerWeek,
+          paceRhythm: goal?.paceRhythm,
+          startDate: today,
+          endSurahNumber: last.surahNumber,
+          endAyahNumber: last.ayahNumber,
+        };
+        setHifzTransition({
+          completed: completedName,
+          upNext: `Juz ${nextJuz}`,
+          nextGoal,
+          nextMemorizationGoal,
+          nextWidgetPath: "juz",
+          nextFirstAyah: first,
+          nextLastAyah: last,
+          nextJuz,
+          totalAyahs: targetTotal,
+        });
+      } else {
+        const nextSurah = findNextIncompleteSurah(memorizationGoal.startSurahNumber, memorizedAyahKeys);
+        if (!nextSurah) return;
+        const surahAyahs = Array.from({ length: nextSurah.ayahCount }, (_, index) => ({
+          surahNumber: nextSurah.number,
+          surahName: nextSurah.englishName,
+          ayahNumber: index + 1,
+        }));
+        const first = getFirstUnmemorizedAyah(surahAyahs, memorizedAyahKeys);
+        const last = {
+          surahNumber: nextSurah.number,
+          surahName: nextSurah.englishName,
+          ayahNumber: nextSurah.ayahCount,
+        };
+        if (!first) return;
+        const weeklyGoal = buildWeeklyGoal({
+          path: "surah",
+          startSurahNumber: first.surahNumber,
+          startAyahNumber: first.ayahNumber,
+          endSurahNumber: last.surahNumber,
+          endAyahNumber: last.ayahNumber,
+          requestedAyahsPerWeek,
+          memorizedAyahKeys,
+        });
+        const nextMemorizationGoal: MemorizationGoal = {
+          path: "surah",
+          startSurahNumber: nextSurah.number,
+          startSurahName: nextSurah.englishName,
+          startDate: today,
+          ayahsReadAtStart: todayEntry?.ayahsRead ?? 0,
+          endSurahNumber: last.surahNumber,
+          endAyahNumber: last.ayahNumber,
+        };
+        const nextGoal: Goal = {
+          ...weeklyGoal,
+          targetAyahsPerWeek: goal?.targetAyahsPerWeek,
+          measurementStyle: goal?.measurementStyle,
+          memorizationStyle: goal?.memorizationStyle,
+          gradualIncreaseStyle: goal?.gradualIncreaseStyle,
+          hifzDaysPerWeek: goal?.hifzDaysPerWeek,
+          targetHifzDaysPerWeek: goal?.targetHifzDaysPerWeek,
+          paceRhythm: goal?.paceRhythm,
+          startDate: today,
+          endSurahNumber: last.surahNumber,
+          endAyahNumber: last.ayahNumber,
+        };
+        setHifzTransition({
+          completed: completedName,
+          upNext: nextSurah.englishName,
+          nextGoal,
+          nextMemorizationGoal,
+          nextWidgetPath: "surah",
+          nextFirstAyah: first,
+          nextLastAyah: last,
+          nextJuz: null,
+          totalAyahs: targetTotal,
+        });
+      }
+
       setHifzCompleteToastText({
-        title: "Hifz goal complete!",
-        sub: `${completedName} memorized`,
+        title: "Hifz step complete",
+        sub: `${completedName} is complete. Your next goal is ready.`,
       });
       setShowHifzCompleteToast(true);
       setShowMilestoneToast(false);
       setShowWeeklyToast(false);
-      resetHifzFlow();
+      setShowWeekCompleteCard(false);
+      setShowHifzGoalOptions(false);
       const t = setTimeout(() => setShowHifzCompleteToast(false), 5000);
       return () => clearTimeout(t);
     }
-  }, [memorizationGoal, memorizationPercent, resetHifzFlow, targetJuz, targetSurah?.englishName]);
+  }, [
+    fullQuranComplete,
+    goal,
+    hifzTransition,
+    memorizationGoal,
+    memorizationPercent,
+    memorizedAyahKeys,
+    recordMilestoneCompletion,
+    setGoal,
+    setMemorizationGoal,
+    targetJuz,
+    targetSurah?.englishName,
+    todayEntry?.ayahsRead,
+  ]);
 
   useEffect(() => {
+    if (!hifzTransition) return;
+    setHifzTransitionProgress(0);
+    const interval = setInterval(() => {
+      setHifzTransitionProgress((current) => Math.min(100, current + 1));
+    }, 150);
+    const t = setTimeout(() => {
+      setGoal(hifzTransition.nextGoal);
+      setMemorizationGoal(hifzTransition.nextMemorizationGoal);
+      setWidgetPath(hifzTransition.nextWidgetPath);
+      setWidgetFirstAyah(hifzTransition.nextFirstAyah);
+      setWidgetLastAyah(hifzTransition.nextLastAyah);
+      setWidgetJuz(hifzTransition.nextJuz);
+      setContinuationNotice(null);
+      setHifzTransition(null);
+      setHifzTransitionProgress(0);
+    }, 15_000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(t);
+    };
+  }, [hifzTransition, setGoal, setMemorizationGoal]);
+
+  useEffect(() => {
+    if (hifzTransition) return;
     const prev = prevMilestoneCompleteRef.current;
     prevMilestoneCompleteRef.current = milestoneComplete;
     if (prev !== null && !prev && milestoneComplete) {
+      recordMilestoneCompletion();
       setShowMilestoneToast(true);
       setShowWeeklyToast(false);
       setShowWeekCompleteCard(false);
       const t = setTimeout(() => setShowMilestoneToast(false), 5000);
       return () => clearTimeout(t);
     }
-  }, [milestoneComplete]);
+  }, [hifzTransition, milestoneComplete, recordMilestoneCompletion]);
 
   useEffect(() => {
+    if (hifzTransition) return;
     const prev = prevWeekPercentRef.current;
     prevWeekPercentRef.current = weekPercent;
     if (weekPercent < 100) {
       setShowWeekCompleteCard(false);
     }
-    if (weekPercent >= 100 && goal && !milestoneComplete) {
+    if (weekPercent >= 100 && goal && (!milestoneComplete || canExtendCurrentGoal)) {
       setShowWeekCompleteCard(true);
     }
-    if (prev !== null && prev < 100 && weekPercent >= 100 && goal && !milestoneComplete) {
+    if (prev !== null && prev < 100 && weekPercent >= 100 && goal && (!milestoneComplete || canExtendCurrentGoal)) {
       setShowWeeklyToast(true);
       const t = setTimeout(() => {
         setShowWeeklyToast(false);
       }, 5000);
       return () => clearTimeout(t);
     }
-  }, [goal, milestoneComplete, weekPercent]);
+  }, [canExtendCurrentGoal, goal, hifzTransition, milestoneComplete, weekPercent]);
+
+  useEffect(() => {
+    if (continuationNotice && weekGoalProgress > 0) {
+      setContinuationNotice(null);
+    }
+  }, [continuationNotice, weekGoalProgress]);
 
   const topPad = insets.top;
   const hasMemorizationGoal = memorizationGoal !== null;
@@ -879,6 +1228,32 @@ export default function HomeScreen() {
                 progress={memorizationPercent > 0 ? Math.max(2, memorizationPercent) : 0}
                 onPress={() => router.push(`/surah/${heroTarget.surahNumber}?ayah=${heroTarget.ayahNumber}`)}
               />
+              {continuationNotice && (
+                <View style={s.continuationCard}>
+                  <View style={s.continuationRow}>
+                    <View style={s.continuationColumn}>
+                      <Text style={s.continuationLabel}>Completed</Text>
+                      <Text style={s.continuationValue}>{continuationNotice.completed}</Text>
+                    </View>
+                    <View style={s.continuationDivider} />
+                    <View style={s.continuationColumn}>
+                      <Text style={s.continuationLabel}>Up next</Text>
+                      <Text style={s.continuationValue}>{continuationNotice.upNext}</Text>
+                    </View>
+                  </View>
+                  <View style={s.continuationCopyRow}>
+                    <Feather name="arrow-right-circle" size={15} color="#8A8070" />
+                    <Text style={s.continuationCopy}>{continuationNotice.copy}</Text>
+                    <TouchableOpacity
+                      onPress={() => setContinuationNotice(null)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      activeOpacity={0.75}
+                    >
+                      <Feather name="x" size={15} color="#8A8070" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
               {showHifzGoalOptions && (
               <View style={s.hifzManageCard}>
                 {showHifzGoalOptions ? (
@@ -936,7 +1311,7 @@ export default function HomeScreen() {
           )}
 
           {/* ── THIS WEEK ─────────────────────────────────────────────────── */}
-          {hasMemorizationGoal && memorizationPercent < 100 && !milestoneComplete && (
+          {hasMemorizationGoal && !hifzTransition && memorizationPercent < 100 && (!milestoneComplete || canExtendCurrentGoal) && (
             <View style={s.thisWeekSection}>
               <View style={s.sectionHeadingRow}>
                 <Text style={s.goalWidgetTitle}>THIS WEEK</Text>
@@ -1062,49 +1437,11 @@ export default function HomeScreen() {
                       </TouchableOpacity>
                     </View>
                     <View style={s.weekAddOptionsRow}>
-                      {[5, 7, 10, 15].map((count) => (
+                      {extensionOptionCounts.map((count) => (
                         <TouchableOpacity
                           key={count}
                           style={s.weekAddOption}
-                          onPress={() => {
-                            if (!goal || !memorizationGoal || memorizationGoal.path === "pace") return;
-                            const lastWeekAyah = weekGoalAyahs[weekGoalAyahs.length - 1];
-                            const nextStart = lastWeekAyah ? getNextAyahAfter(lastWeekAyah) : null;
-                            if (!nextStart) return;
-                            const extra = buildWeeklyGoal({
-                              path: memorizationGoal.path,
-                              targetJuz: memorizationGoal.targetJuz,
-                              startSurahNumber: nextStart.surahNumber,
-                              startAyahNumber: nextStart.ayahNumber,
-                              requestedAyahsPerWeek: count,
-                              memorizedAyahKeys,
-                            });
-                            // Append new ayahs to existing — preserve this week's memorized dots
-                            const existingKeys = goal.weeklyTargetAyahKeys ?? [];
-                            const existingKeySet = new Set(existingKeys);
-                            const newExtraKeys = (extra.weeklyTargetAyahKeys ?? []).filter(k => !existingKeySet.has(k));
-                            if (newExtraKeys.length === 0) return;
-                            const newKeys = [...existingKeys, ...newExtraKeys];
-                            const lastNewKey = newExtraKeys[newExtraKeys.length - 1];
-                            const [lastNewSurahRaw, lastNewAyahRaw] = lastNewKey.split(":");
-                            const lastNewSurahNumber = Number(lastNewSurahRaw);
-                            const lastNewAyahNumber = Number(lastNewAyahRaw);
-                            setGoal({
-                              ...goal,
-                              ayahsPerWeek: newKeys.length,
-                              weeklyTargetAyahKeys: newKeys,
-                              endSurahNumber: Number.isFinite(lastNewSurahNumber) ? lastNewSurahNumber : goal.endSurahNumber,
-                              endAyahNumber: Number.isFinite(lastNewAyahNumber) ? lastNewAyahNumber : goal.endAyahNumber,
-                            });
-                            if (Number.isFinite(lastNewSurahNumber) && Number.isFinite(lastNewAyahNumber)) {
-                              setMemorizationGoal({
-                                ...memorizationGoal,
-                                endSurahNumber: lastNewSurahNumber,
-                                endAyahNumber: lastNewAyahNumber,
-                              });
-                            }
-                            setShowWeekCompleteCard(false);
-                          }}
+                          onPress={() => extendCurrentGoal(count)}
                           activeOpacity={0.8}
                         >
                           <Text style={s.weekAddOptionText}>+{count}</Text>
@@ -1181,7 +1518,7 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {milestoneComplete && (
+          {(hifzTransition || (milestoneComplete && !canExtendCurrentGoal)) && (
             <View style={s.journeySection}>
               <View style={s.sectionHeadingRow}>
                 <Text style={s.goalWidgetTitle}>YOUR JOURNEY</Text>
@@ -1193,19 +1530,45 @@ export default function HomeScreen() {
                       <Feather name="check" size={12} color="#5A5248" />
                       <Text style={s.journeyCompleteText}>Complete</Text>
                     </View>
+                    <Text style={s.journeyCompletionDay}>{todayShort}</Text>
                   </View>
-                  <Text style={s.journeyTitle}>A meaningful step completed</Text>
+                  {hifzTransition && (
+                    <Text style={s.journeyPreparingTitle}>Preparing next goal</Text>
+                  )}
+                  <Text style={s.journeyTitle}>A milestone completed</Text>
                   <Text style={s.journeySubText}>
-                    {selectedRangeLabel} is now part of your Hifz journey.
+                    {hifzTransition
+                      ? `${hifzTransition.completed} is now part of your Hifz journey.`
+                      : `${selectedRangeLabel} is now part of your Hifz journey.`}
                   </Text>
+                  {hifzTransition && (
+                    <View style={s.journeyLoadingSurface}>
+                      <View style={s.journeyLoadingRow}>
+                        <View style={s.journeyLoadingColumn}>
+                          <Text style={s.journeyLoadingLabel}>Completed</Text>
+                          <Text style={s.journeyLoadingValue}>{hifzTransition.completed}</Text>
+                        </View>
+                        <View style={s.journeyLoadingDivider} />
+                        <View style={s.journeyLoadingColumn}>
+                          <Text style={s.journeyLoadingLabel}>Up next</Text>
+                          <Text style={s.journeyLoadingValue}>{hifzTransition.upNext}</Text>
+                        </View>
+                      </View>
+                      <View style={s.journeyLoadingRail}>
+                        <View style={[s.journeyLoadingFill, { width: `${hifzTransitionProgress}%` as any }]} />
+                      </View>
+                      <Text style={s.journeyLoadingText}>Setting up your next Hifz step</Text>
+                    </View>
+                  )}
                   <View style={s.journeyProgressRail}>
                     <View style={s.journeyProgressFill} />
                   </View>
                   <Text style={s.journeyProgressText}>
-                    {totalRangeMemorized} of {totalRangeAyahs} ayahs memorized
+                    {hifzTransition ? hifzTransition.totalAyahs : totalRangeMemorized} of {hifzTransition?.totalAyahs ?? totalRangeAyahs} ayahs memorized
                   </Text>
                 </View>
 
+                {!hifzTransition && (
                 <View style={s.journeyReflectionList}>
                   <View style={s.journeyReflectionRow}>
                     <Text style={s.journeyStatLabel}>Started</Text>
@@ -1224,7 +1587,10 @@ export default function HomeScreen() {
                     <Text style={s.journeyStatValue}>{streakDays} days</Text>
                   </View>
                 </View>
+                )}
 
+                {!hifzTransition && (
+                <>
                 <TouchableOpacity
                   style={s.journeyPrimaryBtn}
                   onPress={() => router.push(`/surah/${goal?.startSurahNumber ?? memorizationGoal?.startSurahNumber ?? 1}?ayah=${goal?.startAyahNumber ?? 1}`)}
@@ -1233,14 +1599,16 @@ export default function HomeScreen() {
                   <Text style={s.journeyPrimaryText}>Review {selectedRangeLabel}</Text>
                   <Feather name="chevron-right" size={15} color="#5A5248" />
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={s.journeySecondaryBtn}
+                <ActionPill
+                  label="Set next goal"
+                  icon="plus"
+                  variant="border"
+                  size="md"
+                  style={s.journeySecondaryAction}
                   onPress={() => setAyahRangeVisible(true)}
-                  activeOpacity={0.85}
-                >
-                  <Feather name="plus" size={15} color="#8A8070" />
-                  <Text style={s.journeySecondaryText}>Set next goal</Text>
-                </TouchableOpacity>
+                />
+                </>
+                )}
               </View>
             </View>
           )}
@@ -1257,7 +1625,6 @@ export default function HomeScreen() {
                 {recentProgress.slice(0, 5).map((p) => {
                   const meta = SURAH_DATA[p.surahNumber - 1];
                   if (!meta) return null;
-                  const pct = Math.round((p.ayahNumberInSurah / meta.ayahCount) * 100);
                   return (
                     <TouchableOpacity
                       key={p.surahNumber}
@@ -1268,9 +1635,6 @@ export default function HomeScreen() {
                       <Text style={s.lvArabic}>{meta.name}</Text>
                       <Text style={s.lvName}>{p.surahName}</Text>
                       <Text style={s.lvAyah}>Ayah {p.ayahNumberInSurah}</Text>
-                      <View style={s.lvProgressRail}>
-                        <View style={[s.lvProgressFill, { width: `${pct}%` as any }]} />
-                      </View>
                     </TouchableOpacity>
                   );
                 })}
@@ -1289,6 +1653,7 @@ export default function HomeScreen() {
               </View>
               {savedSurahsMeta.slice(0, 3).map((meta, i) => {
                 const apiSurah = surahs.find(s => s.number === meta.number);
+                const memorized = fullyMemorizedSurahs.has(meta.number);
                 return (
                   <TouchableOpacity
                     key={meta.number}
@@ -1298,6 +1663,7 @@ export default function HomeScreen() {
                   >
                     <View style={s.surahInfo}>
                       <Text style={s.surahName}>{meta.englishName}</Text>
+                      {memorized && <MemorizedBadge />}
                       <Text style={s.surahMeta}>
                         {meta.ayahCount} Ayahs{apiSurah?.revelationType ? ` • ${apiSurah.revelationType}` : ""}
                       </Text>
@@ -1339,7 +1705,7 @@ export default function HomeScreen() {
                     <Text style={s.juzLabel}>JUZ {group.juz}</Text>
                   </View>
                   {group.surahs.map((surah, i) => {
-                    const memorized = isSurahChecked(surah.number);
+                    const memorized = fullyMemorizedSurahs.has(surah.number);
                     const compactArabicName = SURAH_DATA[surah.number - 1]?.name ?? surah.name;
                     return (
                       <TouchableOpacity
@@ -1369,41 +1735,47 @@ export default function HomeScreen() {
       {/* ── Week Done Toast (floating overlay) ──────────────────────── */}
       {showWeeklyToast && (
         <View style={[s.weekDoneToast, { top: insets.top + 12 }]} pointerEvents="box-none">
-          <Text style={s.toastEmoji}>🎉</Text>
+          <View style={s.toastIcon}>
+            <Feather name="check" size={16} color="#5A5248" />
+          </View>
           <View style={{ flex: 1 }}>
-            <Text style={s.weekDoneTitle}>Weekly target complete!</Text>
+            <Text style={s.weekDoneTitle}>Weekly target complete</Text>
             <Text style={s.weekDoneSub}>{weekGoalProgress} ayahs memorized this week</Text>
           </View>
           <TouchableOpacity onPress={() => setShowWeeklyToast(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Feather name="x" size={16} color="rgba(255,255,255,0.7)" />
+            <Feather name="x" size={16} color="#8A8070" />
           </TouchableOpacity>
         </View>
       )}
 
       {showMilestoneToast && (
         <View style={[s.weekDoneToast, { top: insets.top + 12 }]} pointerEvents="box-none">
-          <Text style={s.toastEmoji}>🎉</Text>
+          <View style={s.toastIcon}>
+            <Feather name="flag" size={15} color="#5A5248" />
+          </View>
           <View style={{ flex: 1 }}>
-            <Text style={s.weekDoneTitle}>Ayah milestone complete!</Text>
+            <Text style={s.weekDoneTitle}>Ayah milestone complete</Text>
             <Text style={s.weekDoneSub}>
               {(targetSurah?.englishName ?? memorizationGoal?.startSurahName ?? "Goal")} · {selectedRangeLabel} memorized
             </Text>
           </View>
           <TouchableOpacity onPress={() => setShowMilestoneToast(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Feather name="x" size={16} color="rgba(255,255,255,0.7)" />
+            <Feather name="x" size={16} color="#8A8070" />
           </TouchableOpacity>
         </View>
       )}
 
       {showHifzCompleteToast && (
         <View style={[s.weekDoneToast, { top: insets.top + 12 }]} pointerEvents="box-none">
-          <Text style={s.toastEmoji}>🎉</Text>
+          <View style={s.toastIcon}>
+            <Feather name="book-open" size={15} color="#5A5248" />
+          </View>
           <View style={{ flex: 1 }}>
             <Text style={s.weekDoneTitle}>{hifzCompleteToastText.title}</Text>
             <Text style={s.weekDoneSub}>{hifzCompleteToastText.sub}</Text>
           </View>
           <TouchableOpacity onPress={() => setShowHifzCompleteToast(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Feather name="x" size={16} color="rgba(255,255,255,0.7)" />
+            <Feather name="x" size={16} color="#8A8070" />
           </TouchableOpacity>
         </View>
       )}
@@ -2104,13 +2476,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginTop: 2,
       marginBottom: 12,
     },
-    lvProgressRail: {
-      height: 3,
-      backgroundColor: "#EDE8DE",
-      borderRadius: 999,
-      overflow: "hidden",
-    },
-    lvProgressFill: { height: "100%" as any, backgroundColor: "#5A5248", borderRadius: 999 },
 
     // ── All Surahs by Juz ──────────────────────────────────────────────────────
     surahSection: { marginTop: 28 },
@@ -2224,8 +2589,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     hifzManageCard: {
       marginTop: 14,
       backgroundColor: "transparent",
-      borderRadius: 0,
-      borderWidth: 0,
     },
     goalWidgetCard: {
       backgroundColor: "#FAF7F2",
@@ -2492,6 +2855,59 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       color: colors.appLightText,
       fontFamily: "Inter_400Regular",
     },
+    continuationCard: {
+      marginHorizontal: 14,
+      marginTop: 12,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: "#DDD6C8",
+      backgroundColor: "#FFFCF8",
+      overflow: "hidden",
+    },
+    continuationRow: {
+      flexDirection: "row",
+      alignItems: "stretch",
+      backgroundColor: "#F5F0E8",
+    },
+    continuationColumn: {
+      flex: 1,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    continuationDivider: {
+      width: StyleSheet.hairlineWidth,
+      backgroundColor: "#DDD6C8",
+    },
+    continuationLabel: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: "#8A8070",
+      fontFamily: "Inter_700Bold",
+      textTransform: "uppercase",
+      letterSpacing: 0.7,
+      marginBottom: 4,
+    },
+    continuationValue: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: colors.appTextPrimary,
+      fontFamily: "Inter_700Bold",
+    },
+    continuationCopyRow: {
+      minHeight: 42,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    continuationCopy: {
+      flex: 1,
+      fontSize: 12,
+      lineHeight: 17,
+      color: "#8A8070",
+      fontFamily: "Inter_400Regular",
+    },
 
     // ── Pace goal card (Last Memorized layout) ──────────────────────────────
     paceLastMemBtn: {
@@ -2556,7 +2972,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flexBasis: "42%" as any,
       minHeight: 58,
       borderRadius: 20,
-      backgroundColor: "#F5F0E8",
+      backgroundColor: "#C8C0B0",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -2570,7 +2986,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: 58,
       height: 58,
       borderRadius: 29,
-      backgroundColor: "#F5F0E8",
+      backgroundColor: "#C8C0B0",
       alignItems: "center",
       justifyContent: "center",
       flexShrink: 0,
@@ -3073,7 +3489,13 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     journeyHeaderRow: {
       flexDirection: "row",
       alignItems: "center",
+      justifyContent: "space-between",
       marginBottom: 12,
+    },
+    journeyCompletionDay: {
+      fontSize: 12,
+      color: "#8A8070",
+      fontFamily: "Inter_400Regular",
     },
     journeyTitle: {
       fontSize: 28,
@@ -3081,6 +3503,15 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontWeight: "700",
       color: colors.appTextPrimary,
       fontFamily: "Inter_700Bold",
+    },
+    journeyPreparingTitle: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: "#8A8070",
+      fontFamily: "Inter_700Bold",
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+      marginBottom: 8,
     },
     journeySubText: {
       fontSize: 13,
@@ -3125,6 +3556,58 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontSize: 12,
       color: "#8A8070",
       fontFamily: "Inter_400Regular",
+    },
+    journeyLoadingSurface: {
+      borderRadius: 16,
+      backgroundColor: "#FFFCF8",
+      borderWidth: 1,
+      borderColor: "#DDD6C8",
+      overflow: "hidden",
+      marginBottom: 14,
+    },
+    journeyLoadingRow: {
+      flexDirection: "row",
+      alignItems: "stretch",
+    },
+    journeyLoadingColumn: {
+      flex: 1,
+      paddingHorizontal: 12,
+      paddingVertical: 11,
+    },
+    journeyLoadingDivider: {
+      width: StyleSheet.hairlineWidth,
+      backgroundColor: "#DDD6C8",
+    },
+    journeyLoadingLabel: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: "#8A8070",
+      fontFamily: "Inter_700Bold",
+      textTransform: "uppercase",
+      letterSpacing: 0.7,
+      marginBottom: 4,
+    },
+    journeyLoadingValue: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: colors.appTextPrimary,
+      fontFamily: "Inter_700Bold",
+    },
+    journeyLoadingRail: {
+      height: 4,
+      backgroundColor: "#E8E2D8",
+      overflow: "hidden",
+    },
+    journeyLoadingFill: {
+      height: "100%" as any,
+      backgroundColor: "#5A5248",
+    },
+    journeyLoadingText: {
+      fontSize: 11,
+      color: "#8A8070",
+      fontFamily: "Inter_400Regular",
+      paddingHorizontal: 12,
+      paddingVertical: 9,
     },
     journeyReflectionList: {
       paddingHorizontal: 16,
@@ -3192,6 +3675,13 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       textTransform: "uppercase",
       letterSpacing: 0.5,
     },
+    journeySecondaryAction: {
+      marginHorizontal: 16,
+      marginTop: 10,
+      marginBottom: 16,
+      backgroundColor: "transparent",
+      borderColor: "#C8C0B0",
+    },
 
     // Week done floating toast
     weekDoneToast: {
@@ -3199,18 +3689,20 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       left: 16,
       right: 16,
       zIndex: 50,
-      backgroundColor: "#1C1C1E",
-      borderRadius: 14,
+      backgroundColor: "#FFFCF8",
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: "#DDD6C8",
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: 16,
-      paddingVertical: 14,
+      paddingVertical: 12,
       gap: 12,
-      shadowColor: "#000",
+      shadowColor: "#000000",
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 12,
-      elevation: 12,
+      shadowOpacity: 0.08,
+      shadowRadius: 14,
+      elevation: 8,
     },
     weekDoneCheckCircle: {
       width: 36,
@@ -3224,20 +3716,22 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     weekDoneTitle: {
       fontSize: 15,
       fontWeight: "700",
-      color: colors.appWhite,
+      color: colors.appTextPrimary,
       fontFamily: "Inter_700Bold",
     },
     weekDoneSub: {
       fontSize: 12,
-      color: "rgba(255,255,255,0.65)",
+      color: "#8A8070",
       fontFamily: "Inter_400Regular",
       marginTop: 2,
     },
-    toastEmoji: {
-      fontSize: 22,
-      lineHeight: 28,
+    toastIcon: {
       width: 32,
-      textAlign: "center",
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: "#EDE8DE",
+      alignItems: "center",
+      justifyContent: "center",
     },
     verseCard: {
       marginHorizontal: 20,

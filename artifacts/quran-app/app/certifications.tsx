@@ -8,6 +8,7 @@ import { useQuran } from "@/contexts/QuranContext";
 import { SURAH_DATA } from "@/constants/surahData";
 import { useColors } from "@/hooks/useColors";
 import { BackButton } from "@/components/BackButton";
+import { Tag } from "@/components/Tag";
 import colors from "@/constants/colors";
 
 const TOTAL_AYAHS = 6236;
@@ -192,15 +193,7 @@ export default function CertificationsScreen() {
           {stats.completed.length > 0 ? (
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: sp.sm }}>
               {stats.completed.map(surah => (
-                <View
-                  key={surah.number}
-                  style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: c.appLightGray, borderRadius: br.full, paddingHorizontal: sp.md, paddingVertical: 6 }}
-                >
-                  <Ionicons name="checkmark-circle" size={13} color={c.appSuccess} />
-                  <Text style={{ fontSize: ty.fontSize.sm, fontWeight: "700", color: c.appText, fontFamily: "Inter_700Bold" }}>
-                    {surah.englishName}
-                  </Text>
-                </View>
+                <Tag key={surah.number} label={surah.englishName} selected />
               ))}
             </View>
           ) : (

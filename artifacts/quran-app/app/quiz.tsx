@@ -115,6 +115,7 @@ function buildQuestions(words: SavedWord[]): QuizQuestion[] {
 
 function NoWordsScreen({ colors, topPad }: { colors: ReturnType<typeof useColors>; topPad: number }) {
   const s = styles(colors);
+  const insets = useSafeAreaInsets();
   return (
     <View style={[s.container, { paddingTop: topPad }]}>
       <View style={s.header}>
@@ -134,13 +135,13 @@ function NoWordsScreen({ colors, topPad }: { colors: ReturnType<typeof useColors
               </View>
               <View style={[s.graphicWordChip, s.graphicWordHighlight]}>
                 <Text style={[s.graphicArabicWord, { color: colors.primaryForeground }]}>اللَّهِ</Text>
-                <View style={s.longPressHint}>
-                  <Text style={s.longPressHintText}>Hold</Text>
-                </View>
               </View>
               <View style={[s.graphicWordChip, { backgroundColor: colors.secondary }]}>
                 <Text style={s.graphicArabicWord}>الرَّحْمَٰنِ</Text>
               </View>
+            </View>
+            <View style={s.longPressHint}>
+              <Text style={s.longPressHintText}>Hold · Long press</Text>
             </View>
           </View>
           <Feather name="arrow-down" size={20} color={colors.primary} />
@@ -170,12 +171,14 @@ function NoWordsScreen({ colors, topPad }: { colors: ReturnType<typeof useColors
             </View>
           ))}
         </View>
+      </ScrollView>
 
+      <View style={[s.noWordsBottomBar, { paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }]}>
         <TouchableOpacity style={s.goReadBtn} onPress={() => router.replace("/(tabs)/quran")} activeOpacity={0.85}>
           <Ionicons name="book-outline" size={18} color={colors.primaryForeground} />
           <Text style={s.goReadBtnText}>Start Reading</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -1616,7 +1619,14 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     cardEmpty: { alignItems: "center", paddingVertical: 48, paddingHorizontal: 24, gap: 8 },
     cardEmptyTitle: { fontSize: 18, fontFamily: "Inter_700Bold", textAlign: "center" },
     cardEmptySubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
-    noWordsContent: { padding: 24, gap: 20, alignItems: "center", paddingBottom: 40 },
+    noWordsContent: { padding: 24, gap: 20, alignItems: "center", paddingBottom: 16 },
+    noWordsBottomBar: {
+      paddingHorizontal: 24,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.background,
+    },
     emptySelectionContent: { flex: 1, padding: 24, gap: 16, alignItems: "center", justifyContent: "center" },
     emptySelectionText: {
       fontSize: 16,
@@ -1648,13 +1658,12 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     graphicWordHighlight: { backgroundColor: colors.primary },
     graphicArabicWord: { fontSize: 18, color: colors.foreground, fontFamily: "System" },
     longPressHint: {
-      position: "absolute",
-      bottom: -18,
       alignSelf: "center",
+      marginTop: 8,
       backgroundColor: colors.foreground,
       borderRadius: 6,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
     },
     longPressHintText: { fontSize: 12, color: colors.card, fontFamily: "Inter_600SemiBold" },
     graphicPopup: {

@@ -49,6 +49,7 @@ export interface DailyEntry {
   ayahsRead: number;
   kahfCompleted: boolean;
   quizCompleted: boolean;
+  milestoneCompleted?: boolean;
   readAyahKeys?: string[];
 }
 
@@ -147,6 +148,7 @@ interface QuranContextType {
   dailyEntries: DailyEntry[];
   recordAyahRead: (surahNumber: number, ayahNumber?: number) => void;
   recordQuizCompletion: () => void;
+  recordMilestoneCompletion: () => void;
   todayEntry: DailyEntry | null;
   onlineUsers: number;
   quranPosition: number;
@@ -157,7 +159,7 @@ interface QuranContextType {
   saveSurahPosition: (surahNum: number, ayahIndex: number) => void;
   resetLocalData: () => void;
   checkedSurahs: number[];
-  toggleCheckedSurah: (surahNum: number, ayahCount: number) => void;
+  toggleCheckedSurah: (surahNum: number) => void;
   isSurahChecked: (surahNum: number) => boolean;
   clearCheckedSurahs: () => void;
   quizSelectedSurahs: number[];
@@ -741,18 +743,22 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     applyTheme(DEFAULT_ACCOUNT.theme);
   }, []);
 
-  const toggleCheckedSurah = useCallback((surahNum: number, ayahCount: number) => {
+  const toggleCheckedSurah = useCallback((surahNum: number) => {
+    const surahMeta = SURAH_DATA.find(s => s.number === surahNum);
+    const ayahCount = surahMeta?.ayahCount ?? 0;
+    const ayahKeys = Array.from({ length: ayahCount }, (_, i) => `${surahNum}:${i + 1}`);
     const wasChecked = checkedSurahs.includes(surahNum);
+
     setCheckedSurahs((prev) => {
       const next = prev.includes(surahNum) ? prev.filter(n => n !== surahNum) : [...prev, surahNum];
       AsyncStorage.setItem("quran_checked_surahs", JSON.stringify(next));
       return next;
     });
 
-    const ayahKeys = Array.from({ length: ayahCount }, (_, i) => `${surahNum}:${i + 1}`);
     if (!wasChecked) {
       setMemorizedAyahKeys((prev) => {
-        const newKeys = ayahKeys.filter(k => !prev.includes(k));
+        const existing = new Set(prev);
+        const newKeys = ayahKeys.filter(k => !existing.has(k));
         if (newKeys.length === 0) return prev;
         const next = [...prev, ...newKeys];
         AsyncStorage.setItem("quran_memorized_ayahs", JSON.stringify(next));
@@ -838,6 +844,22 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         next = prev.map((e, i) => i === idx ? { ...e, quizCompleted: true } : e);
       } else {
         next = [{ date: today, ayahsRead: 0, kahfCompleted: false, quizCompleted: true }, ...prev].slice(0, 365);
+      }
+      AsyncStorage.setItem("quran_daily_entries", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const recordMilestoneCompletion = useCallback(() => {
+    const today = getTodayStr();
+    setDailyEntries((prev) => {
+      const idx = prev.findIndex(e => e.date === today);
+      let next: DailyEntry[];
+      if (idx >= 0) {
+        if (prev[idx].milestoneCompleted) return prev;
+        next = prev.map((e, i) => i === idx ? { ...e, milestoneCompleted: true } : e);
+      } else {
+        next = [{ date: today, ayahsRead: 0, kahfCompleted: false, quizCompleted: false, milestoneCompleted: true }, ...prev].slice(0, 365);
       }
       AsyncStorage.setItem("quran_daily_entries", JSON.stringify(next));
       return next;
@@ -942,7 +964,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       recentProgress, saveProgress, recordVisit, lastListened,
       goal, setGoal,
       memorizationGoal, setMemorizationGoal,
-      dailyEntries, recordAyahRead, recordQuizCompletion, todayEntry,
+      dailyEntries, recordAyahRead, recordQuizCompletion, recordMilestoneCompletion, todayEntry,
       onlineUsers,
       quranPosition, advanceQuranPosition, getWeekGoalAyahs, getWeekGoalProgress,
       surahPositions, saveSurahPosition, resetLocalData,

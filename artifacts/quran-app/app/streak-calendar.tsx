@@ -22,7 +22,7 @@ const MONTH_NAMES = [
 
 type CalendarCell =
   | null
-  | { day: number; dateStr: string; completed: boolean; isToday: boolean; isFuture: boolean };
+  | { day: number; dateStr: string; completed: boolean; milestoneCompleted: boolean; isToday: boolean; isFuture: boolean };
 
 export default function StreakCalendarScreen() {
   const colors = useColors();
@@ -36,7 +36,15 @@ export default function StreakCalendarScreen() {
   const completedDays = useMemo(() => {
     const set = new Set<string>();
     for (const e of dailyEntries) {
-      if (e.ayahsRead > 0 || e.kahfCompleted || e.quizCompleted) set.add(e.date);
+      if (e.ayahsRead > 0 || e.kahfCompleted || e.quizCompleted || e.milestoneCompleted) set.add(e.date);
+    }
+    return set;
+  }, [dailyEntries]);
+
+  const milestoneDays = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of dailyEntries) {
+      if (e.milestoneCompleted) set.add(e.date);
     }
     return set;
   }, [dailyEntries]);
@@ -58,6 +66,7 @@ export default function StreakCalendarScreen() {
         day,
         dateStr,
         completed: completedDays.has(dateStr),
+        milestoneCompleted: milestoneDays.has(dateStr),
         isToday: dateStr === todayStr,
         isFuture: dateStr > todayStr,
       });
@@ -72,7 +81,7 @@ export default function StreakCalendarScreen() {
     }
 
     return { cells: flatCells, weeks: rows };
-  }, [viewYear, viewMonth, completedDays, todayStr]);
+  }, [viewYear, viewMonth, completedDays, milestoneDays, todayStr]);
 
   const monthLabel = `${MONTH_NAMES[viewMonth]} ${viewYear}`;
 
@@ -88,6 +97,10 @@ export default function StreakCalendarScreen() {
 
   const completedCount = useMemo(() => {
     return cells.filter(c => c && c.completed && !c.isFuture).length;
+  }, [cells]);
+
+  const milestoneCount = useMemo(() => {
+    return cells.filter(c => c && c.milestoneCompleted && !c.isFuture).length;
   }, [cells]);
 
   const totalPast = useMemo(() => {
@@ -128,6 +141,10 @@ export default function StreakCalendarScreen() {
           <View style={[s.summaryDot, { backgroundColor: colors.appLightGray, borderWidth: 1, borderColor: colors.appBorderLight }]} />
           <Text style={s.summaryText}>{totalPast - completedCount} days missed</Text>
         </View>
+        <View style={s.summaryChip}>
+          <View style={[s.summaryDot, { backgroundColor: "#B7791F" }]} />
+          <Text style={s.summaryText}>{milestoneCount} milestones</Text>
+        </View>
       </View>
 
       {/* Day-of-week headers */}
@@ -150,11 +167,13 @@ export default function StreakCalendarScreen() {
                     s.dayCircle,
                     cell.completed && s.dayCircleCompleted,
                     !cell.completed && !cell.isFuture && s.dayCircleMissed,
+                    cell.milestoneCompleted && s.dayCircleMilestone,
                     cell.isFuture && s.dayCircleFuture,
                     cell.isToday && s.dayCircleToday,
                   ]}>
                     <Text style={[
                       s.dayNum,
+                      cell.milestoneCompleted && s.dayNumMilestone,
                       cell.completed && s.dayNumCompleted,
                       !cell.completed && !cell.isFuture && s.dayNumMissed,
                       cell.isFuture && s.dayNumFuture,
@@ -179,6 +198,10 @@ export default function StreakCalendarScreen() {
         <View style={s.legendItem}>
           <View style={[s.legendDot, { backgroundColor: colors.appLightGray, borderWidth: 1, borderColor: colors.appBorderLight }]} />
           <Text style={s.legendText}>Missed day</Text>
+        </View>
+        <View style={s.legendItem}>
+          <View style={[s.legendDot, { backgroundColor: "#B7791F" }]} />
+          <Text style={s.legendText}>Milestone complete day (Surah or Juz completion)</Text>
         </View>
       </View>
     </View>
@@ -235,6 +258,7 @@ const styles = (colors: ReturnType<typeof import("@/hooks/useColors").useColors>
     },
     summaryRow: {
       flexDirection: "row",
+      flexWrap: "wrap",
       gap: 10,
       paddingHorizontal: 20,
       marginBottom: 16,
@@ -297,6 +321,9 @@ const styles = (colors: ReturnType<typeof import("@/hooks/useColors").useColors>
     dayCircleCompleted: {
       backgroundColor: "#1A1A1A",
     },
+    dayCircleMilestone: {
+      backgroundColor: "#B7791F",
+    },
     dayCircleMissed: {
       backgroundColor: colors.appLightGray,
     },
@@ -313,6 +340,9 @@ const styles = (colors: ReturnType<typeof import("@/hooks/useColors").useColors>
       fontFamily: "Inter_600SemiBold",
     },
     dayNumCompleted: {
+      color: "#FFFFFF",
+    },
+    dayNumMilestone: {
       color: "#FFFFFF",
     },
     dayNumMissed: {

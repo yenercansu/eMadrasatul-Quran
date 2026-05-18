@@ -146,7 +146,7 @@ export default function QuranScreen() {
                       style: "destructive",
                       onPress: () => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        toggleCheckedSurah(item.number, item.numberOfAyahs);
+                        toggleCheckedSurah(item.number);
                       },
                     },
                   ]
@@ -161,14 +161,14 @@ export default function QuranScreen() {
                       text: "Mark as memorized",
                       onPress: () => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        toggleCheckedSurah(item.number, item.numberOfAyahs);
+                        toggleCheckedSurah(item.number);
                       },
                     },
                   ]
                 );
               } else {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                toggleCheckedSurah(item.number, item.numberOfAyahs);
+                toggleCheckedSurah(item.number);
               }
             };
 
