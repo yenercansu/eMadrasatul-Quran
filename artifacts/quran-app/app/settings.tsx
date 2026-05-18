@@ -118,13 +118,12 @@ export default function SettingsScreen() {
 
   return (
     <>
-    <View style={s.root}>
-      <View style={[s.header, { paddingTop: topPad + 8 }]}>
+    <View style={[s.root, { paddingTop: insets.top }]}>
+      <View style={[s.header, { paddingTop: 8 }]}>
         <BackButton onPress={() => router.back()} />
         <Text style={s.headerTitle}>Settings</Text>
         <View style={{ width: 38 }} />
       </View>
-
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={s.heroCard}>
           <Text style={s.heroTitle}>Personalize your madrasa</Text>

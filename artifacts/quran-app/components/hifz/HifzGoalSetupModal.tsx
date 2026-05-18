@@ -79,8 +79,8 @@ export function HifzGoalSetupModal({
         });
     return (
       <Modal visible={visible} animationType="none" onRequestClose={() => setPicker(null)}>
-        <View style={m.screen}>
-          <View style={[m.pickerHeader, { paddingTop: insets.top + 14 }]}>
+        <View style={[m.screen, { paddingTop: insets.top }]}>
+          <View style={[m.pickerHeader, { paddingTop: 14 }]}>
             <BackButton onPress={() => setPicker(null)} />
             <Text style={m.pickerTitle}>{picker === "surah" ? "Choose Surah" : "Choose Juz"}</Text>
             <TouchableOpacity style={m.pickerIconButton} onPress={onClose} activeOpacity={0.72}>
@@ -154,18 +154,17 @@ export function HifzGoalSetupModal({
 
   return (
     <Modal visible={visible} animationType="none" onRequestClose={onClose}>
-      <View style={m.screen}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[m.content, { paddingTop: insets.top + 22, paddingBottom: insets.bottom + 136 }]}
-        >
-          <View style={m.topRow}>
-            <View />
-            <TouchableOpacity style={m.closeIconButton} onPress={onClose} activeOpacity={0.72}>
-              <Feather name="x" size={18} color={hifzTokens.lightMuted} strokeWidth={2} />
-            </TouchableOpacity>
-          </View>
+      <View style={[m.screen, { paddingTop: insets.top }]}>
+        {/* Close button — anchored */}
+        <View style={m.topRow}>
+          <View />
+          <TouchableOpacity style={m.closeIconButton} onPress={onClose} activeOpacity={0.72}>
+            <Feather name="x" size={18} color={hifzTokens.lightMuted} strokeWidth={2} />
+          </TouchableOpacity>
+        </View>
 
+        {/* Title + mode switcher — anchored */}
+        <View style={m.anchoredHeader}>
           <Text style={m.bismillah}>Bismillahirrahmanirrahim</Text>
           <Text style={m.title}>How would you like{"\n"}to begin?</Text>
           <Text style={m.subtitle}>
@@ -175,7 +174,6 @@ export function HifzGoalSetupModal({
               ? "Choose your starting juz. Your juz sequence is fully customizable."
               : "This is your starting pace, not your final one. It will grow naturally."}
           </Text>
-
           <HifzSegmentedControl
             value={mode}
             options={[
@@ -186,7 +184,12 @@ export function HifzGoalSetupModal({
             onChange={setMode}
           />
           <Text style={m.switchNote}>You can always switch modes later.</Text>
+        </View>
 
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[m.content, { paddingBottom: insets.bottom + 136 }]}
+        >
           {mode === "pace" ? (
             <View style={m.rhythmStack}>
               {rhythmOptions.map((option) => {
@@ -279,11 +282,14 @@ export function HifzGoalSetupModal({
 const m = StyleSheet.create({
   screen: { flex: 1, backgroundColor: hifzTokens.background },
   content: { paddingHorizontal: 28 },
+  anchoredHeader: { paddingHorizontal: 28, paddingBottom: 4 },
   topRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 28,
+    paddingHorizontal: 28,
+    paddingTop: 22,
+    paddingBottom: 16,
   },
   closeIconButton: {
     width: 40,
@@ -325,7 +331,7 @@ const m = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     marginTop: 10,
-    marginBottom: 30,
+    marginBottom: 16,
   },
   startingCard: {
     minHeight: 124,

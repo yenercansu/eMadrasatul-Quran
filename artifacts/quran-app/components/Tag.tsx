@@ -30,7 +30,7 @@ export function Tag({
     accentColor || accentBgColor
       ? {
           borderColor: accentColor ?? c.appSoftBorder,
-          backgroundColor: accentBgColor ?? c.appCardWarm,
+          backgroundColor: accentBgColor ?? c.card,
         }
       : undefined;
   const textColor = accentColor ?? (selected ? c.appText : c.appTextMuted);
@@ -79,7 +79,7 @@ export function Tag({
     <View
       style={[
         s.dismissibleContainer,
-        { backgroundColor: c.appCardWarm, borderColor: c.appSoftBorder },
+        { backgroundColor: c.card, borderColor: c.appSoftBorder },
         selected &&
           !customStyle && {
             backgroundColor: c.appSelectedPill,

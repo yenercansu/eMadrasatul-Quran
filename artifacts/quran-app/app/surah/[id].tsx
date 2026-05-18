@@ -188,6 +188,7 @@ function SwipeableAyahCard({
 
   const accentColor = playingAccentColor ?? (isSectionLoop ? SECTION_LOOP_COLOR : undefined);
   const cardBg = isSectionLoop ? "#F0FDF4" : isPlaying ? "#F7F4EF" : "#FFFFFF";
+  const showPassiveMemorizedMarker = isMemorized && !showMemorizedToggle;
 
   return (
     <View style={cs.wrap}>
@@ -200,6 +201,10 @@ function SwipeableAyahCard({
           style={({ pressed }) => [cs.card, { backgroundColor: cardBg, opacity: pressed ? 0.95 : 1 }]}
         >
           <View style={cs.topRow}>
+            <View style={cs.numBadge}>
+              <Text style={cs.numText}>{surahNum}:{ayah.numberInSurah}</Text>
+            </View>
+            <View style={cs.topActions}>
             <SaveButton
               saved={isSaved}
               size="md"
@@ -209,12 +214,12 @@ function SwipeableAyahCard({
               }}
               accessibilityLabel={`Save ayah ${ayah.numberInSurah}`}
             />
-            <View style={cs.numBadge}>
-              <Text style={cs.numText}>{surahNum}:{ayah.numberInSurah}</Text>
-            </View>
             {showMemorizedToggle && (
               <TouchableOpacity
-                style={cs.memorizedCheckBtn}
+                style={[
+                  cs.memorizedCheckBtn,
+                  isMemorized && cs.memorizedCheckBtnActive,
+                ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   onToggleMemorized(ayah);
@@ -228,12 +233,24 @@ function SwipeableAyahCard({
                   : `Mark ayah ${ayah.numberInSurah} as memorized`}
               >
                 {isMemorized ? (
-                  <Ionicons name="checkmark-circle" size={26} color="#7B5C3E" />
+                  <Ionicons name="checkmark-circle" size={27} color="#7B5C3E" />
                 ) : (
-                  <View style={cs.memorizedCheckCircle} />
+                  <View style={cs.memorizedCheckCircle}>
+                    <Ionicons name="checkmark" size={14} color="#B8B1A8" />
+                  </View>
                 )}
               </TouchableOpacity>
             )}
+            {showPassiveMemorizedMarker && (
+              <View
+                style={[cs.memorizedCheckBtn, cs.memorizedCheckBtnPassive]}
+                accessible
+                accessibilityLabel={`Ayah ${ayah.numberInSurah} memorization completed`}
+              >
+                <Ionicons name="checkmark-circle" size={24} color="#C9A989" />
+              </View>
+            )}
+            </View>
           </View>
 
           {showBasmala && (
@@ -287,10 +304,14 @@ const cs = StyleSheet.create({
   },
   topRow: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  topActions: {
+    flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    marginBottom: 4,
   },
   numBadge: {
     backgroundColor: "#F5F1EB",
@@ -307,12 +328,23 @@ const cs = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  memorizedCheckBtnActive: {
+    borderRadius: 16,
+    backgroundColor: "#F5F0E8",
+  },
+  memorizedCheckBtnPassive: {
+    borderRadius: 16,
+    backgroundColor: "transparent",
+    opacity: 0.46,
+  },
   memorizedCheckCircle: {
     width: 26,
     height: 26,
     borderRadius: 13,
     borderWidth: 1,
     borderColor: "#B8B1A8",
+    alignItems: "center",
+    justifyContent: "center",
   },
   basmala: {
     fontSize: 22,

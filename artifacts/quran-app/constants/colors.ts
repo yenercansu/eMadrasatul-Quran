@@ -29,6 +29,17 @@ const colors = {
 
     surface: "#FDFBF7",
     surfaceAlt: "#F6F2EA",
+    surfaceMuted: "#F6F2EA",
+    textMuted: "#78716C",
+    screenBackground: "#FDFBF7",
+    screenBackgroundAlt: "#F6F2EA",
+    divider: "#EDE5DA",
+    overlay: "rgba(0,0,0,0.45)",
+    shadow: "#000000",
+    tabBarBackground: "#F5F0E8",
+    tabBarActiveBackground: "#DED6CC",
+    tabBarActive: "#2D2926",
+    tabBarInactive: "#8A8070",
 
     // Design Tokens - Semantic Colors
     appBackground: "#FDFBF7",
@@ -108,6 +119,17 @@ const colors = {
 
     surface: "#141414",
     surfaceAlt: "#1A1A1A",
+    surfaceMuted: "#222222",
+    textMuted: "#7A7A7A",
+    screenBackground: "#0E0E0E",
+    screenBackgroundAlt: "#1A1A1A",
+    divider: "#332F2B",
+    overlay: "rgba(0,0,0,0.62)",
+    shadow: "#000000",
+    tabBarBackground: "#141414",
+    tabBarActiveBackground: "#2A2A2A",
+    tabBarActive: "#F0EBE3",
+    tabBarInactive: "#A79E92",
 
     // Design Tokens - Semantic Colors
     appBackground: "#0E0E0E",

@@ -192,6 +192,46 @@ export function ScreenHeader({
   );
 }
 
+interface ScreenLayoutProps {
+  header?: React.ReactNode;
+  footer?: React.ReactNode;
+  children: React.ReactNode;
+  scrollable?: boolean;
+  style?: StyleProp<ViewStyle>;
+  contentStyle?: StyleProp<ViewStyle>;
+}
+
+export function ScreenLayout({
+  header,
+  footer,
+  children,
+  scrollable = true,
+  style,
+  contentStyle,
+}: ScreenLayoutProps) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={[{ flex: 1 }, style]}>
+      {header}
+      {scrollable ? (
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            { paddingBottom: footer ? 16 : insets.bottom + 24 },
+            contentStyle,
+          ]}
+        >
+          {children}
+        </ScrollView>
+      ) : (
+        <View style={[{ flex: 1 }, contentStyle]}>{children}</View>
+      )}
+      {footer}
+    </View>
+  );
+}
+
 interface FullScreenShellProps {
   title: string;
   onClose: () => void;
@@ -212,7 +252,7 @@ export function FullScreenShell({
     <View
       style={{
         flex: 1,
-        backgroundColor: c.appBackground,
+        backgroundColor: c.screenBackground,
         paddingTop: insets.top,
       }}
     >
@@ -275,7 +315,7 @@ const cardStyles = (c: ReturnType<typeof useColors>) =>
       borderColor: c.appBorderLighter,
     },
     muted: {
-      backgroundColor: c.appSecondarySurface,
+      backgroundColor: c.surfaceMuted,
       borderColor: c.appSoftBorder,
     },
   });
@@ -306,7 +346,7 @@ const chipStyles = (c: ReturnType<typeof useColors>) =>
       paddingVertical: 10,
     },
     default: {
-      backgroundColor: c.appCardWarm,
+      backgroundColor: c.card,
       borderColor: c.appSoftBorder,
     },
     selected: {
@@ -314,8 +354,8 @@ const chipStyles = (c: ReturnType<typeof useColors>) =>
       borderColor: c.appSelectedPill,
     },
     muted: {
-      backgroundColor: c.appSecondarySurface,
-      borderColor: c.appSecondarySurface,
+      backgroundColor: c.surfaceMuted,
+      borderColor: c.surfaceMuted,
     },
     dark: {
       backgroundColor: c.appText,
@@ -371,7 +411,7 @@ const iconButtonStyles = (c: ReturnType<typeof useColors>) =>
       backgroundColor: "transparent",
     },
     soft: {
-      backgroundColor: c.appSecondarySurface,
+      backgroundColor: c.surfaceMuted,
     },
     dark: {
       backgroundColor: c.appText,
@@ -386,7 +426,7 @@ const headerStyles = (c: ReturnType<typeof useColors>) =>
       paddingHorizontal: 12,
       paddingBottom: 12,
       borderBottomWidth: 1,
-      borderBottomColor: c.appBorder,
+      borderBottomColor: c.border,
     },
     title: {
       flex: 1,
@@ -418,7 +458,7 @@ const emptyStyles = (c: ReturnType<typeof useColors>) =>
       borderRadius: 22,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: c.appSecondarySurface,
+      backgroundColor: c.surfaceMuted,
       marginBottom: 10,
     },
     title: {

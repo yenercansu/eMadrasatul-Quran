@@ -119,16 +119,16 @@ function NoWordsScreen({ colors, topPad }: { colors: ReturnType<typeof useColors
   const s = styles(colors);
   const insets = useSafeAreaInsets();
   return (
-    <View style={[s.container, { paddingTop: topPad }]}>
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.7}>
-          <Feather name="arrow-left" size={22} color={colors.appText} />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>Test Yourself!</Text>
-        <View style={{ width: 38 }} />
-      </View>
-
-      <ScrollView contentContainerStyle={s.noWordsContent} showsVerticalScrollIndicator={false}>
+    <View style={[s.container, { paddingTop: insets.top }]}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.7}>
+            <Feather name="arrow-left" size={22} color={colors.appText} />
+          </TouchableOpacity>
+          <Text style={s.headerTitle}>Test Yourself!</Text>
+          <View style={{ width: 38 }} />
+        </View>
+        <View style={s.noWordsContent}>
         <View style={s.noWordsGraphic}>
           <View style={s.graphicSurahMock}>
             <View style={s.graphicAyahRow}>
@@ -172,6 +172,7 @@ function NoWordsScreen({ colors, topPad }: { colors: ReturnType<typeof useColors
               <Text style={s.howToText}>{step.text}</Text>
             </View>
           ))}
+        </View>
         </View>
       </ScrollView>
 
@@ -857,18 +858,20 @@ export default function QuizScreen() {
     const showingAyahs = selectionMode === "by-ayah";
     const currentSearch = showingAyahs ? ayahSearchQuery : wordSearchQuery;
     return (
-      <View style={[s.container, { backgroundColor: colors.appBackground }]}>
-        <View style={[s.selectionPageHeader, { paddingTop: topPad + 12, backgroundColor: colors.appBackground }]}>
-          <View style={s.selectionHeaderTopRow}>
-            <TouchableOpacity onPress={handleBack} style={s.circleBackBtn} activeOpacity={0.7}>
-              <Feather name="arrow-left" size={22} color={colors.appText} />
-            </TouchableOpacity>
-            <Text style={[s.selectionModeLabelText, { color: colors.appTextMuted }]}>WORDS QUIZ</Text>
-          </View>
-          <Text style={[s.selectionPageTitle, { color: colors.appText }]}>Select Words</Text>
-        </View>
-
+      <View style={[s.container, { backgroundColor: colors.appBackground, paddingTop: insets.top }]}>
         <View style={s.selectionWrap}>
+          {/* Header — anchored */}
+          <View style={[s.selectionPageHeader, { paddingTop: 12 }]}>
+            <View style={s.selectionHeaderTopRow}>
+              <TouchableOpacity onPress={handleBack} style={s.circleBackBtn} activeOpacity={0.7}>
+                <Feather name="arrow-left" size={22} color={colors.appText} />
+              </TouchableOpacity>
+              <Text style={[s.selectionModeLabelText, { color: colors.appTextMuted }]}>WORDS QUIZ</Text>
+            </View>
+            <Text style={[s.selectionPageTitle, { color: colors.appText }]}>Select Words</Text>
+          </View>
+
+          {/* Segmented toggle — anchored */}
           <View style={s.segmentWrapper}>
             <HifzSegmentedControl
               options={[
@@ -886,6 +889,7 @@ export default function QuizScreen() {
             />
           </View>
 
+          {/* Search bar — anchored */}
           <View style={s.searchWrapper}>
             <View style={s.searchContainer}>
               <Feather name="search" size={15} color={colors.appIconMuted} />
@@ -915,6 +919,7 @@ export default function QuizScreen() {
             </View>
           </View>
 
+          {/* Tag filter row — anchored */}
           <View style={s.tagRow2}>
             <View style={s.tagChipsRow}>
               {([{ key: "all", label: "All" }, { key: "selected", label: "Selected" }] as const).map(item => (
@@ -936,7 +941,9 @@ export default function QuizScreen() {
             </View>
           </View>
 
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={s.selectionContent2} showsVerticalScrollIndicator={false}>
+          {/* Scrollable list region */}
+          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          <View style={s.selectionContent2}>
             {showingAyahs ? (
               pagedAyahs.length === 0 ? (
                 <View style={s.infoBox}>
@@ -1015,6 +1022,7 @@ export default function QuizScreen() {
                 </>
               )
             )}
+          </View>
           </ScrollView>
 
           <View style={[s.startPanel2, { paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }]}>
@@ -1081,7 +1089,8 @@ export default function QuizScreen() {
 
   if (quizState === "cards") {
     return (
-      <View style={[s.container, { paddingTop: topPad, backgroundColor: colors.background }]}>
+      <View style={[s.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+        {/* Header — anchored */}
         <View style={s.header}>
           <TouchableOpacity onPress={handleBack} style={s.backBtn} activeOpacity={0.7}>
             <Feather name="arrow-left" size={22} color={colors.appText} />
@@ -1092,6 +1101,7 @@ export default function QuizScreen() {
           </View>
           <View style={{ width: 38 }} />
         </View>
+        {/* Tab control — anchored */}
         <View style={s.cardTabsWrap}>
           <HifzSegmentedControl
             options={[
@@ -1136,7 +1146,7 @@ export default function QuizScreen() {
   if (quizState === "finished" || !currentQ) {
     const percentage = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
     return (
-      <View style={[s.container, { paddingTop: topPad }]}>
+      <View style={[s.container, { paddingTop: insets.top }]}>
         <View style={s.header}>
           <TouchableOpacity onPress={handleBack} style={s.backBtn} activeOpacity={0.7}>
             <Feather name="arrow-left" size={22} color={colors.appText} />
@@ -1170,7 +1180,7 @@ export default function QuizScreen() {
   }
 
   return (
-    <View style={[s.container, { paddingTop: topPad }]}>
+    <View style={[s.container, { paddingTop: insets.top }]}>
       <View style={s.header}>
         <TouchableOpacity onPress={handleBack} style={s.backBtn} activeOpacity={0.7}>
           <Feather name="arrow-left" size={22} color={colors.appText} />

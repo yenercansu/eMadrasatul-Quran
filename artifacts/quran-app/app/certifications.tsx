@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 import { Feather, Ionicons } from "@expo/vector-icons";
@@ -96,15 +96,14 @@ export default function CertificationsScreen() {
   const levelProgress = stats.percent >= 100 ? 100 : stats.percent;
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.appBackground, paddingTop: insets.top + sp.sm }}>
-      {/* Header */}
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: sp.lg, paddingBottom: sp.sm + 2 }}>
+    <View style={{ flex: 1, backgroundColor: c.appBackground, paddingTop: insets.top }}>
+      {/* Header — anchored */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: sp.lg, paddingVertical: sp.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: c.appBorderLighter }}>
         <BackButton onPress={() => router.back()} />
         <Text style={{ fontSize: ty.fontSize.xl, fontWeight: "800", color: c.appText, fontFamily: "Inter_700Bold" }}>Certifications</Text>
         <View style={{ width: 40, height: 40 }} />
       </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: sp.lg, paddingBottom: 40, gap: 14 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: sp.lg, paddingBottom: 40, gap: 14, paddingTop: 14 }}>
 
         {/* ── Hero Card ──────────────────────────────────────────── */}
         <View style={{ ...c.cardStyle, padding: 18, alignItems: "center" }}>

@@ -82,56 +82,60 @@ export default function QuranScreen() {
     { key: "alphabetic", label: "Alphabetic" },
   ];
 
-  return (
-    <LinearGradient
-      colors={[colors.appBackground, colors.appLightGray]}
-      locations={[0, 1]}
-      style={s.container}
-    >
-      <View style={[s.header, { paddingTop: topPad + 8 }]}>
-        <PageTitle>Al-Quran</PageTitle>
-        <Text style={s.subtitle}>
-          114 Surahs
-        </Text>
-        <View style={s.searchRow}>
-          <View style={s.searchBar}>
-            <Feather name="search" size={16} color={colors.appIconMuted} />
-            <TextInput
-              style={s.searchInput}
-              placeholder="Search surahs..."
-              placeholderTextColor={colors.appIconMuted}
-              value={search}
-              onChangeText={setSearch}
-            />
-            {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch("")}>
-                <Feather name="x" size={16} color={colors.appIconMuted} />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-        <View style={s.filterRow}>
-          {FILTERS.map(({ key, label }) => (
-            <Tag key={key} label={label} selected={filterType === key} onPress={() => setFilterType(key)} />
-          ))}
+  const listHeader = (
+    <View style={s.header}>
+      <PageTitle>Al-Quran</PageTitle>
+      <Text style={s.subtitle}>
+        114 Surahs
+      </Text>
+      <View style={s.searchRow}>
+        <View style={s.searchBar}>
+          <Feather name="search" size={16} color={colors.appIconMuted} />
+          <TextInput
+            style={s.searchInput}
+            placeholder="Search surahs..."
+            placeholderTextColor={colors.appIconMuted}
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch("")}>
+              <Feather name="x" size={16} color={colors.appIconMuted} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
+      <View style={s.filterRow}>
+        {FILTERS.map(({ key, label }) => (
+          <Tag key={key} label={label} selected={filterType === key} onPress={() => setFilterType(key)} />
+        ))}
+      </View>
+    </View>
+  );
 
+  return (
+    <LinearGradient
+      colors={[colors.screenBackground, colors.screenBackgroundAlt]}
+      locations={[0, 1]}
+      style={[s.container, { paddingTop: insets.top }]}
+    >
+      {/* Header — always anchored */}
+      {listHeader}
       {surahsQuery.isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
       ) : surahsQuery.isError ? (
-        <View style={s.empty}>
-          <Feather name="alert-circle" size={40} color={colors.destructive} />
-          <Text style={s.emptyText}>Could not load surahs</Text>
-          <Text style={s.errorDetail}>
-            {madeenanError
-              ? `${madeenanError.status || "Network"} ${madeenanError.code} · auth=${madeenanError.hadAuthToken ? "yes" : "no"}${madeenanError.requestId ? ` · request ${madeenanError.requestId}` : ""}`
-              : loadError instanceof Error ? loadError.message : "Unknown error"}
-          </Text>
-          <TouchableOpacity onPress={() => surahsQuery.refetch()} style={s.retryBtn} activeOpacity={0.85}>
-            <Text style={s.retryText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
+          <View style={s.empty}>
+            <Feather name="alert-circle" size={40} color={colors.destructive} />
+            <Text style={s.emptyText}>Could not load surahs</Text>
+            <Text style={s.errorDetail}>
+              {madeenanError
+                ? `${madeenanError.status || "Network"} ${madeenanError.code} · auth=${madeenanError.hadAuthToken ? "yes" : "no"}${madeenanError.requestId ? ` · request ${madeenanError.requestId}` : ""}`
+                : loadError instanceof Error ? loadError.message : "Unknown error"}
+            </Text>
+            <TouchableOpacity onPress={() => surahsQuery.refetch()} style={s.retryBtn} activeOpacity={0.85}>
+              <Text style={s.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
       ) : (
         <FlatList
           data={filtered}
@@ -184,7 +188,7 @@ export default function QuranScreen() {
               />
             );
           }}
-          contentContainerStyle={{ paddingBottom: 120, paddingTop: 10 }}
+          contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
           scrollEnabled={!!filtered.length}
           ListEmptyComponent={
@@ -214,6 +218,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     header: {
       backgroundColor: "transparent",
       paddingHorizontal: 16,
+      paddingTop: 12,
       paddingBottom: 12,
     },
     subtitle: {
@@ -245,6 +250,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     empty: { alignItems: "center", paddingVertical: 60, gap: 12 },
     emptyText: { fontSize: 16, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     errorDetail: { paddingHorizontal: 24, textAlign: "center", fontSize: 12, lineHeight: 18, color: colors.destructive, fontFamily: "Inter_400Regular" },
-    retryBtn: { paddingHorizontal: 16, height: 40, borderRadius: 10, backgroundColor: colors.appBlack, alignItems: "center", justifyContent: "center" },
-    retryText: { fontSize: 13, color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+    retryBtn: { paddingHorizontal: 16, height: 40, borderRadius: 10, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+    retryText: { fontSize: 13, color: colors.primaryForeground, fontFamily: "Inter_700Bold" },
   });

@@ -10,6 +10,7 @@ import {
   Dimensions,
   ScrollView,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import Swipeable from "react-native-gesture-handler/Swipeable";
 import { TouchableOpacity as GHTouchable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -60,8 +61,8 @@ function AyahCard({
           }}
           activeOpacity={0.8}
         >
-          <Feather name="trash-2" size={20} color="#FFFFFF" />
-          <Text style={s.swipeActionText}>Remove</Text>
+          <Feather name="trash-2" size={20} color={colors.destructiveForeground} />
+          <Text style={[s.swipeActionText, { color: colors.destructiveForeground }]}>Remove</Text>
         </GHTouchable>
       </Animated.View>
     );
@@ -83,7 +84,7 @@ function AyahCard({
           activeOpacity={0.8}
         >
           <Feather name="book-open" size={20} color={colors.primaryForeground} />
-          <Text style={s.swipeActionText}>Go to</Text>
+          <Text style={[s.swipeActionText, { color: colors.primaryForeground }]}>Go to</Text>
         </GHTouchable>
       </Animated.View>
     );
@@ -191,7 +192,7 @@ const cardStyles = (colors: ReturnType<typeof useColors>) =>
     },
     swipeAction: {
       width: 80,
-      backgroundColor: "#D9534F",
+      backgroundColor: colors.destructive,
       borderRadius: 16,
       marginLeft: 8,
       overflow: "hidden",
@@ -212,12 +213,12 @@ const cardStyles = (colors: ReturnType<typeof useColors>) =>
       justifyContent: "center",
       gap: 4,
     },
-    swipeActionText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+    swipeActionText: { fontSize: 12, fontFamily: "Inter_700Bold" },
   });
 
 const AYAH_PAGE_SIZE = 10;
 
-function AyahListView({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: string) => void }) {
+function AyahListView({ ayahs, onRemove, listHeader }: { ayahs: SavedAyah[]; onRemove: (id: string) => void; listHeader?: React.ReactElement }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [page, setPage] = useState(0);
@@ -241,6 +242,7 @@ function AyahListView({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: 
     return (
       <View style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={listViewStyles.emptyContent} showsVerticalScrollIndicator={false}>
+          {listHeader}
           <View style={listViewStyles.empty}>
             <Text style={[listViewStyles.emptyTitle, { color: colors.foreground }]}>No saved ayahs</Text>
             <Text style={[listViewStyles.emptySubtitle, { color: colors.mutedForeground }]}>
@@ -261,6 +263,7 @@ function AyahListView({ ayahs, onRemove }: { ayahs: SavedAyah[]; onRemove: (id: 
         renderItem={({ item }) => <AyahCard ayah={item} onRemove={onRemove} isTop={true} />}
         contentContainerStyle={listViewStyles.listContent}
         showsVerticalScrollIndicator={false}
+        ListHeaderComponent={listHeader}
         ListFooterComponent={infoBoxFooter}
       />
       <View style={{
@@ -531,86 +534,87 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
     </View>
   );
 
+  const wordsViewHeader = (
+    <View style={[wvs.header, { paddingTop: 12 }]}>
+      {showDrillDown ? (
+        <View style={wvs.topRow}>
+          <TouchableOpacity onPress={() => setSelectedSurahNum(null)} style={wvs.backBtn} activeOpacity={0.7}>
+            <Feather name="arrow-left" size={22} color={colors.appText} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={[wvs.title, { color: colors.foreground }]}>{selectedSurahName}</Text>
+            <Text style={[wvs.subtitle, { color: colors.mutedForeground }]}>{filteredWords.length} words saved</Text>
+          </View>
+        </View>
+      ) : (
+        <View style={wvs.topRow}>
+          <TouchableOpacity onPress={onBack} style={wvs.backBtn} activeOpacity={0.7}>
+            <Feather name="arrow-left" size={22} color={colors.appText} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={[wvs.title, { color: colors.foreground }]}>
+              {filterMode === "ayah" ? "Saved Ayahs" : "Vocabulary"}
+            </Text>
+            <Text style={[wvs.subtitle, { color: colors.mutedForeground }]}>
+              {filterMode === "ayah"
+                ? `${savedAyahs.length} ayah${savedAyahs.length !== 1 ? "s" : ""} saved`
+                : `${quizFilteredWords.length} words saved`}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {!showDrillDown && (
+        <View style={wvs.filterRow}>
+          {FILTERS.map(({ key, label }) => (
+            <Tag
+              key={key}
+              label={label}
+              selected={filterMode === key}
+              onPress={() => { setFilterMode(key as FilterMode); setSelectedSurahNum(null); setSurahListPage(0); }}
+            />
+          ))}
+        </View>
+      )}
+
+      {filterMode === "words" && !showDrillDown && (
+        <View style={[wvs.segmentedControl, { backgroundColor: colors.appSoftPill }]}>
+          <TouchableOpacity
+            style={[
+              wvs.segmentPill,
+              wordTab === "active" && { backgroundColor: colors.appSelectedPill, borderWidth: 1, borderColor: colors.appSelectedPill },
+            ]}
+            onPress={() => setWordTab("active")}
+            activeOpacity={0.8}
+          >
+            <Text style={[wvs.segmentText, { color: wordTab === "active" ? colors.appText : colors.appIconMuted }]}>
+              <Text style={{ fontFamily: wordTab === "active" ? "Inter_600SemiBold" : "Inter_400Regular" }}>Active</Text>
+              <Text style={{ fontFamily: "Inter_400Regular" }}>{` (${activeWordCount})`}</Text>
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              wvs.segmentPill,
+              wordTab === "memorized" && { backgroundColor: colors.appSelectedPill, borderWidth: 1, borderColor: colors.appSelectedPill },
+            ]}
+            onPress={() => setWordTab("memorized")}
+            activeOpacity={0.8}
+          >
+            <Text style={[wvs.segmentText, { color: wordTab === "memorized" ? colors.appText : colors.appIconMuted }]}>
+              <Text style={{ fontFamily: wordTab === "memorized" ? "Inter_600SemiBold" : "Inter_400Regular" }}>Memorized</Text>
+              <Text style={{ fontFamily: "Inter_400Regular" }}>{` (${memorizedWordCount})`}</Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+
   return (
-    <View style={[wvs.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[wvs.header, { paddingTop: topPad + 12 }]}>
-        {showDrillDown ? (
-          <View style={wvs.topRow}>
-            <TouchableOpacity onPress={() => setSelectedSurahNum(null)} style={wvs.backBtn} activeOpacity={0.7}>
-              <Feather name="arrow-left" size={22} color={colors.appText} />
-            </TouchableOpacity>
-            <View style={{ flex: 1 }}>
-              <Text style={[wvs.title, { color: colors.foreground }]}>{selectedSurahName}</Text>
-              <Text style={[wvs.subtitle, { color: colors.mutedForeground }]}>{filteredWords.length} words saved</Text>
-            </View>
-          </View>
-        ) : (
-          <View style={wvs.topRow}>
-            <TouchableOpacity onPress={onBack} style={wvs.backBtn} activeOpacity={0.7}>
-              <Feather name="arrow-left" size={22} color={colors.appText} />
-            </TouchableOpacity>
-            <View style={{ flex: 1 }}>
-              <Text style={[wvs.title, { color: colors.foreground }]}>
-                {filterMode === "ayah" ? "Saved Ayahs" : "Vocabulary"}
-              </Text>
-              <Text style={[wvs.subtitle, { color: colors.mutedForeground }]}>
-                {filterMode === "ayah"
-                  ? `${savedAyahs.length} ayah${savedAyahs.length !== 1 ? "s" : ""} saved`
-                  : `${quizFilteredWords.length} words saved`}
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {!showDrillDown && (
-          <View style={wvs.filterRow}>
-            {FILTERS.map(({ key, label }) => (
-              <Tag
-                key={key}
-                label={label}
-                selected={filterMode === key}
-                onPress={() => { setFilterMode(key as FilterMode); setSelectedSurahNum(null); setSurahListPage(0); }}
-              />
-            ))}
-          </View>
-        )}
-
-        {filterMode === "words" && !showDrillDown && (
-          <View style={[wvs.segmentedControl, { backgroundColor: colors.appSoftPill }]}>
-            <TouchableOpacity
-              style={[
-                wvs.segmentPill,
-                wordTab === "active" && { backgroundColor: colors.appSelectedPill, borderWidth: 1, borderColor: colors.appSelectedPill },
-              ]}
-              onPress={() => setWordTab("active")}
-              activeOpacity={0.8}
-            >
-              <Text style={[wvs.segmentText, { color: wordTab === "active" ? colors.appText : colors.appIconMuted }]}>
-                <Text style={{ fontFamily: wordTab === "active" ? "Inter_600SemiBold" : "Inter_400Regular" }}>Active</Text>
-                <Text style={{ fontFamily: "Inter_400Regular" }}>{` (${activeWordCount})`}</Text>
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                wvs.segmentPill,
-                wordTab === "memorized" && { backgroundColor: colors.appSelectedPill, borderWidth: 1, borderColor: colors.appSelectedPill },
-              ]}
-              onPress={() => setWordTab("memorized")}
-              activeOpacity={0.8}
-            >
-              <Text style={[wvs.segmentText, { color: wordTab === "memorized" ? colors.appText : colors.appIconMuted }]}>
-                <Text style={{ fontFamily: wordTab === "memorized" ? "Inter_600SemiBold" : "Inter_400Regular" }}>Memorized</Text>
-                <Text style={{ fontFamily: "Inter_400Regular" }}>{` (${memorizedWordCount})`}</Text>
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
+    <View style={[wvs.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       {/* Content */}
       {filterMode === "ayah" ? (
-        <AyahListView ayahs={savedAyahs} onRemove={removeAyah} />
+        <AyahListView ayahs={savedAyahs} onRemove={removeAyah} listHeader={wordsViewHeader} />
 
       ) : showSurahList ? (
         <View style={{ flex: 1 }}>
@@ -619,6 +623,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
             contentContainerStyle={wvs.surahListContent}
             showsVerticalScrollIndicator={false}
           >
+            {wordsViewHeader}
             {quizSelectedSurahs.length === 0 ? (
               <View style={wvs.empty}>
                 <Feather name="info" size={24} color={colors.mutedForeground} />
@@ -716,14 +721,18 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
           )}
           contentContainerStyle={wvs.wordsListContent}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={wordsViewHeader}
           ListEmptyComponent={emptyWords}
           ListFooterComponent={ctaCard}
         />
       ) : (
         quizSelectedSurahs.length === 0 ? (
-          <View style={wvs.empty}>
-            <Feather name="info" size={24} color={colors.mutedForeground} />
-            <Text style={[wvs.emptyTitle, { color: colors.foreground }]}>No Surah selected, please select a Surah or Ayah to continue</Text>
+          <View style={{ flex: 1 }}>
+            {wordsViewHeader}
+            <View style={wvs.empty}>
+              <Feather name="info" size={24} color={colors.mutedForeground} />
+              <Text style={[wvs.emptyTitle, { color: colors.foreground }]}>No Surah selected, please select a Surah or Ayah to continue</Text>
+            </View>
           </View>
         ) : (
         <FlatList
@@ -734,6 +743,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
           )}
           contentContainerStyle={wvs.wordsListContent}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={wordsViewHeader}
           ListEmptyComponent={
             wordTab === "memorized" ? (
               <View style={wvs.empty}>
@@ -757,7 +767,7 @@ const wordsViewStyles = StyleSheet.create({
   container: { flex: 1 },
 
   // Header
-  header: { paddingHorizontal: 16, paddingBottom: 14 },
+  header: { paddingBottom: 14 },
   topRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 12 },
   backBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center", marginTop: 2 },
   title: { fontSize: 28, fontFamily: "Inter_700Bold" },
@@ -888,17 +898,23 @@ export default function LibraryScreen() {
   const s = libStyles(colors);
 
   return (
+    <LinearGradient
+      colors={[colors.screenBackground, colors.screenBackgroundAlt]}
+      locations={[0, 1]}
+      style={[s.container, { paddingTop: insets.top }]}
+    >
+      {/* ── Anchored title ─────────────────────────────────────────────── */}
+      <View style={[s.titleBlock, { paddingHorizontal: 20, paddingTop: 15, paddingBottom: 4 }]}>
+        <PageTitle>Madrasa</PageTitle>
+        <Text style={s.pageSubtitle}>Qur'an Learning Hub</Text>
+      </View>
     <ScrollView
-      style={s.container}
-      contentContainerStyle={[s.content, { paddingTop: topPad + 15 }]}
+      style={{ flex: 1 }}
+      contentContainerStyle={[s.content, { paddingTop: 10 }]}
       showsVerticalScrollIndicator={false}
     >
-      {/* ── Header + Streak ────────────────────────────────────────────── */}
+      {/* ── Streak ─────────────────────────────────────────────────────── */}
       <View style={s.headerSection}>
-        <View style={s.titleBlock}>
-          <PageTitle>Madrasa</PageTitle>
-          <Text style={s.pageSubtitle}>Qur'an Learning Hub</Text>
-        </View>
         <View style={s.streakCard}>
           <View style={s.streakContent}>
             <View style={s.streakLeft}>
@@ -999,6 +1015,7 @@ export default function LibraryScreen() {
         }
       />
     </ScrollView>
+    </LinearGradient>
   );
 }
 
@@ -1006,7 +1023,6 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.appBackground,
     },
     content: {
       paddingHorizontal: 20,

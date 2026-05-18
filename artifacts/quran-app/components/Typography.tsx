@@ -41,7 +41,7 @@ export function SubSectionTitle({ children, style }: TextProps) {
         {
           fontSize: 18,
           fontWeight: "700",
-          color: colors.appBlack,
+          color: colors.appText,
           fontFamily: "Inter_700Bold",
         },
         style,

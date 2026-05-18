@@ -3,7 +3,9 @@ import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import React from "react";
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
+
 import Svg, { ClipPath, Defs, G, Path, Rect } from "react-native-svg";
+import { useColors } from "@/hooks/useColors";
 
 function NativeTabLayout() {
   return (
@@ -29,11 +31,6 @@ const TAB_DEFS = [
   { name: "quran", icon: "quran" as const, label: "Quran" },
   { name: "library", icon: "madrasa" as const, label: "Madrasa" },
 ];
-
-const ACTIVE_COLOR = "#2D2926";
-const INACTIVE_COLOR = "#8A8070";
-const ACTIVE_BG = "#DED6CC";
-const BAR_BG = "#F5F0E8";
 
 function TabIcon({ name, color }: { name: "home" | "quran" | "madrasa"; color: string }) {
   if (name === "home") {
@@ -84,6 +81,8 @@ function TabIcon({ name, color }: { name: "home" | "quran" | "madrasa"; color: s
 
 function FixedTabBar(props: any) {
   const { state, navigation } = props;
+  const colors = useColors();
+  const styles = createStyles(colors);
 
   const visibleRoutes = state.routes.filter((r: any) =>
     TAB_DEFS.find(t => t.name === r.name)
@@ -98,7 +97,7 @@ function FixedTabBar(props: any) {
             if (!tabDef) return null;
             const routeIndex = state.routes.findIndex((r: any) => r.name === route.name);
             const isFocused = state.index === routeIndex;
-            const color = isFocused ? ACTIVE_COLOR : INACTIVE_COLOR;
+            const color = isFocused ? colors.tabBarActive : colors.tabBarInactive;
 
             const onPress = () => {
               const event = navigation.emit({
@@ -133,17 +132,18 @@ function FixedTabBar(props: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useColors>) =>
+StyleSheet.create({
   shell: {
-    backgroundColor: BAR_BG,
+    backgroundColor: colors.tabBarBackground,
   },
   surface: {
     minHeight: 82,
-    backgroundColor: BAR_BG,
+    backgroundColor: colors.tabBarBackground,
     paddingTop: 10,
     paddingHorizontal: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#E7DED1",
+    borderTopColor: colors.divider,
   },
   itemsRow: {
     flexDirection: "row",
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     transform: [{ translateY: -6 }],
   },
   itemActive: {
-    backgroundColor: ACTIVE_BG,
+    backgroundColor: colors.tabBarActiveBackground,
   },
   iconWrap: {
     height: 22,

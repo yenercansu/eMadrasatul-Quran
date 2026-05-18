@@ -28,9 +28,11 @@ import { HifzGoalSetupModal, type PaceRhythm } from "@/components/hifz/HifzGoalS
 import { HifzHeroCard } from "@/components/hifz/HifzUI";
 import { VerseCard } from "@/components/VerseCard";
 import { ActionPill } from "@/components/ActionPill";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const TOTAL_AYAHS = 6236;
 const MAX_WEEKLY_AYAHS = 70;
+const WEEKLY_TOAST_CELEBRATIONS_KEY = "@squran/weekly-complete-toast-celebrations-v1";
 
 function getAyahKey(ayah: Pick<AyahRef, "surahNumber" | "ayahNumber">) {
   return `${ayah.surahNumber}:${ayah.ayahNumber}`;
@@ -287,6 +289,8 @@ export default function HomeScreen() {
   const prevMemPercentRef = useRef<number | null>(null);
   const prevWeekPercentRef = useRef<number | null>(null);
   const prevMilestoneCompleteRef = useRef<boolean | null>(null);
+  const weeklyToastCelebratedRef = useRef<Set<string>>(new Set());
+  const [weeklyToastCelebrationsLoaded, setWeeklyToastCelebrationsLoaded] = useState(false);
 
   // ── Hifz Goal Widget state ────────────────────────────────────────────────
   const [widgetPath, setWidgetPath] = useState<"surah" | "juz">("surah");
@@ -338,6 +342,28 @@ export default function HomeScreen() {
     const memorized = new Set(memorizedAyahKeys);
     return weekGoalAyahs.filter(a => memorized.has(`${a.surahNumber}:${a.ayahNumber}`)).length;
   }, [goal, isPaceGoal, paceWeekMemorizedProgress, weekGoalAyahs, memorizedAyahKeys]);
+
+  const weeklyCompletionSignature = useMemo(() => {
+    if (!goal || weekGoalAyahs.length === 0) return null;
+    const targetKeys = weekGoalAyahs.map(getAyahKey).join(",");
+    return [
+      weekStartStr,
+      goal.startDate,
+      memorizationGoal?.path ?? "none",
+      memorizationGoal?.targetJuz ?? "none",
+      targetKeys,
+    ].join("|");
+  }, [goal, memorizationGoal?.path, memorizationGoal?.targetJuz, weekGoalAyahs, weekStartStr]);
+
+  useEffect(() => {
+    AsyncStorage.getItem(WEEKLY_TOAST_CELEBRATIONS_KEY)
+      .then((value) => {
+        const parsed = value ? JSON.parse(value) : [];
+        weeklyToastCelebratedRef.current = new Set(Array.isArray(parsed) ? parsed : []);
+      })
+      .catch(() => {})
+      .finally(() => setWeeklyToastCelebrationsLoaded(true));
+  }, []);
 
   const juzGroups = useMemo(() => {
     if (surahs.length === 0) return [];
@@ -1209,14 +1235,38 @@ export default function HomeScreen() {
     if (weekPercent >= 100 && goal && (!milestoneComplete || canExtendCurrentGoal)) {
       setShowWeekCompleteCard(true);
     }
-    if (prev !== null && prev < 100 && weekPercent >= 100 && goal && (!milestoneComplete || canExtendCurrentGoal) && memorizationPercent < 100) {
+    if (
+      prev !== null &&
+      prev < 100 &&
+      weekPercent >= 100 &&
+      goal &&
+      (!milestoneComplete || canExtendCurrentGoal) &&
+      memorizationPercent < 100 &&
+      weeklyCompletionSignature &&
+      weeklyToastCelebrationsLoaded &&
+      !weeklyToastCelebratedRef.current.has(weeklyCompletionSignature)
+    ) {
+      weeklyToastCelebratedRef.current.add(weeklyCompletionSignature);
+      AsyncStorage.setItem(
+        WEEKLY_TOAST_CELEBRATIONS_KEY,
+        JSON.stringify(Array.from(weeklyToastCelebratedRef.current).slice(-60))
+      ).catch(() => {});
       setShowWeeklyToast(true);
       const t = setTimeout(() => {
         setShowWeeklyToast(false);
       }, 5000);
       return () => clearTimeout(t);
     }
-  }, [canExtendCurrentGoal, goal, hifzTransition, memorizationPercent, milestoneComplete, weekPercent]);
+  }, [
+    canExtendCurrentGoal,
+    goal,
+    hifzTransition,
+    memorizationPercent,
+    milestoneComplete,
+    weekPercent,
+    weeklyCompletionSignature,
+    weeklyToastCelebrationsLoaded,
+  ]);
 
   useEffect(() => {
     if (continuationNotice && weekGoalProgress > 0) {
@@ -1231,13 +1281,13 @@ export default function HomeScreen() {
     <>
       <StatusBar barStyle="dark-content" />
        <LinearGradient
-         colors={[colors.appLighterBg, colors.appLightGray]}
+         colors={[colors.screenBackground, colors.screenBackgroundAlt]}
          locations={[0, 1]}
-         style={s.container}
+         style={[s.container, { paddingTop: insets.top }]}
        >
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[s.scrollContent, { paddingTop: topPad + 12 }]}
+          contentContainerStyle={[s.scrollContent, { paddingTop: 12 }]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -3232,8 +3282,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       backgroundColor: "#EDE8DE",
     },
     thisWeekBigTitle: {
-      fontSize: 28,
-      lineHeight: 34,
+      fontSize: 24,
+      lineHeight: 30,
       fontWeight: "700",
       color: colors.appTextPrimary,
       fontFamily: "Inter_700Bold",
@@ -3379,13 +3429,15 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderColor: "#C8C0B0",
     },
     dotNum: {
-      fontSize: 12,
+      fontSize: 10,
+      lineHeight: 12,
       fontWeight: "600",
       color: "#8D8477",
       fontFamily: "Inter_600SemiBold",
     },
     dotNumDone: {
-      fontSize: 12,
+      fontSize: 10,
+      lineHeight: 12,
       fontWeight: "600",
       color: "#5A5248",
       fontFamily: "Inter_600SemiBold",

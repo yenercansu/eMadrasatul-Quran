@@ -283,6 +283,9 @@ export function AyahRangeModal({
   const { removeMemorizedAyahKeys } = useQuran();
   const { width: windowWidth } = useWindowDimensions();
   const infoPageWidth = windowWidth - 40;
+  const paceScrollRef = useRef<ScrollView>(null);
+  const ayahScrollRef = useRef<ScrollView>(null);
+  const forecastScrollRef = useRef<ScrollView>(null);
 
   const [step, setStep] = useState<0 | 1 | 2 | 3>(1);
   const [maxStepReached, setMaxStepReached] = useState<0 | 1 | 2 | 3>(1);
@@ -356,6 +359,15 @@ export function AyahRangeModal({
   };
 
   const activePath = startAtPaceDate ? paceRangeTab : path;
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      paceScrollRef.current?.scrollTo({ y: 0, animated: false });
+      ayahScrollRef.current?.scrollTo({ y: 0, animated: false });
+      forecastScrollRef.current?.scrollTo({ y: 0, animated: false });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activePath, paceStep, selectedJuz, selectedSurah?.number, step]);
 
   const juzAyahs = useMemo(() => {
     if (activePath === "juz" && selectedJuz != null) return getJuzAyahs(selectedJuz);
@@ -919,7 +931,7 @@ export function AyahRangeModal({
     if (paceStep === 0) {
       return (
         <>
-          <View style={[s.header, { paddingTop: insets.top + 8 }]}>
+          <View style={[s.header, { paddingTop: 8 }]}>
             {renderHeaderBack(onClose)}
             <Text style={s.screenTitle}>Set Your Goal</Text>
             <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -928,6 +940,7 @@ export function AyahRangeModal({
           </View>
           {renderProgressBar()}
           <ScrollView
+            ref={paceScrollRef}
             style={{ flex: 1 }}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={s.paceDateContent}
@@ -941,7 +954,7 @@ export function AyahRangeModal({
               {capacityOptions.map((option) => {
                 return renderPaceChoice({
                   label: formatPaceOptionLabel(option.label),
-                  selected: ayahsPerWeek === option.ayahsPerWeek,
+                  selected: paceCurrentSelected && ayahsPerWeek === option.ayahsPerWeek,
                   onPress: () => {
                         const selectedCapacity = option.ayahsPerWeek;
                         if (selectedCapacity == null) return;
@@ -1004,7 +1017,7 @@ export function AyahRangeModal({
       ?? `${Math.round(peakCapacityPerWeek / 7)}/day peak`;
     if (paceStep === 1) return (
       <>
-        <View style={[s.header, { paddingTop: insets.top + 8 }]}>
+        <View style={[s.header, { paddingTop: 8 }]}>
           {renderHeaderBack(() => setPaceStep(0))}
           <Text style={s.screenTitle}>Set Your Goal</Text>
           <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -1013,6 +1026,7 @@ export function AyahRangeModal({
         </View>
         {renderProgressBar()}
         <ScrollView
+          ref={paceScrollRef}
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={s.paceDateContent}
@@ -1022,7 +1036,7 @@ export function AyahRangeModal({
           {hasDesiredOptions ? (
             <View style={s.paceChoiceStack}>
               {peakOptions.map((option) => {
-                const selected = peakCapacityPerWeek === option.ayahsPerWeek && option.ayahsPerWeek > ayahsPerWeek;
+                const selected = paceDesiredSelected && peakCapacityPerWeek === option.ayahsPerWeek && option.ayahsPerWeek > ayahsPerWeek;
                 return renderPaceChoice({
                   label: formatPaceOptionLabel(option.label).replace(/^~/, ""),
                   selected,
@@ -1071,7 +1085,7 @@ export function AyahRangeModal({
     // ── paceStep 2: Growth style ─────────────────────────────────────────────
     return (
       <>
-        <View style={[s.header, { paddingTop: insets.top + 8 }]}>
+        <View style={[s.header, { paddingTop: 8 }]}>
           {renderHeaderBack(() => setPaceStep(1))}
           <Text style={s.screenTitle}>Set Your Goal</Text>
           <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -1080,6 +1094,7 @@ export function AyahRangeModal({
         </View>
         {renderProgressBar()}
         <ScrollView
+          ref={paceScrollRef}
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={s.paceDateContent}
@@ -1088,7 +1103,7 @@ export function AyahRangeModal({
           <Text style={s.paceStepSub}>The bridge between where you are and where you want to be.</Text>
           <View style={s.increaseChips}>
             {INCREASE_STYLE_OPTIONS.map((option) => {
-              const selected = gradualIncreaseStyle === option.value;
+              const selected = paceGrowthSelected && gradualIncreaseStyle === option.value;
               return (
                 <TouchableOpacity
                   key={option.value}
@@ -1160,7 +1175,7 @@ export function AyahRangeModal({
   // ── Step 1: Surah list ──────────────────────────────────────────────────────
   const renderSurahList = () => (
     <>
-      <View style={[s.header, { paddingTop: insets.top + 8 }]}>
+      <View style={[s.header, { paddingTop: 8 }]}>
         {renderHeaderBack(startAtPaceDate ? () => setStep(0) : onClose)}
         <Text style={s.screenTitle}>Select Surah</Text>
         <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -1180,13 +1195,12 @@ export function AyahRangeModal({
           autoCorrect={false}
         />
       </View>
-
       <FlatList
-        data={filteredSurahs}
-        keyExtractor={(item) => String(item.number)}
-        showsVerticalScrollIndicator={false}
-        style={{ flex: 1 }}
-        keyboardShouldPersistTaps="handled"
+      data={filteredSurahs}
+      keyExtractor={(item) => String(item.number)}
+      showsVerticalScrollIndicator={false}
+      style={{ flex: 1 }}
+      keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => {
           const isSelected = selectedSurah?.number === item.number;
           const isCompleted = (memorizedCountBySurah[item.number] ?? 0) >= item.ayahCount;
@@ -1223,14 +1237,14 @@ export function AyahRangeModal({
             </TouchableOpacity>
           );
         }}
-      />
+    />
     </>
   );
 
   // ── Step 1: Juz list ───────────────────────────────────────────────────────
   const renderJuzList = () => (
     <>
-      <View style={[s.header, { paddingTop: insets.top + 8 }]}>
+      <View style={[s.header, { paddingTop: 8 }]}>
         {renderHeaderBack(startAtPaceDate ? () => setStep(0) : onClose)}
         <Text style={s.screenTitle}>Select Juz</Text>
         <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -1290,134 +1304,137 @@ export function AyahRangeModal({
             </TouchableOpacity>
           );
         }}
-      />
+    />
     </>
   );
 
   // ── Step 1 (paceDate): Combined Surah / Juz range selection ─────────────────
-  const renderPaceDateRangeSelection = () => (
-    <>
-      <View style={[s.header, { paddingTop: insets.top + 8 }]}>
-        {renderHeaderBack(() => { setStep(0); setPaceStep(2); })}
-        <Text style={s.screenTitle}>Select Range</Text>
-        <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Text style={s.cancelText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
-      {renderProgressBar()}
-
-      {/* Surah / Juz tab bar */}
-      <View style={s.rangeTabBar}>
-        <TouchableOpacity
-          style={[s.rangeTab, paceRangeTab === "surah" && s.rangeTabActive]}
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setPaceRangeTab("surah"); setSelectedSurah(null); setFirstAyah(null); setLastAyah(null); }}
-        >
-          <Text style={[s.rangeTabText, paceRangeTab === "surah" && s.rangeTabTextActive]}>Surah</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[s.rangeTab, paceRangeTab === "juz" && s.rangeTabActive]}
-          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setPaceRangeTab("juz"); setSelectedJuz(null); setFirstAyah(null); setLastAyah(null); }}
-        >
-          <Text style={[s.rangeTabText, paceRangeTab === "juz" && s.rangeTabTextActive]}>Juz</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={s.searchWrap}>
-        <Feather name="search" size={15} color="#9A9A9A" />
-        <TextInput
-          style={s.searchInput}
-          placeholder={paceRangeTab === "surah" ? "Search surahs..." : "Search juz..."}
-          placeholderTextColor="#9A9A9A"
-          value={search}
-          onChangeText={setSearch}
-          clearButtonMode="while-editing"
-          autoCorrect={false}
-        />
-      </View>
-
-      {paceRangeTab === "surah" ? (
-        <FlatList
-          data={filteredSurahs}
-          keyExtractor={(item) => String(item.number)}
-          showsVerticalScrollIndicator={false}
-          style={{ flex: 1 }}
-          keyboardShouldPersistTaps="handled"
-          renderItem={({ item }) => {
-            const isSelected = selectedSurah?.number === item.number;
-            return (
-              <TouchableOpacity
-                style={s.listRow}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setSelectedSurah(item);
-                  setFirstAyah(null);
-                  setLastAyah(null);
-                  setActivePhase("first");
-                  advanceStep(2);
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={s.listRowInfo}>
-                  <Text style={s.listRowTitle}>{item.englishName}</Text>
-                  <Text style={s.listRowSub}>{item.ayahCount} ayahs</Text>
-                </View>
-                <Text style={s.listRowArabic}>{item.name}</Text>
-                {isSelected ? (
-                  <View style={s.checkCircle}><Feather name="check" size={14} color="#FFFFFF" /></View>
-                ) : (
-                  <Feather name="chevron-right" size={16} color="#C0C0C0" />
-                )}
-              </TouchableOpacity>
-            );
-          }}
-        />
-      ) : (
-        <FlatList
-          data={filteredJuzList}
-          keyExtractor={(item) => String(item.juz)}
-          showsVerticalScrollIndicator={false}
-          style={{ flex: 1 }}
-          keyboardShouldPersistTaps="handled"
-          renderItem={({ item: group }) => {
-            const isSelected = selectedJuz === group.juz;
-            const juzAyahList = getJuzAyahs(group.juz);
-            const juzStart = JUZ_STARTS[group.juz - 1];
-            const startSurah = juzStart ? SURAH_DATA[juzStart.surah - 1] : null;
-            const lastRef = juzAyahList[juzAyahList.length - 1];
-            const endSurah = lastRef ? SURAH_DATA[lastRef.surahNumber - 1] : null;
-            const subText = `${startSurah?.englishName ?? ""} ${juzStart?.ayah ?? ""} – ${endSurah?.englishName ?? ""} ${lastRef?.ayahNumber ?? ""}`;
-            return (
-              <TouchableOpacity
-                style={s.listRow}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setSelectedJuz(group.juz);
-                  setFirstAyah(null);
-                  setLastAyah(null);
-                  setActivePhase("first");
-                  advanceStep(2);
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={s.listRowInfo}>
-                  <View style={s.juzTitleRow}>
-                    <Text style={s.listRowTitle}>Juz {group.juz}</Text>
-                    {group.name ? <Text style={s.juzNameText}>{group.name}</Text> : null}
+  const renderPaceDateRangeSelection = () => {
+    const rangeHeader = (
+      <>
+        <View style={[s.header, { paddingTop: 8 }]}>
+          {renderHeaderBack(() => { setStep(0); setPaceStep(2); })}
+          <Text style={s.screenTitle}>Select Range</Text>
+          <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={s.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+        {renderProgressBar()}
+        <View style={s.rangeTabBar}>
+          <TouchableOpacity
+            style={[s.rangeTab, paceRangeTab === "surah" && s.rangeTabActive]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setPaceRangeTab("surah"); setSelectedSurah(null); setFirstAyah(null); setLastAyah(null); }}
+          >
+            <Text style={[s.rangeTabText, paceRangeTab === "surah" && s.rangeTabTextActive]}>Surah</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.rangeTab, paceRangeTab === "juz" && s.rangeTabActive]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setPaceRangeTab("juz"); setSelectedJuz(null); setFirstAyah(null); setLastAyah(null); }}
+          >
+            <Text style={[s.rangeTabText, paceRangeTab === "juz" && s.rangeTabTextActive]}>Juz</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={s.searchWrap}>
+          <Feather name="search" size={15} color="#9A9A9A" />
+          <TextInput
+            style={s.searchInput}
+            placeholder={paceRangeTab === "surah" ? "Search surahs..." : "Search juz..."}
+            placeholderTextColor="#9A9A9A"
+            value={search}
+            onChangeText={setSearch}
+            clearButtonMode="while-editing"
+            autoCorrect={false}
+          />
+        </View>
+      </>
+    );
+    return (
+      <>
+        {rangeHeader}
+        {paceRangeTab === "surah" ? (
+          <FlatList
+            data={filteredSurahs}
+            keyExtractor={(item) => String(item.number)}
+            showsVerticalScrollIndicator={false}
+            style={{ flex: 1 }}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }) => {
+              const isSelected = selectedSurah?.number === item.number;
+              return (
+                <TouchableOpacity
+                  style={s.listRow}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setSelectedSurah(item);
+                    setFirstAyah(null);
+                    setLastAyah(null);
+                    setActivePhase("first");
+                    advanceStep(2);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={s.listRowInfo}>
+                    <Text style={s.listRowTitle}>{item.englishName}</Text>
+                    <Text style={s.listRowSub}>{item.ayahCount} ayahs</Text>
                   </View>
-                  <Text style={s.listRowSub}>{subText}</Text>
+                  <Text style={s.listRowArabic}>{item.name}</Text>
+                  {isSelected ? (
+                    <View style={s.checkCircle}><Feather name="check" size={14} color="#FFFFFF" /></View>
+                  ) : (
+                    <Feather name="chevron-right" size={16} color="#C0C0C0" />
+                  )}
+                </TouchableOpacity>
+              );
+            }}
+          />
+        ) : (
+          <FlatList
+            data={filteredJuzList}
+            keyExtractor={(item) => String(item.juz)}
+            showsVerticalScrollIndicator={false}
+            style={{ flex: 1 }}
+            keyboardShouldPersistTaps="handled"
+        renderItem={({ item: group }) => {
+          const isSelected = selectedJuz === group.juz;
+          const juzAyahList = getJuzAyahs(group.juz);
+          const juzStart = JUZ_STARTS[group.juz - 1];
+          const startSurah = juzStart ? SURAH_DATA[juzStart.surah - 1] : null;
+          const lastRef = juzAyahList[juzAyahList.length - 1];
+          const endSurah = lastRef ? SURAH_DATA[lastRef.surahNumber - 1] : null;
+          const subText = `${startSurah?.englishName ?? ""} ${juzStart?.ayah ?? ""} – ${endSurah?.englishName ?? ""} ${lastRef?.ayahNumber ?? ""}`;
+          return (
+            <TouchableOpacity
+              style={s.listRow}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setSelectedJuz(group.juz);
+                setFirstAyah(null);
+                setLastAyah(null);
+                setActivePhase("first");
+                advanceStep(2);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={s.listRowInfo}>
+                <View style={s.juzTitleRow}>
+                  <Text style={s.listRowTitle}>Juz {group.juz}</Text>
+                  {group.name ? <Text style={s.juzNameText}>{group.name}</Text> : null}
                 </View>
-                {isSelected ? (
-                  <View style={s.checkCircle}><Feather name="check" size={14} color="#FFFFFF" /></View>
-                ) : (
-                  <Feather name="chevron-right" size={16} color="#C0C0C0" />
-                )}
-              </TouchableOpacity>
-            );
-          }}
-        />
-      )}
-    </>
-  );
+                <Text style={s.listRowSub}>{subText}</Text>
+              </View>
+              {isSelected ? (
+                <View style={s.checkCircle}><Feather name="check" size={14} color="#FFFFFF" /></View>
+              ) : (
+                <Feather name="chevron-right" size={16} color="#C0C0C0" />
+              )}
+            </TouchableOpacity>
+          );
+        }}
+          />
+        )}
+      </>
+    );
+  };
 
   // ── Step 2: Ayah range selection ───────────────────────────────────────────
   const renderAyahSelection = () => {
@@ -1451,7 +1468,7 @@ export function AyahRangeModal({
 
     return (
       <>
-        <View style={[s.header, { paddingTop: insets.top + 8 }]}>
+        <View style={[s.header, { paddingTop: 8 }]}>
           {renderHeaderBack(() => {
               if (startAtAyahSelection) {
                 onClose();
@@ -1469,24 +1486,23 @@ export function AyahRangeModal({
             <Text style={s.cancelText}>Cancel</Text>
           </TouchableOpacity>
         </View>
-
         {renderProgressBar()}
-
-        <View style={s.resetCtaWrap}>
-          <ActionPill
-            label="Reset"
-            variant="soft"
-            size="sm"
-            style={s.resetCta}
-            onPress={() => setResetVisible(true)}
-          />
-        </View>
-
         <ScrollView
+          ref={ayahScrollRef}
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={s.ayahScrollContent}
         >
+
+          <View style={s.resetCtaWrap}>
+            <ActionPill
+              label="Reset"
+              variant="soft"
+              size="sm"
+              style={s.resetCta}
+              onPress={() => setResetVisible(true)}
+            />
+          </View>
           {/* Surah / Juz info card */}
           <View style={s.infoCard}>
             <View style={{ flex: 1 }}>
@@ -1690,22 +1706,20 @@ export function AyahRangeModal({
 
     return (
       <>
-        <View style={[s.header, { paddingTop: insets.top + 8 }]}>
+        <View style={[s.header, { paddingTop: 8 }]}>
           {renderHeaderBack(() => startAtWeeklyGoal ? onClose() : setStep(2))}
           <Text style={s.screenTitle}>{isRevision ? "Set Weekly Revision" : "Set Your Weekly Goal"}</Text>
           <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={s.cancelText}>Cancel</Text>
           </TouchableOpacity>
         </View>
-
         {renderProgressBar()}
-
-        <ScrollView
-          style={{ flex: 1 }}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={s.weeklyContent}
-          scrollEnabled={weeklyScrollEnabled}
-        >
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={s.weeklyContent}
+        scrollEnabled={weeklyScrollEnabled}
+      >
           {/* Surah / Juz title */}
           <Text style={s.weeklyGoalTitle}>
             {isJuz
@@ -1880,7 +1894,7 @@ export function AyahRangeModal({
 
     return (
       <>
-        <View style={[s.header, { paddingTop: insets.top + 8 }]}>
+        <View style={[s.header, { paddingTop: 8 }]}>
           {renderHeaderBack(() => {
               setStep(0);
               setPaceStep(2);
@@ -1891,7 +1905,7 @@ export function AyahRangeModal({
           </TouchableOpacity>
         </View>
         {renderProgressBar()}
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={s.paceDateContent}>
+        <ScrollView ref={forecastScrollRef} style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={s.paceDateContent}>
           <Text style={s.paceStepHeadline}>Your Hifz Path</Text>
           <Text style={s.paceStepSub}>Here's what your journey looks like.</Text>
 
@@ -1940,7 +1954,7 @@ export function AyahRangeModal({
 
   return (
     <Modal visible={visible} animationType={modalAnimationType} onRequestClose={onClose}>
-      <View style={s.sheet}>
+      <View style={[s.sheet, { paddingTop: insets.top }]}>
         {step === 0
           ? renderPaceDate()
           : step === 1

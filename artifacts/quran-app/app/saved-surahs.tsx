@@ -22,21 +22,25 @@ export default function SavedSurahsScreen() {
     return savedSurahs.map(n => SURAH_DATA[n - 1]).filter(Boolean);
   }, [savedSurahs]);
 
+  const listHeader = (
+    <View style={s.header}>
+      <TouchableOpacity
+        style={s.backBtn}
+        onPress={() => router.back()}
+        activeOpacity={0.7}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Feather name="arrow-left" size={22} color={colors.appText} />
+      </TouchableOpacity>
+      <Text style={s.title}>Saved Surahs</Text>
+      <View style={{ width: 40 }} />
+    </View>
+  );
+
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
-      <View style={s.header}>
-        <TouchableOpacity
-          style={s.backBtn}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Feather name="arrow-left" size={22} color={colors.appText} />
-        </TouchableOpacity>
-        <Text style={s.title}>Saved Surahs</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
+      {/* Header — always anchored */}
+      {listHeader}
       {surahsQuery.isLoading ? (
         <ActivityIndicator color={colors.appBlack} style={{ flex: 1 }} />
       ) : surahsQuery.isError ? (
