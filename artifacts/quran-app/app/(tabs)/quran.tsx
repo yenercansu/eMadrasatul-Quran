@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,6 +22,7 @@ import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
 import { MadeenanApiError } from "@/services/madeenanApi";
 import { useQuran } from "@/contexts/QuranContext";
 import { searchByType } from "@/services/search";
+import { AppDialog } from "@/components/AppDialog";
 
 type FilterType = "all" | "meccan" | "medinan" | "alphabetic";
 
@@ -32,6 +32,13 @@ export default function QuranScreen() {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<FilterType>("all");
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    variant?: "default" | "destructive";
+    onConfirm: () => void;
+  } | null>(null);
   const { recentProgress, saveSurah, removeSavedSurah, isSurahSaved, isSurahChecked, toggleCheckedSurah, memorizedAyahKeys } = useQuran();
   const surahsQuery = useQuery({
     queryKey: ["chapters"],
@@ -136,36 +143,28 @@ export default function QuranScreen() {
 
             const handleToggleComplete = () => {
               if (isCompleted) {
-                Alert.alert(
-                  "Remove memorized status?",
-                  `This will unmark all ${item.numberOfAyahs} ayahs of ${item.englishName} as memorized.`,
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Remove",
-                      style: "destructive",
-                      onPress: () => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        toggleCheckedSurah(item.number);
-                      },
-                    },
-                  ]
-                );
+                setConfirmDialog({
+                  title: "Remove memorized status?",
+                  message: `This will unmark all ${item.numberOfAyahs} ayahs of ${item.englishName} as memorized.`,
+                  confirmLabel: "Remove",
+                  variant: "destructive",
+                  onConfirm: () => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    toggleCheckedSurah(item.number);
+                    setConfirmDialog(null);
+                  },
+                });
               } else if (memCount > 0) {
-                Alert.alert(
-                  `Mark ${item.englishName} as memorized?`,
-                  `You have ${memCount} of ${item.numberOfAyahs} ayahs memorized. This will mark all ${item.numberOfAyahs} ayahs as memorized. Are you sure?`,
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Mark as memorized",
-                      onPress: () => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        toggleCheckedSurah(item.number);
-                      },
-                    },
-                  ]
-                );
+                setConfirmDialog({
+                  title: `Mark ${item.englishName} as memorized?`,
+                  message: `You have ${memCount} of ${item.numberOfAyahs} ayahs memorized. This will mark all ${item.numberOfAyahs} ayahs as memorized.`,
+                  confirmLabel: "Mark as memorized",
+                  onConfirm: () => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    toggleCheckedSurah(item.number);
+                    setConfirmDialog(null);
+                  },
+                });
               } else {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 toggleCheckedSurah(item.number);
@@ -196,6 +195,15 @@ export default function QuranScreen() {
           }
         />
       )}
+      <AppDialog
+        visible={!!confirmDialog}
+        title={confirmDialog?.title ?? ""}
+        message={confirmDialog?.message}
+        confirmLabel={confirmDialog?.confirmLabel}
+        variant={confirmDialog?.variant}
+        onConfirm={() => confirmDialog?.onConfirm()}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </LinearGradient>
   );
 }

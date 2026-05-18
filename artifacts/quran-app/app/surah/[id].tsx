@@ -14,7 +14,6 @@ import {
   Switch,
   LayoutAnimation,
   UIManager,
-  Alert,
   Animated,
   PanResponder,
 } from "react-native";
@@ -43,6 +42,7 @@ import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
 import { SaveButton } from "@/components/SaveButton";
 import { HifzSegmentedControl } from "@/components/hifz/HifzUI";
+import { AppDialog } from "@/components/AppDialog";
 import { Tag } from "@/components/Tag";
 import { MushafPageView } from "@/components/mushaf/MushafPageView";
 import { TajweedWordsText } from "@/components/TajweedText";
@@ -1265,6 +1265,7 @@ export default function SurahScreen() {
     total: number;
     progress?: DownloadProgress;
   }>({ status: "idle", ready: 0, total: 0 });
+  const [appDialog, setAppDialog] = useState<{ title: string; message: string } | null>(null);
   const offlineDownloadRef = useRef(false);
   const [hintsVisible, setHintsVisible] = useState(false);
 
@@ -1513,10 +1514,10 @@ export default function SurahScreen() {
   persistVisibleAyahRef.current = (ayahNumber) => saveSurahPosition(surahNum, ayahNumber - 1);
 
   const warnOfflineUnavailable = useCallback(() => {
-    Alert.alert(
-      "App is offline",
-      "This Surah has not been downloaded for offline playback yet. Connect to the internet and choose Download Current Surah first.",
-    );
+    setAppDialog({
+      title: "App is offline",
+      message: "This Surah has not been downloaded for offline playback yet. Connect to the internet and choose Download Current Surah first.",
+    });
   }, []);
 
   const hasOfflineAudioForRange = useCallback(async (startAyah: number, endAyah: number) => {
@@ -2611,6 +2612,12 @@ export default function SurahScreen() {
       <OnboardingHints visible={hintsVisible} onDismiss={dismissHints} />
 
       <SettingsSheet visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
+      <AppDialog
+        visible={!!appDialog}
+        title={appDialog?.title ?? ""}
+        message={appDialog?.message}
+        onCancel={() => setAppDialog(null)}
+      />
     </View>
   );
 }

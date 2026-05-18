@@ -9,7 +9,6 @@ import {
   FlatList,
   ScrollView,
   PanResponder,
-  TouchableWithoutFeedback,
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,6 +21,8 @@ import { SelectChip } from "@/components/SelectChip";
 import { ValuePill } from "@/components/ValuePill";
 import { useQuran } from "@/contexts/QuranContext";
 import { HifzStepper } from "@/components/hifz/HifzUI";
+import { BackButton } from "@/components/BackButton";
+import { AppDialog } from "@/components/AppDialog";
 
 const TOTAL_QURAN_AYAHS = 6236;
 
@@ -74,12 +75,11 @@ const INCREASE_STYLE_OPTIONS: Array<{
 
 function estimateCompletion(remaining: number, weeklyGoal: number): string {
   if (weeklyGoal <= 0 || remaining <= 0) return "completed";
-  const days = Math.ceil(remaining / weeklyGoal) * 7;
-  if (days >= 730) return `approximately ${Math.round(days / 365)} years`;
-  if (days >= 365) return "approximately 1 year";
-  if (days >= 60) return `approximately ${Math.round(days / 30)} months`;
-  if (days >= 30) return "approximately 1 month";
-  return `approximately ${days} days`;
+  const rawWeeks = remaining / weeklyGoal;
+  const minDays = Math.max(1, Math.floor(rawWeeks) * 7);
+  const maxDays = Math.max(7, Math.ceil(rawWeeks) * 7);
+  if (minDays === maxDays) return `${maxDays} days`;
+  return `${minDays}-${maxDays} days`;
 }
 
 function getPeakRampWeeks(
@@ -846,6 +846,12 @@ export function AyahRangeModal({
     return label.replace(" daily", "/day");
   };
 
+  const renderHeaderBack = (onPress: () => void) => (
+    <View style={s.navBtn}>
+      <BackButton onPress={onPress} />
+    </View>
+  );
+
   const renderPaceChoice = ({
     label,
     selected,
@@ -871,9 +877,7 @@ export function AyahRangeModal({
       return (
         <>
           <View style={[s.header, { paddingTop: insets.top + 8 }]}>
-            <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Feather name="chevron-left" size={22} color="#1A1A1A" />
-            </TouchableOpacity>
+            {renderHeaderBack(onClose)}
             <Text style={s.screenTitle}>Set Your Goal</Text>
             <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Text style={s.cancelText}>Cancel</Text>
@@ -958,9 +962,7 @@ export function AyahRangeModal({
     if (paceStep === 1) return (
       <>
         <View style={[s.header, { paddingTop: insets.top + 8 }]}>
-          <TouchableOpacity onPress={() => setPaceStep(0)} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Feather name="chevron-left" size={22} color="#1A1A1A" />
-          </TouchableOpacity>
+          {renderHeaderBack(() => setPaceStep(0))}
           <Text style={s.screenTitle}>Set Your Goal</Text>
           <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={s.cancelText}>Cancel</Text>
@@ -1027,9 +1029,7 @@ export function AyahRangeModal({
     return (
       <>
         <View style={[s.header, { paddingTop: insets.top + 8 }]}>
-          <TouchableOpacity onPress={() => setPaceStep(1)} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Feather name="chevron-left" size={22} color="#1A1A1A" />
-          </TouchableOpacity>
+          {renderHeaderBack(() => setPaceStep(1))}
           <Text style={s.screenTitle}>Set Your Goal</Text>
           <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={s.cancelText}>Cancel</Text>
@@ -1118,9 +1118,7 @@ export function AyahRangeModal({
   const renderSurahList = () => (
     <>
       <View style={[s.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={startAtPaceDate ? () => setStep(0) : onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Feather name="chevron-left" size={22} color="#1A1A1A" />
-        </TouchableOpacity>
+        {renderHeaderBack(startAtPaceDate ? () => setStep(0) : onClose)}
         <Text style={s.screenTitle}>Select Surah</Text>
         <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Text style={s.cancelText}>Cancel</Text>
@@ -1184,9 +1182,7 @@ export function AyahRangeModal({
   const renderJuzList = () => (
     <>
       <View style={[s.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={startAtPaceDate ? () => setStep(0) : onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Feather name="chevron-left" size={22} color="#1A1A1A" />
-        </TouchableOpacity>
+        {renderHeaderBack(startAtPaceDate ? () => setStep(0) : onClose)}
         <Text style={s.screenTitle}>Select Juz</Text>
         <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Text style={s.cancelText}>Cancel</Text>
@@ -1246,13 +1242,7 @@ export function AyahRangeModal({
   const renderPaceDateRangeSelection = () => (
     <>
       <View style={[s.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity
-          onPress={() => { setStep(0); setPaceStep(2); }}
-          style={s.navBtn}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Feather name="chevron-left" size={22} color="#1A1A1A" />
-        </TouchableOpacity>
+        {renderHeaderBack(() => { setStep(0); setPaceStep(2); })}
         <Text style={s.screenTitle}>Select Range</Text>
         <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Text style={s.cancelText}>Cancel</Text>
@@ -1406,8 +1396,7 @@ export function AyahRangeModal({
     return (
       <>
         <View style={[s.header, { paddingTop: insets.top + 8 }]}>
-          <TouchableOpacity
-            onPress={() => {
+          {renderHeaderBack(() => {
               if (startAtAyahSelection) {
                 onClose();
                 return;
@@ -1418,12 +1407,7 @@ export function AyahRangeModal({
                 setActivePhase("first");
               }
               setStep(1);
-            }}
-            style={s.navBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Feather name="chevron-left" size={22} color="#1A1A1A" />
-          </TouchableOpacity>
+            })}
           <Text style={s.screenTitle}>{backLabel}</Text>
           <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={s.cancelText}>Cancel</Text>
@@ -1639,13 +1623,7 @@ export function AyahRangeModal({
     return (
       <>
         <View style={[s.header, { paddingTop: insets.top + 8 }]}>
-          <TouchableOpacity
-            onPress={() => startAtWeeklyGoal ? onClose() : setStep(2)}
-            style={s.navBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Feather name="chevron-left" size={22} color="#1A1A1A" />
-          </TouchableOpacity>
+          {renderHeaderBack(() => startAtWeeklyGoal ? onClose() : setStep(2))}
           <Text style={s.screenTitle}>Set Your Weekly Goal</Text>
           <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={s.cancelText}>Cancel</Text>
@@ -1814,16 +1792,10 @@ export function AyahRangeModal({
     return (
       <>
         <View style={[s.header, { paddingTop: insets.top + 8 }]}>
-          <TouchableOpacity
-            onPress={() => {
+          {renderHeaderBack(() => {
               setStep(0);
               setPaceStep(2);
-            }}
-            style={s.navBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Feather name="chevron-left" size={22} color="#1A1A1A" />
-          </TouchableOpacity>
+            })}
           <Text style={s.screenTitle}>Forecast</Text>
           <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={s.cancelText}>Cancel</Text>
@@ -1894,26 +1866,15 @@ export function AyahRangeModal({
           ? renderForecast()
           : renderWeeklyGoal()}
 
-        <Modal visible={resetVisible} transparent animationType="fade" onRequestClose={() => setResetVisible(false)}>
-          <TouchableWithoutFeedback onPress={() => setResetVisible(false)}>
-            <View style={s.resetOverlay}>
-              <TouchableWithoutFeedback>
-                <View style={s.resetCard}>
-                  <Text style={s.resetTitle}>Reset Progress?</Text>
-                  <Text style={s.resetMessage}>
-                    This will remove memorized marks from this {path === "juz" ? "Juz" : "Surah"}. You can mark them again anytime.
-                  </Text>
-                  <TouchableOpacity style={s.resetPrimaryBtn} onPress={handleReset} activeOpacity={0.85}>
-                    <Text style={s.resetPrimaryBtnText}>Reset My Progress</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={s.resetCancelBtn} onPress={() => setResetVisible(false)} activeOpacity={0.7}>
-                    <Text style={s.resetCancelText}>Cancel</Text>
-                  </TouchableOpacity>
-                </View>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </Modal>
+        <AppDialog
+          visible={resetVisible}
+          title="Reset Progress?"
+          message={`This will remove memorized marks from this ${path === "juz" ? "Juz" : "Surah"}. You can mark them again anytime.`}
+          confirmLabel="Reset My Progress"
+          variant="destructive"
+          onConfirm={handleReset}
+          onCancel={() => setResetVisible(false)}
+        />
       </View>
     </Modal>
   );
@@ -2274,64 +2235,6 @@ const s = StyleSheet.create({
     minHeight: 34,
     paddingHorizontal: 14,
   },
-  resetOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-  },
-  resetCard: {
-    width: "100%",
-    maxWidth: 360,
-    backgroundColor: "#FDFBF7",
-    borderRadius: 18,
-    padding: 20,
-  },
-  resetTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    fontFamily: "Inter_700Bold",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  resetMessage: {
-    fontSize: 14,
-    color: "#78716C",
-    fontFamily: "Inter_400Regular",
-    lineHeight: 20,
-    textAlign: "center",
-    marginBottom: 18,
-  },
-  resetPrimaryBtn: {
-    minHeight: 52,
-    borderRadius: 14,
-    backgroundColor: "#1A1A1A",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
-  },
-  resetPrimaryBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    fontFamily: "Inter_700Bold",
-  },
-  resetCancelBtn: {
-    minHeight: 48,
-    borderRadius: 14,
-    backgroundColor: "#F6F2EA",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  resetCancelText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    fontFamily: "Inter_700Bold",
-  },
-
   // ── Step 3: Weekly Goal ─────────────────────────────────────────────────────
   weeklyContent: { paddingHorizontal: 20, paddingBottom: 16 },
 

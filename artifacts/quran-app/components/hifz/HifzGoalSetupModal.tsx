@@ -254,10 +254,10 @@ export function HifzGoalSetupModal({
                 <View style={m.juzBlock}>
                   <View style={m.juzDots}>
                     {Array.from({ length: 30 }).map((_, index) => (
-                      <View key={index} style={[m.juzDot, index === 0 && m.juzDotActive]} />
+                      <View key={index} style={[m.juzDot, index === selectedJuz - 1 && m.juzDotActive]} />
                     ))}
                   </View>
-                  <Text style={m.juzText}>Juz 1 of 30 · A journey through the entire Quran</Text>
+                  <Text style={m.juzText}>Juz {selectedJuz} of 30 · Starting point selected</Text>
                 </View>
               )}
             </>
@@ -269,7 +269,7 @@ export function HifzGoalSetupModal({
             label={mode === "pace" ? "Continue with this pace →" : "Continue To Ayah Selection →"}
             onPress={handleContinue}
           />
-          <Text style={m.footerText}>Complete the Quran · Inshallah</Text>
+          <Text style={m.footerText}>To complete the Quran · Inshallah</Text>
         </View>
       </View>
     </Modal>

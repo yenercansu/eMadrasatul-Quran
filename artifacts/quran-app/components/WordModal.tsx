@@ -7,12 +7,14 @@ import {
   StyleSheet,
   TouchableWithoutFeedback,
   Platform,
+  ScrollView,
 } from "react-native";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
+import { ActionPill } from "@/components/ActionPill";
 
 interface Props {
   visible: boolean;
@@ -50,12 +52,21 @@ export function WordModal({
 }: Props) {
   const colors = useColors();
   const s = styles(colors);
-  const { saveWord, savedWords, highlightWord, unhighlightWord, isWordHighlighted } = useQuran();
+  const {
+    saveWord,
+    savedWords,
+    highlightWord,
+    unhighlightWord,
+    isWordHighlighted,
+    isAyahMemorized,
+    toggleAyahMemorized,
+  } = useQuran();
 
   const alreadySaved = savedWords.some(
     (w) => w.arabic === word && w.surahNumber === surahNumber,
   );
   const highlighted = isWordHighlighted(word, surahNumber, ayahNumber);
+  const ayahCompleted = isAyahMemorized(surahNumber, ayahNumber);
   const root = deriveRoot(word);
 
   const handlePlayWord = async () => {
@@ -108,6 +119,11 @@ export function WordModal({
     onCut?.();
   };
 
+  const handleToggleAyahCompleted = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    toggleAyahMemorized(surahNumber, ayahNumber);
+  };
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
@@ -118,56 +134,76 @@ export function WordModal({
                 <Feather name="x" size={20} color="#9A9A9A" />
               </TouchableOpacity>
 
-              {/* Word + location */}
-              <Text style={s.arabicWord}>{word}</Text>
-              <Text style={s.location}>Surah {surahNumber} · Ayah {ayahNumber}</Text>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
+                {/* Word + location */}
+                <Text style={s.arabicWord}>{word}</Text>
+                <Text style={s.location}>Surah {surahNumber} · Ayah {ayahNumber}</Text>
 
-              {/* Quick action icon row (matches screenshot) */}
-              <View style={s.iconRow}>
-                {audioUrl ? (
-                  <TouchableOpacity style={s.iconBtn} onPress={handlePlayWord} activeOpacity={0.7}>
-                    <Feather name="play-circle" size={20} color="#1A1A1A" />
-                    <Text style={s.iconLabel}>Play</Text>
+                {/* Quick action icon row (matches screenshot) */}
+                <View style={s.iconRow}>
+                  {audioUrl ? (
+                    <TouchableOpacity style={s.iconBtn} onPress={handlePlayWord} activeOpacity={0.7}>
+                      <Feather name="play-circle" size={20} color="#1A1A1A" />
+                      <Text style={s.iconLabel}>Play</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  <TouchableOpacity style={s.iconBtn} onPress={handleRepeat} activeOpacity={0.7}>
+                    <Ionicons name="repeat" size={20} color="#1A1A1A" />
+                    <Text style={s.iconLabel}>Repeat</Text>
                   </TouchableOpacity>
-                ) : null}
-                <TouchableOpacity style={s.iconBtn} onPress={handleRepeat} activeOpacity={0.7}>
-                  <Ionicons name="repeat" size={20} color="#1A1A1A" />
-                  <Text style={s.iconLabel}>Repeat</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.iconBtn} onPress={handleCut} activeOpacity={0.7}>
-                  <MaterialCommunityIcons name="content-cut" size={20} color="#1A1A1A" />
-                  <Text style={s.iconLabel}>Section</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.iconBtn} onPress={handleSave} activeOpacity={0.7}>
-                  <Feather
-                    name={alreadySaved ? "check-circle" : "download"}
-                    size={20}
-                    color={alreadySaved ? "#16A34A" : "#1A1A1A"}
-                  />
-                  <Text style={[s.iconLabel, alreadySaved && { color: "#16A34A" }]}>
-                    {alreadySaved ? "Saved" : "Save"}
+                  <TouchableOpacity style={s.iconBtn} onPress={handleCut} activeOpacity={0.7}>
+                    <MaterialCommunityIcons name="content-cut" size={20} color="#1A1A1A" />
+                    <Text style={s.iconLabel}>Section</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={s.iconBtn} onPress={handleSave} activeOpacity={0.7}>
+                    <Feather
+                      name={alreadySaved ? "check-circle" : "download"}
+                      size={20}
+                      color={alreadySaved ? "#16A34A" : "#1A1A1A"}
+                    />
+                    <Text style={[s.iconLabel, alreadySaved && { color: "#16A34A" }]}>
+                      {alreadySaved ? "Saved" : "Save"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={s.divider} />
+
+                {/* Root */}
+                <View style={s.section}>
+                  <Text style={s.sectionLabel}>Root</Text>
+                  <Text style={s.rootText}>{root || "—"}</Text>
+                </View>
+
+                {/* Meaning */}
+                <View style={s.section}>
+                  <Text style={s.sectionLabel}>Meaning</Text>
+                  <Text style={s.meaningText}>
+                    {translation || "Translation not available for this word."}
                   </Text>
-                </TouchableOpacity>
-              </View>
+                </View>
 
-              <View style={s.divider} />
+                <View style={s.divider} />
 
-              {/* Root */}
-              <View style={s.section}>
-                <Text style={s.sectionLabel}>Root</Text>
-                <Text style={s.rootText}>{root || "—"}</Text>
-              </View>
+                <View style={s.section}>
+                  <Text style={s.sectionLabel}>Ayah progress</Text>
+                  <ActionPill
+                    label={ayahCompleted ? "Ayah completed" : "Mark ayah completed"}
+                    icon={ayahCompleted ? "check-circle" : "circle"}
+                    variant={ayahCompleted ? "primary" : "border"}
+                    size="md"
+                    onPress={handleToggleAyahCompleted}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: ayahCompleted }}
+                    accessibilityLabel={ayahCompleted
+                      ? `Unmark ayah ${ayahNumber} as completed`
+                      : `Mark ayah ${ayahNumber} completed`}
+                  />
+                </View>
 
-              {/* Meaning */}
-              <View style={s.section}>
-                <Text style={s.sectionLabel}>Meaning</Text>
-                <Text style={s.meaningText}>
-                  {translation || "Translation not available for this word."}
-                </Text>
-              </View>
-
-              {/* Footer hint */}
-              <Text style={s.hint}>Long-press any word to study its root and meaning</Text>
+                {/* Footer hint */}
+                <Text style={s.hint}>Long-press any word to study its root and meaning</Text>
+              </ScrollView>
             </View>
           </TouchableWithoutFeedback>
         </View>
@@ -191,11 +227,15 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       padding: 22,
       paddingTop: 26,
       width: "100%",
+      maxHeight: "88%",
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 10 },
       shadowOpacity: 0.25,
       shadowRadius: 20,
       elevation: 16,
+    },
+    scrollContent: {
+      paddingTop: 2,
     },
     closeTopBtn: {
       position: "absolute",

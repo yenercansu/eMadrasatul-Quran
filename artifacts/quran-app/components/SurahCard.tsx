@@ -68,7 +68,10 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, memorized
 
       {hasPartialProgress && (
         <View style={s.progressSection}>
-          <Text style={s.progressText}>{memorizedCount} / {surah.numberOfAyahs} memorized</Text>
+          <View style={s.progressTag}>
+            <Ionicons name="bookmarks-outline" size={11} color={colors.appIconMuted} />
+            <Text style={s.progressTagText}>{memorizedCount}/{surah.numberOfAyahs} memorized</Text>
+          </View>
           <View style={s.progressTrack}>
             <View style={[s.progressFill, { width: `${Math.round(progressRatio * 100)}%` as any }]} />
           </View>
@@ -206,12 +209,24 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     progressSection: {
       marginTop: 10,
-      gap: 5,
+      gap: 6,
     },
-    progressText: {
+    progressTag: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      alignSelf: "flex-start",
+      backgroundColor: colors.appSoftPill,
+      borderWidth: 1,
+      borderColor: colors.appSoftBorder,
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+      borderRadius: 999,
+    },
+    progressTagText: {
       fontSize: 11,
       color: colors.appIconMuted,
-      fontFamily: "Inter_400Regular",
+      fontFamily: "Inter_600SemiBold",
     },
     progressTrack: {
       height: 3,

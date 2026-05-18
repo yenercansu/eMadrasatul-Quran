@@ -10,7 +10,6 @@ import {
   FlatList,
   Share,
   TextInput,
-  Alert,
   Animated,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -24,6 +23,7 @@ import { SwipeableRow } from "@/components/SwipeableRow";
 import { Pagination } from "@/components/Pagination";
 import { Tag } from "@/components/Tag";
 import { QuestionNav } from "@/components/QuestionNav";
+import { AppDialog } from "@/components/AppDialog";
 
 type QuizMode = "word-meaning";
 type QuizState = "selection" | "cards" | "answering" | "answered" | "finished" | "no-words";
@@ -354,11 +354,17 @@ function WordsManagerModal({
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   useEffect(() => {
     if (!visible) {
       setSearchQuery("");
       setSelectedIds(new Set());
+      setConfirmDialog(null);
     }
   }, [visible]);
 
@@ -390,21 +396,15 @@ function WordsManagerModal({
 
   const handleBulkDelete = useCallback(() => {
     if (selectedIds.size === 0) return;
-    Alert.alert(
-      "Delete Selected Words",
-      `Remove ${selectedIds.size} word${selectedIds.size !== 1 ? "s" : ""} from your library?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            selectedIds.forEach(id => onRemove(id));
-            setSelectedIds(new Set());
-          },
-        },
-      ]
-    );
+    setConfirmDialog({
+      title: "Delete selected words?",
+      message: `Remove ${selectedIds.size} word${selectedIds.size !== 1 ? "s" : ""} from your library?`,
+      onConfirm: () => {
+        selectedIds.forEach(id => onRemove(id));
+        setSelectedIds(new Set());
+        setConfirmDialog(null);
+      },
+    });
   }, [selectedIds, onRemove]);
 
   return (
@@ -499,6 +499,15 @@ function WordsManagerModal({
             </View>
           }
         />
+        <AppDialog
+          visible={!!confirmDialog}
+          title={confirmDialog?.title ?? ""}
+          message={confirmDialog?.message}
+          confirmLabel="Delete"
+          variant="destructive"
+          onConfirm={confirmDialog?.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+        />
       </View>
     </Modal>
   );
@@ -517,6 +526,7 @@ export default function QuizScreen() {
   const [answers, setAnswers] = useState<Array<number | null>>([]);
   const [score, setScore] = useState(0);
   const [quizState, setQuizState] = useState<QuizState>("selection");
+  const [appDialog, setAppDialog] = useState<{ title: string; message: string } | null>(null);
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [wordsManagerVisible, setWordsManagerVisible] = useState(false);
   const [selectionMode, setSelectionMode] = useState<SelectionMode>("by-ayah");
@@ -651,12 +661,12 @@ export default function QuizScreen() {
 
   const startQuiz = useCallback(() => {
     if (selectedQuizWordPool.length < 1) {
-      Alert.alert(
-        "Not enough selected words",
-        selectionMode === "by-ayah"
+      setAppDialog({
+        title: "Not enough selected words",
+        message: selectionMode === "by-ayah"
           ? "Select an ayah with at least one saved word to start the test."
-          : "Select at least one saved word to start the test."
-      );
+          : "Select at least one saved word to start the test.",
+      });
       return;
     }
     initQuiz(selectedQuizWordPool);
@@ -664,12 +674,12 @@ export default function QuizScreen() {
 
   const viewAsCards = useCallback(() => {
     if (selectedQuizWordPool.length < 1) {
-      Alert.alert(
-        "No selected words",
-        selectionMode === "by-ayah"
+      setAppDialog({
+        title: "No selected words",
+        message: selectionMode === "by-ayah"
           ? "Select an ayah with at least one saved word to view cards."
-          : "Select at least one saved word to view cards."
-      );
+          : "Select at least one saved word to view cards.",
+      });
       return;
     }
     setQuizWords(selectedQuizWordPool);
@@ -1255,6 +1265,12 @@ export default function QuizScreen() {
         onRemove={handleRemoveWordFromQuiz}
         onClose={() => setWordsManagerVisible(false)}
         colors={colors}
+      />
+      <AppDialog
+        visible={!!appDialog}
+        title={appDialog?.title ?? ""}
+        message={appDialog?.message}
+        onCancel={() => setAppDialog(null)}
       />
     </View>
   );

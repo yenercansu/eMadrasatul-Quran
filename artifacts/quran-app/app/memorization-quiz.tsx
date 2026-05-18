@@ -6,7 +6,6 @@ import {
   StyleSheet,
   ScrollView,
   Platform,
-  Alert,
   TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,6 +21,7 @@ import { Tag } from "@/components/Tag";
 import { QuestionNav } from "@/components/QuestionNav";
 import { searchByType } from "@/services/search";
 import { HifzSegmentedControl } from "@/components/hifz/HifzUI";
+import { AppDialog } from "@/components/AppDialog";
 
 const DEFAULT_SURAHS: { number: number; name: string; englishName: string; ayahs: string[]; translations: string[] }[] = [
   {
@@ -768,6 +768,7 @@ export default function MemorizationQuizScreen() {
   const [mode, setMode] = useState<QuizMode>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [phase, setPhase] = useState<"type" | "selection" | "quiz" | "score">("type");
+  const [appDialog, setAppDialog] = useState<{ title: string; message: string } | null>(null);
   const [finalScore, setFinalScore] = useState(0);
   const [filterMode, setFilterMode] = useState<AyahFilterMode>("by-ayah");
   const [tagFilter, setTagFilter] = useState<AyahTagFilter>("all");
@@ -944,7 +945,7 @@ export default function MemorizationQuizScreen() {
       qs = buildTafsirMatchQuestions(5, surahs);
     }
     if (qs.length === 0) {
-      Alert.alert("Not enough selected ayahs", "Select more Surahs or Ayahs to build this quiz.");
+      setAppDialog({ title: "Not enough selected ayahs", message: "Select more Surahs or Ayahs to build this quiz." });
       return;
     }
     setQuestions(qs);
@@ -1499,6 +1500,12 @@ export default function MemorizationQuizScreen() {
           onBack={handleBack}
         />
       )}
+      <AppDialog
+        visible={!!appDialog}
+        title={appDialog?.title ?? ""}
+        message={appDialog?.message}
+        onCancel={() => setAppDialog(null)}
+      />
     </View>
   );
 }

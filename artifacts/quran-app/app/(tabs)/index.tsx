@@ -1071,14 +1071,14 @@ export default function HomeScreen() {
     if (weekPercent >= 100 && goal && (!milestoneComplete || canExtendCurrentGoal)) {
       setShowWeekCompleteCard(true);
     }
-    if (prev !== null && prev < 100 && weekPercent >= 100 && goal && (!milestoneComplete || canExtendCurrentGoal)) {
+    if (prev !== null && prev < 100 && weekPercent >= 100 && goal && (!milestoneComplete || canExtendCurrentGoal) && memorizationPercent < 100) {
       setShowWeeklyToast(true);
       const t = setTimeout(() => {
         setShowWeeklyToast(false);
       }, 5000);
       return () => clearTimeout(t);
     }
-  }, [canExtendCurrentGoal, goal, hifzTransition, milestoneComplete, weekPercent]);
+  }, [canExtendCurrentGoal, goal, hifzTransition, memorizationPercent, milestoneComplete, weekPercent]);
 
   useEffect(() => {
     if (continuationNotice && weekGoalProgress > 0) {
@@ -1530,7 +1530,10 @@ export default function HomeScreen() {
                       <Feather name="check" size={12} color="#5A5248" />
                       <Text style={s.journeyCompleteText}>Complete</Text>
                     </View>
-                    <Text style={s.journeyCompletionDay}>{todayShort}</Text>
+                    <View style={s.journeyCompletionDateBadge}>
+                      <Feather name="award" size={13} color="#5A5248" />
+                      <Text style={s.journeyCompletionDay}>{todayShort}</Text>
+                    </View>
                   </View>
                   {hifzTransition && (
                     <Text style={s.journeyPreparingTitle}>Preparing next goal</Text>
@@ -1731,6 +1734,7 @@ export default function HomeScreen() {
           )}
         </ScrollView>
       </LinearGradient>
+
 
       {/* ── Week Done Toast (floating overlay) ──────────────────────── */}
       {showWeeklyToast && (
@@ -3494,8 +3498,21 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     journeyCompletionDay: {
       fontSize: 12,
-      color: "#8A8070",
-      fontFamily: "Inter_400Regular",
+      fontWeight: "700",
+      color: "#5A5248",
+      fontFamily: "Inter_700Bold",
+    },
+    journeyCompletionDateBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      backgroundColor: "#FFFCF8",
+      borderWidth: 1,
+      borderColor: "#C8C0B0",
+      borderRadius: 18,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      flexShrink: 0,
     },
     journeyTitle: {
       fontSize: 28,

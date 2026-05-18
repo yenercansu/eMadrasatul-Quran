@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Switch,
-  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -19,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { BackButton } from "@/components/BackButton";
 import { ReadingThemeSelector } from "@/components/ReadingThemeSelector";
 import { SettingsCard, SettingsRow } from "@/components/SettingsRow";
+import { AppDialog } from "@/components/AppDialog";
 import { deleteAccount, getQuranFoundationOAuthStatus, startQuranFoundationOAuth } from "@/services/madeenanApi";
 import { clearOfflineCaches } from "@/services/offlineQuranCache";
 import { clearAppOwnedAsyncStorage } from "@/services/localData";
@@ -45,6 +45,13 @@ export default function SettingsScreen() {
   const queryClient = useQueryClient();
   const [linkingQf, setLinkingQf] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [dialog, setDialog] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    variant?: "default" | "destructive";
+    onConfirm?: () => void;
+  } | null>(null);
   const topPad = insets.top;
   const qfStatus = useQuery({
     queryKey: ["quran-foundation-oauth-status"],
@@ -53,18 +60,16 @@ export default function SettingsScreen() {
   });
 
   const handleSignOut = () => {
-    Alert.alert(
-      "Sign Out",
-      "You will need to sign in again to sync your Quran data.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Sign Out",
-          style: "destructive",
-          onPress: () => { signOut().catch(() => {}); },
-        },
-      ]
-    );
+    setDialog({
+      title: "Sign Out",
+      message: "You will need to sign in again to sync your Quran data.",
+      confirmLabel: "Sign Out",
+      variant: "destructive",
+      onConfirm: () => {
+        setDialog(null);
+        signOut().catch(() => {});
+      },
+    });
   };
 
   const handleQuranFoundationLink = async () => {
@@ -75,41 +80,44 @@ export default function SettingsScreen() {
       await WebBrowser.openAuthSessionAsync(authorizationUrl, returnUrl);
       await queryClient.invalidateQueries({ queryKey: ["quran-foundation-oauth-status"] });
     } catch (error) {
-      Alert.alert("Could not start linking", error instanceof Error ? error.message : "Please try again.");
+      setDialog({
+        title: "Could not start linking",
+        message: error instanceof Error ? error.message : "Please try again.",
+      });
     } finally {
       setLinkingQf(false);
     }
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      "Delete Account",
-      "This permanently deletes your account and synced Quran data. This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete Account",
-          style: "destructive",
-          onPress: async () => {
-            setDeletingAccount(true);
-            try {
-              await deleteAccount();
-              await clearOfflineCaches();
-              await clearAppOwnedAsyncStorage();
-              resetLocalData();
-              await signOut();
-            } catch (error) {
-              Alert.alert("Could not delete account", error instanceof Error ? error.message : "Please try again.");
-            } finally {
-              setDeletingAccount(false);
-            }
-          },
-        },
-      ],
-    );
+    setDialog({
+      title: "Delete Account",
+      message: "This permanently deletes your account and synced Quran data. This cannot be undone.",
+      confirmLabel: "Delete Account",
+      variant: "destructive",
+      onConfirm: async () => {
+        setDialog(null);
+        setDeletingAccount(true);
+        try {
+          await deleteAccount();
+          await clearOfflineCaches();
+          await clearAppOwnedAsyncStorage();
+          resetLocalData();
+          await signOut();
+        } catch (error) {
+          setDialog({
+            title: "Could not delete account",
+            message: error instanceof Error ? error.message : "Please try again.",
+          });
+        } finally {
+          setDeletingAccount(false);
+        }
+      },
+    });
   };
 
   return (
+    <>
     <View style={s.root}>
       <View style={[s.header, { paddingTop: topPad + 8 }]}>
         <BackButton onPress={() => router.back()} />
@@ -173,7 +181,7 @@ export default function SettingsScreen() {
             <SettingsRow
               label="Reminder Time"
               value={accountSettings.notificationTime}
-              onPress={() => Alert.alert("Time Picker", "Notification time settings coming soon.")}
+              onPress={() => setDialog({ title: "Time Picker", message: "Notification time settings coming soon." })}
               last
             />
           )}
@@ -182,11 +190,11 @@ export default function SettingsScreen() {
         <Section title="LEGAL">
           <SettingsRow
             label="Privacy Policy"
-            onPress={() => Alert.alert("Privacy Policy", "Your Quran Madrasa data syncs through Madeenan. Quran Foundation tokens are linked and stored by the backend, not in this mobile app.")}
+            onPress={() => setDialog({ title: "Privacy Policy", message: "Your Quran Madrasa data syncs through Madeenan. Quran Foundation tokens are linked and stored by the backend, not in this mobile app." })}
           />
           <SettingsRow
             label="Terms & Conditions"
-            onPress={() => Alert.alert("Terms & Conditions", "This app is provided for educational and religious purposes. Quran content is served through the Madeenan backend.")}
+            onPress={() => setDialog({ title: "Terms & Conditions", message: "This app is provided for educational and religious purposes. Quran content is served through the Madeenan backend." })}
             last
           />
         </Section>
@@ -211,6 +219,17 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
     </View>
+    <AppDialog
+      visible={!!dialog}
+      title={dialog?.title ?? ""}
+      message={dialog?.message}
+      confirmLabel={dialog?.confirmLabel ?? "OK"}
+      cancelLabel={dialog?.onConfirm ? "Cancel" : "Close"}
+      variant={dialog?.variant}
+      onConfirm={dialog?.onConfirm}
+      onCancel={() => setDialog(null)}
+    />
+    </>
   );
 }
 
