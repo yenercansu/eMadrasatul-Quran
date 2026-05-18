@@ -35,8 +35,7 @@ import { SettingsSheet, TAFSIR_EDITIONS } from "@/components/SettingsSheet";
 import { FullScreenPage } from "@/components/FullScreenPage";
 import { PlayRangeSheet } from "@/components/PlayRangeSheet";
 import { RepeatSectionSheet } from "@/components/RepeatSectionSheet";
-import { CancelRepeatTag } from "@/components/CancelRepeatTag";
-import { CancelModeTag } from "@/components/CancelModeTag";
+import { GlobalPlaybackBar, type PlaybackBarConfig } from "@/components/GlobalPlaybackBar";
 import { SettingsCard, SettingsRow } from "@/components/SettingsRow";
 import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
@@ -163,13 +162,9 @@ interface AyahCardProps {
   arabicFontSize: number;
   romanFontSize: number;
   arabicFontFamily: string | undefined;
-  isOnRepeat: boolean;
-  repeatCount: number;
-  isUstadhMode: boolean;
+  playingAccentColor?: string;
   isSaved: boolean;
   onSave: (ayah: ApiAyah) => void;
-  onCancelRepeat: (ayah: ApiAyah) => void;
-  onCancelUstadh: () => void;
   onToggleMemorized: (ayah: ApiAyah) => void;
   onPress: () => void;
   onWordLongPress?: (word: string, ayah: ApiAyah) => void;
@@ -178,38 +173,30 @@ interface AyahCardProps {
 function SwipeableAyahCard({
   ayah, surahNum, isPlaying, isRangeSelected,
   showMemorizedToggle, isMemorized,
-  isOnRepeat, repeatCount, isUstadhMode,
+  playingAccentColor,
   isSaved,
   translations, transliterationText,
   showTransliteration,
   colorCoding, tajweedMode, showBasmala, arabicFontSize, romanFontSize, arabicFontFamily,
-  onSave, onCancelRepeat, onCancelUstadh, onToggleMemorized, onPress, onWordLongPress,
+  onSave, onToggleMemorized, onPress, onWordLongPress,
 }: AyahCardProps) {
   const handlePress = useCallback(() => {
     onPress();
   }, [onPress]);
 
-  const cardBg = isPlaying ? "#F5F0E8" : isRangeSelected ? "#F0F5EE" : "#FFFFFF";
+  const cardBg = isPlaying ? "#F7F4EF" : isRangeSelected ? "#F0F5EE" : "#FFFFFF";
 
   return (
     <View style={cs.wrap}>
+      {isPlaying && playingAccentColor && (
+        <View style={[cs.playingAccent, { backgroundColor: playingAccentColor }]} />
+      )}
         <Pressable
           onPress={handlePress}
           android_disableSound
           style={({ pressed }) => [cs.card, { backgroundColor: cardBg, opacity: pressed ? 0.95 : 1 }]}
         >
           <View style={cs.topRow}>
-            {isOnRepeat ? (
-              <CancelRepeatTag
-                repeatCount={repeatCount}
-                onCancel={() => onCancelRepeat(ayah)}
-              />
-            ) : isUstadhMode ? (
-              <CancelModeTag
-                label="cancel ustadh mode"
-                onCancel={onCancelUstadh}
-              />
-            ) : null}
             <SaveButton
               saved={isSaved}
               size="md"
@@ -281,6 +268,14 @@ function SwipeableAyahCard({
 
 const cs = StyleSheet.create({
   wrap: { marginHorizontal: 0, marginBottom: 0, position: "relative" },
+  playingAccent: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    zIndex: 2,
+  },
   card: {
     paddingHorizontal: 20,
     paddingTop: 14,
@@ -1567,6 +1562,41 @@ export default function SurahScreen() {
   // Keep planModeRef current so handleConfigChange never captures stale state
   useEffect(() => { planModeRef.current = audioState.planMode; }, [audioState.planMode]);
 
+  // ─── Global Playback Bar config ───────────────────────────────────────────────
+  const globalBarConfig = useMemo((): PlaybackBarConfig | null => {
+    const { planMode } = audioState;
+    if (planMode === "ustadh") {
+      return { mode: "ustadh", title: "Ustadh Mode", subtitle: "Repeating difficult words" };
+    }
+    if (planMode === "word") {
+      return { mode: "wordByWord", title: "Word by Word", subtitle: "Repeating each word" };
+    }
+    if (planMode === "section") {
+      return { mode: "section", title: "Section Repeat", subtitle: `${audioState.repeatCount}x repeats` };
+    }
+    if (planMode === "range" && audioState.repeatCount > 1) {
+      return { mode: "range", title: "Repetition Mode", subtitle: `${audioState.repeatCount}x per ayah` };
+    }
+    return null;
+  }, [audioState.planMode, audioState.repeatCount, playbackConfig.wordRepeat]);
+
+  const handleGlobalBarPlayPause = useCallback(() => {
+    if (audioState.isPlaying) {
+      pauseAudio();
+    } else {
+      resumeAudio();
+    }
+  }, [audioState.isPlaying, pauseAudio, resumeAudio]);
+
+  const handleGlobalBarExit = useCallback(() => {
+    stopAudio().catch(() => {});
+    setAyahRepeatCounts({});
+    if (audioState.planMode === "ustadh" || audioState.planMode === "word") {
+      resetSpecialPlaybackMode();
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [stopAudio, resetSpecialPlaybackMode, audioState.planMode]);
+
   // Fetch translations on selection change
   useEffect(() => {
     if (!arabic) return;
@@ -1760,17 +1790,7 @@ export default function SurahScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [stopAudio]);
 
-  const handleCancelRepeat = useCallback((ayah: ApiAyah) => {
-    setAyahRepeatCounts(prev => {
-      const next = { ...prev };
-      delete next[ayah.numberInSurah];
-      return next;
-    });
-    stopAudio();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [stopAudio]);
-
-  // Clear the repeat tag when a plan finishes naturally (all repeats done).
+  // Clear the repeat state when a plan finishes naturally (all repeats done).
   useEffect(() => {
     setOnPlanFinish((finishedSurah, finishedAyah) => {
       if (finishedSurah !== surahNum) return;
@@ -2029,6 +2049,7 @@ export default function SurahScreen() {
   const flatListExtraData = useMemo(() => ({
     currentAyah: audioState.currentAyah,
     currentSurah: audioState.currentSurah,
+    planMode: audioState.planMode,
     repeatCount: audioState.repeatCount,
     range: audioState.range,
     ayahRepeatCounts,
@@ -2036,7 +2057,7 @@ export default function SurahScreen() {
     memorizedAyahKeys,
     memorizationGoal,
     goal,
-  }), [audioState.currentAyah, audioState.currentSurah, audioState.repeatCount, audioState.range, ayahRepeatCounts, savedAyahs, memorizedAyahKeys, memorizationGoal, goal]);
+  }), [audioState.currentAyah, audioState.currentSurah, audioState.planMode, audioState.repeatCount, audioState.range, ayahRepeatCounts, savedAyahs, memorizedAyahKeys, memorizationGoal, goal]);
 
   const refreshOfflineStatus = useCallback(async () => {
     if (currentDownloadAyahs.length === 0) return;
@@ -2160,10 +2181,11 @@ export default function SurahScreen() {
       renderItem={({ item }) => {
         const isCurrentAyah = audioState.currentSurah === surahNum && audioState.currentAyah === item.numberInSurah;
         const isPlaying = isCurrentAyah && (audioState.isPlaying || audioState.isLoading);
-        const repeatVal = ayahRepeatCounts[item.numberInSurah];
-        const isOnRepeat = (repeatVal != null && repeatVal > 1) || (isPlaying && audioState.repeatCount > 1 && audioState.planMode !== "ustadh");
-        const isUstadhMode = audioState.planMode === "ustadh" && isPlaying;
-        const repeatCount = repeatVal ?? audioState.repeatCount;
+        const playingAccentColor = isPlaying
+          ? audioState.planMode === "ustadh" ? "#C9A02A"
+            : audioState.planMode === "word" ? "#E86A33"
+            : "#7B5C3E"
+          : undefined;
         const isRangeSelected = !!audioState.range
           && surahNum >= audioState.range.startSurah
           && surahNum <= audioState.range.endSurah
@@ -2187,9 +2209,7 @@ export default function SurahScreen() {
             ayah={item}
             surahNum={surahNum}
             isPlaying={isPlaying}
-            isOnRepeat={!!isOnRepeat}
-            repeatCount={repeatCount}
-            isUstadhMode={isUstadhMode}
+            playingAccentColor={playingAccentColor}
             isSaved={isAyahSaved(surahNum, item.numberInSurah)}
             isRangeSelected={isRangeSelected && !isPlaying}
             showMemorizedToggle={isInMemorizationGoal}
@@ -2204,11 +2224,6 @@ export default function SurahScreen() {
             romanFontSize={accountSettings.romanFontSize ?? 14}
             arabicFontFamily={getArabicFontFamily(accountSettings.arabicFont)}
             onSave={handleSaveAyah}
-            onCancelRepeat={handleCancelRepeat}
-            onCancelUstadh={() => {
-              stopAudio().catch(() => {});
-              resetSpecialPlaybackMode();
-            }}
             onToggleMemorized={(ayah) => toggleAyahMemorized(surahNum, ayah.numberInSurah)}
             onPress={() => {
               if (isOffline) {
@@ -2331,6 +2346,16 @@ export default function SurahScreen() {
           />
         </View>
       )}
+
+      {/* ── Global Playback Bar ──────────────────────────────── */}
+      <GlobalPlaybackBar
+        config={globalBarConfig}
+        isPlaying={audioState.isPlaying}
+        isLoading={audioState.isLoading}
+        onPlayPause={handleGlobalBarPlayPause}
+        onExit={handleGlobalBarExit}
+        topInset={menuVisible ? 0 : insets.top}
+      />
 
       {/* ── Content ──────────────────────────────────────────── */}
       {loading ? (

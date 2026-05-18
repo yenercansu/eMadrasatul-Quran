@@ -449,7 +449,26 @@ export function AyahRangeModal({
   }, [firstAyah, lastAyah, activePath, juzAyahs, memorizedAyahKeys]);
 
   const remainingRangeAyahs = unmemorizedRangeAyahs.length;
-  const isRevisionMode = firstAyah !== null && lastAyah !== null && totalRangeAyahs > 0 && remainingRangeAyahs === 0;
+
+  const isSurahFullyMemorized = useMemo(() => {
+    if (activePath !== "surah" || !selectedSurah) return false;
+    const memorized = new Set(memorizedAyahKeys);
+    for (let i = 1; i <= selectedSurah.ayahCount; i++) {
+      if (!memorized.has(`${selectedSurah.number}:${i}`)) return false;
+    }
+    return true;
+  }, [activePath, selectedSurah, memorizedAyahKeys]);
+
+  const isJuzFullyMemorized = useMemo(() => {
+    if (activePath !== "juz" || juzAyahs.length === 0) return false;
+    const memorized = new Set(memorizedAyahKeys);
+    return juzAyahs.every((a) => memorized.has(`${a.surahNumber}:${a.ayahNumber}`));
+  }, [activePath, juzAyahs, memorizedAyahKeys]);
+
+  const isRangeFullyMemorized = activePath === "surah" ? isSurahFullyMemorized : isJuzFullyMemorized;
+
+  // Revision state is only available after the full surah/juz has been memorized.
+  const isRevisionMode = firstAyah !== null && lastAyah !== null && totalRangeAyahs > 0 && remainingRangeAyahs === 0 && isRangeFullyMemorized;
 
   const memorizedSet = useMemo(() => new Set(memorizedAyahKeys), [memorizedAyahKeys]);
   const memorizedCountBySurah = useMemo(() => {
@@ -616,6 +635,8 @@ export function AyahRangeModal({
   };
 
   const isDisabledBubble = (surahNum: number, ayahNum: number): boolean => {
+    // In memorization state, already memorized ayahs are not selectable.
+    if (!isRangeFullyMemorized && memorizedSet.has(`${surahNum}:${ayahNum}`)) return true;
     if (activePhase !== "last" || !firstAyah) return false;
     const pos = surahNum * 10000 + ayahNum;
     const firstPos = firstAyah.surahNumber * 10000 + firstAyah.ayahNumber;
