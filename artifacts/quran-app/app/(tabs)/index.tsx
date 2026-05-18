@@ -871,8 +871,8 @@ export default function HomeScreen() {
                     <Text style={s.hifzModePillText}>{activeModeLabel}</Text>
                   </View>
                 </View>
-                <Text style={s.hifzHeroTitle} numberOfLines={1} adjustsFontSizeToFit>{heroTitle}</Text>
-                <Text style={s.hifzHeroSub}>{heroSub}</Text>
+                <Text style={s.hifzHeroTitle} numberOfLines={2}>{heroTitle}</Text>
+                <Text style={s.hifzHeroSub} numberOfLines={2}>{heroSub}</Text>
                 <View style={s.hifzHeroProgressRail}>
                   <View style={[s.hifzHeroProgressFill, { width: `${memorizationPercent > 0 ? Math.max(2, memorizationPercent) : 0}%` as any }]} />
                 </View>
@@ -1625,7 +1625,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       backgroundColor: "#B0A898",
     },
     studyingNowText: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: "600",
       color: "#5A5248",
       fontFamily: "Inter_600SemiBold",
@@ -1640,7 +1640,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
     },
     fullHifzCompletedLabel: {
-      fontSize: 11,
+      fontSize: 12,
       lineHeight: 16,
       fontWeight: "700",
       color: "#8A8070",
@@ -1737,7 +1737,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       textAlign: "center",
     },
     fullHifzStatLabel: {
-      fontSize: 11,
+      fontSize: 12,
       lineHeight: 16,
       fontWeight: "700",
       color: "#8A8070",
@@ -1923,7 +1923,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderRadius: 20,
     },
     headerPillText: {
-      fontSize: 10,
+      fontSize: 12,
       fontWeight: "700",
       color: colors.appLightText,
       letterSpacing: 0.8,
@@ -1937,7 +1937,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderRadius: 20,
     },
     modeBadgeText: {
-      fontSize: 10,
+      fontSize: 12,
       fontWeight: "700",
       color: colors.appGold,
       fontFamily: "Inter_700Bold",
@@ -2007,10 +2007,10 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     dailyCardFooter: { marginTop: 10, gap: 8 },
     remainingLabelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
     remainingLabel: {
-      fontSize: 10, fontWeight: "700", color: colors.appBorderLight,
+      fontSize: 12, fontWeight: "700", color: colors.appBorderLight,
       letterSpacing: 1, fontFamily: "Inter_700Bold", textTransform: "uppercase",
     },
-    remainingShowing: { fontSize: 10, fontWeight: "700", color: colors.appLightText, fontFamily: "Inter_700Bold" },
+    remainingShowing: { fontSize: 12, fontWeight: "700", color: colors.appLightText, fontFamily: "Inter_700Bold" },
     streakRow: { flexDirection: "row", alignItems: "center", gap: 5 },
     streakText: { fontSize: 13, fontWeight: "600", color: colors.appGold, fontFamily: "Inter_600SemiBold" },
     detailsPill: { marginLeft: "auto" as any },
@@ -2076,7 +2076,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       textAlign: "center",
     },
     lvAyah: {
-      fontSize: 11,
+      fontSize: 12,
       color: "#8A8070",
       fontFamily: "Inter_400Regular",
       textAlign: "center",
@@ -2101,7 +2101,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingVertical: 6,
     },
     juzLabel: {
-      fontSize: 10,
+      fontSize: 12,
       fontWeight: "700",
       color: colors.appLightText,
       letterSpacing: 1.4,
@@ -2135,8 +2135,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Inter_600SemiBold",
     },
     surahInfo: { flex: 1, justifyContent: "center", alignItems: "flex-start" },
-    surahName: { fontSize: 13, fontWeight: "700", color: colors.appTextPrimary, fontFamily: "Inter_700Bold" },
-    surahMeta: { fontSize: 11, color: colors.appLightText, fontFamily: "Inter_400Regular", marginTop: 2 },
+    surahName: { fontSize: 14, fontWeight: "700", color: colors.appTextPrimary, fontFamily: "Inter_700Bold" },
+    surahMeta: { fontSize: 12, color: colors.appLightText, fontFamily: "Inter_400Regular", marginTop: 2 },
     surahArabic: {
       fontSize: 18,
       color: colors.appTextPrimary,
@@ -2175,7 +2175,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       letterSpacing: 1.9,
     },
     niyyahAcceptedText: {
-      fontSize: 9,
+      fontSize: 12,
       fontWeight: "700",
       color: "#7A7268",
       fontFamily: "Inter_700Bold",
@@ -2185,7 +2185,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flexShrink: 1,
     },
     manageLink: {
-      fontSize: 10,
+      fontSize: 12,
       color: "#5A5248",
       fontFamily: "Inter_600SemiBold",
     },
@@ -2236,21 +2236,22 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingVertical: 5,
     },
     hifzModePillText: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: "700",
       color: "#5A5248",
       fontFamily: "Inter_700Bold",
       textTransform: "uppercase",
     },
     hifzHeroTitle: {
-      maxWidth: "84%" as any,
-      fontSize: 40,
-      lineHeight: 46,
+      maxWidth: "78%" as any,
+      fontSize: 36,
+      lineHeight: 42,
       fontWeight: "700",
       color: "#1A1A1A",
       fontFamily: "Inter_700Bold",
     },
     hifzHeroSub: {
+      maxWidth: "78%" as any,
       fontSize: 13,
       lineHeight: 19,
       color: "#8D8478",
@@ -2331,7 +2332,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       backgroundColor: "#C8C0B0",
     },
     emptyModeText: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: "700",
       color: "#8A8070",
       fontFamily: "Inter_700Bold",
@@ -2371,7 +2372,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       backgroundColor: "#C8C0B0",
     },
     widgetAyahLabel: {
-      fontSize: 10,
+      fontSize: 12,
       fontWeight: "700",
       color: "#8A8070",
       fontFamily: "Inter_700Bold",
@@ -2401,7 +2402,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingVertical: 4,
     },
     widgetStep1Text: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: "600",
       color: colors.appLightText,
       fontFamily: "Inter_600SemiBold",
@@ -2428,7 +2429,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginHorizontal: 12,
     },
     widgetPaceLabel: {
-      fontSize: 10,
+      fontSize: 12,
       fontWeight: "700",
       color: "#8A8070",
       fontFamily: "Inter_700Bold",
@@ -2525,7 +2526,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       lineHeight: 30,
     },
     hifzProgressPctLabel: {
-      fontSize: 11,
+      fontSize: 12,
       color: colors.appLightText,
       fontFamily: "Inter_400Regular",
       textAlign: "right",
@@ -2566,7 +2567,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       gap: 12,
     },
     paceLastMemLabel: {
-      fontSize: 10,
+      fontSize: 12,
       fontWeight: "700",
       color: colors.appLightText,
       fontFamily: "Inter_700Bold",
@@ -2738,7 +2739,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       backgroundColor: "#EDE8DE",
     },
     rhythmTitle: {
-      fontSize: 9,
+      fontSize: 12,
       fontWeight: "700",
       color: "#6D655B",
       fontFamily: "Inter_700Bold",
@@ -2915,7 +2916,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     currentGoalLeft: { flex: 1, paddingRight: 8 },
     currentGoalRight: { alignItems: "flex-end", flexShrink: 0 },
     currentGoalLabel: {
-      fontSize: 10,
+      fontSize: 12,
       fontWeight: "700",
       color: colors.appLightText,
       fontFamily: "Inter_700Bold",
@@ -2948,7 +2949,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Inter_700Bold",
     },
     currentGoalMilestoneLabel: {
-      fontSize: 11,
+      fontSize: 12,
       color: colors.appLightText,
       fontFamily: "Inter_400Regular",
       marginTop: 10,
@@ -3054,7 +3055,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       gap: 2,
     },
     continueHifzSubText: {
-      fontSize: 11,
+      fontSize: 12,
       color: colors.appLightText,
       fontFamily: "Inter_400Regular",
     },
@@ -3096,7 +3097,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       backgroundColor: "#FFFCF8",
     },
     calendarButtonText: {
-      fontSize: 10,
+      fontSize: 12,
       fontWeight: "700",
       color: "#8B8274",
       fontFamily: "Inter_700Bold",
@@ -3158,7 +3159,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flexShrink: 0,
     },
     journeyCompleteText: {
-      fontSize: 10,
+      fontSize: 12,
       fontWeight: "700",
       color: "#5A5248",
       fontFamily: "Inter_700Bold",

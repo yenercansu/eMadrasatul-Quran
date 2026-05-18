@@ -130,7 +130,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       gap: 4,
     },
     memorizedBadgeText: {
-      fontSize: 10,
+      fontSize: 12,
       fontWeight: "600",
       color: colors.appText,
       fontFamily: "Inter_600SemiBold",

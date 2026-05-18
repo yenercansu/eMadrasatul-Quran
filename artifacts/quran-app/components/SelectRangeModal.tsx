@@ -198,7 +198,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     titleSub: { fontSize: 13, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 3 },
     closeBtn: { padding: 4 },
     sectionLabel: {
-      fontSize: 10,
+      fontSize: 12,
       fontWeight: "700",
       color: "#9A9A9A",
       fontFamily: "Inter_700Bold",
@@ -225,7 +225,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       writingDirection: "rtl",
     },
     wordChipTextInRange: { color: "#1A1A1A" },
-    wordChipBadge: { fontSize: 9, color: "rgba(255,255,255,0.8)", fontFamily: "Inter_600SemiBold", marginTop: 2 },
+    wordChipBadge: { fontSize: 12, color: "rgba(255,255,255,0.8)", fontFamily: "Inter_600SemiBold", marginTop: 2 },
     rangeInfo: {
       alignItems: "center",
       backgroundColor: "#F0F0F0",

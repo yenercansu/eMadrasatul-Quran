@@ -233,7 +233,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       minWidth: 64,
     },
     iconLabel: {
-      fontSize: 11,
+      fontSize: 12,
       color: "#1A1A1A",
       fontFamily: "Inter_600SemiBold",
       fontWeight: "600",
@@ -247,7 +247,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginBottom: 14,
     },
     sectionLabel: {
-      fontSize: 11,
+      fontSize: 12,
       color: "#9A9A9A",
       fontFamily: "Inter_700Bold",
       letterSpacing: 1.2,
@@ -268,7 +268,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       lineHeight: 22,
     },
     hint: {
-      fontSize: 11,
+      fontSize: 12,
       color: "#B0B0B0",
       fontFamily: "Inter_400Regular",
       fontStyle: "italic",

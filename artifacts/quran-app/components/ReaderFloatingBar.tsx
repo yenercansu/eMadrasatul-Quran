@@ -228,7 +228,7 @@ const barBtnStyle = StyleSheet.create({
   btn: { alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12 },
   btnActive: { backgroundColor: "#1A1A1A" },
   btnDisabled: { opacity: 0.35 },
-  label: { fontSize: 10, fontWeight: "600", color: "#AAAAAA", fontFamily: "Inter_600SemiBold", letterSpacing: 0.2 },
+  label: { fontSize: 12, fontWeight: "600", color: "#AAAAAA", fontFamily: "Inter_600SemiBold", letterSpacing: 0.2 },
   labelActive: { color: "#FFFFFF" },
 });
 
@@ -260,7 +260,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginBottom: 10,
     },
     popupTitle: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: "700",
       color: "#9A9A9A",
       fontFamily: "Inter_700Bold",

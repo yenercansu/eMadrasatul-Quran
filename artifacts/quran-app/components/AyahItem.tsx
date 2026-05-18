@@ -330,7 +330,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingVertical: 3,
     },
     repeatBadgeText: {
-      fontSize: 11,
+      fontSize: 12,
       color: colors.appDarkerGray,
       fontWeight: "700",
       fontFamily: "Inter_700Bold",
@@ -378,7 +378,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderRadius: 10,
     },
     tafsirLabel: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: "700",
       color: colors.appBlack,
       letterSpacing: 0.8,
@@ -433,7 +433,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       minWidth: 180,
     },
     repeatLabel: {
-      fontSize: 11,
+      fontSize: 12,
       color: colors.appDarkerGray,
       fontFamily: "Inter_700Bold",
       textTransform: "uppercase",

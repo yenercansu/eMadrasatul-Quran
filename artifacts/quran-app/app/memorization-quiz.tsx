@@ -427,13 +427,13 @@ const followUpStyle = StyleSheet.create({
   progressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   progressTrack: { flex: 1, height: 3, backgroundColor: "#E7E5DB", borderRadius: 2, overflow: "hidden" },
   progressBar: { height: "100%", backgroundColor: "#1A1A1A", borderRadius: 2 },
-  progressLabel: { fontSize: 11, color: "#A8A29E", fontFamily: "Inter_400Regular" },
+  progressLabel: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular" },
   card: {
     backgroundColor: "#FDFBF7", borderRadius: 16, padding: 20, gap: 10,
     shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 10,
     elevation: 3, borderWidth: 1, borderColor: "#E7E5DB",
   },
-  surahLabel: { fontSize: 10, color: "#A8A29E", fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
+  surahLabel: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
   ayahText: {
     fontSize: 22, lineHeight: 36, color: "#1A1A1A",
     textAlign: "right", writingDirection: "rtl",
@@ -571,8 +571,8 @@ const fillStyle = StyleSheet.create({
   progressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   progressTrack: { flex: 1, height: 3, backgroundColor: "#E7E5DB", borderRadius: 2, overflow: "hidden" },
   progressBar: { height: "100%", backgroundColor: "#1A1A1A", borderRadius: 2 },
-  progressLabel: { fontSize: 11, color: "#A8A29E", fontFamily: "Inter_400Regular" },
-  surahLabel: { fontSize: 11, color: "#A8A29E", fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
+  progressLabel: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular" },
+  surahLabel: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
   instruction: { fontSize: 12, color: "#78716C", fontFamily: "Inter_400Regular" },
   blankSlot: {
     borderRadius: 14, borderWidth: 1.5, borderColor: "#D6D3D1", borderStyle: "dashed",
@@ -594,7 +594,7 @@ const fillStyle = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "System" : undefined,
   },
   blankInText: { color: "#4F46E5", fontFamily: "Inter_700Bold", fontSize: 18 },
-  dragHint: { fontSize: 11, color: "#A8A29E", fontFamily: "Inter_400Regular", textAlign: "center" },
+  dragHint: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular", textAlign: "center" },
   chipsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center" },
 });
 
@@ -1604,7 +1604,7 @@ const pageStyles = StyleSheet.create({
   },
   excludeToggleActive: { backgroundColor: "#1A1A1A", alignItems: "flex-end" },
   excludeDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#FFFFFF" },
-  excludeText: { fontSize: 11, color: "#A8A29E", fontFamily: "Inter_400Regular" },
+  excludeText: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular" },
   surahSelectRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1658,7 +1658,7 @@ const pageStyles = StyleSheet.create({
   },
   savedAyahInfo: { flex: 1 },
   savedAyahArabic: { fontSize: 15, color: "#1A1A1A", fontFamily: Platform.OS === "ios" ? "System" : undefined, textAlign: "right", lineHeight: 22 },
-  savedAyahMeta: { fontSize: 11, color: "#A8A29E", fontFamily: "Inter_400Regular", marginTop: 4 },
+  savedAyahMeta: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular", marginTop: 4 },
   savedRemoveBtn: { padding: 6 },
 
   // ── Type phase content ──
@@ -1711,7 +1711,7 @@ const pageStyles = StyleSheet.create({
     justifyContent: "center",
   },
   selectionModeLabelText: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1,
   },
@@ -1777,7 +1777,7 @@ const pageStyles = StyleSheet.create({
 
   // ── JUZ section header ──
   juzHeader: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1,
     textTransform: "uppercase",
@@ -1831,7 +1831,7 @@ const pageStyles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 6,
   },
-  ayahCard2Meta: { fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  ayahCard2Meta: { fontSize: 12, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
   ayahCard2Arabic: {
     fontSize: 18,
     lineHeight: 30,

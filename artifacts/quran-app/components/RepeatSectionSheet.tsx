@@ -229,7 +229,7 @@ const s = StyleSheet.create({
   selectAllText: { fontSize: 12, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
 
   repeatLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "700",
     color: "#9A9A9A",
     letterSpacing: 1.2,

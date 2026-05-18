@@ -2070,7 +2070,7 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
   phaseLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "700",
     color: "#78716C",
     fontFamily: "Inter_700Bold",
@@ -2160,7 +2160,7 @@ const s = StyleSheet.create({
   ayahBubbleTextDisabled: { color: "#C0C0C0" },
 
   gridCaption: {
-    fontSize: 11,
+    fontSize: 12,
     color: "#A8A29E",
     fontFamily: "Inter_400Regular",
     textAlign: "center",
@@ -2346,7 +2346,7 @@ const s = StyleSheet.create({
   },
 
   targetLabel: {
-    fontSize: 11, fontWeight: "700", color: "#78716C",
+    fontSize: 12, fontWeight: "700", color: "#78716C",
     letterSpacing: 1.5, fontFamily: "Inter_700Bold",
     textTransform: "uppercase", textAlign: "center", marginBottom: 6,
   },
@@ -2399,7 +2399,7 @@ const s = StyleSheet.create({
   },
   weeklyPreviewTextWrap: { flex: 1 },
   weeklyPreviewLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "700",
     color: "#78716C",
     fontFamily: "Inter_700Bold",
@@ -2428,7 +2428,7 @@ const s = StyleSheet.create({
     marginBottom: 16,
   },
   finishDateCardLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "700",
     color: "#78716C",
     fontFamily: "Inter_700Bold",
@@ -2450,7 +2450,7 @@ const s = StyleSheet.create({
   },
 
   commitmentLabel: {
-    fontSize: 11, fontWeight: "700", color: "#78716C", letterSpacing: 1.2,
+    fontSize: 12, fontWeight: "700", color: "#78716C", letterSpacing: 1.2,
     fontFamily: "Inter_700Bold", textTransform: "uppercase",
     textAlign: "center", marginTop: 12, marginBottom: 10,
   },
@@ -2476,7 +2476,7 @@ const s = StyleSheet.create({
   infoPagerDotActive: { backgroundColor: "#1A1A1A" },
   wkInfoCard: { backgroundColor: "#F6F2EA", borderRadius: 12, padding: 16 },
   wkInfoCardTitle: {
-    fontSize: 11, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold",
+    fontSize: 12, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold",
     letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4,
   },
   wkInfoCardText: { fontSize: 12, color: "#71717A", fontFamily: "Inter_400Regular", lineHeight: 20 },
@@ -2485,7 +2485,7 @@ const s = StyleSheet.create({
     backgroundColor: "#1A1A1A", borderRadius: 12, padding: 16, marginBottom: 16, gap: 4,
   },
   estimateLabel: {
-    fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.55)", fontFamily: "Inter_700Bold",
+    fontSize: 12, fontWeight: "700", color: "rgba(255,255,255,0.55)", fontFamily: "Inter_700Bold",
     letterSpacing: 0.8, textTransform: "uppercase",
   },
   estimateText: { fontSize: 14, color: "#FFFFFF", fontFamily: "Inter_400Regular", lineHeight: 22 },
@@ -2508,7 +2508,7 @@ const s = StyleSheet.create({
     marginBottom: 14,
   },
   paceSectionLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
     color: "#78716C",
     fontFamily: "Inter_700Bold",
@@ -2642,7 +2642,7 @@ const s = StyleSheet.create({
     gap: 12,
   },
   gradualLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "700",
     color: "#78716C",
     fontFamily: "Inter_700Bold",
@@ -2679,7 +2679,7 @@ const s = StyleSheet.create({
     color: "#FFFFFF",
   },
   growthChoiceSub: {
-    fontSize: 11,
+    fontSize: 12,
     lineHeight: 14,
     color: "#8A8070",
     fontFamily: "Inter_400Regular",
@@ -2764,7 +2764,7 @@ const s = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
   weekPreviewCount: {
-    fontSize: 9,
+    fontSize: 12,
     color: "#78716C",
     fontFamily: "Inter_700Bold",
   },
@@ -2807,7 +2807,7 @@ const s = StyleSheet.create({
     overflow: "hidden",
   },
   whyTitle: {
-    fontSize: 9,
+    fontSize: 12,
     fontWeight: "700",
     color: "#8A8070",
     fontFamily: "Inter_700Bold",
@@ -2840,7 +2840,7 @@ const s = StyleSheet.create({
     marginTop: 2,
   },
   ultimateLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "700",
     color: "#8A8070",
     fontFamily: "Inter_700Bold",
@@ -2908,7 +2908,7 @@ const s = StyleSheet.create({
     gap: 4,
   },
   forecastLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "700",
     color: "#8A8070",
     fontFamily: "Inter_700Bold",
@@ -2930,7 +2930,7 @@ const s = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
   forecastSub: {
-    fontSize: 11,
+    fontSize: 12,
     color: "#8A8070",
     fontFamily: "Inter_400Regular",
     textAlign: "center",
@@ -2943,7 +2943,7 @@ const s = StyleSheet.create({
     paddingVertical: 16,
   },
   forecastInfoLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: "700",
     color: "#8A8070",
     fontFamily: "Inter_700Bold",
@@ -2973,7 +2973,7 @@ const s = StyleSheet.create({
     gap: 6,
   },
   rangeCapTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
     color: "rgba(255,255,255,0.55)",
     fontFamily: "Inter_700Bold",
@@ -3011,7 +3011,7 @@ const s = StyleSheet.create({
     marginBottom: 2,
   },
   insightTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
     color: "#C9A02A",
     fontFamily: "Inter_700Bold",
@@ -3020,7 +3020,7 @@ const s = StyleSheet.create({
   },
   insightTitleFullHifz: {
     color: "#16A34A",
-    fontSize: 11,
+    fontSize: 12,
   },
   insightText: {
     fontSize: 14,
@@ -3053,7 +3053,7 @@ const s = StyleSheet.create({
     paddingVertical: 2,
   },
   autoBadgePillText: {
-    fontSize: 9,
+    fontSize: 12,
     fontWeight: "700",
     color: "#FFFFFF",
     fontFamily: "Inter_700Bold",

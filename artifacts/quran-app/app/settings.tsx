@@ -222,10 +222,10 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     headerTitle: { flex: 1, fontSize: 20, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold", textAlign: "center" },
     scroll: { flex: 1 },
     section: { marginTop: 24 },
-    sectionTitle: { fontSize: 11, fontWeight: "700", color: colors.mutedForeground, letterSpacing: 1.2, textTransform: "uppercase", fontFamily: "Inter_700Bold", marginBottom: 8, paddingHorizontal: 20 },
+    sectionTitle: { fontSize: 12, fontWeight: "700", color: colors.mutedForeground, letterSpacing: 1.2, textTransform: "uppercase", fontFamily: "Inter_700Bold", marginBottom: 8, paddingHorizontal: 20 },
     themeRow: { justifyContent: "flex-end" },
     dangerLabel: { color: colors.destructive },
     appInfo: { alignItems: "center", paddingVertical: 24, gap: 4 },
     appInfoText: { fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
-    appInfoSub: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
+    appInfoSub: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
   });

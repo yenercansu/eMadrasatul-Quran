@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   recommendedBadge: {
-    fontSize: 9,
+    fontSize: 12,
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.3,
     marginTop: 2,

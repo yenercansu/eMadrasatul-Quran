@@ -336,7 +336,7 @@ const m = StyleSheet.create({
     alignItems: "center",
   },
   startingLabel: {
-    fontSize: 11,
+    fontSize: 12,
     lineHeight: 16,
     fontWeight: "700",
     color: hifzTokens.lightMuted,

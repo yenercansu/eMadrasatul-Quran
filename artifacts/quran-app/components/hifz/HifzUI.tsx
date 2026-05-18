@@ -188,7 +188,7 @@ const ui = StyleSheet.create({
     backgroundColor: "#4ADE80",
   },
   statusText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
     color: hifzTokens.midBrown,
     fontFamily: "Inter_600SemiBold",
@@ -208,7 +208,7 @@ const ui = StyleSheet.create({
     paddingVertical: 6,
   },
   modeTagText: {
-    fontSize: 9,
+    fontSize: 12,
     fontWeight: "700",
     color: hifzTokens.midBrown,
     fontFamily: "Inter_700Bold",

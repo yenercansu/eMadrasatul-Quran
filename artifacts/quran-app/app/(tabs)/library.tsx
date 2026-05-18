@@ -212,7 +212,7 @@ const cardStyles = (colors: ReturnType<typeof useColors>) =>
       justifyContent: "center",
       gap: 4,
     },
-    swipeActionText: { fontSize: 11, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+    swipeActionText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
   });
 
 const AYAH_PAGE_SIZE = 10;
@@ -796,7 +796,7 @@ const wordsViewStyles = StyleSheet.create({
 
   // JUZ header
   juzHeader: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1,
     textTransform: "uppercase",
@@ -1081,7 +1081,7 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
       backgroundColor: colors.appSelectedPill,
     },
     dotLetter: {
-      fontSize: 10,
+      fontSize: 12,
       fontWeight: "700",
       color: colors.appTextMuted,
       fontFamily: "Inter_700Bold",
@@ -1144,7 +1144,7 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Inter_700Bold",
     },
     cardBadgeLabel: {
-      fontSize: 10,
+      fontSize: 12,
       color: colors.appTextMuted,
       fontFamily: "Inter_400Regular",
     },

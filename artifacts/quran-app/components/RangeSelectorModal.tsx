@@ -417,7 +417,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginBottom: 8,
     },
     stepLabel: {
-      fontSize: 11,
+      fontSize: 12,
       color: colors.mutedForeground,
       fontFamily: "Inter_400Regular",
     },

@@ -1388,7 +1388,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       justifyContent: "center",
     },
     selectionModeLabelText: {
-      fontSize: 11,
+      fontSize: 12,
       fontFamily: "Inter_700Bold",
       letterSpacing: 1,
     },
@@ -1478,7 +1478,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       marginBottom: 6,
     },
-    ayahCard2Meta: { fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+    ayahCard2Meta: { fontSize: 12, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
     ayahCard2Arabic: {
       fontSize: 18,
       lineHeight: 30,
@@ -1496,7 +1496,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
     },
     wordSelectInfo: { flex: 1, gap: 3 },
-    wordSelectMeta: { fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+    wordSelectMeta: { fontSize: 12, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
     wordSelectArabic: {
       fontSize: 24,
       lineHeight: 34,
@@ -1597,7 +1597,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: 6,
       paddingVertical: 2,
     },
-    longPressHintText: { fontSize: 9, color: colors.card, fontFamily: "Inter_600SemiBold" },
+    longPressHintText: { fontSize: 12, color: colors.card, fontFamily: "Inter_600SemiBold" },
     graphicPopup: {
       backgroundColor: colors.card,
       borderRadius: 14,
@@ -1652,10 +1652,10 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     wordManagerInfo: { flex: 1 },
     wordManagerArabic: { fontSize: 20, color: colors.primary, fontFamily: "System" },
     wordManagerTrans: { fontSize: 14, color: colors.foreground, fontFamily: "Inter_400Regular", marginTop: 2 },
-    wordManagerMeta: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
+    wordManagerMeta: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
     wordManagerEmpty: { padding: 40, alignItems: "center" },
     wmSwipeHintRow: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 16, paddingVertical: 8 },
-    wmSwipeHint: { fontSize: 11, fontFamily: "Inter_400Regular" },
+    wmSwipeHint: { fontSize: 12, fontFamily: "Inter_400Regular" },
     wordManagerEmptyText: { fontSize: 14, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center" },
     // WordsManagerModal new styles
     wmSearchWrapper: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6 },

@@ -344,7 +344,7 @@ const cs = StyleSheet.create({
   },
   transBlock: { marginBottom: 12 },
   transText: { fontSize: 14, color: "#2C2C2C", fontFamily: "Inter_400Regular", lineHeight: 22 },
-  transSource: { fontSize: 11, color: "#ABABAB", fontFamily: "Inter_400Regular", marginTop: 3, fontStyle: "italic", letterSpacing: 0.1 },
+  transSource: { fontSize: 12, color: "#ABABAB", fontFamily: "Inter_400Regular", marginTop: 3, fontStyle: "italic", letterSpacing: 0.1 },
   tafBox: {
     backgroundColor: "#FFF8EE",
     borderRadius: 10,
@@ -354,7 +354,7 @@ const cs = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#EDD9A3",
   },
-  tafName: { fontSize: 11, fontWeight: "700", color: "#8B6914", fontFamily: "Inter_700Bold", marginBottom: 4 },
+  tafName: { fontSize: 12, fontWeight: "700", color: "#8B6914", fontFamily: "Inter_700Bold", marginBottom: 4 },
   tafText: { fontSize: 12, color: "#5A4020", fontFamily: "Inter_400Regular", lineHeight: 18 },
 });
 
@@ -581,7 +581,7 @@ const cb = StyleSheet.create({
     borderRadius: 12,
   },
   tabActive: { backgroundColor: "#EDEAE5" },
-  label: { fontSize: 11, fontWeight: "600", color: "#BBBBBB", fontFamily: "Inter_600SemiBold" },
+  label: { fontSize: 12, fontWeight: "600", color: "#BBBBBB", fontFamily: "Inter_600SemiBold" },
   labelActive: { color: "#1A1A1A" },
   dotsRow: { flexDirection: "row", gap: 2, marginBottom: 1, height: 18, alignItems: "center" },
   dot: { width: 6, height: 6, borderRadius: 3 },
@@ -849,7 +849,7 @@ function EditSheet({
 
 const es = StyleSheet.create({
   secHeader: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
     color: "#9A9A9A",
     fontFamily: "Inter_700Bold",
@@ -878,7 +878,7 @@ const es = StyleSheet.create({
     backgroundColor: "#1A1A1A",
   },
   modeCardText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
     color: "#4A4A4A",
     fontFamily: "Inter_600SemiBold",
@@ -2679,7 +2679,7 @@ const scr = StyleSheet.create({
     borderTopColor: "#D5D0CA",
   },
   offlineToastText: {
-    fontSize: 10,
+    fontSize: 12,
     color: "#6B6B6B",
     fontFamily: "Inter_600SemiBold",
     fontWeight: "600",
@@ -2784,7 +2784,7 @@ const scr = StyleSheet.create({
     width: 22, height: 22, borderRadius: 11, backgroundColor: "#F0F0F0",
     alignItems: "center", justifyContent: "center", marginTop: 2,
   },
-  mushafSplitNumText: { fontSize: 11, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  mushafSplitNumText: { fontSize: 12, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
   mushafSplitText: {
     flex: 1, fontSize: 14, lineHeight: 22,
     color: "#2C2C2C", fontFamily: "Inter_400Regular",
@@ -2795,7 +2795,7 @@ const scr = StyleSheet.create({
     alignItems: "center",
   },
   swipeHintText: {
-    fontSize: 11,
+    fontSize: 12,
     color: "#AAAAAA",
     fontFamily: "Inter_400Regular",
     textAlign: "center",

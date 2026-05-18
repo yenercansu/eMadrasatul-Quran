@@ -308,7 +308,7 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     scrollContent: { paddingHorizontal: 20, gap: 4 },
     sectionLabel: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: "700",
       color: colors.mutedForeground,
       letterSpacing: 1.2,
@@ -373,7 +373,7 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
     },
     tafsirChipNameActive: { color: colors.primaryForeground },
     tafsirChipAuthor: {
-      fontSize: 11,
+      fontSize: 12,
       color: colors.mutedForeground,
       fontFamily: "Inter_400Regular",
       marginTop: 2,
@@ -398,7 +398,7 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
     autoPauseChipActive: { backgroundColor: colors.primary },
     autoPauseChipText: { fontSize: 13, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
     autoPauseChipTextActive: { color: colors.primaryForeground },
-    autoPauseHint: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 8, paddingHorizontal: 4 },
+    autoPauseHint: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 8, paddingHorizontal: 4 },
     fontPickerRow: { gap: 8, paddingBottom: 4 },
     fontChip: {
       width: 82,
@@ -413,7 +413,7 @@ const makeStyles = (colors: ReturnType<typeof useColors>) =>
     },
     fontChipActive: { borderColor: colors.primary, backgroundColor: colors.primary + "18" },
     fontChipLabel: {
-      fontSize: 11,
+      fontSize: 12,
       color: colors.mutedForeground,
       fontFamily: "Inter_500Medium",
       textAlign: "center",
@@ -446,7 +446,7 @@ const makeRsStyles = (colors: ReturnType<typeof useColors>) =>
     avatarActive: { backgroundColor: colors.primary },
     name: { fontSize: 14, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" },
     nameActive: { color: colors.foreground },
-    style: { fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
+    style: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 2 },
     emptyState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 24 },
     emptyText: { fontSize: 14, color: colors.mutedForeground, fontFamily: "Inter_400Regular", textAlign: "center" },
     retryButton: { borderRadius: 12, backgroundColor: colors.primary, paddingHorizontal: 18, paddingVertical: 10 },
