@@ -22,6 +22,9 @@ import { SURAH_DATA } from "@/constants/surahData";
 import { SwipeableRow } from "@/components/SwipeableRow";
 import { Pagination } from "@/components/Pagination";
 import { Tag } from "@/components/Tag";
+import { SegmentedToggle } from "@/components/SegmentedToggle";
+import { HifzSegmentedControl } from "@/components/hifz/HifzUI";
+import { ActionPill } from "@/components/ActionPill";
 import { QuestionNav } from "@/components/QuestionNav";
 import { AppDialog } from "@/components/AppDialog";
 
@@ -542,12 +545,6 @@ export default function QuizScreen() {
   const [quizWords, setQuizWords] = useState<SavedWord[]>([]);
   const [cardTab, setCardTab] = useState<"active" | "memorized">("active");
 
-  const savedAyahKeys = useMemo(() => new Set(savedAyahs.map(ayahKey)), [savedAyahs]);
-  const standaloneWords = useMemo(
-    () => savedWords.filter(word => !savedAyahKeys.has(`${word.surahNumber}:${word.ayahNumber}`)),
-    [savedAyahKeys, savedWords]
-  );
-
   useEffect(() => {
     setSelectedAyahIds(prev => {
       const existingIds = new Set(savedAyahs.map(a => a.id));
@@ -566,19 +563,19 @@ export default function QuizScreen() {
 
   useEffect(() => {
     setSelectedWordIds(prev => {
-      const existingIds = new Set(standaloneWords.map(w => w.id));
+      const existingIds = new Set(savedWords.map(w => w.id));
       const next = new Set([...prev].filter(id => existingIds.has(id)));
       if (prev.size === 0 && excludedWordIds.size === 0) {
-        standaloneWords.forEach(word => next.add(word.id));
+        savedWords.forEach(word => next.add(word.id));
       }
       return setsEqual(prev, next) ? prev : next;
     });
     setExcludedWordIds(prev => {
-      const existingIds = new Set(standaloneWords.map(w => w.id));
+      const existingIds = new Set(savedWords.map(w => w.id));
       const next = new Set([...prev].filter(id => existingIds.has(id)));
       return setsEqual(prev, next) ? prev : next;
     });
-  }, [excludedWordIds.size, standaloneWords]);
+  }, [excludedWordIds.size, savedWords]);
 
   const filteredAyahs = useMemo(() => {
     let ayahs = savedAyahs;
@@ -595,7 +592,7 @@ export default function QuizScreen() {
   }, [ayahSearchQuery, excludedAyahIds, savedAyahs, selectedAyahIds, tagFilter]);
 
   const filteredWords = useMemo(() => {
-    let words = standaloneWords;
+    let words = savedWords;
     if (tagFilter === "selected") words = words.filter(word => selectedWordIds.has(word.id) && !excludedWordIds.has(word.id));
     if (wordSearchQuery.trim()) {
       const q = wordSearchQuery.toLowerCase();
@@ -606,7 +603,7 @@ export default function QuizScreen() {
       );
     }
     return words;
-  }, [excludedWordIds, selectedWordIds, standaloneWords, tagFilter, wordSearchQuery]);
+  }, [excludedWordIds, savedWords, selectedWordIds, tagFilter, wordSearchQuery]);
 
   const totalAyahPages = Math.max(1, Math.ceil(filteredAyahs.length / ITEMS_PER_PAGE));
   const totalWordPages = Math.max(1, Math.ceil(filteredWords.length / ITEMS_PER_PAGE));
@@ -623,13 +620,13 @@ export default function QuizScreen() {
     () => savedAyahs.filter(ayah => selectedAyahIds.has(ayah.id) && !excludedAyahIds.has(ayah.id)).length,
     [excludedAyahIds, savedAyahs, selectedAyahIds]
   );
-  const selectedStandaloneWordCount = useMemo(
-    () => standaloneWords.filter(word => selectedWordIds.has(word.id) && !excludedWordIds.has(word.id)).length,
-    [excludedWordIds, selectedWordIds, standaloneWords]
+  const selectedWordCount = useMemo(
+    () => savedWords.filter(word => selectedWordIds.has(word.id) && !excludedWordIds.has(word.id)).length,
+    [excludedWordIds, savedWords, selectedWordIds]
   );
   const selectedQuizWordPool = useMemo(() => {
     if (selectionMode === "by-words") {
-      return standaloneWords.filter(word => selectedWordIds.has(word.id) && !excludedWordIds.has(word.id));
+      return savedWords.filter(word => selectedWordIds.has(word.id) && !excludedWordIds.has(word.id));
     }
     const selectedKeys = new Set(
       savedAyahs
@@ -637,8 +634,8 @@ export default function QuizScreen() {
         .map(ayahKey)
     );
     return savedWords.filter(word => selectedKeys.has(`${word.surahNumber}:${word.ayahNumber}`));
-  }, [excludedAyahIds, excludedWordIds, savedAyahs, savedWords, selectedAyahIds, selectedWordIds, selectionMode, standaloneWords]);
-  const selectedItemCount = selectionMode === "by-ayah" ? selectedAyahCount : selectedStandaloneWordCount;
+  }, [excludedAyahIds, excludedWordIds, savedAyahs, savedWords, selectedAyahIds, selectedWordIds, selectionMode]);
+  const selectedItemCount = selectionMode === "by-ayah" ? selectedAyahCount : selectedWordCount;
 
   const initQuiz = useCallback((words: SavedWord[]) => {
     if (advanceTimer.current) clearTimeout(advanceTimer.current);
@@ -874,24 +871,20 @@ export default function QuizScreen() {
 
         <View style={s.selectionWrap}>
           <View style={s.segmentWrapper}>
-            <View style={s.segmentContainer}>
-              {([{ key: "by-ayah", label: "By Ayah" }, { key: "by-words", label: "By Words" }] as const).map(item => (
-                <TouchableOpacity
-                  key={item.key}
-                  style={[s.segmentBtn, selectionMode === item.key && s.segmentBtnActive]}
-                  onPress={() => {
-                    setSelectionMode(item.key);
-                    setAyahPage(0);
-                    setWordPage(0);
-                    setAyahSearchQuery("");
-                    setWordSearchQuery("");
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[s.segmentText, selectionMode === item.key && s.segmentTextActive]}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <HifzSegmentedControl
+              options={[
+                { value: "by-ayah" as const, label: "By Ayah" },
+                { value: "by-words" as const, label: "By Words" },
+              ]}
+              value={selectionMode}
+              onChange={(val) => {
+                setSelectionMode(val);
+                setAyahPage(0);
+                setWordPage(0);
+                setAyahSearchQuery("");
+                setWordSearchQuery("");
+              }}
+            />
           </View>
 
           <View style={s.searchWrapper}>
@@ -949,7 +942,7 @@ export default function QuizScreen() {
               pagedAyahs.length === 0 ? (
                 <View style={s.infoBox}>
                   <Ionicons name="information-circle-outline" size={18} color={colors.appIconMuted} />
-                  <Text style={s.infoText}>{ayahSearchQuery.trim() ? "No ayahs match your search." : tagFilter === "all" ? "No saved ayahs. Swipe left on any ayah while reading to save it here." : "No ayahs match this filter."}</Text>
+                  <Text style={s.infoText}>{ayahSearchQuery.trim() ? "No ayahs match your search." : tagFilter === "all" ? "No saved ayahs yet. Bookmark ayahs from the Reading screen to add them here." : "No ayahs match this filter."}</Text>
                 </View>
               ) : (
                 pagedAyahs.map(ayah => {
@@ -981,7 +974,7 @@ export default function QuizScreen() {
               pagedWords.length === 0 ? (
                 <View style={s.infoBox}>
                   <Ionicons name="information-circle-outline" size={18} color={colors.appIconMuted} />
-                  <Text style={s.infoText}>{wordSearchQuery.trim() ? "No words match your search." : tagFilter === "all" ? "No standalone words saved yet. Long-press individual words while reading to save them here." : "No words match this filter."}</Text>
+                  <Text style={s.infoText}>{wordSearchQuery.trim() ? "No words match your search." : tagFilter === "all" ? "No saved words yet. Long-press individual words while reading to save them here." : "No words match this filter."}</Text>
                 </View>
               ) : (
                 pagedWords.map(word => {
@@ -1026,7 +1019,7 @@ export default function QuizScreen() {
                 <Text style={s.selectionHintText}>
                   {showingAyahs
                     ? "Choose saved ayahs that contain words you want to review."
-                    : "Choose at least one saved word to begin a gentle review."}
+                    : "Choose at least one saved word to begin practicing."}
                 </Text>
               </View>
             )}
@@ -1049,22 +1042,22 @@ export default function QuizScreen() {
                 onNext={() => setWordPage(p => Math.min(totalWordPages - 1, p + 1))}
               />
             )}
-            <TouchableOpacity
-              style={[s.startBtn2, selectedQuizWordPool.length < 1 && s.startBtn2Disabled]}
+            <ActionPill
+              label="Start the Test"
+              variant={selectedQuizWordPool.length < 1 ? "soft" : "primary"}
+              size="lg"
               onPress={startQuiz}
-              activeOpacity={0.85}
               disabled={selectedQuizWordPool.length < 1}
-            >
-              <Text style={[s.startBtnText2, selectedQuizWordPool.length < 1 && s.startBtnText2Disabled]}>Start the Test</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.viewCardsBtn, selectedQuizWordPool.length < 1 && s.startBtn2Disabled]}
+              textStyle={{ fontSize: 15 }}
+            />
+            <ActionPill
+              label="Practice with Cards"
+              variant={selectedQuizWordPool.length < 1 ? "soft" : "outline"}
+              size="lg"
               onPress={viewAsCards}
-              activeOpacity={0.85}
               disabled={selectedQuizWordPool.length < 1}
-            >
-              <Text style={[s.viewCardsBtnText, selectedQuizWordPool.length < 1 && s.viewCardsBtnTextDisabled]}>Practice with Cards</Text>
-            </TouchableOpacity>
+              textStyle={{ fontSize: 15 }}
+            />
           </View>
         </View>
       </View>
@@ -1084,35 +1077,15 @@ export default function QuizScreen() {
           </View>
           <View style={{ width: 38 }} />
         </View>
-        <View style={[s.cardTabsWrap, { backgroundColor: colors.background }]}>
-          <View style={[s.cardTabs, { backgroundColor: colors.appSoftPill }]}>
-            <TouchableOpacity
-              style={[
-                s.cardTabPill,
-                cardTab === "active" && { backgroundColor: colors.appSelectedPill, borderWidth: 1, borderColor: colors.appSelectedPill },
-              ]}
-              onPress={() => setCardTab("active")}
-              activeOpacity={0.8}
-            >
-              <Text style={[s.cardTabText, { color: cardTab === "active" ? colors.appText : colors.appIconMuted }]}>
-                <Text style={{ fontFamily: cardTab === "active" ? "Inter_600SemiBold" : "Inter_400Regular" }}>Active</Text>
-                <Text style={{ fontFamily: "Inter_400Regular" }}>{` (${activeCardCount})`}</Text>
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                s.cardTabPill,
-                cardTab === "memorized" && { backgroundColor: colors.appSelectedPill, borderWidth: 1, borderColor: colors.appSelectedPill },
-              ]}
-              onPress={() => setCardTab("memorized")}
-              activeOpacity={0.8}
-            >
-              <Text style={[s.cardTabText, { color: cardTab === "memorized" ? colors.appText : colors.appIconMuted }]}>
-                <Text style={{ fontFamily: cardTab === "memorized" ? "Inter_600SemiBold" : "Inter_400Regular" }}>Memorized</Text>
-                <Text style={{ fontFamily: "Inter_400Regular" }}>{` (${memorizedCardCount})`}</Text>
-              </Text>
-            </TouchableOpacity>
-          </View>
+        <View style={s.cardTabsWrap}>
+          <SegmentedToggle
+            options={[
+              { value: "active" as const, label: `Active (${activeCardCount})` },
+              { value: "memorized" as const, label: `Memorized (${memorizedCardCount})` },
+            ]}
+            value={cardTab}
+            onChange={setCardTab}
+          />
         </View>
         <FlatList
           data={visibleCardWords}
@@ -1433,25 +1406,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: 16,
       paddingBottom: 10,
     },
-    segmentContainer: {
-      flexDirection: "row",
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: colors.appSoftBorder,
-      backgroundColor: colors.appSoftPill,
-      padding: 3,
-      overflow: "hidden",
-    },
-    segmentBtn: {
-      flex: 1,
-      alignItems: "center",
-      paddingVertical: 10,
-      borderRadius: 999,
-      backgroundColor: "transparent",
-    },
-    segmentBtnActive: { backgroundColor: colors.appSelectedPill },
-    segmentText: { fontSize: 14, color: colors.appIconMuted, fontFamily: "Inter_600SemiBold" },
-    segmentTextActive: { color: colors.appText },
     searchWrapper: {
       paddingHorizontal: 16,
       paddingBottom: 8,
@@ -1589,49 +1543,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       color: colors.appTextMuted,
       fontFamily: "Inter_400Regular",
     },
-    startBtn2: {
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.appDarkerGray,
-      borderRadius: 16,
-      paddingVertical: 16,
-    },
-    startBtn2Disabled: {
-      backgroundColor: colors.appSoftPill,
-      borderWidth: 1,
-      borderColor: colors.appSoftBorder,
-    },
-    startBtnText2: { fontSize: 15, color: "#FFFFFF", fontFamily: "Inter_700Bold" },
-    startBtnText2Disabled: { color: colors.appIconMuted },
-    viewCardsBtn: {
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: 16,
-      paddingVertical: 14,
-      borderWidth: 1,
-      borderColor: colors.appSoftBorder,
-      backgroundColor: colors.appCardWarm,
-    },
-    viewCardsBtnText: { fontSize: 15, color: colors.appText, fontFamily: "Inter_700Bold" },
-    viewCardsBtnTextDisabled: { color: colors.appIconMuted },
     reviewCardsContent: { padding: 16, paddingBottom: 80, gap: 10 },
     cardTabsWrap: { paddingHorizontal: 16, paddingBottom: 10 },
-    cardTabs: {
-      flexDirection: "row",
-      borderRadius: 999,
-      height: 44,
-      padding: 2,
-    },
-    cardTabPill: {
-      flex: 1,
-      borderRadius: 999,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    cardTabText: {
-      fontSize: 14,
-      textAlign: "center",
-    },
     cardEmpty: { alignItems: "center", paddingVertical: 48, paddingHorizontal: 24, gap: 8 },
     cardEmptyTitle: { fontSize: 18, fontFamily: "Inter_700Bold", textAlign: "center" },
     cardEmptySubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },

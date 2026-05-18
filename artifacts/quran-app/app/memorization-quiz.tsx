@@ -1326,13 +1326,13 @@ export default function MemorizationQuizScreen() {
                 <View style={[s.infoBox, { marginBottom: 8 }]}>
                   <Ionicons name="information-circle-outline" size={16} color="#A8A29E" />
                   <Text style={s.infoText}>
-                    Swipe left on any ayah while reading to save it here.
+                    Bookmark ayahs from the Reading screen to add them here.
                   </Text>
                 </View>
                 {pagedSurahs.length === 0 ? (
                   <View style={s.infoBox}>
                     <Ionicons name="information-circle-outline" size={18} color="#A8A29E" />
-                    <Text style={s.infoText}>{surahGroups.length === 0 ? "No saved ayahs. Swipe left on any ayah while reading to save it here." : surahSearchQuery.trim() ? "No surahs match your search." : "No surahs match this filter."}</Text>
+                    <Text style={s.infoText}>{surahGroups.length === 0 ? "No saved ayahs yet. Bookmark ayahs from the Reading screen to add them here." : surahSearchQuery.trim() ? "No surahs match your search." : "No surahs match this filter."}</Text>
                   </View>
                 ) : (() => {
                   const byJuz: { juz: number; surahs: typeof SURAH_DATA }[] = [];
@@ -1380,7 +1380,7 @@ export default function MemorizationQuizScreen() {
               ayahsByJuz.length === 0 ? (
                 <View style={s.infoBox}>
                   <Ionicons name="information-circle-outline" size={18} color="#A8A29E" />
-                  <Text style={s.infoText}>{ayahSearchQuery.trim() ? "No ayahs match your search." : tagFilter === "all" ? "No saved ayahs. Swipe left on any ayah while reading to save it here." : "No ayahs match this filter."}</Text>
+                  <Text style={s.infoText}>{ayahSearchQuery.trim() ? "No ayahs match your search." : tagFilter === "all" ? "No saved ayahs yet. Bookmark ayahs from the Reading screen to add them here." : "No ayahs match this filter."}</Text>
                 </View>
               ) : (
                 <>
