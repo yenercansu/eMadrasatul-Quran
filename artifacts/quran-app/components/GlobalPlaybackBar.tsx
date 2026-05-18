@@ -1,12 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import {
-  Animated,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import { Animated, View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 
@@ -15,25 +8,30 @@ export type PlaybackModeType = "ustadh" | "wordByWord" | "range";
 export interface PlaybackBarConfig {
   mode: PlaybackModeType;
   title: string;
-  subtitle?: string;
 }
 
 interface Props {
   config: PlaybackBarConfig | null;
-  isPlaying: boolean;
-  isLoading: boolean;
-  onPlayPause: () => void;
-  onExit: () => void;
-  /** Safe-area top inset to add above the bar content (only needed when rendered without a header above it). */
-  topInset?: number;
+  bottom: number;
+  onStop: () => void;
 }
-
-const BAR_CONTENT_HEIGHT = 56;
 
 const MODE_ACCENT_COLORS: Record<PlaybackModeType, string> = {
   ustadh: "#C9A02A",
   wordByWord: "#E86A33",
   range: "#7B5C3E",
+};
+
+const MODE_ACCENT_BG_LIGHT: Record<PlaybackModeType, string> = {
+  ustadh: "#FEF9EE",
+  wordByWord: "#FFF4EE",
+  range: "#F5F0EB",
+};
+
+const MODE_ACCENT_BG_DARK: Record<PlaybackModeType, string> = {
+  ustadh: "#2B2210",
+  wordByWord: "#2B1A0E",
+  range: "#1E1710",
 };
 
 const MODE_ICONS: Record<PlaybackModeType, React.ComponentProps<typeof Ionicons>["name"]> = {
@@ -42,167 +40,84 @@ const MODE_ICONS: Record<PlaybackModeType, React.ComponentProps<typeof Ionicons>
   range: "layers-outline",
 };
 
-export function GlobalPlaybackBar({
-  config,
-  isPlaying,
-  isLoading,
-  onPlayPause,
-  onExit,
-  topInset = 0,
-}: Props) {
+export function GlobalPlaybackBar({ config, bottom, onStop }: Props) {
   const colors = useColors();
-  const heightAnim = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(8)).current;
   const [displayConfig, setDisplayConfig] = useState<PlaybackBarConfig | null>(config);
-
-  const totalHeight = BAR_CONTENT_HEIGHT + topInset;
 
   useEffect(() => {
     if (config !== null) {
       setDisplayConfig(config);
-      Animated.spring(heightAnim, {
-        toValue: totalHeight,
-        useNativeDriver: false,
-        tension: 160,
-        friction: 20,
-      }).start();
+      Animated.parallel([
+        Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start();
     } else {
-      Animated.timing(heightAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: false,
-      }).start(({ finished }) => {
+      Animated.parallel([
+        Animated.timing(opacity, { toValue: 0, duration: 160, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: 8, duration: 160, useNativeDriver: true }),
+      ]).start(({ finished }) => {
         if (finished) setDisplayConfig(null);
       });
     }
-  }, [config, totalHeight, heightAnim]);
-
-  const accentColor = displayConfig
-    ? MODE_ACCENT_COLORS[displayConfig.mode]
-    : "#C9A02A";
-
-  const modeIcon = displayConfig ? MODE_ICONS[displayConfig.mode] : "headset";
+  }, [config, opacity, translateY]);
 
   const isDark = colors.background === "#0E0E0E";
-  const barBg = isDark ? "#1A1A1A" : "#FAF8F4";
-  const borderColor = isDark ? "#2A2A2A" : "#E2DDD6";
-  const controlBg = isDark ? "#252525" : "#FFFFFF";
+  const mode = displayConfig?.mode ?? "ustadh";
+  const accentColor = MODE_ACCENT_COLORS[mode];
+  const accentBgColor = isDark ? MODE_ACCENT_BG_DARK[mode] : MODE_ACCENT_BG_LIGHT[mode];
+  const modeIcon = MODE_ICONS[mode];
 
   return (
     <Animated.View
-      style={[
-        styles.wrapper,
-        {
-          height: heightAnim,
-          backgroundColor: barBg,
-          borderBottomColor: borderColor,
-        },
-      ]}
+      pointerEvents={config ? "auto" : "none"}
+      style={[styles.wrapper, { bottom, opacity, transform: [{ translateY }] }]}
     >
-      <View style={[styles.inner, { paddingTop: topInset }]}>
-        {/* Left accent strip */}
-        <View style={[styles.accentStrip, { backgroundColor: accentColor }]} />
-
-        {/* Mode icon */}
-        <Ionicons name={modeIcon} size={14} color={accentColor} style={styles.modeIcon} />
-
-        {/* Title + subtitle */}
-        <View style={styles.textArea}>
-          <Text
-            style={[styles.title, { color: colors.appText }]}
-            numberOfLines={1}
-          >
-            {displayConfig?.title}
+      {displayConfig && (
+        <View style={[styles.pill, { backgroundColor: accentBgColor }]}>
+          <Ionicons name={modeIcon} size={13} color={accentColor} />
+          <Text style={[styles.label, { color: accentColor }]} numberOfLines={1}>
+            {displayConfig.title}
           </Text>
-          {displayConfig?.subtitle ? (
-            <Text
-              style={[styles.subtitle, { color: colors.appTextMuted }]}
-              numberOfLines={1}
-            >
-              {displayConfig.subtitle}
-            </Text>
-          ) : null}
-        </View>
-
-        {/* Controls */}
-        <View style={styles.controls}>
           <TouchableOpacity
-            style={[styles.controlBtn, { backgroundColor: controlBg, borderColor }]}
-            onPress={onPlayPause}
-            activeOpacity={0.7}
+            onPress={onStop}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            activeOpacity={0.6}
           >
-            {isLoading ? (
-              <ActivityIndicator size="small" color={colors.appText} />
-            ) : (
-              <Ionicons
-                name={isPlaying ? "pause" : "play"}
-                size={14}
-                color={colors.appText}
-              />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.controlBtn, { backgroundColor: controlBg, borderColor }]}
-            onPress={onExit}
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="close" size={15} color={colors.appTextMuted} />
+            <Ionicons name="close" size={13} color={accentColor} />
           </TouchableOpacity>
         </View>
-      </View>
+      )}
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
-    overflow: "hidden",
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    zIndex: 45,
   },
-  inner: {
-    flex: 1,
+  pill: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 7,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  accentStrip: {
-    width: 3,
-    borderRadius: 2,
-    alignSelf: "stretch",
-    marginVertical: 14,
-  },
-  modeIcon: {
-    marginRight: 2,
-  },
-  textArea: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  title: {
+  label: {
     fontSize: 13,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
+    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
     letterSpacing: -0.1,
-  },
-  subtitle: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    marginTop: 2,
-  },
-  controls: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  controlBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
   },
 });

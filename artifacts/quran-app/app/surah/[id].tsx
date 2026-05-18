@@ -631,6 +631,12 @@ function EditSheet({
     { id: "wordByWord" as const, icon: "refresh-cw" as const, label: "Word by Word" },
   ];
 
+  const MODE_CARD_ACCENTS: Record<string, { color: string; bg: string }> = {
+    repetition: { color: "#7B5C3E", bg: "#F5F0EB" },
+    ustadh: { color: "#C9A02A", bg: "#FEF9EE" },
+    wordByWord: { color: "#E86A33", bg: "#FFF4EE" },
+  };
+
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <FullScreenPage title="Editing" onClose={onClose} scrollable={false}>
@@ -656,17 +662,24 @@ function EditSheet({
             {/* ── Listening Mode ── */}
             <Text style={es.secHeader}>Listening Mode</Text>
             <View style={es.modeRow}>
-              {modes.map((m) => (
-                <TouchableOpacity
-                  key={m.id}
-                  style={[es.modeCard, config.mode === m.id && es.modeCardActive]}
-                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); upd({ mode: m.id }); }}
-                  activeOpacity={0.75}
-                >
-                  <Feather name={m.icon} size={20} color={config.mode === m.id ? "#FFFFFF" : "#4A4A4A"} />
-                  <Text style={[es.modeCardText, config.mode === m.id && es.modeCardTextActive]}>{m.label}</Text>
-                </TouchableOpacity>
-              ))}
+              {modes.map((m) => {
+                const isActive = config.mode === m.id;
+                const accent = MODE_CARD_ACCENTS[m.id];
+                return (
+                  <TouchableOpacity
+                    key={m.id}
+                    style={[
+                      es.modeCard,
+                      isActive && { backgroundColor: accent.bg, borderWidth: 1.5, borderColor: accent.color },
+                    ]}
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); upd({ mode: m.id }); }}
+                    activeOpacity={0.75}
+                  >
+                    <Feather name={m.icon} size={20} color={isActive ? accent.color : "#4A4A4A"} />
+                    <Text style={[es.modeCardText, isActive && { color: accent.color }]}>{m.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             {/* ── Mode-specific controls ── */}
@@ -869,18 +882,12 @@ const es = StyleSheet.create({
     backgroundColor: "#F5F3F0",
     gap: 6,
   },
-  modeCardActive: {
-    backgroundColor: "#1A1A1A",
-  },
   modeCardText: {
     fontSize: 12,
     fontWeight: "600",
     color: "#4A4A4A",
     fontFamily: "Inter_600SemiBold",
     textAlign: "center",
-  },
-  modeCardTextActive: {
-    color: "#FFFFFF",
   },
   segRow: {
     flexDirection: "row",
@@ -1213,7 +1220,6 @@ export default function SurahScreen() {
   const [rangeVisible, setRangeVisible] = useState(false);
   const [repeatSectionVisible, setRepeatSectionVisible] = useState(false);
   const [repeatSectionInitialAyah, setRepeatSectionInitialAyah] = useState<number | null>(null);
-  const [sectionWordCount, setSectionWordCount] = useState<number | null>(null);
   const menuToggleLockRef = useRef(0);
   const lastMenuToggleRef = useRef(0);
   const touchMovedRef = useRef(false);
@@ -1570,29 +1576,22 @@ export default function SurahScreen() {
   const globalBarConfig = useMemo((): PlaybackBarConfig | null => {
     const { planMode } = audioState;
     if (planMode === "ustadh") {
-      return { mode: "ustadh", title: "Ustadh Mode", subtitle: "Repeating difficult words" };
+      return { mode: "ustadh", title: "Ustadh Mode" };
     }
     if (planMode === "word") {
-      return { mode: "wordByWord", title: "Word by Word", subtitle: "Repeating each word" };
+      const wx = playbackConfig.wordRepeat ?? 1;
+      return { mode: "wordByWord", title: `Word by Word • ${wx}x` };
     }
     if (planMode === "range" && audioState.repeatCount > 1) {
-      return { mode: "range", title: "Repetition Mode", subtitle: `${audioState.repeatCount}x per ayah` };
+      const count = audioState.repeatCount;
+      return { mode: "range", title: `Repetition • ${count === 999 ? "∞" : `${count}x`}` };
     }
     return null;
   }, [audioState.planMode, audioState.repeatCount, playbackConfig.wordRepeat]);
 
-  const handleGlobalBarPlayPause = useCallback(() => {
-    if (audioState.isPlaying) {
-      pauseAudio();
-    } else {
-      resumeAudio();
-    }
-  }, [audioState.isPlaying, pauseAudio, resumeAudio]);
-
   const handleGlobalBarExit = useCallback(() => {
     stopAudio().catch(() => {});
     setAyahRepeatCounts({});
-    setSectionWordCount(null);
     if (audioState.planMode === "ustadh" || audioState.planMode === "word") {
       resetSpecialPlaybackMode();
     }
@@ -2352,11 +2351,8 @@ export default function SurahScreen() {
       {/* ── Global Playback Bar ──────────────────────────────── */}
       <GlobalPlaybackBar
         config={globalBarConfig}
-        isPlaying={audioState.isPlaying}
-        isLoading={audioState.isLoading}
-        onPlayPause={handleGlobalBarPlayPause}
-        onExit={handleGlobalBarExit}
-        topInset={menuVisible ? 0 : insets.top}
+        bottom={menuVisible ? bottomBarHeight + 8 : insets.bottom + 16}
+        onStop={handleGlobalBarExit}
       />
 
       {/* ── Content ──────────────────────────────────────────── */}
@@ -2511,8 +2507,6 @@ export default function SurahScreen() {
         visible={audioState.planMode === "section"}
         repeatCount={audioState.repeatCount}
         currentRepeat={audioState.currentRepeat}
-        wordCount={sectionWordCount}
-        ayahNumber={audioState.currentAyah}
         bottom={menuVisible ? bottomBarHeight + 8 : insets.bottom + 16}
         onStop={handleGlobalBarExit}
       />
@@ -2553,7 +2547,6 @@ export default function SurahScreen() {
           const ayahN = repeatSectionInitialAyah ?? currentAyahForRange;
           if (!(await canPlayOfflineRange(ayahN, ayahN))) return;
           void totalWords;
-          setSectionWordCount(endWordIdx - startWordIdx + 1);
           playSection(surahNum, ayahN, startWordIdx + 1, endWordIdx + 1, repeatCount);
           setAyahRepeatCounts(prev => ({ ...prev, [ayahN]: repeatCount }));
           recordAyahRead(surahNum, ayahN);

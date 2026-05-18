@@ -127,7 +127,6 @@ export function RepeatSectionSheet({
           })}
           <TouchableOpacity onPress={handleSelectAll} activeOpacity={0.7} style={s.selectAllBtn}>
             <Feather name="maximize-2" size={14} color="#1A1A1A" />
-            <Text style={s.selectAllText}>Select whole ayah</Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -171,8 +170,6 @@ const s = StyleSheet.create({
   },
   wordChipActive: {
     backgroundColor: "#DCFCE7",
-    borderColor: "#16A34A",
-    borderStyle: "dashed",
   },
   wordChipStart: { borderTopLeftRadius: 14, borderBottomLeftRadius: 14 },
   wordChipEnd: { borderTopRightRadius: 14, borderBottomRightRadius: 14 },
@@ -195,8 +192,6 @@ const s = StyleSheet.create({
     marginTop: 16,
     marginBottom: 8,
   },
-  selectAllText: { fontSize: 12, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
-
   saveBtn: {
     flexDirection: "row",
     alignItems: "center",
