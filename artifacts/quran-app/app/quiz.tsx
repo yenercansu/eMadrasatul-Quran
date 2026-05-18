@@ -22,7 +22,6 @@ import { SURAH_DATA } from "@/constants/surahData";
 import { SwipeableRow } from "@/components/SwipeableRow";
 import { Pagination } from "@/components/Pagination";
 import { Tag } from "@/components/Tag";
-import { SegmentedToggle } from "@/components/SegmentedToggle";
 import { HifzSegmentedControl } from "@/components/hifz/HifzUI";
 import { ActionPill } from "@/components/ActionPill";
 import { QuestionNav } from "@/components/QuestionNav";
@@ -520,7 +519,7 @@ export default function QuizScreen() {
   const colors = useColors();
   const s = styles(colors);
   const insets = useSafeAreaInsets();
-  const { savedWords, savedAyahs, removeWord, toggleWordMemorized, recordQuizCompletion } = useQuran();
+  const { savedWords, savedAyahs, removeWord, removeAyah, toggleWordMemorized, recordQuizCompletion } = useQuran();
   const topPad = insets.top;
 
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -945,30 +944,38 @@ export default function QuizScreen() {
                   <Text style={s.infoText}>{ayahSearchQuery.trim() ? "No ayahs match your search." : tagFilter === "all" ? "No saved ayahs yet. Bookmark ayahs from the Reading screen to add them here." : "No ayahs match this filter."}</Text>
                 </View>
               ) : (
-                pagedAyahs.map(ayah => {
-                  const checked = selectedAyahIds.has(ayah.id);
-                  const juz = SURAH_DATA[ayah.surahNumber - 1]?.juz ?? 1;
-                  return (
-                    <TouchableOpacity
-                      key={ayah.id}
-                      style={[s.ayahCard2, colors.cardStyle, checked && { borderColor: colors.appSelectedPill, backgroundColor: colors.appCardPressed }]}
-                      onPress={() => toggleAyah(ayah.id)}
-                      activeOpacity={0.75}
-                    >
-                      <View style={[s.ayahBadge2, checked ? { backgroundColor: colors.appSelectedPill, borderColor: colors.appSelectedPill } : { backgroundColor: colors.appSoftPill, borderColor: colors.appSoftBorder }]}>
-                        {checked && <Feather name="check" size={12} color={colors.appText} />}
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <View style={s.ayahCard2Header}>
-                          <Text style={[s.ayahCard2Meta, { color: colors.appTextMuted }]}>{ayah.surahName.toUpperCase()} · {ayah.ayahNumber}</Text>
-                          <Text style={[s.ayahCard2Meta, { color: colors.appTextMuted }]}>JUZ {juz}</Text>
-                        </View>
-                        <Text style={[s.ayahCard2Arabic, { color: colors.appText }]}>{ayah.arabicText}</Text>
-                        <Text style={[s.ayahCard2Translation, { color: colors.appTextMuted }]} numberOfLines={2}>{ayah.translationText || "No translation saved"}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })
+                <>
+                  <Text style={[s.swipeHint, { color: colors.appTextMuted }]}>← swipe left to remove · swipe right to open →</Text>
+                  {pagedAyahs.map(ayah => {
+                    const checked = selectedAyahIds.has(ayah.id);
+                    const juz = SURAH_DATA[ayah.surahNumber - 1]?.juz ?? 1;
+                    return (
+                      <SwipeableRow
+                        key={ayah.id}
+                        onDelete={() => removeAyah(ayah.id)}
+                        onOpen={() => router.push(`/surah/${ayah.surahNumber}?ayah=${ayah.ayahNumber}` as any)}
+                      >
+                        <TouchableOpacity
+                          style={[s.ayahCard2, colors.cardStyle, checked && { borderColor: colors.appSelectedPill, backgroundColor: colors.appCardPressed }]}
+                          onPress={() => toggleAyah(ayah.id)}
+                          activeOpacity={0.75}
+                        >
+                          <View style={[s.ayahBadge2, checked ? { backgroundColor: colors.appSelectedPill, borderColor: colors.appSelectedPill } : { backgroundColor: colors.appSoftPill, borderColor: colors.appSoftBorder }]}>
+                            {checked && <Feather name="check" size={12} color={colors.appText} />}
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <View style={s.ayahCard2Header}>
+                              <Text style={[s.ayahCard2Meta, { color: colors.appTextMuted }]}>{ayah.surahName.toUpperCase()} · {ayah.ayahNumber}</Text>
+                              <Text style={[s.ayahCard2Meta, { color: colors.appTextMuted }]}>JUZ {juz}</Text>
+                            </View>
+                            <Text style={[s.ayahCard2Arabic, { color: colors.appText }]}>{ayah.arabicText}</Text>
+                            <Text style={[s.ayahCard2Translation, { color: colors.appTextMuted }]} numberOfLines={2}>{ayah.translationText || "No translation saved"}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      </SwipeableRow>
+                    );
+                  })}
+                </>
               )
             ) : (
               pagedWords.length === 0 ? (
@@ -977,27 +984,35 @@ export default function QuizScreen() {
                   <Text style={s.infoText}>{wordSearchQuery.trim() ? "No words match your search." : tagFilter === "all" ? "No saved words yet. Long-press individual words while reading to save them here." : "No words match this filter."}</Text>
                 </View>
               ) : (
-                pagedWords.map(word => {
-                  const checked = selectedWordIds.has(word.id);
-                  const surahName = SURAH_DATA[word.surahNumber - 1]?.englishName ?? `Surah ${word.surahNumber}`;
-                  return (
-                    <TouchableOpacity
-                      key={word.id}
-                      style={[s.wordSelectCard, colors.cardStyle, checked && { borderColor: colors.appSelectedPill, backgroundColor: colors.appCardPressed }]}
-                      onPress={() => toggleWord(word.id)}
-                      activeOpacity={0.75}
-                    >
-                      <View style={[s.ayahBadge2, checked ? { backgroundColor: colors.appSelectedPill, borderColor: colors.appSelectedPill } : { backgroundColor: colors.appSoftPill, borderColor: colors.appSoftBorder }]}>
-                        {checked && <Feather name="check" size={12} color={colors.appText} />}
-                      </View>
-                      <View style={s.wordSelectInfo}>
-                        <Text style={[s.wordSelectMeta, { color: colors.appTextMuted }]}>{surahName.toUpperCase()} · AYAH {word.ayahNumber}</Text>
-                        <Text style={[s.wordSelectArabic, { color: colors.appText }]}>{word.arabic}</Text>
-                        <Text style={[s.wordSelectTranslation, { color: colors.appTextMuted }]} numberOfLines={1}>{word.translation || "No translation saved"}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })
+                <>
+                  <Text style={[s.swipeHint, { color: colors.appTextMuted }]}>← swipe left to remove · swipe right to open →</Text>
+                  {pagedWords.map(word => {
+                    const checked = selectedWordIds.has(word.id);
+                    const surahName = SURAH_DATA[word.surahNumber - 1]?.englishName ?? `Surah ${word.surahNumber}`;
+                    return (
+                      <SwipeableRow
+                        key={word.id}
+                        onDelete={() => removeWord(word.id)}
+                        onOpen={() => router.push(`/surah/${word.surahNumber}?ayah=${word.ayahNumber}` as any)}
+                      >
+                        <TouchableOpacity
+                          style={[s.wordSelectCard, colors.cardStyle, checked && { borderColor: colors.appSelectedPill, backgroundColor: colors.appCardPressed }]}
+                          onPress={() => toggleWord(word.id)}
+                          activeOpacity={0.75}
+                        >
+                          <View style={[s.ayahBadge2, checked ? { backgroundColor: colors.appSelectedPill, borderColor: colors.appSelectedPill } : { backgroundColor: colors.appSoftPill, borderColor: colors.appSoftBorder }]}>
+                            {checked && <Feather name="check" size={12} color={colors.appText} />}
+                          </View>
+                          <View style={s.wordSelectInfo}>
+                            <Text style={[s.wordSelectMeta, { color: colors.appTextMuted }]}>{surahName.toUpperCase()} · AYAH {word.ayahNumber}</Text>
+                            <Text style={[s.wordSelectArabic, { color: colors.appText }]}>{word.arabic}</Text>
+                            <Text style={[s.wordSelectTranslation, { color: colors.appTextMuted }]} numberOfLines={1}>{word.translation || "No translation saved"}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      </SwipeableRow>
+                    );
+                  })}
+                </>
               )
             )}
           </ScrollView>
@@ -1078,7 +1093,7 @@ export default function QuizScreen() {
           <View style={{ width: 38 }} />
         </View>
         <View style={s.cardTabsWrap}>
-          <SegmentedToggle
+          <HifzSegmentedControl
             options={[
               { value: "active" as const, label: `Active (${activeCardCount})` },
               { value: "memorized" as const, label: `Memorized (${memorizedCardCount})` },
@@ -1451,6 +1466,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     infoText: { flex: 1, fontSize: 13, color: colors.appTextMuted, fontFamily: "Inter_400Regular", lineHeight: 20 },
     selectionContent2: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24 },
+    swipeHint: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 6, marginTop: 4 },
     ayahCard2: {
       flexDirection: "row",
       gap: 12,
