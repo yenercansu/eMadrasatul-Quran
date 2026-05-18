@@ -21,6 +21,7 @@ import { ActionPill } from "@/components/ActionPill";
 import { SelectChip } from "@/components/SelectChip";
 import { ValuePill } from "@/components/ValuePill";
 import { useQuran } from "@/contexts/QuranContext";
+import { HifzStepper } from "@/components/hifz/HifzUI";
 
 const TOTAL_QURAN_AYAHS = 6236;
 
@@ -45,10 +46,21 @@ const DESIRED_CAPACITY_OPTIONS = [
   { label: "3 pages daily", sublabel: "around 30-45 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(30, 45) },
 ] as const;
 
+function scaleCapacityByDays<T extends { label: string; sublabel: string; ayahsPerWeek: number }>(
+  options: readonly T[],
+  daysPerWeek: number
+) {
+  const safeDays = Math.max(1, Math.min(7, daysPerWeek));
+  return options.map((option) => ({
+    ...option,
+    ayahsPerWeek: Math.max(1, Math.round((option.ayahsPerWeek / 7) * safeDays)),
+  }));
+}
 
 export type MemorizationStyle = "steady" | "gradual";
 export type MeasurementStyle = "visual" | "ayah";
 export type GradualIncreaseStyle = "gentle" | "medium" | "fast";
+export type PaceRhythm = "gentle" | "steady" | "deep";
 
 const INCREASE_STYLE_OPTIONS: Array<{
   value: GradualIncreaseStyle;
@@ -116,6 +128,14 @@ function formatWeeks(weeks: number): string {
   const y = weeks / 52;
   const rounded = Math.round(y * 2) / 2;
   return `${rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1)} year${rounded === 1 ? "" : "s"}`;
+}
+
+function getIslamicMonthName(date: Date) {
+  try {
+    return new Intl.DateTimeFormat("en-u-ca-islamic", { month: "long" }).format(date);
+  } catch {
+    return "";
+  }
 }
 
 function calculateWeeksNeeded(
@@ -215,6 +235,10 @@ export interface AyahRangeResult {
   gradualIncreaseStyle?: GradualIncreaseStyle;
   gradualWeeklyPlan?: number[];
   peakCapacityPerWeek?: number;
+  hifzDaysPerWeek?: number;
+  targetHifzDaysPerWeek?: number;
+  gradualDaysPerWeekPlan?: number[];
+  paceRhythm?: PaceRhythm;
 }
 
 interface Props {
@@ -224,6 +248,13 @@ interface Props {
   initialSelection?: AyahRangeResult;
   startAtWeeklyGoal?: boolean;
   startAtPaceDate?: boolean;
+  startAtAyahSelection?: boolean;
+  initialSurahNumber?: number;
+  initialJuz?: number;
+  modalAnimationType?: "none" | "slide" | "fade";
+  paceDaysPerWeek?: number;
+  paceTargetDaysPerWeek?: number;
+  paceRhythm?: PaceRhythm;
   confirmLabel?: string;
   onConfirm: (result: AyahRangeResult) => void;
   onClose: () => void;
@@ -236,6 +267,13 @@ export function AyahRangeModal({
   initialSelection,
   startAtWeeklyGoal = false,
   startAtPaceDate = false,
+  startAtAyahSelection = false,
+  initialSurahNumber,
+  initialJuz,
+  modalAnimationType = "slide",
+  paceDaysPerWeek = 7,
+  paceTargetDaysPerWeek = paceDaysPerWeek,
+  paceRhythm = "gentle",
   confirmLabel = "Start Memorizing →",
   onConfirm,
   onClose,
@@ -265,35 +303,51 @@ export function AyahRangeModal({
   const [lastAyah, setLastAyah] = useState<AyahRef | null>(null);
   const [activePhase, setActivePhase] = useState<"first" | "last">("first");
   const [resetVisible, setResetVisible] = useState(false);
+  const normalizedPaceDays = Math.max(1, Math.min(7, paceDaysPerWeek));
+  const normalizedTargetPaceDays = Math.max(normalizedPaceDays, Math.min(7, paceTargetDaysPerWeek));
+  const capacityOptions = useMemo(
+    () => scaleCapacityByDays(VISUAL_CAPACITY_OPTIONS, normalizedPaceDays),
+    [normalizedPaceDays],
+  );
+  const desiredCapacityOptions = useMemo(
+    () => scaleCapacityByDays(DESIRED_CAPACITY_OPTIONS, paceRhythm === "steady" ? normalizedPaceDays : normalizedTargetPaceDays),
+    [normalizedPaceDays, normalizedTargetPaceDays, paceRhythm],
+  );
 
   useEffect(() => {
     if (visible) {
-      const initialStep = (startAtPaceDate ? 0 : startAtWeeklyGoal && initialSelection ? 3 : 1) as 0 | 1 | 2 | 3;
+      const initialStep = (startAtPaceDate ? 0 : startAtWeeklyGoal && initialSelection ? 3 : startAtAyahSelection ? 2 : 1) as 0 | 1 | 2 | 3;
       setStep(initialStep);
       setMaxStepReached(initialStep);
       setPaceStep(0);
       setPaceRangeTab(path);
       setSearch("");
-      setSelectedSurah(initialSelection ? SURAH_DATA[initialSelection.first.surahNumber - 1] ?? null : null);
-      setSelectedJuz(initialSelection?.juz ?? null);
-      setFirstAyah(initialSelection?.first ?? null);
-      setLastAyah(initialSelection?.last ?? null);
+      setSelectedSurah(
+        initialSurahNumber
+          ? SURAH_DATA[initialSurahNumber - 1] ?? null
+          : initialSelection
+          ? SURAH_DATA[initialSelection.first.surahNumber - 1] ?? null
+          : null
+      );
+      setSelectedJuz(initialJuz ?? initialSelection?.juz ?? null);
+      setFirstAyah(startAtAyahSelection ? null : initialSelection?.first ?? null);
+      setLastAyah(startAtAyahSelection ? null : initialSelection?.last ?? null);
       setActivePhase("first");
       const initialAyahsPerWeek = initialSelection?.ayahsPerWeek ?? 10;
       const initialPeak = initialSelection?.peakCapacityPerWeek ?? initialSelection?.targetAyahsPerWeek;
-      const fallbackPeak = DESIRED_CAPACITY_OPTIONS.find((option) => option.ayahsPerWeek > initialAyahsPerWeek)?.ayahsPerWeek
-        ?? DESIRED_CAPACITY_OPTIONS[DESIRED_CAPACITY_OPTIONS.length - 1].ayahsPerWeek;
+      const fallbackPeak = desiredCapacityOptions.find((option) => option.ayahsPerWeek > initialAyahsPerWeek)?.ayahsPerWeek
+        ?? desiredCapacityOptions[desiredCapacityOptions.length - 1].ayahsPerWeek;
       const validPeak = initialPeak && initialPeak > initialAyahsPerWeek ? initialPeak : fallbackPeak;
       setAyahsPerWeek(initialAyahsPerWeek);
-      setMemorizationStyle(startAtPaceDate ? "gradual" : initialSelection?.memorizationStyle ?? "steady");
+      setMemorizationStyle(startAtPaceDate ? (paceRhythm === "steady" ? "steady" : "gradual") : initialSelection?.memorizationStyle ?? "steady");
       setGradualIncreaseStyle(initialSelection?.gradualIncreaseStyle ?? "medium");
       setPeakCapacityPerWeek(validPeak);
       setPaceCurrentSelected(!!initialSelection);
       setPaceDesiredSelected(!!initialSelection && validPeak > initialAyahsPerWeek);
-      setPaceGrowthSelected(!!initialSelection?.gradualIncreaseStyle);
+      setPaceGrowthSelected(paceRhythm === "steady" || !!initialSelection?.gradualIncreaseStyle);
       setResetVisible(false);
     }
-  }, [visible, startAtPaceDate, startAtWeeklyGoal, initialSelection]);
+  }, [visible, startAtPaceDate, startAtWeeklyGoal, startAtAyahSelection, initialSelection, initialSurahNumber, initialJuz, desiredCapacityOptions, paceRhythm]);
 
   const advanceStep = (target: 0 | 1 | 2 | 3) => {
     setStep(target);
@@ -488,6 +542,27 @@ export function AyahRangeModal({
     });
   }, [ayahsPerWeek, gradualIncreaseStyle, memorizationStyle, peakCapacityPerWeek, autoWeeksNeeded, startAtPaceDate]);
 
+  const gradualDaysPerWeekPlan = useMemo(() => {
+    if (!startAtPaceDate || !autoWeeksNeeded) return [];
+    if (memorizationStyle === "steady" || paceRhythm === "steady") {
+      return Array.from({ length: autoWeeksNeeded }, () => normalizedPaceDays);
+    }
+    const rampWeeks = getPeakRampWeeks(normalizedPaceDays, normalizedTargetPaceDays, gradualIncreaseStyle);
+    return Array.from({ length: autoWeeksNeeded }, (_, index) => {
+      if (index >= rampWeeks - 1) return normalizedTargetPaceDays;
+      const t = rampWeeks <= 1 ? 1 : index / (rampWeeks - 1);
+      return Math.max(normalizedPaceDays, Math.round(normalizedPaceDays + (normalizedTargetPaceDays - normalizedPaceDays) * t));
+    });
+  }, [
+    autoWeeksNeeded,
+    gradualIncreaseStyle,
+    memorizationStyle,
+    normalizedPaceDays,
+    normalizedTargetPaceDays,
+    paceRhythm,
+    startAtPaceDate,
+  ]);
+
   const autoCapacity = startAtPaceDate && autoWeeksNeeded
     ? memorizationStyle === "gradual"
       ? gradualWeeklyPlan.reduce((sum, week) => sum + week, 0)
@@ -503,8 +578,7 @@ export function AyahRangeModal({
       })[0]
     : ayahsPerWeek;
 
-  const capacityOptions = VISUAL_CAPACITY_OPTIONS;
-  const peakOptions = DESIRED_CAPACITY_OPTIONS.filter((option) => option.ayahsPerWeek > ayahsPerWeek);
+  const peakOptions = desiredCapacityOptions.filter((option) => option.ayahsPerWeek > ayahsPerWeek);
   const hasDesiredOptions = peakOptions.length > 0;
 
   const isAyahAfterFirst = (surahNum: number, ayahNum: number, first: AyahRef): boolean => {
@@ -639,6 +713,10 @@ export function AyahRangeModal({
       gradualIncreaseStyle: memorizationStyle === "gradual" ? gradualIncreaseStyle : undefined,
       gradualWeeklyPlan: memorizationStyle === "gradual" ? gradualWeeklyPlan : undefined,
       peakCapacityPerWeek: memorizationStyle === "gradual" ? peakCapacityPerWeek : undefined,
+      hifzDaysPerWeek: startAtPaceDate ? normalizedPaceDays : undefined,
+      targetHifzDaysPerWeek: startAtPaceDate ? (paceRhythm === "steady" ? normalizedPaceDays : normalizedTargetPaceDays) : undefined,
+      gradualDaysPerWeekPlan: startAtPaceDate ? gradualDaysPerWeekPlan : undefined,
+      paceRhythm: startAtPaceDate ? paceRhythm : undefined,
     });
     onClose();
   };
@@ -726,57 +804,65 @@ export function AyahRangeModal({
       const activeLabels = startAtPaceDate ? paceOnlyLabels : labels;
       const activeStep = startAtPaceDate ? paceOnlyStep : effectiveStep;
       return (
-        <View style={s.stepProgress}>
-          <View style={s.stepProgressTrack}>
-            {activeLabels.map((_, i) => (
-              <View key={i} style={[s.stepSeg, i <= activeStep && s.stepSegFilled]} />
-            ))}
-          </View>
-          <View style={[s.stepLabels, { justifyContent: "space-between" }]}>
-            {activeLabels.map((label, i) => (
-              <Text key={i} style={[s.stepLabelText, i === activeStep && s.stepLabelActive]}>
-                {label}
-              </Text>
-            ))}
-          </View>
-        </View>
+        <HifzStepper
+          labels={activeLabels}
+          activeIndex={activeStep}
+          onStepPress={(index) => {
+            if (index >= activeStep) return;
+            if (step === 0) {
+              setPaceStep(index as 0 | 1 | 2 | 3);
+              return;
+            }
+            setStep(0);
+            setPaceStep(index as 0 | 1 | 2 | 3);
+          }}
+        />
       );
     }
 
-    const fillCount = step;
     const labels = [path === "juz" ? "Juz" : "Surah", "Range", "Weekly Goal"];
-    const labelAlignments: Array<"flex-start" | "center" | "flex-end"> = ["flex-start", "center", "flex-end"];
-
     return (
-      <View style={s.stepProgress}>
-        <View style={s.stepProgressTrack}>
-          <View style={[s.stepSeg, s.stepSegFilled]} />
-          <View style={[s.stepSeg, fillCount >= 2 && s.stepSegFilled]} />
-          <View style={[s.stepSeg, fillCount >= 3 && s.stepSegFilled]} />
-        </View>
-        <View style={s.stepLabels}>
-          {([0, 1, 2] as const).map((i) => {
-            const targetStep = (i + 1) as 0 | 1 | 2 | 3;
-            const isActive = step - 1 === i;
-            const canNav = targetStep !== step && targetStep <= maxStepReached;
-            return (
-              <TouchableOpacity
-                key={i}
-                style={[s.stepLabelCell, { alignItems: labelAlignments[i] }]}
-                onPress={canNav ? () => setStep(targetStep) : undefined}
-                activeOpacity={canNav ? 0.55 : 1}
-                disabled={!canNav}
-              >
-                <Text style={[s.stepLabelText, isActive && s.stepLabelActive, canNav && s.stepLabelTappable]}>
-                  {labels[i]}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
+      <HifzStepper
+        labels={labels}
+        activeIndex={Math.max(0, step - 1)}
+        onStepPress={(index) => {
+          const targetStep = (index + 1) as 0 | 1 | 2 | 3;
+          if (targetStep < step && targetStep <= maxStepReached) {
+            setStep(targetStep);
+          }
+        }}
+      />
     );
   };
+
+  const formatPaceOptionLabel = (label: string) => {
+    if (label === "1 ayah every few days") return "I am just starting";
+    if (label === "1 small portion daily") return "~1 ayah/day";
+    if (label === "¼ page daily") return "~3 ayahs/day";
+    if (label === "½ page daily") return "~½ page/day";
+    if (label === "1 page daily") return "~1 page/day";
+    if (label === "2 pages daily") return "~2 pages/day";
+    if (label === "3 pages daily") return "3 pages/day";
+    return label.replace(" daily", "/day");
+  };
+
+  const renderPaceChoice = ({
+    label,
+    selected,
+    onPress,
+  }: {
+    label: string;
+    selected: boolean;
+    onPress: () => void;
+  }) => (
+    <TouchableOpacity
+      style={[s.paceChoiceCard, selected && s.paceChoiceCardSelected]}
+      onPress={onPress}
+      activeOpacity={0.82}
+    >
+      <Text style={[s.paceChoiceText, selected && s.paceChoiceTextSelected]}>{label}</Text>
+    </TouchableOpacity>
+  );
 
   // ── Step 0: Pace goal sub-steps ───────────────────────────────────────────
   const renderPaceDate = () => {
@@ -799,31 +885,33 @@ export function AyahRangeModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={s.paceDateContent}
           >
-            <Text style={s.paceStepHeadline}>What feels sustainable right now?</Text>
-            <Text style={s.paceStepSub}>Choose a gentle starting point. You can grow from here.</Text>
-            <View style={s.peakCapacityGrid}>
+            <Text style={s.paceStepHeadline}>What are you already consistently memorizing?</Text>
+            <Text style={s.paceStepSub}>
+              Don't choose your ideal pace.{"\n"}
+              <Text style={s.paceStepSubStrong}>Choose your real current pace.</Text>
+            </Text>
+            <View style={s.paceChoiceStack}>
               {capacityOptions.map((option) => {
-                return (
-                  <SelectChip
-                    key={option.label}
-                    label={option.label}
-                    sublabel={option.sublabel}
-	                    selected={ayahsPerWeek === option.ayahsPerWeek}
-	                    onPress={() => {
+                return renderPaceChoice({
+                  label: formatPaceOptionLabel(option.label),
+                  selected: ayahsPerWeek === option.ayahsPerWeek,
+                  onPress: () => {
                         const selectedCapacity = option.ayahsPerWeek;
                         if (selectedCapacity == null) return;
 	                      setAyahsPerWeek(selectedCapacity);
-	                      const nextDesired = DESIRED_CAPACITY_OPTIONS.find((desired) =>
+	                      const nextDesired = desiredCapacityOptions.find((desired) =>
 	                        desired.ayahsPerWeek != null && desired.ayahsPerWeek > selectedCapacity
 	                      );
-	                      setPeakCapacityPerWeek(nextDesired?.ayahsPerWeek ?? DESIRED_CAPACITY_OPTIONS[DESIRED_CAPACITY_OPTIONS.length - 1].ayahsPerWeek);
+	                      setPeakCapacityPerWeek(
+                          paceRhythm === "steady"
+                            ? selectedCapacity
+                            : nextDesired?.ayahsPerWeek ?? desiredCapacityOptions[desiredCapacityOptions.length - 1].ayahsPerWeek
+                        );
                         setPaceCurrentSelected(true);
-                        setPaceDesiredSelected(false);
-                        setPaceGrowthSelected(false);
-	                    }}
-                    flex
-                  />
-                );
+                        setPaceDesiredSelected(paceRhythm === "steady");
+                        setPaceGrowthSelected(paceRhythm === "steady");
+                  },
+                });
               })}
             </View>
           </ScrollView>
@@ -834,7 +922,11 @@ export function AyahRangeModal({
               onPress={() => {
                 if (!paceCurrentSelected) return;
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setPaceStep(1);
+                if (paceRhythm === "steady") {
+                  advanceStep(3);
+                } else {
+                  setPaceStep(1);
+                }
               }}
               disabled={!paceCurrentSelected}
               activeOpacity={0.85}
@@ -861,7 +953,7 @@ export function AyahRangeModal({
       return acc;
     }, []);
     const peakPreviewMax = Math.max(1, peakCapacityPerWeek, ...peakPreviewBars.map((item) => item.count));
-    const selectedPeakLabel = DESIRED_CAPACITY_OPTIONS.find((option) => option.ayahsPerWeek === peakCapacityPerWeek)?.label
+    const selectedPeakLabel = desiredCapacityOptions.find((option) => option.ayahsPerWeek === peakCapacityPerWeek)?.label
       ?? `${Math.round(peakCapacityPerWeek / 7)}/day peak`;
     if (paceStep === 1) return (
       <>
@@ -880,26 +972,21 @@ export function AyahRangeModal({
           showsVerticalScrollIndicator={false}
           contentContainerStyle={s.paceDateContent}
         >
-          <Text style={s.paceStepHeadline}>I would like to eventually memorize...</Text>
-          <Text style={s.paceStepSub}>Choose the capacity you want to grow into over time.</Text>
+          <Text style={s.paceStepHeadline}>Which Hifz speed would you like to reach?</Text>
+          <Text style={s.paceStepSub}>Your pace can always grow. Start with an honest aspiration.</Text>
           {hasDesiredOptions ? (
-            <View style={s.peakCapacityGrid}>
+            <View style={s.paceChoiceStack}>
               {peakOptions.map((option) => {
                 const selected = peakCapacityPerWeek === option.ayahsPerWeek && option.ayahsPerWeek > ayahsPerWeek;
-                return (
-                  <SelectChip
-                    key={option.label}
-                    label={option.label}
-                    sublabel={"sublabel" in option ? option.sublabel : undefined}
-                    selected={selected}
-                    onPress={() => {
+                return renderPaceChoice({
+                  label: formatPaceOptionLabel(option.label).replace(/^~/, ""),
+                  selected,
+                  onPress: () => {
                       setPeakCapacityPerWeek(option.ayahsPerWeek);
                       setPaceDesiredSelected(true);
                       setPaceGrowthSelected(false);
-                    }}
-                    flex
-                  />
-                );
+                  },
+                });
               })}
             </View>
           ) : (
@@ -908,6 +995,16 @@ export function AyahRangeModal({
               <Text style={s.rangeCapText}>You are already at the highest preset.</Text>
             </View>
           )}
+          <View style={s.ultimateIntention}>
+            <View style={s.ultimateCheck}>
+              <Feather name="check" size={14} color="#FFFFFF" strokeWidth={2.4} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.ultimateLabel}>Ultimate Intention</Text>
+              <Text style={s.ultimateTitle}>Complete full Quran over time</Text>
+              <Text style={s.ultimateSub}>Your pace can evolve as you grow.</Text>
+            </View>
+          </View>
         </ScrollView>
         <View style={[s.confirmWrap, { paddingBottom: insets.bottom + 16 }]}>
           <TouchableOpacity
@@ -945,41 +1042,57 @@ export function AyahRangeModal({
           contentContainerStyle={s.paceDateContent}
         >
           <Text style={s.paceStepHeadline}>How should we build you up?</Text>
-          <Text style={s.paceStepSub}>This is the bridge between your current capacity and your peak goal.</Text>
+          <Text style={s.paceStepSub}>The bridge between where you are and where you want to be.</Text>
           <View style={s.increaseChips}>
-            {INCREASE_STYLE_OPTIONS.map((option) => (
-              <SelectChip
-                key={option.value}
-                label={option.label}
-                sublabel={option.helper}
-                selected={gradualIncreaseStyle === option.value}
-                onPress={() => {
+            {INCREASE_STYLE_OPTIONS.map((option) => {
+              const selected = gradualIncreaseStyle === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[s.growthChoiceCard, selected && s.growthChoiceCardSelected]}
+                  onPress={() => {
                   setGradualIncreaseStyle(option.value);
                   setPaceGrowthSelected(true);
                 }}
-                flex
-              />
-            ))}
+                  activeOpacity={0.82}
+                >
+                  <Text style={[s.growthChoiceTitle, selected && s.growthChoiceTitleSelected]}>
+                    {option.value === "gentle" ? "Slow &\nGentle" : option.label}
+                  </Text>
+                  <Text style={[s.growthChoiceSub, selected && s.growthChoiceSubSelected]}>{option.helper}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
           <View style={s.weekPreview}>
-            <View style={s.paceSectionTopRow}>
-              <Text style={s.gradualLabel}>PEAK TIMELINE</Text>
-              <ValuePill variant="soft" label={formatWeeks(peakRampWeeks)} />
+            <View style={s.timelineRow}>
+              <View style={[s.timelineDot, s.timelineDotActive]} />
+              <Text style={s.timelineLabel}>Today</Text>
+              <Text style={s.timelineValue}>{formatPaceOptionLabel(capacityOptions.find(o => o.ayahsPerWeek === ayahsPerWeek)?.label ?? "")}</Text>
             </View>
-            <View style={s.weekPreviewBars}>
-              {peakPreviewBars.map((item) => (
-                <View key={`${item.week}-${item.count}`} style={s.weekPreviewItem}>
-                  <View style={s.weekPreviewBarWrap}>
-                    <View style={[s.weekPreviewBar, { height: Math.max(6, Math.round((item.count / peakPreviewMax) * 36)) }]} />
-                  </View>
-                  <Text style={s.weekPreviewLabel}>W{item.week}</Text>
-                  <Text style={s.weekPreviewCount}>{item.count}</Text>
-                </View>
-              ))}
+            <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color="#C8C0B0" /></View>
+            <View style={s.timelineRow}>
+              <View style={s.timelineDot} />
+              <Text style={s.timelineLabel}>In ~{formatWeeks(Math.max(1, Math.round(peakRampWeeks / 2)))}</Text>
+              <Text style={s.timelineValue}>{formatPaceOptionLabel("½ page daily")}</Text>
             </View>
-            <Text style={s.weekPreviewText}>
-              {INCREASE_STYLE_OPTIONS.find((option) => option.value === gradualIncreaseStyle)?.label} reaches {selectedPeakLabel} in {formatWeeks(peakRampWeeks)}.
-              {" "}This is an approximate progression.
+            <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color="#C8C0B0" /></View>
+            <View style={s.timelineRow}>
+              <View style={s.timelineDot} />
+              <Text style={s.timelineLabel}>In ~{formatWeeks(peakRampWeeks)}</Text>
+              <Text style={s.timelineValue}>{selectedPeakLabel.replace(" daily", "/day")}</Text>
+            </View>
+            <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color="#C8C0B0" /></View>
+            <View style={s.timelineRow}>
+              <View style={[s.timelineDot, s.timelineDotMuted]} />
+              <Text style={s.timelineLabel}>Estimated completion</Text>
+              <Text style={[s.timelineValue, s.timelineValueMuted]}>{autoWeeksNeeded ? formatWeeks(autoWeeksNeeded) : "—"}</Text>
+            </View>
+          </View>
+          <View style={s.whyBox}>
+            <Text style={s.whyTitle}>WHY THIS WORKS</Text>
+            <Text style={s.whyText}>
+              {INCREASE_STYLE_OPTIONS.find((option) => option.value === gradualIncreaseStyle)?.label} growth reduces burnout while steadily increasing memorization capacity.
             </Text>
           </View>
         </ScrollView>
@@ -1295,6 +1408,10 @@ export function AyahRangeModal({
         <View style={[s.header, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity
             onPress={() => {
+              if (startAtAyahSelection) {
+                onClose();
+                return;
+              }
               if (startAtPaceDate) {
                 setFirstAyah(null);
                 setLastAyah(null);
@@ -1673,7 +1790,7 @@ export function AyahRangeModal({
 
         <View style={[s.confirmWrap, { paddingBottom: insets.bottom + 16 }]}>
           <TouchableOpacity style={s.confirmBtn} onPress={handleFinalConfirm} activeOpacity={0.85}>
-            <Text style={s.confirmBtnText}>{confirmLabel}</Text>
+            <Text style={s.confirmBtnText}>{startAtPaceDate ? "Begin My Hifz Journey →" : confirmLabel}</Text>
           </TouchableOpacity>
         </View>
       </>
@@ -1684,8 +1801,14 @@ export function AyahRangeModal({
   const renderForecast = () => {
     const weeksNeeded = autoWeeksNeeded ?? 0;
     const timeLabel = formatWeeks(weeksNeeded);
+    const completionDate = new Date();
+    completionDate.setDate(completionDate.getDate() + weeksNeeded * 7);
+    const completionMonth = getIslamicMonthName(completionDate);
+    const completionLabel = completionMonth.toLowerCase().includes("ramadan")
+      ? `Ramadan ${completionDate.getFullYear()}`
+      : `~${timeLabel}`;
     const peakRampWeeks = getPeakRampWeeks(ayahsPerWeek, peakCapacityPerWeek, gradualIncreaseStyle);
-    const selectedPeakLabel = DESIRED_CAPACITY_OPTIONS.find((option) => option.ayahsPerWeek === peakCapacityPerWeek)?.label
+    const selectedPeakLabel = desiredCapacityOptions.find((option) => option.ayahsPerWeek === peakCapacityPerWeek)?.label
       ?? `${Math.round(peakCapacityPerWeek / 7)} ayahs/day`;
 
     return (
@@ -1708,47 +1831,46 @@ export function AyahRangeModal({
         </View>
         {renderProgressBar()}
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={s.paceDateContent}>
-          <View style={s.rangeCapCard}>
-            <Text style={s.rangeCapTitle}>OPEN QURAN PATH</Text>
-            <Text style={s.rangeCapText}>
-              Choose and memorize any ayah, in any Surah, at any time.
-            </Text>
+          <Text style={s.paceStepHeadline}>Your Hifz Path</Text>
+          <Text style={s.paceStepSub}>Here's what your journey looks like.</Text>
+
+          <View style={s.forecastInfoCard}>
+            <Text style={s.forecastInfoLabel}>DAILY STARTING PACE</Text>
+            <Text style={s.forecastInfoValue}>{formatPaceOptionLabel(capacityOptions.find(o => o.ayahsPerWeek === ayahsPerWeek)?.label ?? "")}</Text>
+            <Text style={s.forecastInfoSub}>Starting where you are. Growing from here.</Text>
+          </View>
+
+          <View style={s.forecastInfoCard}>
+            <Text style={s.forecastInfoLabel}>EXPECTED GROWTH</Text>
+            <Text style={s.forecastInfoValue}>{selectedPeakLabel.replace(" daily", "/day")}</Text>
+            <Text style={s.forecastInfoSub}>reached in approximately {formatWeeks(peakRampWeeks)}</Text>
           </View>
 
           <View style={s.forecastCard}>
-            <Text style={s.forecastLabel}>FULL QURAN TIMELINE</Text>
-            <Text style={s.forecastTime}>{timeLabel}</Text>
-            <Text style={s.forecastSub}>
-              {`Starting ${ayahsPerWeek}/wk · growing to ${Math.round(peakCapacityPerWeek / 7)}/day peak`}
-            </Text>
-          </View>
-
-          <View style={s.rangeCapCard}>
-            <Text style={s.rangeCapTitle}>ESTIMATED MEMORIZATION GROWTH</Text>
-            <Text style={s.rangeCapText}>
-              At your selected pace, you may reach <Text style={s.rangeCapBold}>{selectedPeakLabel}</Text> within{" "}
-              <Text style={s.rangeCapBold}>{formatWeeks(peakRampWeeks)}</Text>.
-            </Text>
+            <Text style={s.forecastLabel}>ESTIMATED COMPLETION</Text>
+            <Text style={s.forecastTime}>{completionLabel}</Text>
+            <Text style={s.forecastDate}>Inshallah</Text>
+            <Text style={s.forecastSub}>{timeLabel} at your selected pace</Text>
           </View>
 
           <View style={[s.insightBox, s.insightBoxFullHifz]}>
             <View style={s.insightHeader}>
               <Feather
-                name="award"
+                name="rotate-ccw"
                 size={14}
                 color="#16A34A"
               />
-              <Text style={[s.insightTitle, s.insightTitleFullHifz]}>Complete Hifz</Text>
+              <Text style={[s.insightTitle, s.insightTitleFullHifz]}>Built-in Revision Support</Text>
             </View>
             <Text style={[s.insightText, s.insightTextFullHifz]}>
-              Inshallah, this plan can support your full Hifz journey.
+              Your memorized ayahs will continue to return for review as you progress.
             </Text>
           </View>
         </ScrollView>
 
         <View style={[s.confirmWrap, { paddingBottom: insets.bottom + 16 }]}>
           <TouchableOpacity style={s.confirmBtn} onPress={handleFinalConfirm} activeOpacity={0.85}>
-            <Text style={s.confirmBtnText}>{confirmLabel}</Text>
+            <Text style={s.confirmBtnText}>Begin My Hifz Journey →</Text>
           </TouchableOpacity>
         </View>
       </>
@@ -1756,7 +1878,7 @@ export function AyahRangeModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} animationType={modalAnimationType} onRequestClose={onClose}>
       <View style={s.sheet}>
         {step === 0
           ? renderPaceDate()
@@ -1798,15 +1920,14 @@ export function AyahRangeModal({
 }
 
 const s = StyleSheet.create({
-  sheet: { flex: 1, backgroundColor: "#FDFBF7" },
+  sheet: { flex: 1, backgroundColor: "#F5F0E8" },
 
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 8,
     paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E7E5DB",
+    backgroundColor: "#F5F0E8",
   },
   navBtn: {
     width: 64,
@@ -1816,15 +1937,15 @@ const s = StyleSheet.create({
   },
   screenTitle: {
     flex: 1,
-    fontSize: 17,
+    fontSize: 20,
     fontWeight: "700",
     color: "#1A1A1A",
     fontFamily: "Inter_700Bold",
     textAlign: "center",
   },
   cancelText: {
-    fontSize: 15,
-    color: "#71717A",
+    fontSize: 16,
+    color: "#8A8070",
     fontFamily: "Inter_400Regular",
     textAlign: "right",
   },
@@ -2065,33 +2186,33 @@ const s = StyleSheet.create({
   juzGroupArabic: { fontSize: 16, color: "#78716C" },
 
   confirmWrap: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#E7E5DB",
-    backgroundColor: "#FDFBF7",
+    backgroundColor: "rgba(245,240,232,0.96)",
   },
   confirmBtn: {
     backgroundColor: "#1A1A1A",
     borderRadius: 16,
-    paddingVertical: 17,
+    minHeight: 56,
     alignItems: "center",
     justifyContent: "center",
   },
-  confirmBtnDisabled: { backgroundColor: "#E7E5DB" },
+  confirmBtnDisabled: { backgroundColor: "#E8E2D8" },
   confirmBtnText: {
     fontSize: 16,
-    fontWeight: "600",
-    color: "#FFFFFF",
-    fontFamily: "Inter_600SemiBold",
+    fontWeight: "700",
+    color: "#FAF7F2",
+    fontFamily: "Inter_700Bold",
   },
-  confirmBtnTextDisabled: { color: "#A8A29E" },
+  confirmBtnTextDisabled: { color: "#B0A898" },
 
   // ── Progress bar ────────────────────────────────────────────────────────────
   stepProgress: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 4,
+    paddingHorizontal: 20,
+    paddingTop: 0,
+    paddingBottom: 0,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#DDD6C8",
   },
   stepProgressTrack: {
     flexDirection: "row",
@@ -2110,19 +2231,33 @@ const s = StyleSheet.create({
   stepLabels: {
     flexDirection: "row",
   },
+  paceStepTab: {
+    alignItems: "center",
+    flex: 1,
+    minWidth: 64,
+    paddingBottom: 10,
+  },
+  paceStepUnderline: {
+    position: "absolute",
+    bottom: 0,
+    width: "100%" as any,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: "#1A1A1A",
+  },
   stepLabelCell: {
     flex: 1,
     alignItems: "flex-start",
   },
   stepLabelText: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: "Inter_400Regular",
-    color: "#A8A29E",
+    color: "#C8C0B0",
   },
   stepLabelActive: {
     color: "#1A1A1A",
     fontFamily: "Inter_700Bold",
-    fontSize: 13,
+    fontSize: 12,
   },
   stepLabelTappable: {
     color: "#1A1A1A",
@@ -2357,7 +2492,7 @@ const s = StyleSheet.create({
   estimateBold: { fontFamily: "Inter_700Bold", color: "#FFFFFF" },
 
   // ── Step 0: Pace + Date ─────────────────────────────────────────────────────
-  paceDateContent: { paddingHorizontal: 16, paddingBottom: 24, gap: 12 },
+  paceDateContent: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 24, gap: 12 },
 
   paceSectionCard: {
     backgroundColor: "#FFFFFF",
@@ -2468,6 +2603,31 @@ const s = StyleSheet.create({
   peakCapacityGrid: {
     gap: 8,
   },
+  paceChoiceStack: {
+    gap: 12,
+  },
+  paceChoiceCard: {
+    minHeight: 64,
+    borderRadius: 16,
+    backgroundColor: "#EDE8DE",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+  },
+  paceChoiceCardSelected: {
+    backgroundColor: "#1A1A1A",
+  },
+  paceChoiceText: {
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+  },
+  paceChoiceTextSelected: {
+    color: "#FFFFFF",
+  },
   peakCapacityRow: {
     flexDirection: "row",
     gap: 8,
@@ -2493,13 +2653,89 @@ const s = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
   },
+  growthChoiceCard: {
+    flex: 1,
+    minHeight: 98,
+    borderRadius: 16,
+    backgroundColor: "#EDE8DE",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 16,
+  },
+  growthChoiceCardSelected: {
+    backgroundColor: "#1A1A1A",
+  },
+  growthChoiceTitle: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  growthChoiceTitleSelected: {
+    color: "#FFFFFF",
+  },
+  growthChoiceSub: {
+    fontSize: 11,
+    lineHeight: 14,
+    color: "#8A8070",
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+  growthChoiceSubSelected: {
+    color: "#A8A29E",
+  },
   weekPreview: {
-    borderRadius: 10,
-    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    backgroundColor: "#FFFCF8",
     borderWidth: 1,
-    borderColor: "#E7E5DB",
-    padding: 10,
-    gap: 8,
+    borderColor: "#DDD6C8",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 0,
+  },
+  timelineRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 30,
+    gap: 12,
+  },
+  timelineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#8A8070",
+  },
+  timelineDotActive: {
+    backgroundColor: "#1A1A1A",
+  },
+  timelineDotMuted: {
+    backgroundColor: "#C8C0B0",
+  },
+  timelineLabel: {
+    flex: 1,
+    fontSize: 12,
+    color: "#8A8070",
+    fontFamily: "Inter_400Regular",
+  },
+  timelineValue: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+    textAlign: "right",
+  },
+  timelineValueMuted: {
+    color: "#8A8070",
+  },
+  timelineArrow: {
+    paddingLeft: 1,
+    marginLeft: 6,
+    height: 20,
+    justifyContent: "center",
   },
   weekPreviewBars: {
     flexDirection: "row",
@@ -2541,21 +2777,90 @@ const s = StyleSheet.create({
 
   // ── paceStep headlines ──────────────────────────────────────────────────────
   paceStepHeadline: {
-    fontSize: 22,
+    fontSize: 20,
+    lineHeight: 28,
     fontWeight: "700",
     color: "#1A1A1A",
     fontFamily: "Inter_700Bold",
     textAlign: "center",
-    marginTop: 8,
-    marginBottom: 4,
+    marginTop: 0,
+    marginBottom: 8,
   },
   paceStepSub: {
-    fontSize: 14,
-    color: "#78716C",
+    fontSize: 13,
+    color: "#8A8070",
     fontFamily: "Inter_400Regular",
     textAlign: "center",
-    marginBottom: 16,
+    marginBottom: 24,
     lineHeight: 20,
+  },
+  paceStepSubStrong: {
+    color: "#5A5248",
+    fontFamily: "Inter_700Bold",
+  },
+  whyBox: {
+    backgroundColor: "#EDE8DE",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    maxHeight: 110,
+    overflow: "hidden",
+  },
+  whyTitle: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#8A8070",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
+    marginBottom: 6,
+  },
+  whyText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: "#3B3834",
+    fontFamily: "Inter_400Regular",
+  },
+  ultimateIntention: {
+    borderTopWidth: 1,
+    borderTopColor: "#DDD6C8",
+    paddingTop: 12,
+    marginTop: 20,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  ultimateCheck: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    backgroundColor: "#1A1A1A",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  ultimateLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#8A8070",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
+    marginBottom: 2,
+  },
+  ultimateTitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    fontFamily: "Inter_600SemiBold",
+  },
+  ultimateSub: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: "#8A8070",
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
   },
 
   // ── Surah / Juz tab bar ─────────────────────────────────────────────────────
@@ -2596,38 +2901,69 @@ const s = StyleSheet.create({
   // ── Forecast card ───────────────────────────────────────────────────────────
   forecastCard: {
     backgroundColor: "#1A1A1A",
-    borderRadius: 14,
-    padding: 20,
+    borderRadius: 18,
+    paddingVertical: 20,
+    paddingHorizontal: 20,
     alignItems: "center",
     gap: 4,
   },
   forecastLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
-    color: "rgba(255,255,255,0.55)",
+    color: "#8A8070",
     fontFamily: "Inter_700Bold",
     letterSpacing: 1.2,
     textTransform: "uppercase",
-    marginBottom: 4,
+    marginBottom: 8,
   },
   forecastTime: {
-    fontSize: 44,
+    fontSize: 32,
     fontWeight: "700",
     color: "#FFFFFF",
     fontFamily: "Inter_700Bold",
-    lineHeight: 54,
+    lineHeight: 38,
   },
   forecastDate: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.7)",
+    fontSize: 13,
+    fontStyle: "italic",
+    color: "#A8A29E",
     fontFamily: "Inter_400Regular",
   },
   forecastSub: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.5)",
+    fontSize: 11,
+    color: "#8A8070",
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     marginTop: 4,
+  },
+  forecastInfoCard: {
+    backgroundColor: "#EDE8DE",
+    borderRadius: 18,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  forecastInfoLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#8A8070",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  forecastInfoValue: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    fontFamily: "Inter_700Bold",
+  },
+  forecastInfoSub: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#8A8070",
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
   },
 
   rangeCapCard: {
@@ -2665,8 +3001,8 @@ const s = StyleSheet.create({
     gap: 6,
   },
   insightBoxFullHifz: {
-    backgroundColor: "#F0FDF4",
-    borderColor: "#BBF7D0",
+    backgroundColor: "#F0FAF4",
+    borderColor: "#A8DDB8",
   },
   insightHeader: {
     flexDirection: "row",
@@ -2684,6 +3020,7 @@ const s = StyleSheet.create({
   },
   insightTitleFullHifz: {
     color: "#16A34A",
+    fontSize: 11,
   },
   insightText: {
     fontSize: 14,
@@ -2692,7 +3029,10 @@ const s = StyleSheet.create({
     lineHeight: 22,
   },
   insightTextFullHifz: {
-    fontFamily: "Inter_700Bold",
+    color: "#1A3A1A",
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    lineHeight: 20,
   },
   insightBold: {
     fontFamily: "Inter_700Bold",

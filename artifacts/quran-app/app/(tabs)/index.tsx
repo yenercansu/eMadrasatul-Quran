@@ -10,6 +10,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   StatusBar,
+  Share,
 } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
@@ -23,15 +24,11 @@ import { getJuzAyahs, SURAH_DATA, type AyahRef } from "@/constants/surahData";
 import { AyahRangeModal, type AyahRangeResult } from "@/components/AyahRangeModal";
 import { SubSectionTitle } from "@/components/Typography";
 import { MemorizedBadge } from "@/components/SurahCard";
-import { ActionPill } from "@/components/ActionPill";
-import { SegmentedToggle } from "@/components/SegmentedToggle";
+import { HifzGoalSetupModal, type PaceRhythm } from "@/components/hifz/HifzGoalSetupModal";
+import { HifzHeroCard } from "@/components/hifz/HifzUI";
 
 const TOTAL_AYAHS = 6236;
 const MAX_WEEKLY_AYAHS = 70;
-const GOAL_PATH_OPTIONS = [
-  { value: "juz", label: "By Juz" },
-  { value: "surah", label: "By Surah" },
-] as const;
 
 function getAyahKey(ayah: Pick<AyahRef, "surahNumber" | "ayahNumber">) {
   return `${ayah.surahNumber}:${ayah.ayahNumber}`;
@@ -98,6 +95,21 @@ function getNextAyahAfter(ayah: Pick<AyahRef, "surahNumber" | "ayahNumber">): Ay
   }
   const nextSurah = SURAH_DATA.find(s => s.number === ayah.surahNumber + 1);
   return nextSurah ? { surahNumber: nextSurah.number, surahName: nextSurah.englishName, ayahNumber: 1 } : null;
+}
+
+function formatCompletionMonth(date: Date) {
+  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+function formatIslamicMonthYear(date: Date) {
+  try {
+    return new Intl.DateTimeFormat("en-u-ca-islamic", {
+      month: "long",
+      year: "numeric",
+    }).format(date).replace(/\s*AH$/i, "");
+  } catch {
+    return "";
+  }
 }
 
 function expandLastAyahForWeeklyCount(options: {
@@ -199,6 +211,14 @@ export default function HomeScreen() {
   const [showWeeklyToast, setShowWeeklyToast] = useState(false);
   const [showWeekCompleteCard, setShowWeekCompleteCard] = useState(false);
   const [showHifzGoalOptions, setShowHifzGoalOptions] = useState(false);
+  const [revisionJourneyStarted, setRevisionJourneyStarted] = useState(false);
+  const [hifzSetupVisible, setHifzSetupVisible] = useState(false);
+  const [setupInitialSurahNumber, setSetupInitialSurahNumber] = useState<number | undefined>(undefined);
+  const [setupInitialJuz, setSetupInitialJuz] = useState<number | undefined>(undefined);
+  const [setupStartAtAyahSelection, setSetupStartAtAyahSelection] = useState(false);
+  const [paceRhythm, setPaceRhythm] = useState<PaceRhythm>("gentle");
+  const [paceDaysPerWeek, setPaceDaysPerWeek] = useState(1);
+  const [paceTargetDaysPerWeek, setPaceTargetDaysPerWeek] = useState(4);
   const [hifzDirection, setHifzDirection] = useState<"forward" | "reverse">("forward");
   const prevMemPercentRef = useRef<number | null>(null);
   const prevWeekPercentRef = useRef<number | null>(null);
@@ -512,6 +532,10 @@ export default function HomeScreen() {
       memorizationStyle: goal?.memorizationStyle,
       gradualIncreaseStyle: goal?.gradualIncreaseStyle,
       gradualWeeklyPlan: goal?.gradualWeeklyPlan,
+      hifzDaysPerWeek: goal?.hifzDaysPerWeek,
+      targetHifzDaysPerWeek: goal?.targetHifzDaysPerWeek,
+      gradualDaysPerWeekPlan: goal?.gradualDaysPerWeekPlan,
+      paceRhythm: goal?.paceRhythm,
     };
   }, [widgetFirstAyah, widgetLastAyah, widgetJuz, goal]);
 
@@ -545,6 +569,10 @@ export default function HomeScreen() {
       memorizationStyle: goal.memorizationStyle,
       gradualIncreaseStyle: goal.gradualIncreaseStyle,
       gradualWeeklyPlan: goal.gradualWeeklyPlan,
+      hifzDaysPerWeek: goal.hifzDaysPerWeek,
+      targetHifzDaysPerWeek: goal.targetHifzDaysPerWeek,
+      gradualDaysPerWeekPlan: goal.gradualDaysPerWeekPlan,
+      paceRhythm: goal.paceRhythm,
     };
   }, [memorizationGoal, goal, effectiveGoalCount]);
   const weeklyGoalPath: "surah" | "juz" = currentWeeklySelection
@@ -577,6 +605,28 @@ export default function HomeScreen() {
   const weeklyHeadline = weekGoalProgress > 0
     ? `${weekGoalProgress} ayahs memorized`
     : "Ready for this week";
+  const fullQuranComplete = memorizedAyahKeys.length >= TOTAL_AYAHS;
+  const showFullQuranComplete = fullQuranComplete && !revisionJourneyStarted;
+  const completionDate = new Date();
+  const completionDateLabel = useMemo(() => {
+    const islamic = formatIslamicMonthYear(completionDate);
+    const gregorian = formatCompletionMonth(completionDate);
+    return `Completed · ${islamic ? `${islamic} · ` : ""}${gregorian}`;
+  }, []);
+  const fullHifzStartDate = useMemo(() => {
+    const candidates = [
+      memorizationGoal?.startDate,
+      goal?.startDate,
+      ...dailyEntries.map(entry => entry.date),
+    ].filter((value): value is string => !!value);
+    const earliest = candidates
+      .map(value => new Date(value))
+      .filter(date => !Number.isNaN(date.getTime()))
+      .sort((a, b) => a.getTime() - b.getTime())[0];
+    return earliest ?? completionDate;
+  }, [dailyEntries, goal?.startDate, memorizationGoal?.startDate]);
+  const fullHifzDays = Math.max(1, Math.ceil((completionDate.getTime() - fullHifzStartDate.getTime()) / 86400000));
+  const fullHifzAyahsPerDay = (TOTAL_AYAHS / fullHifzDays).toFixed(1);
 
   const resetHifzFlow = useCallback(() => {
     setGoal(null);
@@ -592,21 +642,36 @@ export default function HomeScreen() {
     setWidgetJuz(null);
   }, [setGoal, setMemorizationGoal]);
 
-  const openNewHifzSelection = useCallback((path: "surah" | "juz") => {
+  const openNewHifzSelection = useCallback((path: "surah" | "juz", options?: { surahNumber?: number; juz?: number; startAtAyahSelection?: boolean }) => {
     setWidgetPath(path);
     setWidgetFirstAyah(null);
     setWidgetLastAyah(null);
-    setWidgetJuz(null);
+    setWidgetJuz(options?.juz ?? null);
+    setSetupInitialSurahNumber(options?.surahNumber);
+    setSetupInitialJuz(options?.juz);
+    setSetupStartAtAyahSelection(!!options?.startAtAyahSelection);
     setShowHifzGoalOptions(false);
+    setHifzSetupVisible(false);
     setAyahRangeVisible(true);
   }, []);
 
-  const openPaceHifzSelection = useCallback(() => {
+  const openPaceHifzSelection = useCallback((options?: {
+    rhythm?: PaceRhythm;
+    daysPerWeek?: number;
+    targetDaysPerWeek?: number;
+  }) => {
     setWidgetPath("surah");
     setWidgetFirstAyah(null);
     setWidgetLastAyah(null);
     setWidgetJuz(null);
+    setSetupStartAtAyahSelection(false);
+    setSetupInitialSurahNumber(undefined);
+    setSetupInitialJuz(undefined);
     setShowHifzGoalOptions(false);
+    setHifzSetupVisible(false);
+    if (options?.rhythm) setPaceRhythm(options.rhythm);
+    if (options?.daysPerWeek) setPaceDaysPerWeek(options.daysPerWeek);
+    if (options?.targetDaysPerWeek) setPaceTargetDaysPerWeek(options.targetDaysPerWeek);
     setPaceDateVisible(true);
   }, []);
 
@@ -682,12 +747,77 @@ export default function HomeScreen() {
             />
           }
         >
+          {showFullQuranComplete ? (
+            <View style={s.fullHifzScreen}>
+              <Text style={s.fullHifzCompletedLabel}>{completionDateLabel}</Text>
+
+              <View style={s.fullHifzSealWrap}>
+                <View style={s.fullHifzSeal}>
+                  <Feather name="book-open" size={58} color="#2D2926" strokeWidth={1.8} />
+                </View>
+                <View style={s.fullHifzCheck}>
+                  <Feather name="check" size={22} color="#FFFFFF" strokeWidth={2.6} />
+                </View>
+              </View>
+
+              <Text style={s.fullHifzPraise}>Alhamdulillah</Text>
+              <Text style={s.fullHifzTitle}>You have memorized{"\n"}the Holy Quran</Text>
+              <Text style={s.fullHifzSub}>All 6,236 ayahs · 114 surahs · 30 juz</Text>
+
+              <View style={s.fullHifzStatsRow}>
+                <View style={s.fullHifzStatBox}>
+                  <Text style={s.fullHifzStatValue}>{fullHifzDays}</Text>
+                  <Text style={s.fullHifzStatLabel}>Days</Text>
+                </View>
+                <View style={s.fullHifzStatBox}>
+                  <Text style={s.fullHifzStatValue}>{streakDays}</Text>
+                  <Text style={s.fullHifzStatLabel}>Streak</Text>
+                </View>
+                <View style={s.fullHifzStatBox}>
+                  <Text style={s.fullHifzStatValue}>{fullHifzAyahsPerDay}</Text>
+                  <Text style={s.fullHifzStatLabel}>Ayahs/day</Text>
+                </View>
+              </View>
+
+              <View style={s.fullHifzQuoteBox}>
+                <Text style={s.fullHifzQuote}>
+                  "The best among you are those who learn the Quran and teach it."
+                </Text>
+                <Text style={s.fullHifzQuoteSource}>— Sahih al-Bukhari</Text>
+              </View>
+
+              <TouchableOpacity
+                style={s.fullHifzPrimaryBtn}
+                onPress={() => {
+                  resetHifzFlow();
+                  setRevisionJourneyStarted(true);
+                }}
+                activeOpacity={0.86}
+              >
+                <Text style={s.fullHifzPrimaryText}>Begin Revision Journey</Text>
+                <Feather name="arrow-right" size={18} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={s.fullHifzShareBtn}
+                onPress={() => {
+                  Share.share({
+                    message: "Alhamdulillah, I have memorized the Holy Quran.",
+                  });
+                }}
+                activeOpacity={0.75}
+              >
+                <Text style={s.fullHifzShareText}>Share your achievement</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+          <>
           {/* ── Header Row ──────────────────────────────────────────────── */}
           <View style={s.headerRow}>
             <View style={s.studyingNowPill}>
               <View style={s.studyingNowDot} />
               <Text style={s.studyingNowText}>
-                {onlineUsers > 0 ? `${onlineUsers.toLocaleString()} studying now` : "Quiet session"}
+                {onlineUsers > 0 ? `${onlineUsers.toLocaleString()} studying now` : "No active listeners"}
               </Text>
             </View>
             <TouchableOpacity
@@ -704,8 +834,11 @@ export default function HomeScreen() {
           <View style={[s.goalWidgetSection, showSelectionWidget && s.goalWidgetSelectionSection]}>
             <View style={[s.sectionHeadingRow, showSelectionWidget && s.sectionHeadingRowSelection]}>
               <Text style={[s.goalWidgetTitle, showSelectionWidget && s.goalWidgetTitleSelection]}>
-                {showSelectionWidget ? "YOUR HIFZ GOAL" : "YOUR HIFZ"}
+                {showSelectionWidget ? "YOUR HIFZ NIYYAH" : "YOUR HIFZ"}
               </Text>
+              {showSelectionWidget && (
+                <Text style={s.niyyahAcceptedText}>May Allah accept from you</Text>
+              )}
               {!showSelectionWidget && (
                 <TouchableOpacity onPress={() => setShowHifzGoalOptions(true)} activeOpacity={0.7}>
                   <Text style={s.manageLink}>Manage goal ...</Text>
@@ -713,114 +846,13 @@ export default function HomeScreen() {
               )}
             </View>
             {showSelectionWidget ? (
-              <View style={s.goalWidgetCard}>
-                {/* Juz / Surah toggle */}
-                <SegmentedToggle
-                  options={GOAL_PATH_OPTIONS}
-                  value={widgetPath}
-                  onChange={(path) => {
-                    if (widgetPath !== path) {
-                      setWidgetPath(path);
-                      setWidgetFirstAyah(null);
-                      setWidgetLastAyah(null);
-                      setWidgetJuz(null);
-                    }
-                  }}
-                  style={s.goalToggleWrap}
-                />
-
-                {/* First Ayah Row */}
-                <TouchableOpacity
-                  style={[s.widgetAyahRow, widgetFirstAyah && s.widgetAyahRowFilled]}
-                  onPress={() => setAyahRangeVisible(true)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[s.widgetAyahCircle, widgetFirstAyah && s.widgetAyahCircleFilled]}>
-                    <Feather name="chevron-up" size={12} color={widgetFirstAyah ? "#FFFFFF" : "#71717A"} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.widgetAyahLabel}>FIRST AYAH</Text>
-                    <Text style={widgetFirstAyah ? s.widgetAyahValue : s.widgetAyahPlaceholder}>
-                      {widgetFirstAyah ? widgetFirstAyah.surahName : "Select surah & ayah"}
-                    </Text>
-                  </View>
-                  <Feather name="chevron-right" size={16} color={colors.appLightText} />
-                </TouchableOpacity>
-
-                <View style={s.widgetRowDivider} />
-
-                {/* Last Ayah Row */}
-                <TouchableOpacity
-                  style={s.widgetAyahRow}
-                  onPress={() => setAyahRangeVisible(true)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[s.widgetAyahCircle, widgetLastAyah && s.widgetAyahCircleFilled]}>
-                    <Feather name="chevron-down" size={12} color={widgetLastAyah ? "#FFFFFF" : "#71717A"} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.widgetAyahLabel}>LAST AYAH</Text>
-                    <Text style={widgetLastAyah ? s.widgetAyahValue : s.widgetAyahPlaceholder}>
-                      {widgetLastAyah ? widgetLastAyah.surahName : "Select surah & ayah"}
-                    </Text>
-                  </View>
-                  <Feather name="chevron-right" size={16} color={colors.appLightText} />
-                </TouchableOpacity>
-
-                <View style={s.widgetRowDivider} />
-
-                {/* Weekly Pace + Target Date — tap to open goal-first flow */}
-                <TouchableOpacity
-                  style={s.widgetPaceRow}
-                  onPress={() => setPaceDateVisible(true)}
-                  activeOpacity={0.7}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.widgetPaceLabel}>WEEKLY PACE</Text>
-                    <Text style={goal?.ayahsPerWeek ? s.widgetPaceValue : s.widgetPacePlaceholder}>
-                      {goal?.ayahsPerWeek
-                        ? goal.memorizationStyle === "gradual" && goal.targetAyahsPerWeek
-                          ? `${goal.ayahsPerWeek} → ${goal.targetAyahsPerWeek}/week`
-                          : `${goal.ayahsPerWeek}/week`
-                        : "Set pace & date"}
-                    </Text>
-                  </View>
-                  <View style={s.widgetPaceDivider} />
-                  <View style={{ flex: 1, paddingLeft: 16 }}>
-                    <Text style={s.widgetPaceLabel}>TARGET DATE</Text>
-                    <Text style={widgetTargetDate ? s.widgetPaceValue : s.widgetPacePlaceholder}>
-                      {widgetTargetDate ? formatTargetDate(widgetTargetDate) : "Then pick range"}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-
-                {/* Start Memorizing */}
-                <TouchableOpacity
-                  style={[s.widgetStartBtn, !canStartMemorizing && s.widgetStartBtnDisabled]}
-                  onPress={() => canStartMemorizing && setWeeklyGoalVisible(true)}
-                  disabled={!canStartMemorizing}
-                  activeOpacity={0.85}
-                >
-                  <Text style={[s.widgetStartBtnText, !canStartMemorizing && s.widgetStartBtnTextDisabled]}>
-                    Start Memorizing →
-                  </Text>
-                </TouchableOpacity>
-
-                <View style={s.widgetFooterRow}>
-                  <View style={s.widgetStreakGroup}>
-                    <View style={s.streakOrangeDot} />
-                    <Text style={s.streakText}>0 Day Streak</Text>
-                  </View>
-                  <ActionPill
-                    label="Hifz Calendar"
-                    icon="calendar"
-                    iconPosition="right"
-                    variant="border"
-                    size="sm"
-                    onPress={() => router.push("/streak-calendar" as any)}
-                  />
-                </View>
-              </View>
+              <HifzHeroCard
+                title="Begin Your Hifz"
+                subtitle="Tap to set your Niyyah and start your Hifz journey, bi'iznillah"
+                tags={["By Juz", "By Surah", "By Pace"]}
+                progress={0.5}
+                onPress={() => setHifzSetupVisible(true)}
+              />
             ) : (
               /* Progress card — shown while a goal is active */
               <>
@@ -864,7 +896,7 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={s.hifzInlineOptionBtn}
-                      onPress={openPaceHifzSelection}
+                      onPress={() => openPaceHifzSelection()}
                       activeOpacity={0.85}
                     >
                       <Text style={s.hifzInlineOptionText}>By Pace</Text>
@@ -1303,6 +1335,8 @@ export default function HomeScreen() {
               ))
             )}
           </View>
+          </>
+          )}
         </ScrollView>
       </LinearGradient>
 
@@ -1347,6 +1381,14 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      <HifzGoalSetupModal
+        visible={hifzSetupVisible}
+        onClose={() => setHifzSetupVisible(false)}
+        onSelectSurah={(surahNumber) => openNewHifzSelection("surah", { surahNumber, startAtAyahSelection: true })}
+        onSelectJuz={(juz) => openNewHifzSelection("juz", { juz, startAtAyahSelection: true })}
+        onSelectPace={(options) => openPaceHifzSelection(options)}
+      />
 
       <AyahRangeModal
         visible={weeklyGoalVisible}
@@ -1438,6 +1480,10 @@ export default function HomeScreen() {
         path={widgetPath}
         memorizedAyahKeys={memorizedAyahKeys}
         startAtPaceDate
+        modalAnimationType="none"
+        paceRhythm={paceRhythm}
+        paceDaysPerWeek={paceDaysPerWeek}
+        paceTargetDaysPerWeek={paceTargetDaysPerWeek}
         onConfirm={({
           ayahsPerWeek,
           targetAyahsPerWeek,
@@ -1446,6 +1492,10 @@ export default function HomeScreen() {
           memorizationStyle,
           gradualIncreaseStyle,
           gradualWeeklyPlan,
+          hifzDaysPerWeek,
+          targetHifzDaysPerWeek,
+          gradualDaysPerWeekPlan,
+          paceRhythm: confirmedPaceRhythm,
         }) => {
           const today = new Date().toISOString().split("T")[0];
           setWidgetFirstAyah(null);
@@ -1467,6 +1517,10 @@ export default function HomeScreen() {
             memorizationStyle,
             gradualIncreaseStyle,
             gradualWeeklyPlan,
+            hifzDaysPerWeek,
+            targetHifzDaysPerWeek,
+            gradualDaysPerWeekPlan,
+            paceRhythm: confirmedPaceRhythm,
             startDate: today,
           });
           setPaceDateVisible(false);
@@ -1477,6 +1531,10 @@ export default function HomeScreen() {
         visible={ayahRangeVisible}
         path={widgetPath}
         memorizedAyahKeys={memorizedAyahKeys}
+        startAtAyahSelection={setupStartAtAyahSelection}
+        initialSurahNumber={setupInitialSurahNumber}
+        initialJuz={setupInitialJuz}
+        modalAnimationType={setupStartAtAyahSelection ? "none" : "slide"}
         onConfirm={({ first, last, juz, ayahsPerWeek }) => {
           const today = new Date().toISOString().split("T")[0];
           setWidgetFirstAyah(first);
@@ -1510,8 +1568,16 @@ export default function HomeScreen() {
             endSurahNumber: last.surahNumber,
             endAyahNumber: last.ayahNumber,
           });
+          setSetupStartAtAyahSelection(false);
+          setSetupInitialSurahNumber(undefined);
+          setSetupInitialJuz(undefined);
         }}
-        onClose={() => setAyahRangeVisible(false)}
+        onClose={() => {
+          setAyahRangeVisible(false);
+          setSetupStartAtAyahSelection(false);
+          setSetupInitialSurahNumber(undefined);
+          setSetupInitialJuz(undefined);
+        }}
       />
     </>
   );
@@ -1534,15 +1600,15 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: "transparent",
+      backgroundColor: "#EDE8DE",
       alignItems: "center",
       justifyContent: "center",
     },
     studyingNowPill: {
       minHeight: 28,
       borderRadius: 999,
-      backgroundColor: "rgba(221,214,200,0.62)",
-      paddingHorizontal: 10,
+      backgroundColor: "#DDD6C8",
+      paddingHorizontal: 12,
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
@@ -1551,13 +1617,186 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: 6,
       height: 6,
       borderRadius: 3,
-      backgroundColor: "rgba(74,222,128,0.82)",
+      backgroundColor: "#B0A898",
     },
     studyingNowText: {
       fontSize: 11,
       fontWeight: "600",
-      color: "rgba(138,128,112,0.78)",
+      color: "#5A5248",
       fontFamily: "Inter_600SemiBold",
+    },
+
+    // ── Full Quran Completion ────────────────────────────────────────────────
+    fullHifzScreen: {
+      minHeight: 720,
+      paddingHorizontal: 28,
+      paddingTop: 20,
+      paddingBottom: 44,
+      alignItems: "center",
+    },
+    fullHifzCompletedLabel: {
+      fontSize: 11,
+      lineHeight: 16,
+      fontWeight: "700",
+      color: "#8A8070",
+      fontFamily: "Inter_700Bold",
+      textTransform: "uppercase",
+      letterSpacing: 3,
+      textAlign: "center",
+      marginBottom: 86,
+    },
+    fullHifzSealWrap: {
+      width: 132,
+      height: 132,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 34,
+    },
+    fullHifzSeal: {
+      width: 124,
+      height: 124,
+      borderRadius: 62,
+      backgroundColor: "#C8C0B0",
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: "#756957",
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.10,
+      shadowRadius: 28,
+      elevation: 5,
+    },
+    fullHifzCheck: {
+      position: "absolute",
+      right: 7,
+      bottom: 10,
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      backgroundColor: "#2D2926",
+      borderWidth: 3,
+      borderColor: "#F5F0E8",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    fullHifzPraise: {
+      fontSize: 14,
+      lineHeight: 20,
+      fontWeight: "700",
+      color: "#8A8070",
+      fontFamily: "Inter_700Bold",
+      textTransform: "uppercase",
+      letterSpacing: 4,
+      marginBottom: 18,
+      textAlign: "center",
+    },
+    fullHifzTitle: {
+      fontSize: 36,
+      lineHeight: 43,
+      fontWeight: "700",
+      color: "#1A1A1A",
+      fontFamily: "Inter_700Bold",
+      textAlign: "center",
+      marginBottom: 22,
+    },
+    fullHifzSub: {
+      fontSize: 17,
+      lineHeight: 24,
+      color: "#8A8070",
+      fontFamily: "Inter_400Regular",
+      textAlign: "center",
+      marginBottom: 34,
+    },
+    fullHifzStatsRow: {
+      width: "100%" as any,
+      flexDirection: "row",
+      gap: 12,
+      marginBottom: 38,
+    },
+    fullHifzStatBox: {
+      flex: 1,
+      minHeight: 96,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: "#DDD6C8",
+      backgroundColor: "#EDE8DE",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 8,
+    },
+    fullHifzStatValue: {
+      fontSize: 27,
+      lineHeight: 34,
+      fontWeight: "700",
+      color: "#1A1A1A",
+      fontFamily: "Inter_700Bold",
+      textAlign: "center",
+    },
+    fullHifzStatLabel: {
+      fontSize: 11,
+      lineHeight: 16,
+      fontWeight: "700",
+      color: "#8A8070",
+      fontFamily: "Inter_700Bold",
+      textTransform: "uppercase",
+      letterSpacing: 1,
+      marginTop: 4,
+      textAlign: "center",
+    },
+    fullHifzQuoteBox: {
+      width: "100%" as any,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: "#DDD6C8",
+      backgroundColor: "#EDE8DE",
+      paddingHorizontal: 24,
+      paddingVertical: 26,
+      marginBottom: 86,
+    },
+    fullHifzQuote: {
+      fontSize: 17,
+      lineHeight: 27,
+      color: "#6F665B",
+      fontFamily: "Inter_400Regular",
+      fontStyle: "italic",
+      textAlign: "center",
+    },
+    fullHifzQuoteSource: {
+      fontSize: 12,
+      lineHeight: 18,
+      fontWeight: "700",
+      color: "#B2A897",
+      fontFamily: "Inter_700Bold",
+      textAlign: "center",
+      marginTop: 14,
+    },
+    fullHifzPrimaryBtn: {
+      width: "100%" as any,
+      minHeight: 64,
+      borderRadius: 32,
+      backgroundColor: "#2D2926",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      marginBottom: 18,
+    },
+    fullHifzPrimaryText: {
+      fontSize: 17,
+      fontWeight: "700",
+      color: "#FFFFFF",
+      fontFamily: "Inter_700Bold",
+    },
+    fullHifzShareBtn: {
+      minHeight: 34,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    fullHifzShareText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: "#B5AC9C",
+      fontFamily: "Inter_600SemiBold",
+      textAlign: "center",
     },
 
     // ── Goal Widget Cards ───────────────────────────────────────────────────────
@@ -1792,7 +2031,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     goalBtnText: { fontSize: 16, fontWeight: "700", color: colors.appWhite, fontFamily: "Inter_700Bold", letterSpacing: 0.2 },
     // ── List Sections (Last Visited / Saved Surahs) ────────────────────────────
-    listSection: { marginTop: 28 },
+    listSection: { marginTop: 30 },
     listSectionHeader: {
       flexDirection: "row",
       alignItems: "center",
@@ -1801,45 +2040,51 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: 20,
     },
     viewAllText: { fontSize: 13, color: colors.appLightText, fontFamily: "Inter_400Regular" },
-    lvScroll: { gap: 10, paddingRight: 20, paddingLeft: 20 },
+    lvScroll: { gap: 12, paddingRight: 20, paddingLeft: 20 },
     lvCard: {
-      width: 136,
-      backgroundColor: colors.appLighterBg,
-      borderRadius: 10,
-      padding: 14,
+      width: 150,
+      backgroundColor: "#FAF7F2",
+      borderRadius: 22,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 14,
       borderWidth: 1,
-      borderColor: colors.appDarkerGray,
-      ...colors.shadows.warmWidgetLift,
+      borderColor: "#DDD6C8",
+      shadowColor: "#000000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.04,
+      shadowRadius: 18,
+      elevation: 2,
     },
     lvArabic: {
-      fontSize: 26,
-      color: colors.appBlack,
+      fontSize: 25,
+      color: "#2D2926",
       textAlign: "center",
-      marginBottom: 6,
+      marginBottom: 8,
       lineHeight: 38,
     },
     lvName: {
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: "700",
-      color: colors.appBlack,
+      color: "#1A1A1A",
       fontFamily: "Inter_700Bold",
       textAlign: "center",
     },
     lvAyah: {
       fontSize: 11,
-      color: colors.appLightText,
+      color: "#8A8070",
       fontFamily: "Inter_400Regular",
       textAlign: "center",
       marginTop: 2,
-      marginBottom: 10,
+      marginBottom: 12,
     },
     lvProgressRail: {
-      height: 2,
-      backgroundColor: colors.appBorderLighter,
-      borderRadius: 1,
+      height: 3,
+      backgroundColor: "#EDE8DE",
+      borderRadius: 999,
       overflow: "hidden",
     },
-    lvProgressFill: { height: "100%" as any, backgroundColor: colors.appBlack, borderRadius: 1 },
+    lvProgressFill: { height: "100%" as any, backgroundColor: "#5A5248", borderRadius: 999 },
 
     // ── All Surahs by Juz ──────────────────────────────────────────────────────
     surahSection: { marginTop: 28 },
@@ -1898,8 +2143,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginTop: 6,
     },
     goalWidgetSelectionSection: {
-      marginHorizontal: 16,
-      marginTop: 16,
+      marginHorizontal: 20,
+      marginTop: 6,
     },
     sectionHeadingRow: {
       flexDirection: "row",
@@ -1920,9 +2165,19 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       textTransform: "uppercase",
     },
     goalWidgetTitleSelection: {
-      fontSize: 10,
-      color: colors.appLightText,
-      letterSpacing: 1.2,
+      fontSize: 13,
+      color: "#5A5248",
+      letterSpacing: 1.9,
+    },
+    niyyahAcceptedText: {
+      fontSize: 9,
+      fontWeight: "700",
+      color: "#7A7268",
+      fontFamily: "Inter_700Bold",
+      letterSpacing: 0.9,
+      textTransform: "uppercase",
+      textAlign: "right",
+      flexShrink: 1,
     },
     manageLink: {
       fontSize: 11,
@@ -2017,40 +2272,92 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderWidth: 0,
     },
     goalWidgetCard: {
-      backgroundColor: colors.appLighterBg,
-      borderRadius: 10,
+      backgroundColor: "#FAF7F2",
+      borderRadius: 22,
       borderWidth: 1,
-      borderColor: colors.appDarkerGray,
+      borderColor: "#DDD6C8",
       overflow: "hidden",
-      ...colors.shadows.warmWidgetLift,
+      shadowColor: "#000000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.04,
+      shadowRadius: 18,
+      elevation: 3,
     },
-    goalToggleWrap: {
-      margin: 12,
+    emptyGoalIntro: {
+      backgroundColor: "#EDE8DE",
+      paddingHorizontal: 16,
+      paddingTop: 20,
+      paddingBottom: 12,
+    },
+    emptyGoalTitle: {
+      fontSize: 24,
+      lineHeight: 30,
+      fontWeight: "700",
+      color: "#1A1A1A",
+      fontFamily: "Inter_700Bold",
+    },
+    emptyModeRow: {
+      flexDirection: "row",
+      gap: 8,
+      backgroundColor: "#EDE8DE",
+      paddingHorizontal: 16,
+      paddingBottom: 16,
+    },
+    emptyModePill: {
+      flex: 1,
+      minHeight: 38,
+      borderRadius: 19,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(255,252,248,0.46)",
+    },
+    emptyModePillSelected: {
+      backgroundColor: "#C8C0B0",
+    },
+    emptyModeText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: "#8A8070",
+      fontFamily: "Inter_700Bold",
+    },
+    emptyModeTextSelected: {
+      color: "#2D2926",
     },
     widgetAyahRow: {
       flexDirection: "row",
       alignItems: "center",
+      marginHorizontal: 16,
+      marginTop: 12,
       paddingHorizontal: 14,
-      paddingVertical: 13,
-      gap: 10,
+      paddingVertical: 14,
+      gap: 12,
+      borderRadius: 18,
+      backgroundColor: "#FFFCF8",
+      borderWidth: 1,
+      borderColor: "#DDD6C8",
     },
     widgetAyahRowFilled: {},
+    widgetRowMuted: {
+      opacity: 0.42,
+      borderColor: "rgba(221,214,200,0.4)",
+      backgroundColor: "rgba(255,252,248,0.48)",
+    },
     widgetAyahCircle: {
       width: 28,
       height: 28,
       borderRadius: 14,
-      backgroundColor: colors.appSecondarySurface,
+      backgroundColor: "#EDE8DE",
       alignItems: "center",
       justifyContent: "center",
       flexShrink: 0,
     },
     widgetAyahCircleFilled: {
-      backgroundColor: colors.appBlack,
+      backgroundColor: "#C8C0B0",
     },
     widgetAyahLabel: {
       fontSize: 10,
       fontWeight: "700",
-      color: colors.appLightText,
+      color: "#8A8070",
       fontFamily: "Inter_700Bold",
       letterSpacing: 0.8,
       textTransform: "uppercase",
@@ -2059,12 +2366,12 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     widgetAyahValue: {
       fontSize: 14,
       fontWeight: "700",
-      color: colors.appBlack,
+      color: "#1A1A1A",
       fontFamily: "Inter_700Bold",
     },
     widgetAyahPlaceholder: {
       fontSize: 14,
-      color: colors.appBorderLighter,
+      color: "#B5AC9C",
       fontFamily: "Inter_700Bold",
       fontWeight: "700",
     },
@@ -2084,26 +2391,30 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Inter_600SemiBold",
     },
     widgetRowDivider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: colors.appBorderLighter,
-      marginHorizontal: 14,
+      height: 0,
     },
     widgetPaceRow: {
       flexDirection: "row",
       alignItems: "center",
+      marginHorizontal: 16,
+      marginTop: 12,
       paddingHorizontal: 14,
-      paddingVertical: 13,
+      paddingVertical: 14,
+      borderRadius: 18,
+      backgroundColor: "#FFFCF8",
+      borderWidth: 1,
+      borderColor: "#DDD6C8",
     },
     widgetPaceDivider: {
       width: StyleSheet.hairlineWidth,
       height: 44,
-      backgroundColor: colors.appBorderLighter,
+      backgroundColor: "#DDD6C8",
       marginHorizontal: 12,
     },
     widgetPaceLabel: {
       fontSize: 10,
       fontWeight: "700",
-      color: colors.appLightText,
+      color: "#8A8070",
       fontFamily: "Inter_700Bold",
       letterSpacing: 0.8,
       textTransform: "uppercase",
@@ -2112,43 +2423,45 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     widgetPaceValue: {
       fontSize: 14,
       fontWeight: "700",
-      color: colors.appBlack,
+      color: "#1A1A1A",
       fontFamily: "Inter_700Bold",
     },
     widgetPacePlaceholder: {
       fontSize: 14,
-      color: colors.appBorderLighter,
+      color: "#B5AC9C",
       fontFamily: "Inter_700Bold",
       fontWeight: "700",
     },
     widgetStartBtn: {
-      margin: 12,
-      marginTop: 4,
-      backgroundColor: colors.appBlack,
-      borderRadius: 14,
-      paddingVertical: 16,
+      marginHorizontal: 16,
+      marginTop: 14,
+      marginBottom: 0,
+      backgroundColor: "#C8C0B0",
+      borderRadius: 22,
+      minHeight: 54,
       alignItems: "center",
       justifyContent: "center",
     },
     widgetStartBtnDisabled: {
-      backgroundColor: colors.appSecondarySurface,
+      backgroundColor: "#EDE8DE",
     },
     widgetStartBtnText: {
       fontSize: 16,
       fontWeight: "600",
-      color: colors.appWhite,
-      fontFamily: "Inter_600SemiBold",
+      color: "#2D2926",
+      fontFamily: "Inter_700Bold",
     },
     widgetStartBtnTextDisabled: {
-      color: colors.appLightText,
+      color: "#AFA695",
     },
     widgetFooterRow: {
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: 12,
-      paddingTop: 2,
-      paddingBottom: 14,
-      gap: 10,
+      paddingHorizontal: 16,
+      paddingTop: 14,
+      paddingBottom: 16,
+      gap: 12,
+      backgroundColor: "#FFFCF8",
     },
     widgetStreakGroup: {
       flex: 1,

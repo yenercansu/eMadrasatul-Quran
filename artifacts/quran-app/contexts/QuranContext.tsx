@@ -59,6 +59,10 @@ export interface Goal {
   memorizationStyle?: "steady" | "gradual";
   gradualIncreaseStyle?: "gentle" | "medium" | "fast";
   gradualWeeklyPlan?: number[];
+  hifzDaysPerWeek?: number;
+  targetHifzDaysPerWeek?: number;
+  gradualDaysPerWeekPlan?: number[];
+  paceRhythm?: "gentle" | "steady" | "deep";
   finishWeeks?: number;
   startDate: string;
   startSurahNumber?: number;

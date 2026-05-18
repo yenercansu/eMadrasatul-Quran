@@ -43,7 +43,7 @@ import { SettingsCard, SettingsRow } from "@/components/SettingsRow";
 import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
 import { SaveButton } from "@/components/SaveButton";
-import { SegmentedToggle } from "@/components/SegmentedToggle";
+import { HifzSegmentedControl } from "@/components/hifz/HifzUI";
 import { Tag } from "@/components/Tag";
 import { MushafPageView } from "@/components/mushaf/MushafPageView";
 import { TajweedWordsText } from "@/components/TajweedText";
@@ -2323,7 +2323,7 @@ export default function SurahScreen() {
       {/* ── Mode Switcher (centered, only Normal/Mushaf) ─────── */}
       {menuVisible && (
         <View style={[scr.modeBar, settings.mushafMode && [scr.mushafOverlayModeBar, { top: topPad + 58 }]]}>
-          <SegmentedToggle
+          <HifzSegmentedControl
             options={READER_MODE_OPTIONS}
             value={settings.mushafMode ? "mushaf" : "verses"}
             onChange={(mode) => {
