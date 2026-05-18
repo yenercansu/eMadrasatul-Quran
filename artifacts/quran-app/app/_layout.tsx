@@ -24,6 +24,7 @@ import { QuranProvider } from "@/contexts/QuranContext";
 import { AudioProvider } from "@/contexts/AudioContext";
 import { NetworkProvider } from "@/contexts/NetworkContext";
 import LogoMark from "@/components/LogoMark";
+import { useColors } from "@/hooks/useColors";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -46,6 +47,7 @@ function RootLayoutNav() {
 }
 
 function AuthGate({ children }: { children: React.ReactNode }) {
+  const colors = useColors();
   const { isAuthenticated, isBootstrapping } = useAuth();
   const segments = useSegments();
   const firstSegment = String(segments[0] ?? "");
@@ -63,9 +65,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (isBootstrapping) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#FDFBF7", gap: 24 }}>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.backgroundPrimary, gap: 24 }}>
         <LogoMark size={80} />
-        <ActivityIndicator color="#1A1A1A" />
+        <ActivityIndicator color={colors.textPrimary} />
       </View>
     );
   }

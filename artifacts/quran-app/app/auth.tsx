@@ -69,10 +69,10 @@ export default function AuthScreen() {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color={colors.appBlack} />
+            <ActivityIndicator color={colors.textPrimary} />
           ) : (
             <>
-              <Feather name="log-in" size={18} color={colors.appBlack} />
+              <Feather name="log-in" size={18} color={colors.textPrimary} />
               <Text style={s.googleBtnText}>Sign in with Google</Text>
             </>
           )}
@@ -94,7 +94,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     logo: {
       marginBottom: 16,
     },
-    title: { fontSize: 28, fontFamily: "Inter_700Bold", color: colors.appBlack, marginBottom: 8 },
+    title: { fontSize: 28, fontFamily: "Inter_700Bold", color: colors.textPrimary, marginBottom: 8 },
     subtitle: {
       fontSize: 14,
       lineHeight: 21,
@@ -108,9 +108,9 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: "row",
       gap: 8,
       alignItems: "flex-start",
-      backgroundColor: "#FEF2F2",
+      backgroundColor: colors.destructiveSoft,
       borderWidth: 1,
-      borderColor: "#FECACA",
+      borderColor: colors.destructive,
       borderRadius: 12,
       padding: 12,
       marginBottom: 8,
@@ -119,18 +119,18 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     googleBtn: {
       height: 52,
       borderRadius: 12,
-      backgroundColor: "#FFFFFF",
+      backgroundColor: colors.surfaceElevated,
       borderWidth: 1,
       borderColor: colors.appBorderLighter,
       alignItems: "center",
       justifyContent: "center",
       flexDirection: "row",
       gap: 10,
-      shadowColor: colors.appBlack,
+      shadowColor: colors.shadowNeutral,
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.05,
       shadowRadius: 3,
       elevation: 2,
     },
-    googleBtnText: { color: colors.appBlack, fontSize: 15, fontFamily: "Inter_600SemiBold" },
+    googleBtnText: { color: colors.textPrimary, fontSize: 15, fontFamily: "Inter_600SemiBold" },
   });

@@ -2,10 +2,11 @@ import React, { useState } from "react";
 import { FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { HifzPrimaryButton, HifzSegmentedControl, hifzTokens } from "@/components/hifz/HifzUI";
+import { HifzPrimaryButton, HifzSegmentedControl } from "@/components/hifz/HifzUI";
 import { JUZ_STARTS, SURAH_DATA } from "@/constants/surahData";
 import { VerseCard } from "@/components/VerseCard";
 import { BackButton } from "@/components/BackButton";
+import { useColors } from "@/hooks/useColors";
 
 export type HifzSetupMode = "surah" | "juz" | "pace";
 export type PaceRhythm = "gentle" | "steady" | "deep";
@@ -36,6 +37,8 @@ export function HifzGoalSetupModal({
   onSelectPace: (options: { rhythm: PaceRhythm; daysPerWeek: number; targetDaysPerWeek: number }) => void;
 }) {
   const insets = useSafeAreaInsets();
+  const colors = useColors();
+  const m = styles(colors);
   const [mode, setMode] = useState<HifzSetupMode>("surah");
   const [rhythm, setRhythm] = useState<PaceRhythm>("gentle");
   const [picker, setPicker] = useState<null | "surah" | "juz">(null);
@@ -84,15 +87,15 @@ export function HifzGoalSetupModal({
             <BackButton onPress={() => setPicker(null)} />
             <Text style={m.pickerTitle}>{picker === "surah" ? "Choose Surah" : "Choose Juz"}</Text>
             <TouchableOpacity style={m.pickerIconButton} onPress={onClose} activeOpacity={0.72}>
-              <Feather name="x" size={18} color={hifzTokens.lightMuted} />
+              <Feather name="x" size={18} color={colors.hifzLightMuted} />
             </TouchableOpacity>
           </View>
           <View style={m.searchWrap}>
-            <Feather name="search" size={15} color={hifzTokens.lightMuted} />
+            <Feather name="search" size={15} color={colors.hifzLightMuted} />
             <TextInput
               style={m.searchInput}
               placeholder={picker === "surah" ? "Search surahs..." : "Search juz..."}
-              placeholderTextColor={hifzTokens.faint}
+              placeholderTextColor={colors.hifzFaint}
               value={pickerSearch}
               onChangeText={setPickerSearch}
               autoCorrect={false}
@@ -122,7 +125,7 @@ export function HifzGoalSetupModal({
                       <Text style={m.pickerRowSub}>{item.ayahCount} ayahs · Juz {item.juz}</Text>
                     </View>
                   <Text style={m.pickerArabic}>{item.name}</Text>
-                    {selected ? <Feather name="check" size={18} color={hifzTokens.darkBrown} /> : <Feather name="chevron-right" size={16} color={hifzTokens.faint} />}
+                    {selected ? <Feather name="check" size={18} color={colors.hifzAccent} /> : <Feather name="chevron-right" size={16} color={colors.hifzFaint} />}
                   </TouchableOpacity>
                 );
               }
@@ -142,7 +145,7 @@ export function HifzGoalSetupModal({
                     <Text style={m.pickerRowTitle}>Juz {item.juz}</Text>
                     <Text style={m.pickerRowSub}>Opens at {startSurah?.englishName ?? "Al-Fatiha"}</Text>
                   </View>
-                  {selected ? <Feather name="check" size={18} color={hifzTokens.darkBrown} /> : <Feather name="chevron-right" size={16} color={hifzTokens.faint} />}
+                  {selected ? <Feather name="check" size={18} color={colors.hifzAccent} /> : <Feather name="chevron-right" size={16} color={colors.hifzFaint} />}
                 </TouchableOpacity>
               );
             }}
@@ -159,7 +162,7 @@ export function HifzGoalSetupModal({
         <View style={m.topRow}>
           <View />
           <TouchableOpacity style={m.closeIconButton} onPress={onClose} activeOpacity={0.72}>
-            <Feather name="x" size={18} color={hifzTokens.lightMuted} strokeWidth={2} />
+            <Feather name="x" size={18} color={colors.hifzLightMuted} strokeWidth={2} />
           </TouchableOpacity>
         </View>
 
@@ -242,7 +245,7 @@ export function HifzGoalSetupModal({
                       : `${selectedJuz === 1 ? "Alif Lam Mim" : `Juz ${selectedJuz}`} · Opens at ${SURAH_DATA[(selectedJuzStart?.surah ?? 1) - 1]?.englishName ?? "Al-Fatiha"}`}
                   </Text>
                 </View>
-                <Feather name="chevron-right" size={22} color={hifzTokens.lightMuted} />
+                <Feather name="chevron-right" size={22} color={colors.hifzLightMuted} />
               </TouchableOpacity>
 
               {mode === "surah" ? (
@@ -279,8 +282,8 @@ export function HifzGoalSetupModal({
   );
 }
 
-const m = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: hifzTokens.background },
+const styles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.hifzBackground },
   content: { paddingHorizontal: 28 },
   anchoredHeader: { paddingHorizontal: 28, paddingBottom: 4 },
   topRow: {
@@ -295,7 +298,7 @@ const m = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: hifzTokens.warmBand,
+    backgroundColor: colors.hifzWarmBand,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -303,7 +306,7 @@ const m = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     fontWeight: "700",
-    color: hifzTokens.lightMuted,
+    color: colors.hifzLightMuted,
     fontFamily: "Inter_700Bold",
     letterSpacing: 4,
     textTransform: "uppercase",
@@ -313,21 +316,21 @@ const m = StyleSheet.create({
     fontSize: 32,
     lineHeight: 38,
     fontWeight: "700",
-    color: hifzTokens.darkText,
+    color: colors.hifzText,
     fontFamily: "Inter_700Bold",
     marginBottom: 16,
   },
   subtitle: {
     fontSize: 16,
     lineHeight: 26,
-    color: hifzTokens.muted,
+    color: colors.hifzMuted,
     fontFamily: "Inter_400Regular",
     marginBottom: 22,
   },
   switchNote: {
     fontSize: 16,
     lineHeight: 22,
-    color: hifzTokens.muted,
+    color: colors.hifzMuted,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     marginTop: 10,
@@ -337,8 +340,8 @@ const m = StyleSheet.create({
     minHeight: 124,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: hifzTokens.border,
-    backgroundColor: "#FFFCF8",
+    borderColor: colors.hifzBorder,
+    backgroundColor: colors.surfaceElevated,
     paddingHorizontal: 22,
     paddingVertical: 22,
     flexDirection: "row",
@@ -348,7 +351,7 @@ const m = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     fontWeight: "700",
-    color: hifzTokens.lightMuted,
+    color: colors.hifzLightMuted,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1.6,
     textTransform: "uppercase",
@@ -358,13 +361,13 @@ const m = StyleSheet.create({
     fontSize: 22,
     lineHeight: 28,
     fontWeight: "700",
-    color: hifzTokens.darkText,
+    color: colors.hifzText,
     fontFamily: "Inter_700Bold",
   },
   startingSub: {
     fontSize: 14,
     lineHeight: 20,
-    color: hifzTokens.lightMuted,
+    color: colors.hifzLightMuted,
     fontFamily: "Inter_400Regular",
     marginTop: 3,
   },
@@ -373,65 +376,65 @@ const m = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: "400",
-    color: hifzTokens.lightMuted,
+    color: colors.hifzLightMuted,
     fontFamily: "Inter_400Regular",
   },
   quote: {
     fontSize: 17,
     lineHeight: 28,
-    color: hifzTokens.muted,
+    color: colors.hifzMuted,
     fontFamily: "Inter_400Regular",
     fontStyle: "italic",
   },
   helperText: {
     fontSize: 16,
     lineHeight: 25,
-    color: hifzTokens.muted,
+    color: colors.hifzMuted,
     fontFamily: "Inter_400Regular",
   },
   juzBlock: { marginTop: 38 },
   juzDots: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginBottom: 14 },
-  juzDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: hifzTokens.border },
-  juzDotActive: { width: 10, height: 10, borderRadius: 5, backgroundColor: hifzTokens.darkBrown, marginTop: -2 },
+  juzDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.hifzBorder },
+  juzDotActive: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.hifzAccent, marginTop: -2 },
   juzText: {
     fontSize: 18,
     lineHeight: 26,
-    color: hifzTokens.muted,
+    color: colors.hifzMuted,
     fontFamily: "Inter_400Regular",
   },
   rhythmStack: { gap: 12 },
   rhythmCard: {
     minHeight: 90,
     borderRadius: 18,
-    backgroundColor: hifzTokens.warmBand,
+    backgroundColor: colors.hifzWarmBand,
     paddingHorizontal: 22,
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
   },
-  rhythmCardSelected: { backgroundColor: hifzTokens.heroCard },
+  rhythmCardSelected: { backgroundColor: colors.hifzHeroCard },
   radio: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: hifzTokens.faint,
+    borderColor: colors.hifzFaint,
     alignItems: "center",
     justifyContent: "center",
   },
-  radioSelected: { borderColor: hifzTokens.darkBrown },
-  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: hifzTokens.darkBrown },
+  radioSelected: { borderColor: colors.hifzAccent },
+  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.hifzAccent },
   rhythmTitle: {
     fontSize: 18,
     lineHeight: 23,
     fontWeight: "700",
-    color: hifzTokens.darkText,
+    color: colors.hifzText,
     fontFamily: "Inter_700Bold",
   },
   rhythmSub: {
     fontSize: 15,
     lineHeight: 21,
-    color: hifzTokens.lightMuted,
+    color: colors.hifzLightMuted,
     fontFamily: "Inter_400Regular",
     marginTop: 4,
   },
@@ -439,7 +442,7 @@ const m = StyleSheet.create({
   daysLabel: {
     fontSize: 15,
     lineHeight: 21,
-    color: hifzTokens.muted,
+    color: colors.hifzMuted,
     fontFamily: "Inter_400Regular",
     marginBottom: 12,
   },
@@ -448,29 +451,29 @@ const m = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: hifzTokens.warmBand,
+    backgroundColor: colors.hifzWarmBand,
     alignItems: "center",
     justifyContent: "center",
   },
-  weekDotActive: { backgroundColor: hifzTokens.darkBrown },
+  weekDotActive: { backgroundColor: colors.hifzAccent },
   weekDotText: {
     fontSize: 14,
     fontWeight: "700",
-    color: hifzTokens.faint,
+    color: colors.hifzFaint,
     fontFamily: "Inter_700Bold",
   },
-  weekDotTextActive: { color: "#FFFFFF" },
+  weekDotTextActive: { color: colors.onAccent },
   paceNote: {
     fontSize: 15,
     lineHeight: 22,
-    color: hifzTokens.muted,
+    color: colors.hifzMuted,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
   },
   footerText: {
     fontSize: 16,
     lineHeight: 22,
-    color: hifzTokens.muted,
+    color: colors.hifzMuted,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     marginTop: 14,
@@ -482,9 +485,9 @@ const m = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: 28,
     paddingTop: 12,
-    backgroundColor: "rgba(245,240,232,0.96)",
+    backgroundColor: colors.overlayChrome,
     borderTopWidth: 1,
-    borderTopColor: hifzTokens.border,
+    borderTopColor: colors.hifzBorder,
   },
   pickerHeader: {
     flexDirection: "row",
@@ -492,7 +495,7 @@ const m = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: hifzTokens.border,
+    borderBottomColor: colors.hifzBorder,
   },
   searchWrap: {
     minHeight: 42,
@@ -500,7 +503,7 @@ const m = StyleSheet.create({
     marginTop: 12,
     marginBottom: 6,
     borderRadius: 14,
-    backgroundColor: hifzTokens.warmBand,
+    backgroundColor: colors.hifzWarmBand,
     paddingHorizontal: 12,
     flexDirection: "row",
     alignItems: "center",
@@ -509,7 +512,7 @@ const m = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: hifzTokens.darkText,
+    color: colors.hifzText,
     fontFamily: "Inter_400Regular",
     paddingVertical: 0,
   },
@@ -523,7 +526,7 @@ const m = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     fontWeight: "700",
-    color: hifzTokens.darkText,
+    color: colors.hifzText,
     fontFamily: "Inter_700Bold",
     textAlign: "center",
   },
@@ -536,7 +539,7 @@ const m = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: hifzTokens.border,
+    borderBottomColor: colors.hifzBorder,
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
@@ -544,17 +547,17 @@ const m = StyleSheet.create({
   pickerRowTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: hifzTokens.darkText,
+    color: colors.hifzText,
     fontFamily: "Inter_700Bold",
   },
   pickerRowSub: {
     fontSize: 12,
-    color: hifzTokens.lightMuted,
+    color: colors.hifzLightMuted,
     fontFamily: "Inter_400Regular",
     marginTop: 3,
   },
   pickerArabic: {
     fontSize: 18,
-    color: hifzTokens.midBrown,
+    color: colors.hifzAccentMuted,
   },
 });

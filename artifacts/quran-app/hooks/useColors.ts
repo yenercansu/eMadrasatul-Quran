@@ -22,14 +22,14 @@ export function useColors() {
 
   if (theme === "dark") {
     const cardStyle = buildCardStyle(colors.dark);
-    return { ...colors.dark, radius: colors.radius, borders: colors.borders, shadows: colors.shadows, cardStyle };
+    return { ...colors.dark, isDark: true, radius: colors.radius, borders: colors.borders, shadows: colors.shadows, cardStyle };
   }
   if (theme === "light") {
     const cardStyle = buildCardStyle(colors.light);
-    return { ...colors.light, radius: colors.radius, borders: colors.borders, shadows: colors.shadows, cardStyle };
+    return { ...colors.light, isDark: false, radius: colors.radius, borders: colors.borders, shadows: colors.shadows, cardStyle };
   }
 
   const palette = scheme === "dark" && "dark" in colors ? colors.dark : colors.light;
   const cardStyle = buildCardStyle(palette);
-  return { ...palette, radius: colors.radius, borders: colors.borders, shadows: colors.shadows, cardStyle };
+  return { ...palette, isDark: palette === colors.dark, radius: colors.radius, borders: colors.borders, shadows: colors.shadows, cardStyle };
 }

@@ -20,7 +20,7 @@ export default function QuranFoundationOAuthSuccessScreen() {
   return (
     <View style={s.root}>
       <View style={s.icon}>
-        <Feather name="check" size={30} color="#16A34A" />
+        <Feather name="check" size={30} color={colors.appSuccess} />
       </View>
       <Text style={s.title}>Quran Foundation connected</Text>
       <Text style={s.text}>Your Madeenan account is now linked. You can return to settings and continue memorizing.</Text>
@@ -40,11 +40,11 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderRadius: 32,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "#DCFCE7",
+      backgroundColor: colors.successSoft,
       marginBottom: 18,
     },
-    title: { fontSize: 22, fontFamily: "Inter_700Bold", color: colors.appBlack, marginBottom: 8 },
+    title: { fontSize: 22, fontFamily: "Inter_700Bold", color: colors.textPrimary, marginBottom: 8 },
     text: { fontSize: 14, lineHeight: 21, fontFamily: "Inter_400Regular", color: colors.appLightText, textAlign: "center", marginBottom: 24 },
-    btn: { height: 48, borderRadius: 12, backgroundColor: colors.appBlack, paddingHorizontal: 20, alignItems: "center", justifyContent: "center" },
-    btnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+    btn: { height: 48, borderRadius: 12, backgroundColor: colors.accentPrimary, paddingHorizontal: 20, alignItems: "center", justifyContent: "center" },
+    btnText: { fontSize: 14, fontFamily: "Inter_700Bold", color: colors.onAccent },
   });

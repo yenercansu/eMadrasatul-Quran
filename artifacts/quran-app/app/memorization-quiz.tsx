@@ -268,6 +268,7 @@ function TapChip({
   isWrong?: boolean;
 }) {
   const colors = useColors();
+  const chipStyle = chipStyles(colors);
   const chipDynamicStyle = [
     chipStyle.chip,
     { backgroundColor: colors.surfaceMuted, borderColor: colors.divider },
@@ -293,24 +294,24 @@ function TapChip({
   );
 }
 
-const chipStyle = StyleSheet.create({
+const chipStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: "#F6F2EA",
+    backgroundColor: colors.surfaceSecondary,
     borderWidth: 1.5,
-    borderColor: "#E7E5DB",
+    borderColor: colors.borderSubtle,
     margin: 4,
     zIndex: 10,
   },
   chipSelected: {
-    backgroundColor: "#1A1A1A",
-    borderColor: "#1A1A1A",
+    backgroundColor: colors.textPrimary,
+    borderColor: colors.textPrimary,
   },
   chipCorrect: {
-    backgroundColor: "#1A1A1A",
-    borderColor: "#1A1A1A",
+    backgroundColor: colors.textPrimary,
+    borderColor: colors.textPrimary,
   },
   chipWrong: {
     backgroundColor: "#FEE2E2",
@@ -321,15 +322,16 @@ const chipStyle = StyleSheet.create({
   },
   chipText: {
     fontSize: 16,
-    color: "#1A1A1A",
+    color: colors.textPrimary,
     fontFamily: Platform.OS === "ios" ? "System" : undefined,
   },
-  chipTextSelected: { color: "#FFFFFF" },
+  chipTextSelected: { color: colors.whiteText },
   chipTextWrong: { color: "#991B1B" },
 });
 
 function FollowUpQuizScreen({ questions, onFinish, onBack }: { questions: FollowUpQuestion[]; onFinish: (score: number) => void; onBack: () => void }) {
   const colors = useColors();
+  const followUpStyle = followUpStyles(colors);
   const [qIdx, setQIdx] = useState(0);
   const [score, setScore] = useState(0);
   const [answers, setAnswers] = useState<Array<string | null>>(() => questions.map(() => null));
@@ -448,30 +450,30 @@ function FollowUpQuizScreen({ questions, onFinish, onBack }: { questions: Follow
   );
 }
 
-const followUpStyle = StyleSheet.create({
+const followUpStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   container: { padding: 16, gap: 12, paddingBottom: 40 },
   quizScreenHeader: { alignItems: "center", paddingTop: 8, paddingBottom: 4, gap: 2 },
   quizBackBtn: { position: "absolute", left: 0, top: 8, width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   quizScreenTitle: { fontSize: 16, fontWeight: "700", fontFamily: "Inter_700Bold" },
   quizScreenSub: { fontSize: 12, fontFamily: "Inter_400Regular" },
   progressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  progressTrack: { flex: 1, height: 3, backgroundColor: "#E7E5DB", borderRadius: 2, overflow: "hidden" },
-  progressBar: { height: "100%", backgroundColor: "#1A1A1A", borderRadius: 2 },
-  progressLabel: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular" },
+  progressTrack: { flex: 1, height: 3, backgroundColor: colors.borderSubtle, borderRadius: 2, overflow: "hidden" },
+  progressBar: { height: "100%", backgroundColor: colors.textPrimary, borderRadius: 2 },
+  progressLabel: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular" },
   card: {
-    backgroundColor: "#FDFBF7", borderRadius: 16, padding: 20, gap: 10,
+    backgroundColor: colors.backgroundPrimary, borderRadius: 16, padding: 20, gap: 10,
     shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 10,
-    elevation: 3, borderWidth: 1, borderColor: "#E7E5DB",
+    elevation: 3, borderWidth: 1, borderColor: colors.borderSubtle,
   },
-  surahLabel: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
+  surahLabel: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
   ayahText: {
-    fontSize: 22, lineHeight: 36, color: "#1A1A1A",
+    fontSize: 22, lineHeight: 36, color: colors.textPrimary,
     textAlign: "right", writingDirection: "rtl",
     fontFamily: Platform.OS === "ios" ? "System" : undefined,
   },
-  divider: { height: 1, backgroundColor: "#E7E5DB" },
+  divider: { height: 1, backgroundColor: colors.borderSubtle },
   questionText: { fontSize: 14, color: "#44403C", fontFamily: "Inter_400Regular", lineHeight: 20 },
-  questionBold: { fontFamily: "Inter_700Bold", color: "#1A1A1A" },
+  questionBold: { fontFamily: "Inter_700Bold", color: colors.textPrimary },
   optionsContainer: { gap: 8 },
   optionBtn: {
     borderRadius: 12, padding: 12, borderWidth: 1,
@@ -484,6 +486,7 @@ const followUpStyle = StyleSheet.create({
 
 function FillBlankQuizScreen({ questions, onFinish, onBack }: { questions: FillBlankQuestion[]; onFinish: (score: number) => void; onBack: () => void }) {
   const colors = useColors();
+  const fillStyle = fillStyles(colors);
   const [qIdx, setQIdx] = useState(0);
   const [score, setScore] = useState(0);
   const [answers, setAnswers] = useState<Array<string | null>>(() => questions.map(() => null));
@@ -620,44 +623,45 @@ function FillBlankQuizScreen({ questions, onFinish, onBack }: { questions: FillB
   );
 }
 
-const fillStyle = StyleSheet.create({
+const fillStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   container: { padding: 16, gap: 10, paddingBottom: 60 },
   quizScreenHeader: { alignItems: "center", paddingTop: 8, paddingBottom: 4, gap: 2 },
   quizBackBtn: { position: "absolute", left: 0, top: 8, width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   quizScreenTitle: { fontSize: 16, fontWeight: "700", fontFamily: "Inter_700Bold" },
   quizScreenSub: { fontSize: 12, fontFamily: "Inter_400Regular" },
   progressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  progressTrack: { flex: 1, height: 3, backgroundColor: "#E7E5DB", borderRadius: 2, overflow: "hidden" },
-  progressBar: { height: "100%", backgroundColor: "#1A1A1A", borderRadius: 2 },
-  progressLabel: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular" },
-  surahLabel: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
-  instruction: { fontSize: 12, color: "#78716C", fontFamily: "Inter_400Regular" },
+  progressTrack: { flex: 1, height: 3, backgroundColor: colors.borderSubtle, borderRadius: 2, overflow: "hidden" },
+  progressBar: { height: "100%", backgroundColor: colors.textPrimary, borderRadius: 2 },
+  progressLabel: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular" },
+  surahLabel: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_600SemiBold", letterSpacing: 1 },
+  instruction: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular" },
   blankSlot: {
-    borderRadius: 14, borderWidth: 1.5, borderColor: "#D6D3D1", borderStyle: "dashed",
-    padding: 12, alignItems: "center", justifyContent: "center", minHeight: 48, backgroundColor: "#F6F2EA",
+    borderRadius: 14, borderWidth: 1.5, borderColor: colors.borderSubtle, borderStyle: "dashed",
+    padding: 12, alignItems: "center", justifyContent: "center", minHeight: 48, backgroundColor: colors.surfaceSecondary,
   },
-  blankSlotCorrect: { borderColor: "#1A1A1A", backgroundColor: "#1A1A1A" },
+  blankSlotCorrect: { borderColor: colors.textPrimary, backgroundColor: colors.textPrimary },
   blankSlotWrong: { borderColor: "#DC2626", backgroundColor: "#FFF5F5" },
-  blankFilled: { fontSize: 20, color: "#1A1A1A", fontFamily: Platform.OS === "ios" ? "System" : undefined },
-  blankFilledCorrect: { color: "#FFFFFF" },
+  blankFilled: { fontSize: 20, color: colors.textPrimary, fontFamily: Platform.OS === "ios" ? "System" : undefined },
+  blankFilledCorrect: { color: colors.whiteText },
   blankFilledWrong: { color: "#991B1B" },
-  blankPlaceholder: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular" },
+  blankPlaceholder: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular" },
   ayahCard: {
-    backgroundColor: "#FDFBF7", borderRadius: 16, padding: 16,
+    backgroundColor: colors.backgroundPrimary, borderRadius: 16, padding: 16,
     shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 10,
-    elevation: 3, borderWidth: 1, borderColor: "#E7E5DB",
+    elevation: 3, borderWidth: 1, borderColor: colors.borderSubtle,
   },
   ayahText: {
-    fontSize: 20, lineHeight: 34, color: "#1A1A1A", textAlign: "right", writingDirection: "rtl",
+    fontSize: 20, lineHeight: 34, color: colors.textPrimary, textAlign: "right", writingDirection: "rtl",
     fontFamily: Platform.OS === "ios" ? "System" : undefined,
   },
   blankInText: { color: "#4F46E5", fontFamily: "Inter_700Bold", fontSize: 18 },
-  dragHint: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular", textAlign: "center" },
+  dragHint: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular", textAlign: "center" },
   chipsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center" },
 });
 
 function TafsirMatchQuizScreen({ questions, onFinish, onBack }: { questions: TafsirMatchQuestion[]; onFinish: (score: number) => void; onBack: () => void }) {
   const colors = useColors();
+  const followUpStyle = followUpStyles(colors);
   const [qIdx, setQIdx] = useState(0);
   const [score, setScore] = useState(0);
   const [answers, setAnswers] = useState<Array<string | null>>(() => questions.map(() => null));
@@ -781,6 +785,7 @@ function ScoreScreen({ score, total, mode, onRetry, onTryDifferent, onBack }: {
   onRetry: () => void; onTryDifferent: () => void; onBack: () => void;
 }) {
   const colors = useColors();
+  const scoreStyle = scoreStyles(colors);
   const pct = Math.round((score / total) * 100);
   const emoji = pct >= 80 ? "🎉" : pct >= 60 ? "👍" : "💪";
   return (
@@ -809,20 +814,20 @@ function ScoreScreen({ score, total, mode, onRetry, onTryDifferent, onBack }: {
   );
 }
 
-const scoreStyle = StyleSheet.create({
+const scoreStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   container: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40, gap: 12 },
   emoji: { fontSize: 56 },
-  score: { fontSize: 52, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  pct: { fontSize: 22, color: "#A8A29E", fontFamily: "Inter_400Regular" },
-  label: { fontSize: 18, color: "#1A1A1A", fontFamily: "Inter_600SemiBold", marginBottom: 20 },
+  score: { fontSize: 52, fontWeight: "700", color: colors.textPrimary, fontFamily: "Inter_700Bold" },
+  pct: { fontSize: 22, color: colors.textTertiary, fontFamily: "Inter_400Regular" },
+  label: { fontSize: 18, color: colors.textPrimary, fontFamily: "Inter_600SemiBold", marginBottom: 20 },
   btnRow: { gap: 12, width: "100%" },
-  retryBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#1A1A1A", borderRadius: 14, paddingVertical: 14 },
-  retryText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
-  differentBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#F6F2EA", borderRadius: 14, paddingVertical: 14, borderWidth: 1, borderColor: "#D6D3D1" },
-  differentText: { fontSize: 16, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
-  differentHint: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular", textAlign: "center", marginTop: -4 },
+  retryBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.textPrimary, borderRadius: 14, paddingVertical: 14 },
+  retryText: { fontSize: 16, fontWeight: "700", color: colors.whiteText, fontFamily: "Inter_700Bold" },
+  differentBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.surfaceSecondary, borderRadius: 14, paddingVertical: 14, borderWidth: 1, borderColor: colors.borderSubtle },
+  differentText: { fontSize: 16, fontWeight: "600", color: colors.textPrimary, fontFamily: "Inter_600SemiBold" },
+  differentHint: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: -4 },
   backBtn: { alignItems: "center", paddingVertical: 12 },
-  backText: { fontSize: 15, color: "#A8A29E", fontFamily: "Inter_400Regular" },
+  backText: { fontSize: 15, color: colors.textTertiary, fontFamily: "Inter_400Regular" },
 });
 
 type QuizMode = null | "follow-up" | "fill-blank" | "tafsir-match";
@@ -1231,13 +1236,13 @@ export default function MemorizationQuizScreen() {
           <Text style={s.selectionTranslation} numberOfLines={1}>{ayah.translationText || "No translation saved"}</Text>
         </View>
         <TouchableOpacity onPress={() => removeSavedAyah(ayah.id)} style={s.savedRemoveBtn} activeOpacity={0.7}>
-          <Feather name="trash-2" size={16} color="#CC3333" />
+          <Feather name="trash-2" size={16} color={colors.appError} />
         </TouchableOpacity>
       </View>
     );
   };
 
-  const s = pageStyles;
+  const s = pageStyles(colors);
 
   return (
     <View style={[s.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -1607,11 +1612,11 @@ export default function MemorizationQuizScreen() {
   );
 }
 
-const pageStyles = StyleSheet.create({
+const pageStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   container: { flex: 1 },
   header: {
     flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingBottom: 10,
-    backgroundColor: "#FDFBF7", borderBottomWidth: 1, borderBottomColor: "#E7E5DB",
+    backgroundColor: colors.backgroundPrimary, borderBottomWidth: 1, borderBottomColor: colors.borderSubtle,
   },
   backBtn: { padding: 8 },
   headerCenter: { flex: 1, alignItems: "center" },
@@ -1622,23 +1627,23 @@ const pageStyles = StyleSheet.create({
   menuSub: { fontSize: 14, fontFamily: "Inter_400Regular", marginBottom: 6 },
   modeCard: {
     flexDirection: "row", alignItems: "center", gap: 14,
-    backgroundColor: "#F6F2EA", borderRadius: 20, padding: 18,
-    borderWidth: 1, borderColor: "#D6D3D1",
+    backgroundColor: colors.surfaceSecondary, borderRadius: 20, padding: 18,
+    borderWidth: 1, borderColor: colors.borderSubtle,
     shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.06, shadowRadius: 10,
     elevation: 3,
   },
   modeIcon: {
     width: 52, height: 52, borderRadius: 16,
-    backgroundColor: "#1A1A1A", alignItems: "center", justifyContent: "center",
+    backgroundColor: colors.textPrimary, alignItems: "center", justifyContent: "center",
   },
   modeInfo: { flex: 1 },
-  modeName: { fontSize: 16, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", marginBottom: 4 },
-  modeDesc: { fontSize: 13, color: "#78716C", fontFamily: "Inter_400Regular", lineHeight: 19 },
+  modeName: { fontSize: 16, fontWeight: "700", color: colors.textPrimary, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  modeDesc: { fontSize: 13, color: colors.textTertiary, fontFamily: "Inter_400Regular", lineHeight: 19 },
   infoBox: {
-    flexDirection: "row", gap: 10, backgroundColor: "#F6F2EA", borderRadius: 14, padding: 14, alignItems: "flex-start",
+    flexDirection: "row", gap: 10, backgroundColor: colors.surfaceSecondary, borderRadius: 14, padding: 14, alignItems: "flex-start",
   },
-  emptySelectionBox: { marginBottom: 8, borderWidth: 1, borderColor: "#D6D3D1" },
-  infoText: { flex: 1, fontSize: 13, color: "#78716C", fontFamily: "Inter_400Regular", lineHeight: 20 },
+  emptySelectionBox: { marginBottom: 8, borderWidth: 1, borderColor: colors.borderSubtle },
+  infoText: { flex: 1, fontSize: 13, color: colors.textTertiary, fontFamily: "Inter_400Regular", lineHeight: 20 },
   selectionWrap: { flex: 1, flexDirection: "column" },
   filterRow: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
   filterChip: {
@@ -1646,25 +1651,25 @@ const pageStyles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 9,
     borderRadius: 12,
-    backgroundColor: "#F6F2EA",
+    backgroundColor: colors.surfaceSecondary,
     borderWidth: 1,
-    borderColor: "#D6D3D1",
+    borderColor: colors.borderSubtle,
   },
-  filterChipActive: { backgroundColor: "#1A1A1A", borderColor: "#1A1A1A" },
-  filterChipText: { fontSize: 12, color: "#78716C", fontFamily: "Inter_700Bold" },
-  filterChipTextActive: { color: "#FFFFFF" },
+  filterChipActive: { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary },
+  filterChipText: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_700Bold" },
+  filterChipTextActive: { color: colors.whiteText },
   tagRow: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingBottom: 8 },
   tagChip: {
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
-    backgroundColor: "#FDFBF7",
+    backgroundColor: colors.backgroundPrimary,
     borderWidth: 1,
-    borderColor: "#D6D3D1",
+    borderColor: colors.borderSubtle,
   },
-  tagChipActive: { backgroundColor: "#EEE8DF", borderColor: "#D6D3D1" },
-  tagText: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_700Bold" },
-  tagTextActive: { color: "#1A1A1A" },
+  tagChipActive: { backgroundColor: "#EEE8DF", borderColor: colors.borderSubtle },
+  tagText: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_700Bold" },
+  tagTextActive: { color: colors.textPrimary },
   selectionContent: { padding: 16, paddingTop: 8, gap: 10, paddingBottom: 24 },
   selectionAyahCard: {
     flexDirection: "row",
@@ -1672,7 +1677,7 @@ const pageStyles = StyleSheet.create({
     padding: 12,
     alignItems: "flex-start",
   },
-  selectionAyahCardExcluded: { opacity: 0.62, backgroundColor: "#F6F2EA" },
+  selectionAyahCardExcluded: { opacity: 0.62, backgroundColor: colors.surfaceSecondary },
   checkBtn: {
     width: 32,
     height: 32,
@@ -1685,86 +1690,86 @@ const pageStyles = StyleSheet.create({
     height: 26,
     borderRadius: 13,
     borderWidth: 1,
-    borderColor: "#B8B1A8",
+    borderColor: colors.borderStrong,
   },
   selectionAyahInfo: { flex: 1 },
-  selectionMeta: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_700Bold", marginBottom: 4 },
+  selectionMeta: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_700Bold", marginBottom: 4 },
   selectionArabic: {
     fontSize: 16,
     lineHeight: 24,
-    color: "#1A1A1A",
+    color: colors.textPrimary,
     textAlign: "right",
     writingDirection: "rtl",
     fontFamily: Platform.OS === "ios" ? "System" : undefined,
     marginBottom: 3,
   },
-  selectionTranslation: { fontSize: 12, color: "#78716C", fontFamily: "Inter_400Regular", marginBottom: 8 },
+  selectionTranslation: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular", marginBottom: 8 },
   excludeRow: { flexDirection: "row", alignItems: "center", gap: 7 },
   excludeToggle: {
     width: 24,
     height: 14,
     borderRadius: 7,
-    backgroundColor: "#D6D3D1",
+    backgroundColor: colors.borderSubtle,
     justifyContent: "center",
     paddingHorizontal: 2,
   },
-  excludeToggleActive: { backgroundColor: "#1A1A1A", alignItems: "flex-end" },
-  excludeDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#FFFFFF" },
-  excludeText: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular" },
+  excludeToggleActive: { backgroundColor: colors.textPrimary, alignItems: "flex-end" },
+  excludeDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.whiteText },
+  excludeText: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular" },
   surahSelectRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#FDFBF7",
+    backgroundColor: colors.backgroundPrimary,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#E7E5DB",
+    borderColor: colors.borderSubtle,
     padding: 14,
   },
   surahBadge: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: colors.textPrimary,
     alignItems: "center",
     justifyContent: "center",
   },
-  surahBadgeText: { fontSize: 12, color: "#FFFFFF", fontFamily: "Inter_700Bold" },
-  surahSelectName: { fontSize: 14, color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  surahSelectMeta: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular", marginTop: 2 },
+  surahBadgeText: { fontSize: 12, color: colors.whiteText, fontFamily: "Inter_700Bold" },
+  surahSelectName: { fontSize: 14, color: colors.textPrimary, fontFamily: "Inter_700Bold" },
+  surahSelectMeta: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular", marginTop: 2 },
   drillBack: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
-  drillBackText: { fontSize: 13, color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  drillBackText: { fontSize: 13, color: colors.textPrimary, fontFamily: "Inter_700Bold" },
   startPanel: {
-    backgroundColor: "#FDFBF7",
+    backgroundColor: colors.backgroundPrimary,
     borderTopWidth: 1,
-    borderTopColor: "#E7E5DB",
+    borderTopColor: colors.borderSubtle,
     padding: 16,
     paddingTop: 12,
     gap: 8,
   },
-  startSummary: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_700Bold", textAlign: "center" },
+  startSummary: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_700Bold", textAlign: "center" },
   startBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: colors.textPrimary,
     borderRadius: 14,
     paddingVertical: 14,
   },
   startBtnDisabled: { opacity: 0.35 },
-  startBtnText: { fontSize: 15, color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+  startBtnText: { fontSize: 15, color: colors.whiteText, fontFamily: "Inter_700Bold" },
   savedSection: { marginTop: 4, gap: 8 },
   savedSectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 },
-  savedSectionTitle: { fontSize: 12, fontWeight: "700", color: "#A8A29E", fontFamily: "Inter_700Bold", letterSpacing: 0.8, textTransform: "uppercase" },
+  savedSectionTitle: { fontSize: 12, fontWeight: "700", color: colors.textTertiary, fontFamily: "Inter_700Bold", letterSpacing: 0.8, textTransform: "uppercase" },
   savedAyahRow: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: "#F6F2EA", borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: "#E7E5DB",
+    backgroundColor: colors.surfaceSecondary, borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: colors.borderSubtle,
   },
   savedAyahInfo: { flex: 1 },
-  savedAyahArabic: { fontSize: 15, color: "#1A1A1A", fontFamily: Platform.OS === "ios" ? "System" : undefined, textAlign: "right", lineHeight: 22 },
-  savedAyahMeta: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular", marginTop: 4 },
+  savedAyahArabic: { fontSize: 15, color: colors.textPrimary, fontFamily: Platform.OS === "ios" ? "System" : undefined, textAlign: "right", lineHeight: 22 },
+  savedAyahMeta: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular", marginTop: 4 },
   savedRemoveBtn: { padding: 6 },
 
   // ── Type phase content ──
@@ -1952,10 +1957,10 @@ const pageStyles = StyleSheet.create({
   startBtn2: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#1A1A1A",
+    backgroundColor: colors.textPrimary,
     borderRadius: 14,
     paddingVertical: 16,
   },
   startBtn2Disabled: { opacity: 0.45 },
-  startBtnText2: { fontSize: 15, color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+  startBtnText2: { fontSize: 15, color: colors.whiteText, fontFamily: "Inter_700Bold" },
 });

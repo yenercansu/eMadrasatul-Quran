@@ -36,7 +36,7 @@ import { FullScreenPage } from "@/components/FullScreenPage";
 import { PlayRangeSheet } from "@/components/PlayRangeSheet";
 import { RepeatSectionSheet } from "@/components/RepeatSectionSheet";
 import { GlobalPlaybackBar, type PlaybackBarConfig } from "@/components/GlobalPlaybackBar";
-import { SectionLoopChip, SECTION_LOOP_COLOR } from "@/components/SectionLoopChip";
+import { SectionLoopChip } from "@/components/SectionLoopChip";
 import { SettingsCard, SettingsRow } from "@/components/SettingsRow";
 import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
@@ -122,6 +122,7 @@ function QuranWords({ text, tajweedText, colorCoding, tajweedMode, style, rtl, o
   text: string; tajweedText?: string; colorCoding: boolean; tajweedMode: boolean; style?: any; rtl?: boolean;
   onWordLongPress?: (word: string) => void;
 }) {
+  const colors = useColors();
   if (tajweedMode && tajweedText) {
     return (
       <TajweedWordsText
@@ -129,7 +130,7 @@ function QuranWords({ text, tajweedText, colorCoding, tajweedMode, style, rtl, o
         markup={tajweedText}
         style={style}
         rtl={rtl}
-        fallbackColor="#1A1A1A"
+        fallbackColor={colors.appText}
         onWordLongPress={onWordLongPress}
       />
     );
@@ -182,12 +183,14 @@ function SwipeableAyahCard({
   colorCoding, tajweedMode, showBasmala, arabicFontSize, romanFontSize, arabicFontFamily,
   onSave, onToggleMemorized, onPress, onWordLongPress,
 }: AyahCardProps) {
+  const colors = useColors();
+  const cs = ayahCardStyles(colors);
   const handlePress = useCallback(() => {
     onPress();
   }, [onPress]);
 
-  const accentColor = playingAccentColor ?? (isSectionLoop ? SECTION_LOOP_COLOR : undefined);
-  const cardBg = isSectionLoop ? "#F0FDF4" : isPlaying ? "#F7F4EF" : "#FFFFFF";
+  const accentColor = playingAccentColor ?? (isSectionLoop ? colors.appSuccess : undefined);
+  const cardBg = isSectionLoop ? colors.successSoft : isPlaying ? colors.surfaceSecondary : colors.surfaceElevated;
   const showPassiveMemorizedMarker = isMemorized && !showMemorizedToggle;
 
   return (
@@ -286,7 +289,7 @@ function SwipeableAyahCard({
   );
 }
 
-const cs = StyleSheet.create({
+const ayahCardStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   wrap: { marginHorizontal: 0, marginBottom: 0, position: "relative" },
   playingAccent: {
     position: "absolute",
@@ -314,14 +317,14 @@ const cs = StyleSheet.create({
     gap: 6,
   },
   numBadge: {
-    backgroundColor: "#F5F1EB",
+    backgroundColor: colors.surfaceSecondary,
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 7,
     alignItems: "center",
     justifyContent: "center",
   },
-  numText: { fontSize: 14, fontWeight: "700", color: "#5A5248", fontFamily: "Inter_700Bold" },
+  numText: { fontSize: 14, fontWeight: "700", color: colors.textSecondary, fontFamily: "Inter_700Bold" },
   memorizedCheckBtn: {
     width: 32,
     height: 32,
@@ -330,7 +333,7 @@ const cs = StyleSheet.create({
   },
   memorizedCheckBtnActive: {
     borderRadius: 16,
-    backgroundColor: "#F5F0E8",
+    backgroundColor: colors.surfaceSecondary,
   },
   memorizedCheckBtnPassive: {
     borderRadius: 16,
@@ -342,13 +345,13 @@ const cs = StyleSheet.create({
     height: 26,
     borderRadius: 13,
     borderWidth: 1,
-    borderColor: "#B8B1A8",
+    borderColor: colors.borderStrong,
     alignItems: "center",
     justifyContent: "center",
   },
   basmala: {
     fontSize: 22,
-    color: "#1A1A1A",
+    color: colors.textPrimary,
     textAlign: "center",
     fontFamily: Platform.OS === "ios" ? "System" : undefined,
     lineHeight: 42,
@@ -357,7 +360,7 @@ const cs = StyleSheet.create({
   arabic: {
     fontSize: 28,
     lineHeight: 56,
-    color: "#1A1A1A",
+    color: colors.textPrimary,
     textAlign: "right",
     writingDirection: "rtl",
     fontFamily: Platform.OS === "ios" ? "System" : undefined,
@@ -365,30 +368,29 @@ const cs = StyleSheet.create({
   },
   translit: {
     fontSize: 14,
-    color: "#7A7A7A",
+    color: colors.textTertiary,
     fontFamily: "Inter_400Regular",
     fontStyle: "italic",
     marginBottom: 14,
     lineHeight: 22,
   },
   transBlock: { marginBottom: 12 },
-  transText: { fontSize: 14, color: "#2C2C2C", fontFamily: "Inter_400Regular", lineHeight: 22 },
-  transSource: { fontSize: 12, color: "#ABABAB", fontFamily: "Inter_400Regular", marginTop: 3, fontStyle: "italic", letterSpacing: 0.1 },
+  transText: { fontSize: 14, color: colors.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 22 },
+  transSource: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular", marginTop: 3, fontStyle: "italic", letterSpacing: 0.1 },
   tafBox: {
-    backgroundColor: "#FFF8EE",
+    backgroundColor: colors.warningSoft,
     borderRadius: 10,
     padding: 10,
     marginTop: 4,
     marginBottom: 6,
     borderWidth: 1,
-    borderColor: "#EDD9A3",
+    borderColor: colors.appWarningLight,
   },
-  tafName: { fontSize: 12, fontWeight: "700", color: "#8B6914", fontFamily: "Inter_700Bold", marginBottom: 4 },
-  tafText: { fontSize: 12, color: "#5A4020", fontFamily: "Inter_400Regular", lineHeight: 18 },
+  tafName: { fontSize: 12, fontWeight: "700", color: colors.appWarning, fontFamily: "Inter_700Bold", marginBottom: 4 },
+  tafText: { fontSize: 12, color: colors.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 18 },
 });
 
 // ─── Player Bar ───────────────────────────────────────────────────────────────
-const PLAYER_BG = "#EDE8DE";
 
 function PlayerBar({
   audioState,
@@ -405,6 +407,8 @@ function PlayerBar({
   onNext: () => void; onPrev: () => void;
   onSpeedPress: () => void; onEditPress: () => void;
 }) {
+  const colors = useColors();
+  const pb = playerBarStyles(colors);
   const { isPlaying, isLoading, currentAyah } = audioState;
   const isIdle = !currentAyah && !isLoading;
 
@@ -429,7 +433,7 @@ function PlayerBar({
           <>
             {SpeedBtn}
             <TouchableOpacity style={pb.iconBtn} onPress={onPlayFromStart} activeOpacity={0.7}>
-              <Ionicons name="play" size={30} color="#1A1A1A" />
+              <Ionicons name="play" size={30} color={colors.appText} />
             </TouchableOpacity>
             <Text style={pb.idleReciter} numberOfLines={1}>{reciterName}</Text>
             {EditBtn}
@@ -438,22 +442,22 @@ function PlayerBar({
           // ── PLAYING or READY-TO-PLAY: Stop | 1x | << | ▶/⏸ | >> | Edit ──
           <>
             <TouchableOpacity style={pb.stopBtn} onPress={onStop} activeOpacity={0.7}>
-              <Ionicons name="stop" size={18} color="#4A4A4A" />
+              <Ionicons name="stop" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
             {SpeedBtn}
             <View style={{ flex: 1 }} />
             <TouchableOpacity style={pb.skipBtn} onPress={onPrev} activeOpacity={0.7}>
-              <Ionicons name="play-back" size={26} color="#1A1A1A" />
+              <Ionicons name="play-back" size={26} color={colors.appText} />
             </TouchableOpacity>
             <TouchableOpacity style={pb.iconBtn} onPress={isPlaying ? onPause : onPlay} activeOpacity={0.7}>
               {isLoading ? (
-                <ActivityIndicator size="small" color="#1A1A1A" />
+                <ActivityIndicator size="small" color={colors.appText} />
               ) : (
-                <Ionicons name={isPlaying ? "pause" : "play"} size={30} color="#1A1A1A" />
+                <Ionicons name={isPlaying ? "pause" : "play"} size={30} color={colors.appText} />
               )}
             </TouchableOpacity>
             <TouchableOpacity style={pb.skipBtn} onPress={onNext} activeOpacity={0.7}>
-              <Ionicons name="play-forward" size={26} color="#1A1A1A" />
+              <Ionicons name="play-forward" size={26} color={colors.appText} />
             </TouchableOpacity>
             <View style={{ flex: 1 }} />
             {EditBtn}
@@ -464,11 +468,11 @@ function PlayerBar({
   );
 }
 
-const pb = StyleSheet.create({
+const playerBarStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   wrapper: {
-    backgroundColor: PLAYER_BG,
+    backgroundColor: colors.hifzWarmBand,
     borderTopWidth: 1,
-    borderTopColor: "#E2D9CF",
+    borderTopColor: colors.borderSubtle,
   },
   bar: {
     flexDirection: "row",
@@ -480,7 +484,7 @@ const pb = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: "600",
-    color: "#1A1A1A",
+    color: colors.textPrimary,
     fontFamily: "Inter_600SemiBold",
     textAlign: "center",
     marginHorizontal: 8,
@@ -503,13 +507,13 @@ const pb = StyleSheet.create({
     paddingHorizontal: 10,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surfaceElevated,
     borderRadius: 10,
     marginRight: 6,
   },
-  speedText: { fontSize: 13, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  speedText: { fontSize: 13, fontWeight: "700", color: colors.textPrimary, fontFamily: "Inter_700Bold" },
   playBtn: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: colors.accentPrimary,
     width: 52,
     height: 52,
     borderRadius: 26,
@@ -525,13 +529,13 @@ const pb = StyleSheet.create({
     marginHorizontal: 4,
   },
   editBtn: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: colors.accentPrimary,
     borderRadius: 16,
     paddingHorizontal: 20,
     paddingVertical: 10,
     marginLeft: 4,
   },
-  editBtnText: { fontSize: 14, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+  editBtnText: { fontSize: 14, fontWeight: "700", color: colors.surfaceElevated, fontFamily: "Inter_700Bold" },
 });
 
 // ─── Content Toggle Bar ───────────────────────────────────────────────────────
@@ -544,6 +548,8 @@ function ContentBar({
   onPressMeaning: () => void; onToggleTransliteration: () => void;
   onPressTafsir: () => void; onToggleColors: () => void; onToggleTajweed: () => void;
 }) {
+  const colors = useColors();
+  const cb = contentBarStyles(colors);
   const tabs = mushafMode
     ? [
         { key: "meaning", label: "Meaning", active: showTranslation, onPress: onPressMeaning, icon: "book-open" as const },
@@ -569,17 +575,17 @@ function ContentBar({
         >
           {tab.icon === "colors" ? (
             <View style={cb.dotsRow}>
-              <View style={[cb.dot, { backgroundColor: tab.active ? "#E8507A" : "#8A8070" }]} />
-              <View style={[cb.dot, { backgroundColor: tab.active ? "#27AE60" : "#8A8070" }]} />
-              <View style={[cb.dot, { backgroundColor: tab.active ? "#2F80ED" : "#8A8070" }]} />
+              <View style={[cb.dot, { backgroundColor: tab.active ? colors.appFlame : colors.textTertiary }]} />
+              <View style={[cb.dot, { backgroundColor: tab.active ? colors.appSuccess : colors.textTertiary }]} />
+              <View style={[cb.dot, { backgroundColor: tab.active ? colors.appInfo : colors.textTertiary }]} />
             </View>
           ) : tab.icon === "tajweed" ? (
             <View style={cb.tajweedIcon}>
-              <Text style={[cb.tajweedU, { color: tab.active ? "#1A1A1A" : "#8A8070" }]}>U</Text>
-              <View style={[cb.tajweedUnderline, { backgroundColor: tab.active ? "#1A1A1A" : "#8A8070" }]} />
+              <Text style={[cb.tajweedU, { color: tab.active ? colors.textPrimary : colors.textTertiary }]}>U</Text>
+              <View style={[cb.tajweedUnderline, { backgroundColor: tab.active ? colors.textPrimary : colors.textTertiary }]} />
             </View>
           ) : (
-            <Feather name={tab.icon as any} size={18} color={tab.active ? "#1A1A1A" : "#8A8070"} />
+            <Feather name={tab.icon as any} size={18} color={tab.active ? colors.textPrimary : colors.textTertiary} />
           )}
           <Text style={[cb.label, tab.active && cb.labelActive]}>{tab.label}</Text>
         </TouchableOpacity>
@@ -588,15 +594,15 @@ function ContentBar({
   );
 }
 
-const cb = StyleSheet.create({
+const contentBarStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   bar: {
     flexDirection: "row",
-    backgroundColor: "#FAF8F4",
+    backgroundColor: colors.surfacePrimary,
     paddingTop: 8,
     paddingBottom: 6,
     paddingHorizontal: 4,
     borderTopWidth: 1,
-    borderTopColor: "#EDEAE5",
+    borderTopColor: colors.borderSubtle,
   },
   tab: {
     flex: 1,
@@ -607,9 +613,9 @@ const cb = StyleSheet.create({
     gap: 4,
     borderRadius: 12,
   },
-  tabActive: { backgroundColor: "#EDEAE5" },
+  tabActive: { backgroundColor: colors.borderSubtle },
   label: { fontSize: 12, fontWeight: "600", color: "#8A8070", fontFamily: "Inter_600SemiBold" },
-  labelActive: { color: "#1A1A1A" },
+  labelActive: { color: colors.textPrimary },
   dotsRow: { flexDirection: "row", gap: 2, marginBottom: 1, height: 18, alignItems: "center" },
   dot: { width: 6, height: 6, borderRadius: 3 },
   tajweedIcon: { alignItems: "center", height: 18, justifyContent: "center" },
@@ -639,6 +645,8 @@ function EditSheet({
   offlineStatusLabel: string;
   reciters: QuranReciter[];
 }) {
+  const colors = useColors();
+  const es = editSheetStyles(colors);
   const [recentReciterIds, setRecentReciterIds] = useState<string[]>([]);
   const [pickerTarget, setPickerTarget] = useState<"start" | "end" | null>(null);
   const insets = useSafeAreaInsets();
@@ -707,7 +715,7 @@ function EditSheet({
                     onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); upd({ mode: m.id }); }}
                     activeOpacity={0.75}
                   >
-                    <Feather name={m.icon} size={20} color={isActive ? accent.color : "#4A4A4A"} />
+                    <Feather name={m.icon} size={20} color={isActive ? accent.color : colors.textSecondary} />
                     <Text style={[es.modeCardText, isActive && { color: accent.color }]}>{m.label}</Text>
                   </TouchableOpacity>
                 );
@@ -887,11 +895,11 @@ function EditSheet({
   );
 }
 
-const es = StyleSheet.create({
+const editSheetStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   secHeader: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#9A9A9A",
+    color: colors.textTertiary,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1.2,
     textTransform: "uppercase",
@@ -911,13 +919,13 @@ const es = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 8,
     borderRadius: 14,
-    backgroundColor: "#F5F3F0",
+    backgroundColor: colors.surfaceSecondary,
     gap: 6,
   },
   modeCardText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#4A4A4A",
+    color: colors.textSecondary,
     fontFamily: "Inter_600SemiBold",
     textAlign: "center",
   },
@@ -929,27 +937,27 @@ const es = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
     borderColor: "#E0E0E0",
   },
   segActive: {
-    backgroundColor: "#1A1A1A",
-    borderColor: "#1A1A1A",
+    backgroundColor: colors.accentPrimary,
+    borderColor: colors.accentPrimary,
   },
   modeHint: {
     marginHorizontal: 16,
     marginTop: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "#F8F7F5",
+    backgroundColor: colors.surfaceSecondary,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#EBEBEB",
+    borderColor: colors.borderSubtle,
   },
   modeHintText: {
     fontSize: 13,
-    color: "#9A9A9A",
+    color: colors.textTertiary,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
   },
@@ -964,11 +972,11 @@ const es = StyleSheet.create({
   segText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#6B6B6B",
+    color: colors.textTertiary,
     fontFamily: "Inter_600SemiBold",
   },
   segTextActive: {
-    color: "#FFFFFF",
+    color: colors.surfaceElevated,
   },
   optionRow: {
     flexDirection: "row",
@@ -977,29 +985,29 @@ const es = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: colors.surfaceSecondary,
   },
   optionIcon: { width: 28 },
   optionInfo: { flex: 1 },
-  optionLabel: { fontSize: 15, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
-  optionDesc: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", marginTop: 1 },
+  optionLabel: { fontSize: 15, fontWeight: "600", color: colors.textPrimary, fontFamily: "Inter_600SemiBold" },
+  optionDesc: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular", marginTop: 1 },
   speedRow: { flexDirection: "row", gap: 8, flexWrap: "wrap", paddingHorizontal: 20 },
-  speedChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, backgroundColor: "#F0F0F0" },
-  speedChipActive: { backgroundColor: "#1A1A1A" },
-  speedChipText: { fontSize: 13, fontWeight: "600", color: "#6B6B6B", fontFamily: "Inter_600SemiBold" },
-  speedChipTextActive: { color: "#FFFFFF" },
+  speedChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.surfaceSecondary },
+  speedChipActive: { backgroundColor: colors.accentPrimary },
+  speedChipText: { fontSize: 13, fontWeight: "600", color: colors.textTertiary, fontFamily: "Inter_600SemiBold" },
+  speedChipTextActive: { color: colors.surfaceElevated },
   ctaBar: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surfaceElevated,
     borderTopWidth: 1,
-    borderTopColor: "#EBEBEB",
+    borderTopColor: colors.borderSubtle,
   },
   ctaBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#1A1A1A",
+    backgroundColor: colors.accentPrimary,
     borderRadius: 16,
     paddingVertical: 16,
     gap: 8,
@@ -1007,7 +1015,7 @@ const es = StyleSheet.create({
   ctaBtnText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: colors.surfaceElevated,
     fontFamily: "Inter_700Bold",
   },
   pickerRow: {
@@ -1017,19 +1025,19 @@ const es = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 13,
     borderBottomWidth: 1,
-    borderBottomColor: "#F8F8F8",
+    borderBottomColor: colors.borderSubtle,
   },
   pickerRowSel: {
-    backgroundColor: "#F8F7F5",
+    backgroundColor: colors.surfaceSecondary,
   },
   pickerRowText: {
     fontSize: 15,
-    color: "#3A3A3A",
+    color: colors.textSecondary,
     fontFamily: "Inter_400Regular",
   },
   pickerRowTextSel: {
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: colors.textPrimary,
     fontFamily: "Inter_700Bold",
   },
 });
@@ -1040,6 +1048,8 @@ function MeaningPanel({ visible, onClose, selected, onToggle, onPlay }: {
   selected: string[]; onToggle: (id: string) => void;
   onPlay: () => void;
 }) {
+  const colors = useColors();
+  const mp = meaningPanelStyles(colors);
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
@@ -1079,13 +1089,13 @@ function MeaningPanel({ visible, onClose, selected, onToggle, onPlay }: {
   );
 }
 
-const mp = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 12, borderBottomWidth: 1, borderBottomColor: "#F0F0F0", marginBottom: 8 },
+const meaningPanelStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.surfaceElevated },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 12, borderBottomWidth: 1, borderBottomColor: colors.surfaceSecondary, marginBottom: 8 },
   iconBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  title: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, marginHorizontal: 20, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
-  rowLabel: { fontSize: 15, fontWeight: "500", color: "#1A1A1A", fontFamily: "Inter_400Regular" },
+  title: { fontSize: 17, fontWeight: "700", color: colors.textPrimary, fontFamily: "Inter_700Bold" },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, marginHorizontal: 20, borderBottomWidth: 1, borderBottomColor: colors.surfaceSecondary },
+  rowLabel: { fontSize: 15, fontWeight: "500", color: colors.textPrimary, fontFamily: "Inter_400Regular" },
 });
 
 // ─── Tafsir Modal ─────────────────────────────────────────────────────────────
@@ -1098,6 +1108,8 @@ function TafsirModal({ visible, onClose, entries, selected, currentAyah, loading
   onToggleSource: (id: string) => void;
   onPlay: () => void;
 }) {
+  const colors = useColors();
+  const tm = tafsirModalStyles(colors);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   useEffect(() => {
     if (visible && entries[0]) {
@@ -1173,12 +1185,12 @@ function TafsirModal({ visible, onClose, entries, selected, currentAyah, loading
   );
 }
 
-const tm = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 12, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
+const tafsirModalStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.surfaceElevated },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 12, borderBottomWidth: 1, borderBottomColor: colors.surfaceSecondary },
   headerBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  title: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  ayahLabel: { fontSize: 12, color: "#8A8178", fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 },
+  title: { fontSize: 17, fontWeight: "700", color: colors.textPrimary, fontFamily: "Inter_700Bold" },
+  ayahLabel: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 },
   sourceGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
   sourceChip: {
     minHeight: 36,
@@ -1186,19 +1198,19 @@ const tm = StyleSheet.create({
     alignItems: "center",
     gap: 5,
     borderRadius: 12,
-    backgroundColor: "#F5F2EE",
+    backgroundColor: colors.surfaceSecondary,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
-  sourceChipActive: { backgroundColor: "#1A1A1A" },
-  sourceChipText: { fontSize: 12, color: "#4A4A4A", fontFamily: "Inter_600SemiBold" },
-  sourceChipTextActive: { color: "#FFFFFF" },
+  sourceChipActive: { backgroundColor: colors.accentPrimary },
+  sourceChipText: { fontSize: 12, color: colors.textSecondary, fontFamily: "Inter_600SemiBold" },
+  sourceChipTextActive: { color: colors.surfaceElevated },
   loadingRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 12 },
-  loadingText: { fontSize: 13, color: "#6B6B6B", fontFamily: "Inter_400Regular" },
+  loadingText: { fontSize: 13, color: colors.textTertiary, fontFamily: "Inter_400Regular" },
   section: { marginBottom: 12 },
-  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
-  sectionName: { fontSize: 15, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  sectionText: { fontSize: 13, color: "#4A4A4A", fontFamily: "Inter_400Regular", lineHeight: 22, paddingVertical: 12 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.surfaceSecondary },
+  sectionName: { fontSize: 15, fontWeight: "700", color: colors.textPrimary, fontFamily: "Inter_700Bold" },
+  sectionText: { fontSize: 13, color: colors.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 22, paddingVertical: 12 },
   footer: { alignItems: "center", paddingVertical: 12 },
 });
 
@@ -1226,6 +1238,7 @@ const DEFAULT_PLAYBACK_CONFIG: PlaybackConfig = {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function SurahScreen() {
   const colors = useColors();
+  const scr = screenStyles(colors);
   const insets = useSafeAreaInsets();
   const bottomInset = Platform.OS === "web" ? 8 : insets.bottom;
   const mushafMenuTopInset = insets.top + 112;
@@ -2185,8 +2198,8 @@ export default function SurahScreen() {
         paddingTop: menuVisible ? 4 : 12,
         paddingBottom: menuVisible ? (bottomBarHeight + 8) : 24,
       }}
-      style={{ flex: 1, backgroundColor: "#FAF9F7" }}
-      ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: "#EDEAE5" }} />}
+      style={{ flex: 1, backgroundColor: colors.backgroundPrimary }}
+      ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: colors.borderSubtle }} />}
       onScrollBeginDrag={active ? (e) => {
         touchMovedRef.current = true;
         userScrollingRef.current = true;
@@ -2215,10 +2228,10 @@ export default function SurahScreen() {
         const isCurrentAyah = audioState.currentSurah === surahNum && audioState.currentAyah === item.numberInSurah;
         const isPlaying = isCurrentAyah && (audioState.isPlaying || audioState.isLoading);
         const playingAccentColor = isPlaying
-          ? audioState.planMode === "ustadh" ? "#C9A02A"
-            : audioState.planMode === "word" ? "#E86A33"
-            : audioState.planMode === "section" ? SECTION_LOOP_COLOR
-            : "#7B5C3E"
+          ? audioState.planMode === "ustadh" ? colors.appGold
+            : audioState.planMode === "word" ? colors.appFlame
+            : audioState.planMode === "section" ? colors.appSuccess
+            : colors.appWarmBorder
           : undefined;
         const isSectionLoop = audioState.planMode === "section"
           && audioState.currentSurah === surahNum
@@ -2338,7 +2351,7 @@ export default function SurahScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F5F2EE" }}>
+    <View style={{ flex: 1, backgroundColor: colors.surfaceSecondary }}>
       {/* ── Fixed Header ─────────────────────────────────────── */}
       {menuVisible && (
         <View style={[scr.header, { paddingTop: topPad + 8 }, settings.mushafMode && scr.mushafOverlayHeader]}>
@@ -2354,7 +2367,7 @@ export default function SurahScreen() {
             )}
           </View>
           <TouchableOpacity onPress={() => setSettingsVisible(true)} style={scr.headerBtn} activeOpacity={0.7}>
-            <Feather name="menu" size={22} color="#1A1A1A" />
+            <Feather name="menu" size={22} color={colors.appText} />
           </TouchableOpacity>
         </View>
       )}
@@ -2668,15 +2681,15 @@ export default function SurahScreen() {
   );
 }
 
-const scr = StyleSheet.create({
+const screenStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 8,
     paddingBottom: 10,
-    backgroundColor: "#FAF8F4",
+    backgroundColor: colors.surfacePrimary,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E2DDD6",
+    borderBottomColor: colors.borderSubtle,
   },
   mushafOverlayHeader: {
     position: "absolute",
@@ -2687,14 +2700,14 @@ const scr = StyleSheet.create({
   },
   headerBtn: { padding: 8, width: 40, alignItems: "center" },
   headerCenter: { flex: 1, alignItems: "center" },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", letterSpacing: -0.2 },
-  headerSub: { fontSize: 12, color: "#A0A0A0", fontFamily: "Inter_400Regular", marginTop: 1 },
+  headerTitle: { fontSize: 17, fontWeight: "700", color: colors.textPrimary, fontFamily: "Inter_700Bold", letterSpacing: -0.2 },
+  headerSub: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular", marginTop: 1 },
   modeBar: {
     paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: "#FAF8F4",
+    backgroundColor: colors.surfacePrimary,
     borderBottomWidth: 1,
-    borderBottomColor: "#EDEAE5",
+    borderBottomColor: colors.borderSubtle,
   },
   mushafOverlayModeBar: {
     position: "absolute",
@@ -2708,9 +2721,9 @@ const scr = StyleSheet.create({
   bottom: {
     position: "absolute",
     left: 0, right: 0, bottom: 0,
-    backgroundColor: "#FAF8F4",
+    backgroundColor: colors.surfacePrimary,
     borderTopWidth: 1,
-    borderTopColor: "#E2D9CF",
+    borderTopColor: colors.borderSubtle,
     zIndex: 50,
   },
   offlineToast: {
@@ -2723,13 +2736,13 @@ const scr = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 5,
-    backgroundColor: "#EFEBE5",
+    backgroundColor: colors.surfaceSecondary,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#D5D0CA",
+    borderTopColor: colors.borderSubtle,
   },
   offlineToastText: {
     fontSize: 12,
-    color: "#6B6B6B",
+    color: colors.textTertiary,
     fontFamily: "Inter_600SemiBold",
     fontWeight: "600",
     letterSpacing: 0.1,
@@ -2739,24 +2752,24 @@ const scr = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
-    backgroundColor: "#FAF9F7",
+    backgroundColor: colors.backgroundPrimary,
   },
-  errorTitle: { fontSize: 18, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold", marginTop: 14 },
-  errorText: { fontSize: 13, lineHeight: 20, color: "#6B625A", fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 6 },
+  errorTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary, fontFamily: "Inter_700Bold", marginTop: 14 },
+  errorText: { fontSize: 13, lineHeight: 20, color: colors.textTertiary, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 6 },
   errorRetry: {
     height: 42,
     paddingHorizontal: 18,
     borderRadius: 11,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: colors.accentPrimary,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 18,
   },
-  errorRetryText: { fontSize: 13, color: "#FFFFFF", fontFamily: "Inter_700Bold" },
+  errorRetryText: { fontSize: 13, color: colors.surfaceElevated, fontFamily: "Inter_700Bold" },
   pageSlideViewport: {
     flex: 1,
     overflow: "hidden",
-    backgroundColor: "#FAF9F7",
+    backgroundColor: colors.backgroundPrimary,
   },
   pageSlidePage: {
     position: "absolute",
@@ -2770,32 +2783,32 @@ const scr = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surfaceElevated,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E8E0D0",
+    borderBottomColor: colors.borderSubtle,
   },
   pageHeaderLeft: {
     fontSize: 12,
-    color: "#1C1810",
+    color: colors.textPrimary,
     fontFamily: "Inter_400Regular",
     opacity: 0.55,
   },
   pageHeaderRight: {
     fontSize: 12,
-    color: "#1C1810",
+    color: colors.textPrimary,
     fontFamily: "Inter_400Regular",
     opacity: 0.55,
     flexShrink: 1,
     marginLeft: 8,
   },
-  mushafTranslations: { padding: 16, gap: 8, backgroundColor: "#FFFFFF" },
-  mushafTranslation: { fontSize: 14, color: "#4A4A4A", fontFamily: "Inter_400Regular", lineHeight: 22 },
-  mushafTranslationNum: { fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  mushafSplitDivider: { height: 1, backgroundColor: "#E5E5E5" },
+  mushafTranslations: { padding: 16, gap: 8, backgroundColor: colors.surfaceElevated },
+  mushafTranslation: { fontSize: 14, color: colors.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 22 },
+  mushafTranslationNum: { fontWeight: "700", color: colors.textPrimary, fontFamily: "Inter_700Bold" },
+  mushafSplitDivider: { height: 1, backgroundColor: colors.borderSubtle },
   mushafTranslationPanel: {
     flex: 0.25,
     overflow: "hidden",
-    backgroundColor: "#FBF6F0",
+    backgroundColor: colors.surfaceElevated,
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
@@ -2811,31 +2824,31 @@ const scr = StyleSheet.create({
   },
   splitHandle: {
     height: 28,
-    backgroundColor: "#F2EDE6",
+    backgroundColor: colors.surfaceSecondary,
     alignItems: "center",
     justifyContent: "center",
     borderTopWidth: 1,
-    borderTopColor: "#E5E5E5",
+    borderTopColor: colors.borderSubtle,
   },
   splitHandlePill: {
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#C5BCAF",
+    backgroundColor: colors.accentSoft,
   },
   mushafSplitHeader: {
-    fontSize: 12, fontWeight: "700", color: "#1A1A1A",
+    fontSize: 12, fontWeight: "700", color: colors.textPrimary,
     fontFamily: "Inter_700Bold", letterSpacing: 1.4,
     textTransform: "uppercase",
   },
   mushafSplitRow: { flexDirection: "row", gap: 10 },
   mushafSplitNumBadge: {
-    width: 22, height: 22, borderRadius: 11, backgroundColor: "#F0F0F0",
+    width: 22, height: 22, borderRadius: 11, backgroundColor: colors.surfaceSecondary,
     alignItems: "center", justifyContent: "center", marginTop: 2,
   },
-  mushafSplitNumText: { fontSize: 12, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
+  mushafSplitNumText: { fontSize: 12, fontWeight: "700", color: colors.textPrimary, fontFamily: "Inter_700Bold" },
   mushafSplitText: {
     flex: 1, fontSize: 14, lineHeight: 22,
-    color: "#2C2C2C", fontFamily: "Inter_400Regular",
+    color: colors.textSecondary, fontFamily: "Inter_400Regular",
   },
 });

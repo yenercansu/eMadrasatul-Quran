@@ -176,14 +176,14 @@ export default function CertificationsScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: stats.completed.length > 0 ? sp.md : 0 }}>
             <Text style={{ fontSize: ty.fontSize.lg, fontWeight: "800", color: c.appText, fontFamily: "Inter_700Bold" }}>Completed Surahs</Text>
             <View style={{
-              backgroundColor: stats.completed.length > 0 ? c.appText : c.appLightGray,
+              backgroundColor: stats.completed.length > 0 ? c.appGoldSurface : c.appLightGray,
               borderRadius: br.full,
               paddingHorizontal: sp.sm + 2,
               paddingVertical: 3,
               minWidth: 26,
               alignItems: "center",
             }}>
-              <Text style={{ fontSize: ty.fontSize.sm, fontWeight: "800", color: stats.completed.length > 0 ? c.appCard : c.appTextMuted, fontFamily: "Inter_700Bold" }}>
+              <Text style={{ fontSize: ty.fontSize.sm, fontWeight: "800", color: stats.completed.length > 0 ? c.appText : c.appTextMuted, fontFamily: "Inter_700Bold" }}>
                 {stats.completed.length}
               </Text>
             </View>

@@ -339,7 +339,7 @@ function WordCard({ word, onToggleMemorized }: {
     <Animated.View style={{ opacity: fadeAnim }}>
       <TouchableOpacity
         onPress={() => setRevealed(prev => !prev)}
-        style={[wordCardStyles.card, { backgroundColor: colors.appCardWarm, borderColor: colors.appSoftBorder }]}
+        style={[wordCardStyles.card, { backgroundColor: colors.appCardWarm, borderColor: colors.appSoftBorder, shadowColor: colors.shadowWarm }]}
         activeOpacity={0.85}
       >
         <View style={wordCardStyles.cardTop}>
@@ -387,7 +387,6 @@ const wordCardStyles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1,
     minHeight: 112,
-    shadowColor: "#5D4A37",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.09,
     shadowRadius: 22,
@@ -659,7 +658,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
                         return (
                           <TouchableOpacity
                             key={item.surahNumber}
-                            style={[wvs.surahCard, { backgroundColor: colors.appCardWarm, borderColor: colors.appSoftBorder }]}
+                            style={[wvs.surahCard, { backgroundColor: colors.appCardWarm, borderColor: colors.appSoftBorder, shadowColor: colors.shadowWarm }]}
                             onPress={() => setSelectedSurahNum(item.surahNumber)}
                             activeOpacity={0.8}
                           >
@@ -817,7 +816,6 @@ const wordsViewStyles = StyleSheet.create({
     borderWidth: 1,
     padding: 16,
     marginBottom: 10,
-    shadowColor: "#5D4A37",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
     shadowRadius: 18,

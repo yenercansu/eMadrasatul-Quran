@@ -72,7 +72,7 @@ export function SelectChip({
       <Text
         style={[
           hasSubLabel ? styles.cardLabel : styles.pillLabel,
-          { color: selected ? "#FFFFFF" : c.appText },
+          { color: selected ? c.onAccent : c.appText },
         ]}
       >
         {label}
@@ -81,7 +81,7 @@ export function SelectChip({
         <Text
           style={[
             styles.subLabel,
-            { color: selected ? "rgba(255,255,255,0.68)" : c.appDarkGray },
+            { color: selected ? c.overlayInverseSoft : c.appDarkGray },
           ]}
         >
           {sublabel}

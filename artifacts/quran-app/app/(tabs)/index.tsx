@@ -1279,7 +1279,7 @@ export default function HomeScreen() {
   const showSelectionWidget = !hasMemorizationGoal;
   return (
     <>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={colors.isDark ? "light-content" : "dark-content"} />
        <LinearGradient
          colors={[colors.screenBackground, colors.screenBackgroundAlt]}
          locations={[0, 1]}
@@ -1302,10 +1302,10 @@ export default function HomeScreen() {
 
               <View style={s.fullHifzSealWrap}>
                 <View style={s.fullHifzSeal}>
-                  <Feather name="book-open" size={58} color="#2D2926" strokeWidth={1.8} />
+                  <Feather name="book-open" size={58} color={colors.accentPrimary} strokeWidth={1.8} />
                 </View>
                 <View style={s.fullHifzCheck}>
-                  <Feather name="check" size={22} color="#FFFFFF" strokeWidth={2.6} />
+                  <Feather name="check" size={22} color={colors.whiteText} strokeWidth={2.6} />
                 </View>
               </View>
 
@@ -1344,7 +1344,7 @@ export default function HomeScreen() {
                 activeOpacity={0.86}
               >
                 <Text style={s.fullHifzPrimaryText}>Begin Revision Journey</Text>
-                <Feather name="arrow-right" size={18} color="#FFFFFF" />
+                <Feather name="arrow-right" size={18} color={colors.whiteText} />
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1430,14 +1430,14 @@ export default function HomeScreen() {
                     </View>
                   </View>
                   <View style={s.continuationCopyRow}>
-                    <Feather name="arrow-right-circle" size={15} color="#8A8070" />
+                    <Feather name="arrow-right-circle" size={15} color={colors.textTertiary} />
                     <Text style={s.continuationCopy}>{continuationNotice.copy}</Text>
                     <TouchableOpacity
                       onPress={() => setContinuationNotice(null)}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       activeOpacity={0.75}
                     >
-                      <Feather name="x" size={15} color="#8A8070" />
+                      <Feather name="x" size={15} color={colors.textTertiary} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1558,11 +1558,11 @@ export default function HomeScreen() {
                     {/* Donut progress ring */}
                     <View style={s.thisWeekDonutWrap}>
                       <Svg width={48} height={48} style={{ position: "absolute" }}>
-                        <Circle cx={24} cy={24} r={20} stroke="#E8E2D8" strokeWidth={2.5} fill="none" />
+                        <Circle cx={24} cy={24} r={20} stroke={colors.disabledBackground} strokeWidth={2.5} fill="none" />
                         {weekGoalProgress > 0 && effectiveGoalCount > 0 && (
                           <Circle
                             cx={24} cy={24} r={20}
-                            stroke="#5A5248"
+                            stroke={colors.textSecondary}
                             strokeWidth={2.5}
                             fill="none"
                             strokeDasharray={`${2 * Math.PI * 20} ${2 * Math.PI * 20}`}
@@ -1605,7 +1605,7 @@ export default function HomeScreen() {
                       </ScrollView>
                       <LinearGradient
                         pointerEvents="none"
-                        colors={["rgba(237,232,222,0)", "#EDE8DE"]}
+                        colors={["transparent", colors.surfaceSecondary]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={s.dotsRightFade}
@@ -1665,7 +1665,7 @@ export default function HomeScreen() {
                     >
                       <View style={[s.nextAyahCircleNew, pendingCheck && { borderWidth: 0 }]}>
                         {pendingCheck ? (
-                          <Ionicons name="checkmark-circle" size={28} color="#7B5C3E" />
+                          <Ionicons name="checkmark-circle" size={28} color={colors.appWarmBorder} />
                         ) : (
                           <Ionicons name="checkmark" size={15} color={colors.appIconMuted} />
                         )}
@@ -1718,7 +1718,7 @@ export default function HomeScreen() {
                     activeOpacity={0.75}
                   >
                     <Text style={s.calendarButtonText}>Hifz Calendar</Text>
-                    <Feather name="calendar" size={15} color="#8B8274" />
+                    <Feather name="calendar" size={15} color={colors.textTertiary} />
                   </TouchableOpacity>
                 </View>
 
@@ -1735,11 +1735,11 @@ export default function HomeScreen() {
                 <View style={s.journeyTopSurface}>
                   <View style={s.journeyHeaderRow}>
                     <View style={s.journeyCompletePill}>
-                      <Feather name="check" size={12} color="#5A5248" />
+                      <Feather name="check" size={12} color={colors.textSecondary} />
                       <Text style={s.journeyCompleteText}>Complete</Text>
                     </View>
                     <View style={s.journeyCompletionDateBadge}>
-                      <Feather name="award" size={13} color="#5A5248" />
+                      <Feather name="award" size={13} color={colors.textSecondary} />
                       <Text style={s.journeyCompletionDay}>{todayShort}</Text>
                     </View>
                   </View>
@@ -1819,7 +1819,7 @@ export default function HomeScreen() {
                   activeOpacity={0.85}
                 >
                   <Text style={s.journeyPrimaryText}>Review {selectedRangeLabel}</Text>
-                  <Feather name="chevron-right" size={15} color="#5A5248" />
+                  <Feather name="chevron-right" size={15} color={colors.textSecondary} />
                 </TouchableOpacity>
                 <ActionPill
                   label="Set next goal"
@@ -1891,7 +1891,7 @@ export default function HomeScreen() {
                       </Text>
                     </View>
                     <Text style={s.surahArabic}>{meta.name}</Text>
-                    <Ionicons name="bookmark" size={18} color={colors.appBlack} />
+                    <Ionicons name="bookmark" size={18} color={colors.appText} />
                   </TouchableOpacity>
                 );
               })}
@@ -1959,14 +1959,14 @@ export default function HomeScreen() {
       {showWeeklyToast && (
         <View style={[s.weekDoneToast, { top: insets.top + 12 }]} pointerEvents="box-none">
           <View style={s.toastIcon}>
-            <Feather name="check" size={16} color="#5A5248" />
+            <Feather name="check" size={16} color={colors.textSecondary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.weekDoneTitle}>Weekly target complete</Text>
             <Text style={s.weekDoneSub}>{weekGoalProgress} ayahs memorized this week</Text>
           </View>
           <TouchableOpacity onPress={() => setShowWeeklyToast(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Feather name="x" size={16} color="#8A8070" />
+            <Feather name="x" size={16} color={colors.textTertiary} />
           </TouchableOpacity>
         </View>
       )}
@@ -1974,7 +1974,7 @@ export default function HomeScreen() {
       {showMilestoneToast && (
         <View style={[s.weekDoneToast, { top: insets.top + 12, alignItems: "flex-start" }]} pointerEvents="box-none">
           <View style={[s.toastIcon, { marginTop: 2 }]}>
-            <Feather name="flag" size={15} color="#5A5248" />
+            <Feather name="flag" size={15} color={colors.textSecondary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.weekDoneTitle}>Ayah milestone complete</Text>
@@ -1990,7 +1990,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           <TouchableOpacity onPress={() => setShowMilestoneToast(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Feather name="x" size={16} color="#8A8070" />
+            <Feather name="x" size={16} color={colors.textTertiary} />
           </TouchableOpacity>
         </View>
       )}
@@ -1998,14 +1998,14 @@ export default function HomeScreen() {
       {showHifzCompleteToast && (
         <View style={[s.weekDoneToast, { top: insets.top + 12 }]} pointerEvents="box-none">
           <View style={s.toastIcon}>
-            <Feather name="book-open" size={15} color="#5A5248" />
+            <Feather name="book-open" size={15} color={colors.textSecondary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.weekDoneTitle}>{hifzCompleteToastText.title}</Text>
             <Text style={s.weekDoneSub}>{hifzCompleteToastText.sub}</Text>
           </View>
           <TouchableOpacity onPress={() => setShowHifzCompleteToast(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Feather name="x" size={16} color="#8A8070" />
+            <Feather name="x" size={16} color={colors.textTertiary} />
           </TouchableOpacity>
         </View>
       )}
@@ -2122,6 +2122,7 @@ export default function HomeScreen() {
         path={widgetPath}
         memorizedAyahKeys={memorizedAyahKeys}
         startAtPaceDate
+        initialPaceStep={2}
         modalAnimationType="none"
         paceRhythm={paceRhythm}
         paceDaysPerWeek={paceDaysPerWeek}
@@ -2264,14 +2265,14 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: "#EDE8DE",
+      backgroundColor: colors.surfaceSecondary,
       alignItems: "center",
       justifyContent: "center",
     },
     studyingNowPill: {
       minHeight: 28,
       borderRadius: 999,
-      backgroundColor: "#DDD6C8",
+      backgroundColor: colors.borderSubtle,
       paddingHorizontal: 12,
       flexDirection: "row",
       alignItems: "center",
@@ -2281,12 +2282,12 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: 6,
       height: 6,
       borderRadius: 3,
-      backgroundColor: "#B0A898",
+      backgroundColor: colors.disabledText,
     },
     studyingNowText: {
       fontSize: 12,
       fontWeight: "600",
-      color: "#5A5248",
+      color: colors.textSecondary,
       fontFamily: "Inter_600SemiBold",
     },
 
@@ -2302,7 +2303,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontSize: 12,
       lineHeight: 16,
       fontWeight: "700",
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_700Bold",
       textTransform: "uppercase",
       letterSpacing: 3,
@@ -2320,10 +2321,10 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: 124,
       height: 124,
       borderRadius: 62,
-      backgroundColor: "#C8C0B0",
+      backgroundColor: colors.accentSoft,
       alignItems: "center",
       justifyContent: "center",
-      shadowColor: "#756957",
+      shadowColor: colors.shadowWarm,
       shadowOffset: { width: 0, height: 12 },
       shadowOpacity: 0.10,
       shadowRadius: 28,
@@ -2336,9 +2337,9 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: 46,
       height: 46,
       borderRadius: 23,
-      backgroundColor: "#2D2926",
+      backgroundColor: colors.accentPrimary,
       borderWidth: 3,
-      borderColor: "#F5F0E8",
+      borderColor: colors.hifzBackground,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -2346,7 +2347,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontSize: 14,
       lineHeight: 20,
       fontWeight: "700",
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_700Bold",
       textTransform: "uppercase",
       letterSpacing: 4,
@@ -2357,7 +2358,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontSize: 36,
       lineHeight: 43,
       fontWeight: "700",
-      color: "#1A1A1A",
+      color: colors.textPrimary,
       fontFamily: "Inter_700Bold",
       textAlign: "center",
       marginBottom: 22,
@@ -2365,7 +2366,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     fullHifzSub: {
       fontSize: 17,
       lineHeight: 24,
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_400Regular",
       textAlign: "center",
       marginBottom: 34,
@@ -2381,8 +2382,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       minHeight: 96,
       borderRadius: 20,
       borderWidth: 1,
-      borderColor: "#DDD6C8",
-      backgroundColor: "#EDE8DE",
+      borderColor: colors.borderSubtle,
+      backgroundColor: colors.surfaceSecondary,
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: 8,
@@ -2391,7 +2392,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontSize: 27,
       lineHeight: 34,
       fontWeight: "700",
-      color: "#1A1A1A",
+      color: colors.textPrimary,
       fontFamily: "Inter_700Bold",
       textAlign: "center",
     },
@@ -2399,7 +2400,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontSize: 12,
       lineHeight: 16,
       fontWeight: "700",
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_700Bold",
       textTransform: "uppercase",
       letterSpacing: 1,
@@ -2410,8 +2411,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: "100%" as any,
       borderRadius: 22,
       borderWidth: 1,
-      borderColor: "#DDD6C8",
-      backgroundColor: "#EDE8DE",
+      borderColor: colors.borderSubtle,
+      backgroundColor: colors.surfaceSecondary,
       paddingHorizontal: 24,
       paddingVertical: 26,
       marginBottom: 86,
@@ -2419,7 +2420,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     fullHifzQuote: {
       fontSize: 17,
       lineHeight: 27,
-      color: "#6F665B",
+      color: colors.textSecondary,
       fontFamily: "Inter_400Regular",
       fontStyle: "italic",
       textAlign: "center",
@@ -2428,7 +2429,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontSize: 12,
       lineHeight: 18,
       fontWeight: "700",
-      color: "#B2A897",
+      color: colors.disabledText,
       fontFamily: "Inter_700Bold",
       textAlign: "center",
       marginTop: 14,
@@ -2437,7 +2438,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: "100%" as any,
       minHeight: 64,
       borderRadius: 32,
-      backgroundColor: "#2D2926",
+      backgroundColor: colors.accentPrimary,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
@@ -2447,7 +2448,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     fullHifzPrimaryText: {
       fontSize: 17,
       fontWeight: "700",
-      color: "#FFFFFF",
+      color: colors.whiteText,
       fontFamily: "Inter_700Bold",
     },
     fullHifzShareBtn: {
@@ -2458,7 +2459,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     fullHifzShareText: {
       fontSize: 14,
       fontWeight: "600",
-      color: "#B5AC9C",
+      color: colors.disabledText,
       fontFamily: "Inter_600SemiBold",
       textAlign: "center",
     },
@@ -2536,7 +2537,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     memCompleteGreenText: { fontSize: 15, color: colors.appWhite, fontFamily: "Inter_400Regular", lineHeight: 22 },
     memCompleteGreenBold: { fontFamily: "Inter_700Bold", color: colors.appWhite },
-    memCompleteGreenSub: { fontSize: 13, color: "rgba(255,255,255,0.8)", fontFamily: "Inter_400Regular", marginTop: 2 },
+    memCompleteGreenSub: { fontSize: 13, color: colors.overlayInverseSoft, fontFamily: "Inter_400Regular", marginTop: 2 },
     memCompleteSteps: {
       flexDirection: "row",
       alignItems: "center",
@@ -2707,14 +2708,14 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     lvScroll: { gap: 12, paddingRight: 20, paddingLeft: 20 },
     lvCard: {
       width: 150,
-      backgroundColor: "#FAF7F2",
+      backgroundColor: colors.surfacePrimary,
       borderRadius: 22,
       paddingHorizontal: 16,
       paddingTop: 16,
       paddingBottom: 14,
       borderWidth: 1,
-      borderColor: "#DDD6C8",
-      shadowColor: "#000000",
+      borderColor: colors.borderSubtle,
+      shadowColor: colors.shadowNeutral,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.04,
       shadowRadius: 18,
@@ -2722,7 +2723,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     lvArabic: {
       fontSize: 25,
-      color: "#2D2926",
+      color: colors.accentPrimary,
       textAlign: "center",
       marginBottom: 8,
       lineHeight: 38,
@@ -2730,13 +2731,13 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     lvName: {
       fontSize: 13,
       fontWeight: "700",
-      color: "#1A1A1A",
+      color: colors.textPrimary,
       fontFamily: "Inter_700Bold",
       textAlign: "center",
     },
     lvAyah: {
       fontSize: 12,
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_400Regular",
       textAlign: "center",
       marginTop: 2,
@@ -2816,20 +2817,20 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     goalWidgetTitle: {
       fontSize: 13,
       fontWeight: "700",
-      color: "#8E8679",
+      color: colors.textTertiary,
       fontFamily: "Inter_700Bold",
       letterSpacing: 1.9,
       textTransform: "uppercase",
     },
     goalWidgetTitleSelection: {
       fontSize: 13,
-      color: "#5A5248",
+      color: colors.textSecondary,
       letterSpacing: 1.9,
     },
     niyyahAcceptedText: {
       fontSize: 10,
       fontWeight: "400",
-      color: "#A49A8D",
+      color: colors.disabledText,
       fontFamily: "Inter_400Regular",
       letterSpacing: 0.4,
       textTransform: "uppercase",
@@ -2838,17 +2839,17 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     manageLink: {
       fontSize: 12,
-      color: "#5A5248",
+      color: colors.textSecondary,
       fontFamily: "Inter_600SemiBold",
     },
     manageCta: {
       minHeight: 28,
       borderRadius: 999,
       borderWidth: 1,
-      borderColor: "#D7CEC0",
+      borderColor: colors.borderSubtle,
       paddingHorizontal: 10,
       paddingVertical: 5,
-      backgroundColor: "rgba(250,247,242,0.42)",
+      backgroundColor: colors.overlayElevated,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -2857,19 +2858,19 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       backgroundColor: "transparent",
     },
     goalWidgetCard: {
-      backgroundColor: "#FAF7F2",
+      backgroundColor: colors.surfacePrimary,
       borderRadius: 22,
       borderWidth: 1,
-      borderColor: "#DDD6C8",
+      borderColor: colors.borderSubtle,
       overflow: "hidden",
-      shadowColor: "#000000",
+      shadowColor: colors.shadowNeutral,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.04,
       shadowRadius: 18,
       elevation: 3,
     },
     emptyGoalIntro: {
-      backgroundColor: "#EDE8DE",
+      backgroundColor: colors.surfaceSecondary,
       paddingHorizontal: 16,
       paddingTop: 20,
       paddingBottom: 12,
@@ -2878,13 +2879,13 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontSize: 24,
       lineHeight: 30,
       fontWeight: "700",
-      color: "#1A1A1A",
+      color: colors.textPrimary,
       fontFamily: "Inter_700Bold",
     },
     emptyModeRow: {
       flexDirection: "row",
       gap: 8,
-      backgroundColor: "#EDE8DE",
+      backgroundColor: colors.surfaceSecondary,
       paddingHorizontal: 16,
       paddingBottom: 16,
     },
@@ -2894,19 +2895,19 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderRadius: 19,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "rgba(255,252,248,0.46)",
+      backgroundColor: colors.overlayElevated,
     },
     emptyModePillSelected: {
-      backgroundColor: "#C8C0B0",
+      backgroundColor: colors.accentSoft,
     },
     emptyModeText: {
       fontSize: 12,
       fontWeight: "700",
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_700Bold",
     },
     emptyModeTextSelected: {
-      color: "#2D2926",
+      color: colors.accentPrimary,
     },
     widgetAyahRow: {
       flexDirection: "row",
@@ -2917,32 +2918,32 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingVertical: 14,
       gap: 12,
       borderRadius: 18,
-      backgroundColor: "#FFFCF8",
+      backgroundColor: colors.surfaceElevated,
       borderWidth: 1,
-      borderColor: "#DDD6C8",
+      borderColor: colors.borderSubtle,
     },
     widgetAyahRowFilled: {},
     widgetRowMuted: {
       opacity: 0.42,
-      borderColor: "rgba(221,214,200,0.4)",
-      backgroundColor: "rgba(255,252,248,0.48)",
+      borderColor: colors.borderSubtle,
+      backgroundColor: colors.overlayElevated,
     },
     widgetAyahCircle: {
       width: 28,
       height: 28,
       borderRadius: 14,
-      backgroundColor: "#EDE8DE",
+      backgroundColor: colors.surfaceSecondary,
       alignItems: "center",
       justifyContent: "center",
       flexShrink: 0,
     },
     widgetAyahCircleFilled: {
-      backgroundColor: "#C8C0B0",
+      backgroundColor: colors.accentSoft,
     },
     widgetAyahLabel: {
       fontSize: 12,
       fontWeight: "700",
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_700Bold",
       letterSpacing: 0.8,
       textTransform: "uppercase",
@@ -2951,12 +2952,12 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     widgetAyahValue: {
       fontSize: 14,
       fontWeight: "700",
-      color: "#1A1A1A",
+      color: colors.textPrimary,
       fontFamily: "Inter_700Bold",
     },
     widgetAyahPlaceholder: {
       fontSize: 14,
-      color: "#B5AC9C",
+      color: colors.disabledText,
       fontFamily: "Inter_700Bold",
       fontWeight: "700",
     },
@@ -2986,20 +2987,20 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: 14,
       paddingVertical: 14,
       borderRadius: 18,
-      backgroundColor: "#FFFCF8",
+      backgroundColor: colors.surfaceElevated,
       borderWidth: 1,
-      borderColor: "#DDD6C8",
+      borderColor: colors.borderSubtle,
     },
     widgetPaceDivider: {
       width: StyleSheet.hairlineWidth,
       height: 44,
-      backgroundColor: "#DDD6C8",
+      backgroundColor: colors.borderSubtle,
       marginHorizontal: 12,
     },
     widgetPaceLabel: {
       fontSize: 12,
       fontWeight: "700",
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_700Bold",
       letterSpacing: 0.8,
       textTransform: "uppercase",
@@ -3008,12 +3009,12 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     widgetPaceValue: {
       fontSize: 14,
       fontWeight: "700",
-      color: "#1A1A1A",
+      color: colors.textPrimary,
       fontFamily: "Inter_700Bold",
     },
     widgetPacePlaceholder: {
       fontSize: 14,
-      color: "#B5AC9C",
+      color: colors.disabledText,
       fontFamily: "Inter_700Bold",
       fontWeight: "700",
     },
@@ -3021,23 +3022,23 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginHorizontal: 16,
       marginTop: 14,
       marginBottom: 0,
-      backgroundColor: "#C8C0B0",
+      backgroundColor: colors.accentSoft,
       borderRadius: 22,
       minHeight: 54,
       alignItems: "center",
       justifyContent: "center",
     },
     widgetStartBtnDisabled: {
-      backgroundColor: "#EDE8DE",
+      backgroundColor: colors.surfaceSecondary,
     },
     widgetStartBtnText: {
       fontSize: 16,
       fontWeight: "600",
-      color: "#2D2926",
+      color: colors.accentPrimary,
       fontFamily: "Inter_700Bold",
     },
     widgetStartBtnTextDisabled: {
-      color: "#AFA695",
+      color: colors.disabledText,
     },
     widgetFooterRow: {
       flexDirection: "row",
@@ -3046,7 +3047,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingTop: 14,
       paddingBottom: 16,
       gap: 12,
-      backgroundColor: "#FFFCF8",
+      backgroundColor: colors.surfaceElevated,
     },
     widgetStreakGroup: {
       flex: 1,
@@ -3126,14 +3127,14 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginTop: 12,
       borderRadius: 18,
       borderWidth: 1,
-      borderColor: "#DDD6C8",
-      backgroundColor: "#FFFCF8",
+      borderColor: colors.borderSubtle,
+      backgroundColor: colors.surfaceElevated,
       overflow: "hidden",
     },
     continuationRow: {
       flexDirection: "row",
       alignItems: "stretch",
-      backgroundColor: "#F5F0E8",
+      backgroundColor: colors.hifzBackground,
     },
     continuationColumn: {
       flex: 1,
@@ -3142,12 +3143,12 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     continuationDivider: {
       width: StyleSheet.hairlineWidth,
-      backgroundColor: "#DDD6C8",
+      backgroundColor: colors.borderSubtle,
     },
     continuationLabel: {
       fontSize: 11,
       fontWeight: "700",
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_700Bold",
       textTransform: "uppercase",
       letterSpacing: 0.7,
@@ -3171,7 +3172,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flex: 1,
       fontSize: 12,
       lineHeight: 17,
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_400Regular",
     },
 
@@ -3238,21 +3239,21 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flexBasis: "42%" as any,
       minHeight: 58,
       borderRadius: 20,
-      backgroundColor: "#C8C0B0",
+      backgroundColor: colors.accentSoft,
       alignItems: "center",
       justifyContent: "center",
     },
     hifzInlineOptionText: {
       fontSize: 14,
       fontWeight: "700",
-      color: "#3C3832",
+      color: colors.textSecondary,
       fontFamily: "Inter_700Bold",
     },
     hifzInlineCloseBtn: {
       width: 58,
       height: 58,
       borderRadius: 29,
-      backgroundColor: "#C8C0B0",
+      backgroundColor: colors.accentSoft,
       alignItems: "center",
       justifyContent: "center",
       flexShrink: 0,
@@ -3264,12 +3265,12 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginTop: 22,
     },
     thisWeekCard: {
-      backgroundColor: "#FAF7F2",
+      backgroundColor: colors.surfacePrimary,
       borderRadius: 22,
       borderWidth: 1,
-      borderColor: "#DDD6C8",
+      borderColor: colors.borderSubtle,
       overflow: "hidden",
-      shadowColor: "#000000",
+      shadowColor: colors.shadowNeutral,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.04,
       shadowRadius: 18,
@@ -3279,7 +3280,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: 16,
       paddingTop: 16,
       paddingBottom: 14,
-      backgroundColor: "#EDE8DE",
+      backgroundColor: colors.surfaceSecondary,
     },
     thisWeekBigTitle: {
       fontSize: 24,
@@ -3291,7 +3292,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     thisWeekIntention: {
       fontSize: 13,
       lineHeight: 18,
-      color: "#918879",
+      color: colors.textTertiary,
       fontFamily: "Inter_400Regular",
       marginTop: 4,
       marginBottom: 12,
@@ -3305,7 +3306,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       minHeight: 34,
       borderRadius: 999,
       borderWidth: 1,
-      borderColor: "#B9AF9F",
+      borderColor: colors.borderStrong,
       paddingHorizontal: 12,
       paddingVertical: 6,
       flexDirection: "row",
@@ -3315,7 +3316,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     weeklyMetaPillText: {
       fontSize: 13,
       lineHeight: 15,
-      color: "#887F71",
+      color: colors.textTertiary,
       fontFamily: "Inter_600SemiBold",
     },
     thisWeekHeader: {
@@ -3357,12 +3358,12 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     thisWeekRhythmBlock: {
       paddingHorizontal: 16,
       paddingBottom: 4,
-      backgroundColor: "#EDE8DE",
+      backgroundColor: colors.surfaceSecondary,
     },
     rhythmTitle: {
       fontSize: 12,
       fontWeight: "700",
-      color: "#6D655B",
+      color: colors.textSecondary,
       fontFamily: "Inter_700Bold",
       letterSpacing: 1.5,
       textTransform: "uppercase",
@@ -3384,14 +3385,14 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     thisWeekDonutNum: {
       fontSize: 15,
       fontWeight: "700",
-      color: "#201F1D",
+      color: colors.textPrimary,
       fontFamily: "Inter_700Bold",
       lineHeight: 17,
     },
     thisWeekDonutLabel: {
       fontSize: 8,
       lineHeight: 10,
-      color: "#8F8678",
+      color: colors.textTertiary,
       fontFamily: "Inter_400Regular",
     },
     dotsScrollView: { flex: 1 },
@@ -3421,25 +3422,25 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderWidth: 1.5,
     },
     dotCircleDone: {
-      backgroundColor: "#C8C0B0",
-      borderColor: "#C8C0B0",
+      backgroundColor: colors.accentSoft,
+      borderColor: colors.accentSoft,
     },
     dotCircleEmpty: {
       backgroundColor: "transparent",
-      borderColor: "#C8C0B0",
+      borderColor: colors.accentSoft,
     },
     dotNum: {
       fontSize: 10,
       lineHeight: 12,
       fontWeight: "600",
-      color: "#8D8477",
+      color: colors.textTertiary,
       fontFamily: "Inter_600SemiBold",
     },
     dotNumDone: {
       fontSize: 10,
       lineHeight: 12,
       fontWeight: "600",
-      color: "#5A5248",
+      color: colors.textSecondary,
       fontFamily: "Inter_600SemiBold",
     },
 
@@ -3530,7 +3531,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     currentGoalCard: {
       marginHorizontal: 16,
       marginBottom: 12,
-      backgroundColor: "#F7F3EC",
+      backgroundColor: colors.surfacePrimary,
       borderRadius: 10,
       padding: 14,
       flexDirection: "row",
@@ -3590,7 +3591,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginHorizontal: 16,
       marginTop: 20,
       marginBottom: 12,
-      backgroundColor: "#F8F4ED",
+      backgroundColor: colors.surfacePrimary,
       borderRadius: 18,
       paddingHorizontal: 14,
       paddingVertical: 16,
@@ -3613,7 +3614,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: 42,
       height: 42,
       borderRadius: 21,
-      backgroundColor: "#EFE9DF",
+      backgroundColor: colors.surfaceSecondary,
       alignItems: "center",
       justifyContent: "center",
       flexShrink: 0,
@@ -3643,7 +3644,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     nextAyahSub: {
       fontSize: 12,
-      color: "#918879",
+      color: colors.textTertiary,
       fontFamily: "Inter_400Regular",
       marginTop: 2,
     },
@@ -3692,15 +3693,15 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       justifyContent: "center",
       borderRadius: 14,
       borderWidth: 1,
-      borderColor: "#C8C0B0",
+      borderColor: colors.accentSoft,
       paddingVertical: 11,
       marginHorizontal: 16,
       marginTop: 12,
-      backgroundColor: "#FFFCF8",
+      backgroundColor: colors.surfaceElevated,
     },
     doneRevisionBtnText: {
       fontSize: 13,
-      color: "#8B8274",
+      color: colors.textTertiary,
       fontFamily: "Inter_600SemiBold",
     },
     thisWeekStreakRow: {
@@ -3711,8 +3712,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingBottom: 16,
       gap: 12,
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: "#DDD6C8",
-      backgroundColor: "#FFFCF8",
+      borderTopColor: colors.borderSubtle,
+      backgroundColor: colors.surfaceElevated,
     },
     thisWeekStreakGroup: {
       flex: 1,
@@ -3724,24 +3725,24 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: 10,
       height: 10,
       borderRadius: 5,
-      backgroundColor: "#E87040",
+      backgroundColor: colors.appFlame,
     },
     calendarButton: {
       minHeight: 28,
       borderRadius: 999,
       borderWidth: 1,
-      borderColor: "#C8C0B0",
+      borderColor: colors.accentSoft,
       paddingHorizontal: 12,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: 9,
-      backgroundColor: "#FFFCF8",
+      backgroundColor: colors.surfaceElevated,
     },
     calendarButtonText: {
       fontSize: 12,
       fontWeight: "700",
-      color: "#8B8274",
+      color: colors.textTertiary,
       fontFamily: "Inter_700Bold",
       textTransform: "uppercase",
       letterSpacing: 0.6,
@@ -3753,19 +3754,19 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginTop: 22,
     },
     journeyCard: {
-      backgroundColor: "#FAF7F2",
+      backgroundColor: colors.surfacePrimary,
       borderRadius: 22,
       borderWidth: 1,
-      borderColor: "#DDD6C8",
+      borderColor: colors.borderSubtle,
       overflow: "hidden",
-      shadowColor: "#000000",
+      shadowColor: colors.shadowNeutral,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.04,
       shadowRadius: 18,
       elevation: 3,
     },
     journeyTopSurface: {
-      backgroundColor: "#EDE8DE",
+      backgroundColor: colors.surfaceSecondary,
       paddingHorizontal: 16,
       paddingTop: 16,
       paddingBottom: 16,
@@ -3779,16 +3780,16 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     journeyCompletionDay: {
       fontSize: 12,
       fontWeight: "700",
-      color: "#5A5248",
+      color: colors.textSecondary,
       fontFamily: "Inter_700Bold",
     },
     journeyCompletionDateBadge: {
       flexDirection: "row",
       alignItems: "center",
       gap: 5,
-      backgroundColor: "#FFFCF8",
+      backgroundColor: colors.surfaceElevated,
       borderWidth: 1,
-      borderColor: "#C8C0B0",
+      borderColor: colors.accentSoft,
       borderRadius: 18,
       paddingHorizontal: 10,
       paddingVertical: 5,
@@ -3804,7 +3805,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     journeyPreparingTitle: {
       fontSize: 13,
       fontWeight: "700",
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_700Bold",
       textTransform: "uppercase",
       letterSpacing: 0.8,
@@ -3813,7 +3814,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     journeySubText: {
       fontSize: 13,
       lineHeight: 19,
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_400Regular",
       marginTop: 6,
       marginBottom: 14,
@@ -3822,7 +3823,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 5,
-      backgroundColor: "rgba(0,0,0,0.08)",
+      backgroundColor: colors.overlaySubtle,
       borderRadius: 18,
       paddingHorizontal: 10,
       paddingVertical: 5,
@@ -3831,7 +3832,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     journeyCompleteText: {
       fontSize: 12,
       fontWeight: "700",
-      color: "#5A5248",
+      color: colors.textSecondary,
       fontFamily: "Inter_700Bold",
       textTransform: "uppercase",
       letterSpacing: 0.7,
@@ -3839,26 +3840,26 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     journeyProgressRail: {
       height: 3,
       borderRadius: 999,
-      backgroundColor: "rgba(0,0,0,0.10)",
+      backgroundColor: colors.overlaySoft,
       overflow: "hidden",
       marginBottom: 8,
     },
     journeyProgressFill: {
       height: "100%" as any,
       width: "100%" as any,
-      backgroundColor: "#5A5248",
+      backgroundColor: colors.textSecondary,
       borderRadius: 999,
     },
     journeyProgressText: {
       fontSize: 12,
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_400Regular",
     },
     journeyLoadingSurface: {
       borderRadius: 16,
-      backgroundColor: "#FFFCF8",
+      backgroundColor: colors.surfaceElevated,
       borderWidth: 1,
-      borderColor: "#DDD6C8",
+      borderColor: colors.borderSubtle,
       overflow: "hidden",
       marginBottom: 14,
     },
@@ -3873,12 +3874,12 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     journeyLoadingDivider: {
       width: StyleSheet.hairlineWidth,
-      backgroundColor: "#DDD6C8",
+      backgroundColor: colors.borderSubtle,
     },
     journeyLoadingLabel: {
       fontSize: 10,
       fontWeight: "700",
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_700Bold",
       textTransform: "uppercase",
       letterSpacing: 0.7,
@@ -3892,16 +3893,16 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     journeyLoadingRail: {
       height: 4,
-      backgroundColor: "#E8E2D8",
+      backgroundColor: colors.disabledBackground,
       overflow: "hidden",
     },
     journeyLoadingFill: {
       height: "100%" as any,
-      backgroundColor: "#5A5248",
+      backgroundColor: colors.textSecondary,
     },
     journeyLoadingText: {
       fontSize: 11,
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_400Regular",
       paddingHorizontal: 12,
       paddingVertical: 9,
@@ -3910,7 +3911,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: 16,
       paddingTop: 14,
       paddingBottom: 8,
-      backgroundColor: "#FFFCF8",
+      backgroundColor: colors.surfaceElevated,
     },
     journeyReflectionRow: {
       minHeight: 42,
@@ -3918,13 +3919,13 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       justifyContent: "space-between",
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: "#DDD6C8",
+      borderBottomColor: colors.borderSubtle,
     },
     journeyReflectionRowLast: { borderBottomWidth: 0 },
     journeyStatLabel: {
       fontSize: 12,
       fontWeight: "700",
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_700Bold",
     },
     journeyStatValue: {
@@ -3936,7 +3937,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     journeyPrimaryBtn: {
       marginHorizontal: 16,
       marginTop: 10,
-      backgroundColor: "#C8C0B0",
+      backgroundColor: colors.accentSoft,
       borderRadius: 18,
       minHeight: 52,
       flexDirection: "row",
@@ -3947,7 +3948,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     journeyPrimaryText: {
       fontSize: 14,
       fontWeight: "700",
-      color: "#1A1A1A",
+      color: colors.textPrimary,
       fontFamily: "Inter_700Bold",
     },
     journeySecondaryBtn: {
@@ -3960,14 +3961,14 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       justifyContent: "center",
       gap: 8,
-      backgroundColor: "#FFFCF8",
+      backgroundColor: colors.surfaceElevated,
       borderWidth: 1,
-      borderColor: "#C8C0B0",
+      borderColor: colors.accentSoft,
     },
     journeySecondaryText: {
       fontSize: 12,
       fontWeight: "700",
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_700Bold",
       textTransform: "uppercase",
       letterSpacing: 0.5,
@@ -3977,7 +3978,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginTop: 10,
       marginBottom: 16,
       backgroundColor: "transparent",
-      borderColor: "#C8C0B0",
+      borderColor: colors.accentSoft,
     },
 
     // Week done floating toast
@@ -3986,16 +3987,16 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       left: 16,
       right: 16,
       zIndex: 50,
-      backgroundColor: "#FFFCF8",
+      backgroundColor: colors.surfaceElevated,
       borderRadius: 18,
       borderWidth: 1,
-      borderColor: "#DDD6C8",
+      borderColor: colors.borderSubtle,
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: 16,
       paddingVertical: 12,
       gap: 12,
-      shadowColor: "#000000",
+      shadowColor: colors.shadowNeutral,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.08,
       shadowRadius: 14,
@@ -4005,7 +4006,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: "#34C759",
+      backgroundColor: colors.appSuccess,
       alignItems: "center",
       justifyContent: "center",
       flexShrink: 0,
@@ -4018,13 +4019,13 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     weekDoneSub: {
       fontSize: 12,
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_400Regular",
       marginTop: 2,
     },
     toastCalendarCta: {
       fontSize: 12,
-      color: "#8A8070",
+      color: colors.textTertiary,
       fontFamily: "Inter_600SemiBold",
       textDecorationLine: "underline",
     },
@@ -4032,7 +4033,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       width: 32,
       height: 32,
       borderRadius: 16,
-      backgroundColor: "#EDE8DE",
+      backgroundColor: colors.surfaceSecondary,
       alignItems: "center",
       justifyContent: "center",
     },

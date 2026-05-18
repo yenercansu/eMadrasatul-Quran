@@ -1,21 +1,12 @@
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View, type StyleProp, type ViewStyle } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useColors } from "@/hooks/useColors";
 
-export const hifzTokens = {
-  background: "#F5F0E8",
-  outerBg: "#DED6CC",
-  warmBand: "#EDE8DE",
-  cardBg: "#FAF7F2",
-  heroCard: "#C8C0B0",
-  border: "#DDD6C8",
-  darkText: "#1A1A1A",
-  darkBrown: "#2D2926",
-  midBrown: "#5A5248",
-  muted: "#6A6058",
-  lightMuted: "#8A8070",
-  faint: "#B0A898",
-};
+function useHifzStyles() {
+  const colors = useColors();
+  return { colors, ui: makeStyles(colors) };
+}
 
 export function HifzStatusPill({
   label,
@@ -24,6 +15,7 @@ export function HifzStatusPill({
   label: string;
   active?: boolean;
 }) {
+  const { ui } = useHifzStyles();
   return (
     <View style={ui.statusPill}>
       <View style={[ui.statusDot, active && ui.statusDotActive]} />
@@ -33,14 +25,16 @@ export function HifzStatusPill({
 }
 
 export function HifzProfileButton({ onPress }: { onPress: () => void }) {
+  const { colors, ui } = useHifzStyles();
   return (
     <TouchableOpacity style={ui.profileButton} onPress={onPress} activeOpacity={0.72}>
-      <Feather name="user" size={16} color={hifzTokens.lightMuted} strokeWidth={1.8} />
+      <Feather name="user" size={16} color={colors.hifzLightMuted} strokeWidth={1.8} />
     </TouchableOpacity>
   );
 }
 
 export function HifzModeTag({ label }: { label: string }) {
+  const { ui } = useHifzStyles();
   return (
     <View style={ui.modeTag}>
       <Text style={ui.modeTagText}>{label}</Text>
@@ -65,6 +59,7 @@ export function HifzHeroCard({
   progress?: number;
   style?: ViewStyle;
 }) {
+  const { colors, ui } = useHifzStyles();
   return (
     <TouchableOpacity style={[ui.heroCard, style]} onPress={onPress} activeOpacity={0.88}>
       <View style={ui.heroRow}>
@@ -89,7 +84,7 @@ export function HifzHeroCard({
           </View>
         </View>
         <View style={ui.heroChevron}>
-          <Feather name="chevron-right" size={24} color={hifzTokens.midBrown} strokeWidth={2.5} />
+          <Feather name="chevron-right" size={24} color={colors.hifzAccentMuted} strokeWidth={2.5} />
         </View>
       </View>
     </TouchableOpacity>
@@ -107,6 +102,7 @@ export function HifzSegmentedControl<T extends string>({
   onChange: (value: T) => void;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { ui } = useHifzStyles();
   return (
     <View style={[ui.segmented, style]}>
       {options.map((option) => {
@@ -135,6 +131,7 @@ export function HifzPrimaryButton({
   onPress: () => void;
   disabled?: boolean;
 }) {
+  const { ui } = useHifzStyles();
   return (
     <TouchableOpacity
       style={[ui.primaryButton, disabled && ui.primaryButtonDisabled]}
@@ -156,6 +153,7 @@ export function HifzStepper({
   activeIndex: number;
   onStepPress?: (index: number) => void;
 }) {
+  const { ui } = useHifzStyles();
   return (
     <View style={ui.stepper}>
       {labels.map((label, index) => {
@@ -178,11 +176,11 @@ export function HifzStepper({
   );
 }
 
-const ui = StyleSheet.create({
+const makeStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   statusPill: {
     minHeight: 28,
     borderRadius: 999,
-    backgroundColor: "#DDD6C8",
+    backgroundColor: colors.hifzWarmBand,
     paddingHorizontal: 12,
     flexDirection: "row",
     alignItems: "center",
@@ -192,45 +190,45 @@ const ui = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: hifzTokens.faint,
+    backgroundColor: colors.hifzFaint,
   },
   statusDotActive: {
-    backgroundColor: "#4ADE80",
+    backgroundColor: colors.appSuccess,
   },
   statusText: {
     fontSize: 12,
     fontWeight: "600",
-    color: hifzTokens.midBrown,
+    color: colors.hifzAccentMuted,
     fontFamily: "Inter_600SemiBold",
   },
   profileButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: hifzTokens.warmBand,
+    backgroundColor: colors.hifzWarmBand,
     alignItems: "center",
     justifyContent: "center",
   },
   modeTag: {
     borderRadius: 999,
-    backgroundColor: "rgba(0,0,0,0.10)",
+    backgroundColor: colors.overlaySoft,
     paddingHorizontal: 11,
     paddingVertical: 6,
   },
   modeTagText: {
     fontSize: 12,
     fontWeight: "700",
-    color: hifzTokens.midBrown,
+    color: colors.hifzAccentMuted,
     fontFamily: "Inter_700Bold",
     textTransform: "uppercase",
     letterSpacing: 0.4,
   },
   heroCard: {
     borderRadius: 28,
-    backgroundColor: hifzTokens.heroCard,
+    backgroundColor: colors.hifzHeroCard,
     paddingHorizontal: 20,
     paddingVertical: 20,
-    shadowColor: "#000000",
+    shadowColor: colors.shadowNeutral,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.10,
     shadowRadius: 28,
@@ -253,7 +251,7 @@ const ui = StyleSheet.create({
     gap: 8,
   },
   heroPill: {
-    backgroundColor: "rgba(0,0,0,0.10)",
+    backgroundColor: colors.overlaySoft,
     borderRadius: 999,
     paddingHorizontal: 11,
     paddingVertical: 6,
@@ -261,7 +259,7 @@ const ui = StyleSheet.create({
   heroPillText: {
     fontSize: 12,
     fontWeight: "700",
-    color: hifzTokens.midBrown,
+    color: colors.hifzAccentMuted,
     fontFamily: "Inter_700Bold",
     textTransform: "uppercase",
     letterSpacing: 0.4,
@@ -270,27 +268,27 @@ const ui = StyleSheet.create({
     fontSize: 24,
     lineHeight: 30,
     fontWeight: "700",
-    color: hifzTokens.darkText,
+    color: colors.hifzText,
     fontFamily: "Inter_700Bold",
     marginBottom: 6,
   },
   heroSubtitle: {
     fontSize: 13,
     lineHeight: 19,
-    color: hifzTokens.muted,
+    color: colors.hifzMuted,
     fontFamily: "Inter_400Regular",
     marginBottom: 24,
   },
   heroRail: {
     height: 3,
     borderRadius: 999,
-    backgroundColor: "rgba(0,0,0,0.10)",
+    backgroundColor: colors.overlaySoft,
     overflow: "hidden",
   },
   heroFill: {
     height: "100%" as any,
     borderRadius: 999,
-    backgroundColor: hifzTokens.darkBrown,
+    backgroundColor: colors.hifzAccent,
   },
   heroChevron: {
     width: 48,
@@ -303,7 +301,7 @@ const ui = StyleSheet.create({
   segmented: {
     minHeight: 50,
     borderRadius: 16,
-    backgroundColor: hifzTokens.warmBand,
+    backgroundColor: colors.hifzWarmBand,
     flexDirection: "row",
     padding: 3,
     overflow: "hidden",
@@ -315,42 +313,42 @@ const ui = StyleSheet.create({
     borderRadius: 14,
   },
   segmentSelected: {
-    backgroundColor: hifzTokens.darkBrown,
+    backgroundColor: colors.hifzAccent,
   },
   segmentText: {
     fontSize: 14,
     fontWeight: "700",
-    color: hifzTokens.lightMuted,
+    color: colors.hifzLightMuted,
     fontFamily: "Inter_700Bold",
   },
   segmentTextSelected: {
-    color: "#FFFFFF",
+    color: colors.onAccent,
   },
   primaryButton: {
     minHeight: 56,
     borderRadius: 16,
-    backgroundColor: hifzTokens.darkBrown,
+    backgroundColor: colors.hifzAccent,
     alignItems: "center",
     justifyContent: "center",
   },
   primaryButtonDisabled: {
-    backgroundColor: "#E8E2D8",
+    backgroundColor: colors.disabledBackground,
   },
   primaryButtonText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: colors.onAccent,
     fontFamily: "Inter_700Bold",
   },
   primaryButtonTextDisabled: {
-    color: hifzTokens.faint,
+    color: colors.disabledText,
   },
   stepper: {
     flexDirection: "row",
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: hifzTokens.border,
-    backgroundColor: hifzTokens.background,
+    borderBottomColor: colors.hifzBorder,
+    backgroundColor: colors.hifzBackground,
   },
   stepperTab: {
     flex: 1,
@@ -360,11 +358,11 @@ const ui = StyleSheet.create({
   },
   stepperText: {
     fontSize: 12,
-    color: hifzTokens.heroCard,
+    color: colors.hifzHeroCard,
     fontFamily: "Inter_400Regular",
   },
   stepperTextActive: {
-    color: hifzTokens.darkText,
+    color: colors.hifzText,
     fontFamily: "Inter_700Bold",
   },
   stepperUnderline: {
@@ -373,6 +371,6 @@ const ui = StyleSheet.create({
     width: "100%" as any,
     height: 2,
     borderRadius: 2,
-    backgroundColor: hifzTokens.darkText,
+    backgroundColor: colors.hifzText,
   },
 });

@@ -111,7 +111,7 @@ export default function StreakCalendarScreen() {
 
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle={colors.appText === "#1A1A1A" ? "dark-content" : "light-content"} />
+      <StatusBar barStyle={colors.isDark ? "light-content" : "dark-content"} />
 
       {/* Header */}
       <View style={s.header}>
@@ -134,7 +134,7 @@ export default function StreakCalendarScreen() {
       {/* Summary */}
       <View style={s.summaryRow}>
         <View style={s.summaryChip}>
-          <View style={[s.summaryDot, { backgroundColor: "#1A1A1A" }]} />
+          <View style={[s.summaryDot, { backgroundColor: colors.accentPrimary }]} />
           <Text style={s.summaryText}>{completedCount} days memorized</Text>
         </View>
         <View style={s.summaryChip}>
@@ -142,7 +142,7 @@ export default function StreakCalendarScreen() {
           <Text style={s.summaryText}>{totalPast - completedCount} days missed</Text>
         </View>
         <View style={s.summaryChip}>
-          <View style={[s.summaryDot, { backgroundColor: "#B7791F" }]} />
+          <View style={[s.summaryDot, { backgroundColor: colors.appGold }]} />
           <Text style={s.summaryText}>{milestoneCount} milestones</Text>
         </View>
       </View>
@@ -319,10 +319,10 @@ const styles = (colors: ReturnType<typeof import("@/hooks/useColors").useColors>
       backgroundColor: "transparent",
     },
     dayCircleCompleted: {
-      backgroundColor: "#1A1A1A",
+      backgroundColor: colors.accentPrimary,
     },
     dayCircleMilestone: {
-      backgroundColor: "#B7791F",
+      backgroundColor: colors.appGold,
     },
     dayCircleMissed: {
       backgroundColor: colors.appLightGray,
@@ -340,10 +340,10 @@ const styles = (colors: ReturnType<typeof import("@/hooks/useColors").useColors>
       fontFamily: "Inter_600SemiBold",
     },
     dayNumCompleted: {
-      color: "#FFFFFF",
+      color: colors.onAccent,
     },
     dayNumMilestone: {
-      color: "#FFFFFF",
+      color: colors.onAccent,
     },
     dayNumMissed: {
       color: colors.appLightText,

@@ -47,7 +47,7 @@ export default function GoogleOAuthCallbackScreen() {
 
   return (
     <View style={s(colors).root}>
-      <ActivityIndicator color="#1A1A1A" />
+      <ActivityIndicator color={colors.textPrimary} />
     </View>
   );
 }
