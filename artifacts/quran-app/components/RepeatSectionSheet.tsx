@@ -28,14 +28,6 @@ interface Props {
   ) => void;
 }
 
-const REPEAT_OPTIONS: { value: number; label: string }[] = [
-  { value: 1, label: "1×" },
-  { value: 3, label: "3×" },
-  { value: 5, label: "5×" },
-  { value: 10, label: "10×" },
-  { value: 999, label: "∞" },
-];
-
 export function RepeatSectionSheet({
   visible, onClose, surahNumber, surahName, ayahNumber, ayahText, onConfirm,
 }: Props) {
@@ -46,13 +38,11 @@ export function RepeatSectionSheet({
   );
   const [startIdx, setStartIdx] = useState<number | null>(null);
   const [endIdx, setEndIdx] = useState<number | null>(null);
-  const [repeat, setRepeat] = useState<number>(999);
 
   useEffect(() => {
     if (visible) {
       setStartIdx(0);
       setEndIdx(Math.max(0, words.length - 1));
-      setRepeat(999);
     }
   }, [visible, words.length, ayahNumber, surahNumber]);
 
@@ -84,7 +74,7 @@ export function RepeatSectionSheet({
       Math.min(startIdx, endIdx),
       Math.max(startIdx, endIdx),
       words.length,
-      repeat,
+      999,
     );
     onClose();
   };
@@ -135,32 +125,11 @@ export function RepeatSectionSheet({
               </TouchableOpacity>
             );
           })}
+          <TouchableOpacity onPress={handleSelectAll} activeOpacity={0.7} style={s.selectAllBtn}>
+            <Feather name="maximize-2" size={14} color="#1A1A1A" />
+            <Text style={s.selectAllText}>Select whole ayah</Text>
+          </TouchableOpacity>
         </ScrollView>
-
-        <TouchableOpacity onPress={handleSelectAll} activeOpacity={0.7} style={s.selectAllBtn}>
-          <Feather name="maximize-2" size={14} color="#1A1A1A" />
-          <Text style={s.selectAllText}>Select whole ayah</Text>
-        </TouchableOpacity>
-
-        {/* Repeat count selector */}
-        <Text style={s.repeatLabel}>REPEAT</Text>
-        <View style={s.repeatRow}>
-          {REPEAT_OPTIONS.map((opt) => {
-            const active = repeat === opt.value;
-            return (
-              <TouchableOpacity
-                key={opt.value}
-                onPress={() => { try { Haptics.selectionAsync(); } catch {} setRepeat(opt.value); }}
-                style={[s.repeatChip, active && s.repeatChipActive]}
-                activeOpacity={0.85}
-              >
-                <Text style={[s.repeatChipText, active && s.repeatChipTextActive]}>
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
 
         {/* Confirm */}
         <TouchableOpacity
@@ -223,32 +192,10 @@ const s = StyleSheet.create({
     paddingVertical: 8,
     backgroundColor: "#F0F0F0",
     borderRadius: 999,
-    marginTop: 8,
-    marginBottom: 4,
+    marginTop: 16,
+    marginBottom: 8,
   },
   selectAllText: { fontSize: 12, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
-
-  repeatLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#9A9A9A",
-    letterSpacing: 1.2,
-    fontFamily: "Inter_700Bold",
-    marginTop: 14,
-    marginBottom: 8,
-    paddingHorizontal: 20,
-  },
-  repeatRow: { flexDirection: "row", gap: 8, justifyContent: "space-between", marginBottom: 16, paddingHorizontal: 20 },
-  repeatChip: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: "#F0F0F0",
-    alignItems: "center",
-  },
-  repeatChipActive: { backgroundColor: "#1A1A1A" },
-  repeatChipText: { fontSize: 14, fontWeight: "700", color: "#6B6B6B", fontFamily: "Inter_700Bold" },
-  repeatChipTextActive: { color: "#FFFFFF" },
 
   saveBtn: {
     flexDirection: "row",
