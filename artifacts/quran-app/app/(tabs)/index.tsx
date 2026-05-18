@@ -103,13 +103,19 @@ function isJuzFullyMemorized(juz: number, memorized: Set<string>) {
   return ayahs.length > 0 && ayahs.every((ayah) => memorized.has(getAyahKey(ayah)));
 }
 
-function findNextIncompleteSurah(currentSurahNumber: number, memorizedAyahKeys: string[]) {
+function findNextIncompleteSurah(
+  currentSurahNumber: number,
+  memorizedAyahKeys: string[],
+  checkedSurahsSet: Set<number> = new Set()
+) {
   const memorized = new Set(memorizedAyahKeys);
+  const isFullyDone = (n: number) =>
+    checkedSurahsSet.has(n) || isSurahFullyMemorized(n, memorized);
   const after = SURAH_DATA.find(
-    (surah) => surah.number > currentSurahNumber && !isSurahFullyMemorized(surah.number, memorized)
+    (surah) => surah.number > currentSurahNumber && !isFullyDone(surah.number)
   );
   if (after) return after;
-  return SURAH_DATA.find((surah) => !isSurahFullyMemorized(surah.number, memorized)) ?? null;
+  return SURAH_DATA.find((surah) => !isFullyDone(surah.number)) ?? null;
 }
 
 function findNextIncompleteJuz(currentJuz: number, memorizedAyahKeys: string[]) {
@@ -238,7 +244,7 @@ export default function HomeScreen() {
   const {
     lastListened, goal, setGoal, memorizationGoal, setMemorizationGoal,
     todayEntry, dailyEntries, onlineUsers, recentProgress, savedSurahs,
-    getWeekGoalAyahs, isSurahChecked, markAyahsMemorized, recordMilestoneCompletion,
+    getWeekGoalAyahs, isSurahChecked, checkedSurahs, markAyahsMemorized, recordMilestoneCompletion,
     memorizedAyahKeys,
   } = useQuran();
   const [refreshing, setRefreshing] = useState(false);
@@ -570,11 +576,8 @@ export default function HomeScreen() {
 
   const extensionOptionCounts = useMemo(() => {
     if (extensionRemainingCount <= 0) return [];
-    if (extensionRemainingCount <= 4) {
-      return Array.from({ length: extensionRemainingCount }, (_, index) => index + 1);
-    }
-    const presets = [5, 7, 10, 15].filter((count) => count <= extensionRemainingCount);
-    return Array.from(new Set([...presets, extensionRemainingCount])).slice(0, 4);
+    const start = Math.max(1, extensionRemainingCount - 3);
+    return Array.from({ length: extensionRemainingCount - start + 1 }, (_, i) => start + i);
   }, [extensionRemainingCount]);
 
   const activeRangeTotal = activeGoalAyahs.length || totalRangeAyahs || targetTotal;
@@ -940,7 +943,7 @@ export default function HomeScreen() {
         totalAyahs: targetTotal,
       });
     } else {
-      const nextSurah = findNextIncompleteSurah(memorizationGoal.startSurahNumber, memorizedAyahKeys);
+      const nextSurah = findNextIncompleteSurah(memorizationGoal.startSurahNumber, memorizedAyahKeys, new Set(checkedSurahs));
       if (!nextSurah) return;
       const surahAyahsNext = Array.from({ length: nextSurah.ayahCount }, (_, index) => ({
         surahNumber: nextSurah.number,
@@ -999,7 +1002,7 @@ export default function HomeScreen() {
     }
   }, [
     memorizationGoal, hifzTransition, fullQuranComplete, targetJuz, targetSurah,
-    goal, memorizedAyahKeys, todayEntry, targetTotal, recordMilestoneCompletion,
+    goal, memorizedAyahKeys, checkedSurahs, todayEntry, targetTotal, recordMilestoneCompletion,
     setHifzTransition,
   ]);
 
@@ -1071,7 +1074,7 @@ export default function HomeScreen() {
           totalAyahs: targetTotal,
         });
       } else {
-        const nextSurah = findNextIncompleteSurah(memorizationGoal.startSurahNumber, memorizedAyahKeys);
+        const nextSurah = findNextIncompleteSurah(memorizationGoal.startSurahNumber, memorizedAyahKeys, new Set(checkedSurahs));
         if (!nextSurah) return;
         const surahAyahs = Array.from({ length: nextSurah.ayahCount }, (_, index) => ({
           surahNumber: nextSurah.number,
@@ -1148,6 +1151,7 @@ export default function HomeScreen() {
     memorizationGoal,
     memorizationPercent,
     memorizedAyahKeys,
+    checkedSurahs,
     recordMilestoneCompletion,
     setGoal,
     setMemorizationGoal,
