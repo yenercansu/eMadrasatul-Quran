@@ -1357,12 +1357,12 @@ export default function MemorizationQuizScreen() {
                         return (
                           <TouchableOpacity
                             key={surah.number}
-                            style={[s.surahCard2, colors.cardStyle, selected && { borderColor: colors.foreground }]}
+                            style={[s.surahCard2, colors.cardStyle, selected && { borderColor: colors.appSelectedPill, backgroundColor: colors.appCardPressed }]}
                             onPress={() => toggleSurah(surah.number)}
                             activeOpacity={0.8}
                           >
-                            <View style={[s.surahBadge2, selected ? { backgroundColor: colors.foreground, borderColor: colors.foreground } : { borderColor: colors.border }]}>
-                              {selected && <Feather name="check" size={14} color={colors.primaryForeground} />}
+                            <View style={[s.surahBadge2, selected ? { backgroundColor: colors.appSelectedPill, borderColor: colors.appSelectedPill } : { backgroundColor: colors.appSoftPill, borderColor: colors.appSoftBorder }]}>
+                              {selected && <Feather name="check" size={14} color={colors.appText} />}
                             </View>
                             <View style={{ flex: 1 }}>
                               <Text style={[s.surahCard2Name, { color: colors.foreground }]}>{surah.englishName}</Text>
@@ -1401,14 +1401,14 @@ export default function MemorizationQuizScreen() {
                         }}
                       >
                         <View
-                          style={[s.ayahCard2, colors.cardStyle, checked && { borderColor: colors.foreground }]}
+                          style={[s.ayahCard2, colors.cardStyle, checked && { borderColor: colors.appSelectedPill, backgroundColor: colors.appCardPressed }]}
                         >
                           <TouchableOpacity
-                            style={[s.ayahBadge2, checked ? { backgroundColor: colors.foreground, borderColor: colors.foreground } : { borderColor: colors.border }]}
+                            style={[s.ayahBadge2, checked ? { backgroundColor: colors.appSelectedPill, borderColor: colors.appSelectedPill } : { backgroundColor: colors.appSoftPill, borderColor: colors.appSoftBorder }]}
                             onPress={() => toggleSelected(ayah.id)}
                             activeOpacity={0.75}
                           >
-                            {checked && <Feather name="check" size={12} color={colors.primaryForeground} />}
+                            {checked && <Feather name="check" size={12} color={colors.appText} />}
                           </TouchableOpacity>
                           <TouchableOpacity style={{ flex: 1 }} onPress={() => toggleSelected(ayah.id)} activeOpacity={0.75}>
                             <View style={s.ayahCard2Header}>

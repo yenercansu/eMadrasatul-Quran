@@ -135,7 +135,7 @@ export default function QuranScreen() {
 
   return (
     <LinearGradient
-      colors={[colors.appLighterBg, colors.appLightGray]}
+      colors={[colors.appBackground, colors.appLightGray]}
       locations={[0, 1]}
       style={s.container}
     >
@@ -146,17 +146,17 @@ export default function QuranScreen() {
         </Text>
         <View style={s.searchRow}>
           <View style={s.searchBar}>
-            <Feather name="search" size={16} color={colors.appBorderMid} />
+            <Feather name="search" size={16} color={colors.appIconMuted} />
             <TextInput
               style={s.searchInput}
               placeholder="Search surahs..."
-              placeholderTextColor={colors.appBorderMid}
+              placeholderTextColor={colors.appIconMuted}
               value={search}
               onChangeText={setSearch}
             />
             {search.length > 0 && (
               <TouchableOpacity onPress={() => setSearch("")}>
-                <Feather name="x" size={16} color={colors.appBorderMid} />
+                <Feather name="x" size={16} color={colors.appIconMuted} />
               </TouchableOpacity>
             )}
           </View>
@@ -228,7 +228,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     subtitle: {
       fontSize: 14,                                                  // text-sm
-      color: colors.appBorderMid,                                    // stone-400
+      color: colors.appTextMuted,
       fontFamily: "Inter_400Regular",
       marginBottom: 12,
     },
@@ -236,19 +236,22 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     searchBar: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: colors.appStone,                             // stone-200 (#E7E5E4)
-      borderRadius: colors.borders.lg,                              // rounded-xl → 12px token
-      paddingHorizontal: 12,
-      height: 40,
-      gap: 8,
+      backgroundColor: colors.appCardWarm,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.appSoftBorder,
+      paddingHorizontal: 14,
+      height: 46,
+      gap: 10,
+      ...colors.shadows.softLift,
     },
     searchInput: {
       flex: 1,
       fontSize: 14,                                                  // text-sm
-      color: colors.appLightText,                                    // zinc-500
+      color: colors.appText,
       fontFamily: "Inter_400Regular",
     },
-    filterRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+    filterRow: { flexDirection: "row", gap: 8, flexWrap: "wrap", paddingTop: 2 },
     swipeAction: {
       width: 90,
       justifyContent: "center",

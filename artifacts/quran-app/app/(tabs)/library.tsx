@@ -92,26 +92,26 @@ function AyahCard({
   const card = (
     <View style={s.card}>
       <View style={s.cardMeta}>
-        <View style={[s.surahBadge, { borderColor: colors.border }]}>
-          <Text style={[s.surahBadgeNum, { color: colors.mutedForeground }]}>{ayah.surahNumber}</Text>
+        <View style={s.surahBadge}>
+          <Text style={s.surahBadgeNum}>{ayah.surahNumber}</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[s.surahName, { color: colors.foreground }]}>{ayah.surahName}</Text>
-          <Text style={[s.ayahLabel, { color: colors.mutedForeground }]}>Ayah {ayah.ayahNumber}</Text>
+          <Text style={s.surahName}>{ayah.surahName}</Text>
+          <Text style={s.ayahLabel}>Ayah {ayah.ayahNumber}</Text>
         </View>
         <TouchableOpacity
           onPress={() => router.push(`/surah/${ayah.surahNumber}?ayah=${ayah.ayahNumber}`)}
           activeOpacity={0.7}
-          style={[s.linkBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+          style={s.linkBtn}
         >
-          <Feather name="external-link" size={13} color={colors.mutedForeground} />
+          <Feather name="external-link" size={13} color={colors.appIconMuted} />
         </TouchableOpacity>
       </View>
-      <Text style={[s.arabicText, { color: colors.foreground }]}>{ayah.arabicText}</Text>
+      <Text style={s.arabicText}>{ayah.arabicText}</Text>
       {ayah.translationText ? (
         <>
-          <View style={[s.divider, { backgroundColor: colors.border }]} />
-          <Text style={[s.translationText, { color: colors.mutedForeground }]}>{ayah.translationText}</Text>
+          <View style={s.divider} />
+          <Text style={s.translationText}>{ayah.translationText}</Text>
         </>
       ) : null}
     </View>
@@ -142,44 +142,50 @@ function AyahCard({
 const cardStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     card: {
-      borderRadius: 10,
+      borderRadius: 22,
       padding: 16,
       gap: 10,
       borderWidth: 1,
-      backgroundColor: colors.appLighterBg,
-      borderColor: colors.appDarkerGray,
-      ...colors.shadows.warmWidgetLift,
+      backgroundColor: colors.appCardWarm,
+      borderColor: colors.appSoftBorder,
+      ...colors.shadows.premiumCard,
     },
     cardMeta: { flexDirection: "row", alignItems: "center", gap: 10 },
     surahBadge: {
       width: 40,
       height: 40,
       borderRadius: 20,
-      borderWidth: 1.5,
+      borderWidth: 1,
+      borderColor: colors.appSoftBorder,
+      backgroundColor: colors.appSoftPill,
       alignItems: "center",
       justifyContent: "center",
     },
-    surahBadgeNum: { fontSize: 13, fontFamily: "Inter_700Bold" },
-    surahName: { fontSize: 15, fontFamily: "Inter_700Bold" },
-    ayahLabel: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
+    surahBadgeNum: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.appTextMuted },
+    surahName: { fontSize: 15, fontFamily: "Inter_700Bold", color: colors.appText },
+    ayahLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.appTextMuted, marginTop: 1 },
     arabicText: {
       fontSize: 26,
       lineHeight: 46,
       textAlign: "right",
       writingDirection: "rtl",
+      color: colors.appText,
       fontFamily: Platform.OS === "ios" ? "System" : undefined,
     },
-    divider: { height: 1 },
+    divider: { height: 1, backgroundColor: colors.appSoftDivider },
     translationText: {
       fontSize: 14,
       lineHeight: 22,
+      color: colors.appTextMuted,
       fontFamily: "Inter_400Regular",
     },
     linkBtn: {
       width: 36,
       height: 24,
-      borderRadius: 6,
+      borderRadius: 12,
       borderWidth: 1,
+      borderColor: colors.appSoftBorder,
+      backgroundColor: colors.appSoftPill,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -339,7 +345,7 @@ function WordCard({ word, onToggleMemorized }: {
     <Animated.View style={{ opacity: fadeAnim }}>
       <TouchableOpacity
         onPress={() => setRevealed(prev => !prev)}
-        style={[wordCardStyles.card, { backgroundColor: colors.appLighterBg, borderColor: colors.appDarkerGray }]}
+        style={[wordCardStyles.card, { backgroundColor: colors.appCardWarm, borderColor: colors.appSoftBorder }]}
         activeOpacity={0.85}
       >
         <View style={wordCardStyles.cardTop}>
@@ -350,8 +356,8 @@ function WordCard({ word, onToggleMemorized }: {
             style={[
               wordCardStyles.checkCircle,
               {
-                borderColor: localMemorized ? colors.appText : colors.appBorderMid,
-                backgroundColor: localMemorized ? colors.appText : "transparent",
+                borderColor: localMemorized ? colors.appSelectedPill : colors.appSoftBorder,
+                backgroundColor: localMemorized ? colors.appSelectedPill : colors.appSoftPill,
               },
             ]}
             onPress={handleToggleMemorized}
@@ -361,18 +367,18 @@ function WordCard({ word, onToggleMemorized }: {
             <Feather
               name="check"
               size={14}
-              color={localMemorized ? colors.card : colors.appBorderMid}
+              color={localMemorized ? colors.appText : colors.appIconMuted}
             />
           </TouchableOpacity>
         </View>
-        <View style={[wordCardStyles.divider, { backgroundColor: colors.appStone }]} />
+        <View style={[wordCardStyles.divider, { backgroundColor: colors.appSoftDivider }]} />
         <View style={wordCardStyles.cardBottom}>
           {revealed ? (
             <Text style={[wordCardStyles.translationText, { color: colors.appText }]}>
               {word.translation || word.arabic}
             </Text>
           ) : (
-            <Text style={[wordCardStyles.tapToReveal, { color: colors.appBorderMid }]}>
+            <Text style={[wordCardStyles.tapToReveal, { color: colors.appIconMuted }]}>
               tap to reveal
             </Text>
           )}
@@ -384,13 +390,13 @@ function WordCard({ word, onToggleMemorized }: {
 
 const wordCardStyles = StyleSheet.create({
   card: {
-    borderRadius: 10,
+    borderRadius: 22,
     borderWidth: 1,
     minHeight: 112,
     shadowColor: "#5D4A37",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.09,
+    shadowRadius: 22,
     elevation: 3,
   },
   cardTop: {
@@ -580,30 +586,30 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
         )}
 
         {filterMode === "words" && !showDrillDown && (
-          <View style={[wvs.segmentedControl, { backgroundColor: colors.appBorderLight }]}>
+          <View style={[wvs.segmentedControl, { backgroundColor: colors.appSoftPill }]}>
             <TouchableOpacity
               style={[
                 wvs.segmentPill,
-                wordTab === "active" && { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.appText },
+                wordTab === "active" && { backgroundColor: colors.appSelectedPill, borderWidth: 1, borderColor: colors.appSelectedPill },
               ]}
               onPress={() => setWordTab("active")}
               activeOpacity={0.8}
             >
-              <Text style={[wvs.segmentText, { color: wordTab === "active" ? colors.appNeutralDark : colors.appBorderMid }]}>
-                <Text style={{ fontFamily: wordTab === "active" ? "Inter_700Bold" : "Inter_600SemiBold" }}>Active</Text>
+              <Text style={[wvs.segmentText, { color: wordTab === "active" ? colors.appText : colors.appIconMuted }]}>
+                <Text style={{ fontFamily: wordTab === "active" ? "Inter_600SemiBold" : "Inter_400Regular" }}>Active</Text>
                 <Text style={{ fontFamily: "Inter_400Regular" }}>{` (${activeWordCount})`}</Text>
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
                 wvs.segmentPill,
-                wordTab === "memorized" && { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.appText },
+                wordTab === "memorized" && { backgroundColor: colors.appSelectedPill, borderWidth: 1, borderColor: colors.appSelectedPill },
               ]}
               onPress={() => setWordTab("memorized")}
               activeOpacity={0.8}
             >
-              <Text style={[wvs.segmentText, { color: wordTab === "memorized" ? colors.appNeutralDark : colors.appBorderMid }]}>
-                <Text style={{ fontFamily: wordTab === "memorized" ? "Inter_700Bold" : "Inter_600SemiBold" }}>Memorized</Text>
+              <Text style={[wvs.segmentText, { color: wordTab === "memorized" ? colors.appText : colors.appIconMuted }]}>
+                <Text style={{ fontFamily: wordTab === "memorized" ? "Inter_600SemiBold" : "Inter_400Regular" }}>Memorized</Text>
                 <Text style={{ fontFamily: "Inter_400Regular" }}>{` (${memorizedWordCount})`}</Text>
               </Text>
             </TouchableOpacity>
@@ -657,12 +663,12 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
                         return (
                           <TouchableOpacity
                             key={item.surahNumber}
-                            style={[wvs.surahCard, { backgroundColor: colors.appLighterBg, borderColor: colors.appDarkerGray }]}
+                            style={[wvs.surahCard, { backgroundColor: colors.appCardWarm, borderColor: colors.appSoftBorder }]}
                             onPress={() => setSelectedSurahNum(item.surahNumber)}
                             activeOpacity={0.8}
                           >
-                            <View style={[wvs.surahBadge, { borderColor: colors.border }]}>
-                              <Text style={[wvs.surahBadgeNum, { color: colors.mutedForeground }]}>
+                            <View style={[wvs.surahBadge, { borderColor: colors.appSoftBorder, backgroundColor: colors.appSoftPill }]}>
+                              <Text style={[wvs.surahBadgeNum, { color: colors.appTextMuted }]}>
                                 {item.surahNumber}
                               </Text>
                             </View>
@@ -671,8 +677,8 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
                               <Text style={[wvs.surahCardMeta, { color: colors.mutedForeground }]}>
                                 {item.wordCount} word{item.wordCount !== 1 ? "s" : ""} saved · {origin}
                               </Text>
-                              <View style={[wvs.progressTrack, { backgroundColor: colors.border }]}>
-                                <View style={[wvs.progressFill, { width: `${progress * 100}%` as any, backgroundColor: colors.foreground }]} />
+                              <View style={[wvs.progressTrack, { backgroundColor: colors.appSoftDivider }]}>
+                                <View style={[wvs.progressFill, { width: `${progress * 100}%` as any, backgroundColor: colors.appTextMuted }]} />
                               </View>
                             </View>
                             <Text style={[wvs.surahArabicName, { color: colors.mutedForeground }]}>
@@ -774,7 +780,7 @@ const wordsViewStyles = StyleSheet.create({
     flexDirection: "row",
     borderRadius: 999,
     height: 44,
-    padding: 2,
+    padding: 3,
     marginTop: 10,
   },
   segmentPill: {
@@ -806,14 +812,14 @@ const wordsViewStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    borderRadius: 10,
+    borderRadius: 20,
     borderWidth: 1,
     padding: 16,
-    marginBottom: 8,
+    marginBottom: 10,
     shadowColor: "#5D4A37",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
     elevation: 3,
   },
   surahBadge: {
@@ -1009,7 +1015,7 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.appLighterBg,
+      backgroundColor: colors.appBackground,
     },
     content: {
       paddingHorizontal: 20,
@@ -1032,10 +1038,13 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
 
     // ── Streak Card ───────────────────────────────────────────────────────
     streakCard: {
-      backgroundColor: colors.appStone,
-      borderRadius: 12,
-      paddingVertical: 16,
-      paddingHorizontal: 16,
+      backgroundColor: colors.appCardWarm,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: colors.appSoftBorder,
+      paddingVertical: 18,
+      paddingHorizontal: 18,
+      ...colors.shadows.softLift,
     },
     streakContent: {
       flexDirection: "row",
@@ -1064,12 +1073,12 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
       width: 24,
       height: 24,
       borderRadius: 12,
-      backgroundColor: colors.appLightGray,
+      backgroundColor: colors.appSoftPill,
       alignItems: "center",
       justifyContent: "center",
     },
     dotActive: {
-      backgroundColor: colors.appText,
+      backgroundColor: colors.appSelectedPill,
     },
     dotLetter: {
       fontSize: 10,
@@ -1078,7 +1087,7 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Inter_700Bold",
     },
     dotLetterActive: {
-      color: colors.appWhite,
+      color: colors.appText,
     },
 
     // ── Swipe hint spacer (text removed, spacing preserved) ──────────────
@@ -1088,20 +1097,20 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
 
     // ── Quiz / Info Cards ─────────────────────────────────────────────────
     quizCard: {
-      backgroundColor: colors.appLighterBg,
-      borderRadius: 10,
-      paddingTop: 16,
-      paddingBottom: 16,
-      gap: 14,
+      backgroundColor: colors.appCardWarm,
+      borderRadius: 22,
+      paddingTop: 18,
+      paddingBottom: 10,
+      gap: 12,
       borderWidth: 1,
-      borderColor: colors.appDarkerGray,
-      ...colors.shadows.warmWidgetLift,
+      borderColor: colors.appSoftBorder,
+      ...colors.shadows.premiumCard,
     },
     cardTopRow: {
       paddingHorizontal: 16,
       flexDirection: "row",
       alignItems: "flex-start",
-      gap: 44,
+      gap: 18,
     },
     cardTextBlock: {
       flex: 1,
@@ -1109,7 +1118,7 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
     },
     cardTitle: {
       fontSize: 16,
-      fontWeight: "800",
+      fontWeight: "700",
       color: colors.appText,
       fontFamily: "Inter_700Bold",
     },
@@ -1120,16 +1129,17 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
       lineHeight: 18,
     },
     cardBadge: {
-      paddingHorizontal: 28,
-      paddingVertical: 8,
-      backgroundColor: colors.appStone,
-      borderRadius: 8,
+      minWidth: 76,
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+      backgroundColor: colors.appSoftPill,
+      borderRadius: 18,
       alignItems: "center",
       flexShrink: 0,
     },
     cardBadgeNum: {
-      fontSize: 18,
-      fontWeight: "800",
+      fontSize: 17,
+      fontWeight: "700",
       color: colors.appText,
       fontFamily: "Inter_700Bold",
     },
@@ -1140,27 +1150,33 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
     },
     cardDivider: {
       height: 1,
-      backgroundColor: colors.appBlack,
+      backgroundColor: colors.appSoftDivider,
+      marginHorizontal: 16,
     },
     startRow: {
-      paddingHorizontal: 16,
+      marginHorizontal: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 16,
+      backgroundColor: colors.appCardPressed,
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
     },
     startText: {
       fontSize: 14,
-      fontWeight: "700",
+      fontWeight: "600",
       color: colors.appText,
-      fontFamily: "Inter_700Bold",
+      fontFamily: "Inter_600SemiBold",
     },
 
     // ── Saved Ayahs badge ─────────────────────────────────────────────────
     savedCardBadge: {
-      paddingHorizontal: 28,
-      paddingVertical: 8,
-      backgroundColor: colors.appStone,
-      borderRadius: 8,
+      minWidth: 76,
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+      backgroundColor: colors.appSoftPill,
+      borderRadius: 18,
       alignItems: "center",
       flexShrink: 0,
     },

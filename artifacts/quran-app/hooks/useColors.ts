@@ -6,11 +6,11 @@ import { QuranContext } from "@/contexts/QuranContext";
 
 function buildCardStyle(palette: typeof colors.light) {
   return {
-    backgroundColor: palette.appLighterBg,
-    borderRadius: 10,
+    backgroundColor: palette.appCardWarm,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: palette.appDarkerGray,
-    ...colors.shadows.warmWidgetLift,
+    borderColor: palette.appSoftBorder,
+    ...colors.shadows.premiumCard,
   } as const;
 }
 

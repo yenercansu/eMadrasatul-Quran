@@ -40,7 +40,7 @@ export function SaveButton({
       <Ionicons
         name={saved ? "bookmark" : "bookmark-outline"}
         size={iconSize}
-        color={saved ? colors.appText : colors.appBorderMid}
+        color={saved ? colors.appText : colors.appIconMuted}
       />
     </TouchableOpacity>
   );
@@ -51,6 +51,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     base: {
       alignItems: "center",
       justifyContent: "center",
+      borderRadius: 999,
     },
     sm: {
       width: 28,

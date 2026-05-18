@@ -840,7 +840,11 @@ export default function HomeScreen() {
                 <Text style={s.niyyahAcceptedText}>May Allah accept from you</Text>
               )}
               {!showSelectionWidget && (
-                <TouchableOpacity onPress={() => setShowHifzGoalOptions(true)} activeOpacity={0.7}>
+                <TouchableOpacity
+                  onPress={() => setShowHifzGoalOptions(true)}
+                  activeOpacity={0.78}
+                  style={s.manageCta}
+                >
                   <Text style={s.manageLink}>Manage goal ...</Text>
                 </TouchableOpacity>
               )}
@@ -930,7 +934,8 @@ export default function HomeScreen() {
                 <Text style={s.goalWidgetTitle}>THIS WEEK</Text>
                 <TouchableOpacity
                   onPress={() => isPaceGoal ? setPaceDateVisible(true) : setWeeklyGoalVisible(true)}
-                  activeOpacity={0.7}
+                  activeOpacity={0.78}
+                  style={s.manageCta}
                 >
                   <Text style={s.manageLink}>Manage Weekly Goal ...</Text>
                 </TouchableOpacity>
@@ -2130,8 +2135,8 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Inter_600SemiBold",
     },
     surahInfo: { flex: 1, justifyContent: "center", alignItems: "flex-start" },
-    surahName: { fontSize: 14, fontWeight: "700", color: colors.appTextPrimary, fontFamily: "Inter_700Bold" },
-    surahMeta: { fontSize: 12, color: colors.appLightText, fontFamily: "Inter_400Regular", marginTop: 2 },
+    surahName: { fontSize: 13, fontWeight: "700", color: colors.appTextPrimary, fontFamily: "Inter_700Bold" },
+    surahMeta: { fontSize: 11, color: colors.appLightText, fontFamily: "Inter_400Regular", marginTop: 2 },
     surahArabic: {
       fontSize: 18,
       color: colors.appTextPrimary,
@@ -2180,9 +2185,20 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       flexShrink: 1,
     },
     manageLink: {
-      fontSize: 11,
-      color: "#C5BAAA",
-      fontFamily: "Inter_400Regular",
+      fontSize: 10,
+      color: "#5A5248",
+      fontFamily: "Inter_600SemiBold",
+    },
+    manageCta: {
+      minHeight: 28,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: "#D7CEC0",
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      backgroundColor: "rgba(250,247,242,0.42)",
+      alignItems: "center",
+      justifyContent: "center",
     },
     hifzHeroCard: {
       minHeight: 166,

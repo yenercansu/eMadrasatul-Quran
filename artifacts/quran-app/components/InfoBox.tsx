@@ -13,20 +13,23 @@ export function InfoBox({ title, description, rightContent }: InfoBoxProps) {
   return (
     <View
       style={{
-        backgroundColor: colors.appStone,
-        borderRadius: 12,
-        paddingVertical: 16,
-        paddingHorizontal: 16,
+        backgroundColor: colors.appCardWarm,
+        borderRadius: 22,
+        borderWidth: 1,
+        borderColor: colors.appSoftBorder,
+        paddingVertical: 18,
+        paddingHorizontal: 18,
         flexDirection: "row",
         alignItems: "flex-start",
-        gap: 44,
+        gap: 20,
+        ...colors.shadows.softLift,
       }}
     >
       <View style={{ flex: 1, gap: 4 }}>
-        <Text style={{ fontSize: 16, fontWeight: "800", color: colors.appText, fontFamily: "Inter_700Bold" }}>
+        <Text style={{ fontSize: 16, fontWeight: "700", color: colors.appText, fontFamily: "Inter_700Bold" }}>
           {title}
         </Text>
-        <Text style={{ fontSize: 13, color: colors.appTextMuted, fontFamily: "Inter_400Regular", lineHeight: 18 }}>
+        <Text style={{ fontSize: 13, color: colors.appTextMuted, fontFamily: "Inter_400Regular", lineHeight: 19 }}>
           {description}
         </Text>
       </View>

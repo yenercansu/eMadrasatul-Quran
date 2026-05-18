@@ -21,7 +21,8 @@ export function MemorizedBadge() {
 
   return (
     <View style={s.memorizedBadge}>
-      <Text style={s.memorizedBadgeText}>MEMORIZED</Text>
+      <Ionicons name="checkmark" size={10} color={colors.appText} />
+      <Text style={s.memorizedBadgeText}>Memorized</Text>
     </View>
   );
 }
@@ -31,7 +32,7 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, isChecked
   const s = styles(colors);
 
   return (
-    <TouchableOpacity onPress={onPress} style={s.card} activeOpacity={0.75}>
+    <TouchableOpacity onPress={onPress} style={s.card} activeOpacity={0.82}>
       <View style={s.topRow}>
         <View style={s.meta}>
           <Text style={s.type}>{surah.revelationType}</Text>
@@ -45,8 +46,8 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, isChecked
           >
             <Ionicons
               name="checkmark"
-              size={16}
-              color={isChecked ? colors.appWhite : colors.appBorderMid}
+              size={15}
+              color={isChecked ? colors.appText : colors.appIconMuted}
             />
           </TouchableOpacity>
         )}
@@ -63,10 +64,16 @@ export function SurahCard({ surah, onPress, isRecent, isSaved, onSave, isChecked
         <View style={s.names}>
           <Text style={s.englishName}>{surah.englishName}</Text>
           <Text style={s.translation}>{surah.englishNameTranslation}</Text>
-          <Text style={s.ayahCount}>{surah.numberOfAyahs} ayahs</Text>
+          <View style={s.footerMeta}>
+            <Text style={s.ayahCount}>{surah.numberOfAyahs} ayahs</Text>
+            {isRecent && <View style={s.metaDot} />}
+            {isRecent && <Text style={s.ayahCount}>Recent</Text>}
+          </View>
           {isChecked && <MemorizedBadge />}
         </View>
-        <Text style={s.arabicName}>{surah.name}</Text>
+        <View style={s.arabicWrap}>
+          <Text style={s.arabicName}>{surah.name}</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -76,13 +83,13 @@ const styles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     card: {
       marginHorizontal: 16,
-      marginBottom: 10,
-      backgroundColor: colors.appLighterBg,
-      borderRadius: 10,
-      padding: 16,
+      marginBottom: 12,
+      backgroundColor: colors.appCardWarm,
+      borderRadius: 22,
+      padding: 18,
       borderWidth: 1,
-      borderColor: colors.appDarkerGray,
-      ...colors.shadows.warmWidgetLift,
+      borderColor: colors.appSoftBorder,
+      ...colors.shadows.premiumCard,
     },
     topRow: {
       flexDirection: "row",
@@ -93,65 +100,90 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     meta: { flex: 1 },
     type: {
       fontSize: 12,
-      fontWeight: "600",
-      color: colors.appBorderMid,
+      fontWeight: "500",
+      color: colors.appTextMuted,
       fontFamily: "Inter_600SemiBold",
     },
     checkBtn: {
-      width: 28,                             // w-7
+      width: 28,
       height: 28,
-      borderRadius: 14,                      // rounded-full (half of 28)
-      backgroundColor: "transparent",
+      borderRadius: 14,
+      backgroundColor: colors.appSoftPill,
       borderWidth: 1,
-      borderColor: colors.appBorderMid,      // stone-400
+      borderColor: colors.appSoftBorder,
       alignItems: "center",
       justifyContent: "center",
     },
     checkBtnActive: {
-      backgroundColor: colors.appText,       // stone-900
-      borderColor: colors.appText,
+      backgroundColor: colors.appSelectedPill,
+      borderColor: colors.appSelectedPill,
     },
     memorizedBadge: {
       alignSelf: "flex-start",
-      backgroundColor: colors.appText,       // stone-900 — Figma: bg-stone-900
-      paddingHorizontal: 10,                 // px-2.5
-      paddingVertical: 2,                    // py-0.5
-      borderRadius: 4,                       // rounded
-      marginTop: 6,
+      backgroundColor: colors.appSoftPill,
+      paddingHorizontal: 9,
+      paddingVertical: 5,
+      borderRadius: 999,
+      marginTop: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
     },
     memorizedBadgeText: {
-      fontSize: 10,                          // text-[10px]
-      fontWeight: "600",                     // font-semibold
-      color: colors.appWhite,
+      fontSize: 10,
+      fontWeight: "600",
+      color: colors.appText,
       fontFamily: "Inter_600SemiBold",
     },
     body: {
       flexDirection: "row",
-      alignItems: "flex-end",
+      alignItems: "center",
       justifyContent: "space-between",
+      marginTop: 6,
+      gap: 14,
     },
-    names: { flex: 1, gap: 2 },
+    names: { flex: 1, gap: 3 },
     englishName: {
       fontSize: 16,
-      fontWeight: "800",
-      color: colors.appText,                 // stone-900
+      fontWeight: "700",
+      color: colors.appText,
       fontFamily: "Inter_700Bold",
     },
     translation: {
-      fontSize: 12,                          // text-xs
-      color: colors.appLightText,            // zinc-500 (#71717A)
+      fontSize: 13,
+      color: colors.appTextMuted,
       fontFamily: "Inter_400Regular",
     },
-    ayahCount: {
-      fontSize: 12,                          // text-xs
-      color: colors.appLightText,            // zinc-500
-      fontFamily: "Inter_400Regular",
+    footerMeta: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
       marginTop: 4,
     },
+    metaDot: {
+      width: 3,
+      height: 3,
+      borderRadius: 1.5,
+      backgroundColor: colors.appIconMuted,
+    },
+    ayahCount: {
+      fontSize: 12,
+      color: colors.appIconMuted,
+      fontFamily: "Inter_400Regular",
+    },
+    arabicWrap: {
+      minWidth: 84,
+      alignItems: "flex-end",
+      justifyContent: "center",
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      borderRadius: 16,
+      backgroundColor: colors.appSoftPill,
+    },
     arabicName: {
-      fontSize: 20,
+      fontSize: 21,
       color: colors.appText,
       fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
-      marginLeft: 12,
+      textAlign: "right",
     },
   });

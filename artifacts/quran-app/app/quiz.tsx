@@ -225,7 +225,7 @@ function WordReviewCard({
     <Animated.View style={{ opacity: fadeAnim }}>
       <TouchableOpacity
         onPress={() => setRevealed(prev => !prev)}
-        style={[reviewCardStyles.card, { backgroundColor: colors.appLighterBg, borderColor: colors.appDarkerGray }]}
+        style={[reviewCardStyles.card, { backgroundColor: colors.appCardWarm, borderColor: colors.appSoftBorder }]}
         activeOpacity={0.85}
       >
         <View style={reviewCardStyles.cardTop}>
@@ -236,8 +236,8 @@ function WordReviewCard({
             style={[
               reviewCardStyles.checkCircle,
               {
-                borderColor: localMemorized ? colors.appText : colors.appBorderMid,
-                backgroundColor: localMemorized ? colors.appText : "transparent",
+                borderColor: localMemorized ? colors.appSelectedPill : colors.appSoftBorder,
+                backgroundColor: localMemorized ? colors.appSelectedPill : colors.appSoftPill,
               },
             ]}
             onPress={handleToggleMemorized}
@@ -247,18 +247,18 @@ function WordReviewCard({
             <Feather
               name="check"
               size={14}
-              color={localMemorized ? colors.card : colors.appBorderMid}
+              color={localMemorized ? colors.appText : colors.appIconMuted}
             />
           </TouchableOpacity>
         </View>
-        <View style={[reviewCardStyles.divider, { backgroundColor: colors.appStone }]} />
+        <View style={[reviewCardStyles.divider, { backgroundColor: colors.appSoftDivider }]} />
         <View style={reviewCardStyles.cardBottom}>
           {revealed ? (
             <Text style={[reviewCardStyles.translationText, { color: colors.appText }]}>
               {word.translation || word.arabic}
             </Text>
           ) : (
-            <Text style={[reviewCardStyles.tapToReveal, { color: colors.appBorderMid }]}>
+            <Text style={[reviewCardStyles.tapToReveal, { color: colors.appIconMuted }]}>
               tap to reveal
             </Text>
           )}
@@ -270,13 +270,13 @@ function WordReviewCard({
 
 const reviewCardStyles = StyleSheet.create({
   card: {
-    borderRadius: 10,
+    borderRadius: 22,
     borderWidth: 1,
     minHeight: 112,
     shadowColor: "#5D4A37",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.09,
+    shadowRadius: 22,
     elevation: 3,
   },
   cardTop: {
@@ -945,12 +945,12 @@ export default function QuizScreen() {
                   return (
                     <TouchableOpacity
                       key={ayah.id}
-                      style={[s.ayahCard2, colors.cardStyle, checked && { borderColor: colors.foreground }]}
+                      style={[s.ayahCard2, colors.cardStyle, checked && { borderColor: colors.appSelectedPill, backgroundColor: colors.appCardPressed }]}
                       onPress={() => toggleAyah(ayah.id)}
                       activeOpacity={0.75}
                     >
-                      <View style={[s.ayahBadge2, checked ? { backgroundColor: colors.foreground, borderColor: colors.foreground } : { borderColor: colors.border }]}>
-                        {checked && <Feather name="check" size={12} color={colors.primaryForeground} />}
+                      <View style={[s.ayahBadge2, checked ? { backgroundColor: colors.appSelectedPill, borderColor: colors.appSelectedPill } : { backgroundColor: colors.appSoftPill, borderColor: colors.appSoftBorder }]}>
+                        {checked && <Feather name="check" size={12} color={colors.appText} />}
                       </View>
                       <View style={{ flex: 1 }}>
                         <View style={s.ayahCard2Header}>
@@ -977,12 +977,12 @@ export default function QuizScreen() {
                   return (
                     <TouchableOpacity
                       key={word.id}
-                      style={[s.wordSelectCard, colors.cardStyle, checked && { borderColor: colors.foreground }]}
+                      style={[s.wordSelectCard, colors.cardStyle, checked && { borderColor: colors.appSelectedPill, backgroundColor: colors.appCardPressed }]}
                       onPress={() => toggleWord(word.id)}
                       activeOpacity={0.75}
                     >
-                      <View style={[s.ayahBadge2, checked ? { backgroundColor: colors.foreground, borderColor: colors.foreground } : { borderColor: colors.border }]}>
-                        {checked && <Feather name="check" size={12} color={colors.primaryForeground} />}
+                      <View style={[s.ayahBadge2, checked ? { backgroundColor: colors.appSelectedPill, borderColor: colors.appSelectedPill } : { backgroundColor: colors.appSoftPill, borderColor: colors.appSoftBorder }]}>
+                        {checked && <Feather name="check" size={12} color={colors.appText} />}
                       </View>
                       <View style={s.wordSelectInfo}>
                         <Text style={[s.wordSelectMeta, { color: colors.mutedForeground }]}>{surahName.toUpperCase()} · AYAH {word.ayahNumber}</Text>
@@ -1060,30 +1060,30 @@ export default function QuizScreen() {
           <View style={{ width: 38 }} />
         </View>
         <View style={[s.cardTabsWrap, { backgroundColor: colors.background }]}>
-          <View style={[s.cardTabs, { backgroundColor: colors.appBorderLight }]}>
+          <View style={[s.cardTabs, { backgroundColor: colors.appSoftPill }]}>
             <TouchableOpacity
               style={[
                 s.cardTabPill,
-                cardTab === "active" && { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.appText },
+                cardTab === "active" && { backgroundColor: colors.appSelectedPill, borderWidth: 1, borderColor: colors.appSelectedPill },
               ]}
               onPress={() => setCardTab("active")}
               activeOpacity={0.8}
             >
-              <Text style={[s.cardTabText, { color: cardTab === "active" ? colors.appNeutralDark : colors.appBorderMid }]}>
-                <Text style={{ fontFamily: cardTab === "active" ? "Inter_700Bold" : "Inter_600SemiBold" }}>Active</Text>
+              <Text style={[s.cardTabText, { color: cardTab === "active" ? colors.appText : colors.appIconMuted }]}>
+                <Text style={{ fontFamily: cardTab === "active" ? "Inter_600SemiBold" : "Inter_400Regular" }}>Active</Text>
                 <Text style={{ fontFamily: "Inter_400Regular" }}>{` (${activeCardCount})`}</Text>
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
                 s.cardTabPill,
-                cardTab === "memorized" && { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.appText },
+                cardTab === "memorized" && { backgroundColor: colors.appSelectedPill, borderWidth: 1, borderColor: colors.appSelectedPill },
               ]}
               onPress={() => setCardTab("memorized")}
               activeOpacity={0.8}
             >
-              <Text style={[s.cardTabText, { color: cardTab === "memorized" ? colors.appNeutralDark : colors.appBorderMid }]}>
-                <Text style={{ fontFamily: cardTab === "memorized" ? "Inter_700Bold" : "Inter_600SemiBold" }}>Memorized</Text>
+              <Text style={[s.cardTabText, { color: cardTab === "memorized" ? colors.appText : colors.appIconMuted }]}>
+                <Text style={{ fontFamily: cardTab === "memorized" ? "Inter_600SemiBold" : "Inter_400Regular" }}>Memorized</Text>
                 <Text style={{ fontFamily: "Inter_400Regular" }}>{` (${memorizedCardCount})`}</Text>
               </Text>
             </TouchableOpacity>

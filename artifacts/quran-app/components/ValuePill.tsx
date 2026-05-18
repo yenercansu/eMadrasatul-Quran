@@ -17,7 +17,7 @@ interface ValuePillProps {
 /**
  * Display-only pill badge for showing a selected value or status.
  *
- * - `dark`: filled black — for active values (e.g. "10 ayahs / wk")
+ * - `dark`: filled warm charcoal — for active values (e.g. "10 ayahs / wk")
  * - `soft`: warm surface with border — for summary tags (e.g. "1 yr")
  * - `muted`: light surface, dimmed text — for locked/inactive state (e.g. "Choose date first")
  */
@@ -26,7 +26,7 @@ export function ValuePill({ label, variant = "dark", icon, style }: ValuePillPro
 
   const containerStyle = [
     styles.base,
-    variant === "dark" && { backgroundColor: c.appText, borderWidth: 0 },
+    variant === "dark" && { backgroundColor: c.appSelectedPill, borderWidth: 0 },
     variant === "soft" && {
       backgroundColor: c.appSecondarySurface,
       borderWidth: 1,
@@ -41,7 +41,7 @@ export function ValuePill({ label, variant = "dark", icon, style }: ValuePillPro
 
   const textColor =
     variant === "dark"
-      ? "#FFFFFF"
+      ? c.appText
       : variant === "muted"
       ? c.appBorderMid
       : c.appText;

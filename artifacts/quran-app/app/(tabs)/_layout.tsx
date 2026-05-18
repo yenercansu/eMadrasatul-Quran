@@ -30,10 +30,10 @@ const TAB_DEFS = [
   { name: "library", icon: "madrasa" as const, label: "Madrasa" },
 ];
 
-const ACTIVE_COLOR = "#171717";
-const INACTIVE_COLOR = "#AAAAAA";
-const ACTIVE_BG = "#EEE8DF";
-const BAR_BG = "#F2EDE6";
+const ACTIVE_COLOR = "#2D2926";
+const INACTIVE_COLOR = "#8A8070";
+const ACTIVE_BG = "#DED6CC";
+const BAR_BG = "#F5F0E8";
 
 function TabIcon({ name, color }: { name: "home" | "quran" | "madrasa"; color: string }) {
   if (name === "home") {
@@ -140,25 +140,25 @@ const styles = StyleSheet.create({
   surface: {
     minHeight: 82,
     backgroundColor: BAR_BG,
-    paddingTop: 12,
+    paddingTop: 10,
     paddingHorizontal: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#E2D9CF",
+    borderTopColor: "#E7DED1",
   },
   itemsRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "flex-start",
-    gap: 44,
+    gap: 38,
   },
   item: {
     width: 72,
-    height: 55,
+    height: 56,
     padding: 8,
     alignItems: "center",
     justifyContent: "flex-end",
     gap: 5,
-    borderRadius: 12,
+    borderRadius: 18,
     transform: [{ translateY: -6 }],
   },
   itemActive: {
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 12,
     fontFamily: "Inter_700Bold",
-    fontWeight: "700",
+    fontWeight: "600",
     transform: [{ translateY: 2 }],
   },
 });
