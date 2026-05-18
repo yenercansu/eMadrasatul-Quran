@@ -1754,18 +1754,11 @@ export default function SurahScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, [surahNum, saveAyah, saveWord, arabic, translationsMap]);
 
-  const handleSetRepeat = useCallback(async (ayah: ApiAyah, count: number) => {
-    if (!(await canPlayOfflineRange(ayah.numberInSurah, ayah.numberInSurah))) return;
-    setAyahRepeatCounts(prev => ({ ...prev, [ayah.numberInSurah]: count }));
-    if (!arabic) return;
-    playAyah(surahNum, ayah.numberInSurah, arabic.ayahs.length, count);
-    recordAyahRead(surahNum, ayah.numberInSurah);
-    saveProgress({
-      surahNumber: surahNum, ayahNumber: ayah.numberInSurah,
-      ayahNumberInSurah: ayah.numberInSurah, surahName: arabic.englishName,
-    });
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }, [arabic, canPlayOfflineRange, surahNum, playAyah, recordAyahRead, saveProgress]);
+  const handleStop = useCallback(() => {
+    setAyahRepeatCounts({});
+    stopAudio();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [stopAudio]);
 
   const handleCancelRepeat = useCallback((ayah: ApiAyah) => {
     setAyahRepeatCounts(prev => {
@@ -2448,7 +2441,7 @@ export default function SurahScreen() {
             }}
             onPlay={handlePlayOrResume}
             onPause={pauseAudio}
-            onStop={stopAudio}
+            onStop={handleStop}
             onNext={playNextAyah}
             onPrev={playPrevAyah}
             onSpeedPress={() => {
@@ -2590,17 +2583,6 @@ export default function SurahScreen() {
           ayahNumber={wordModal.ayah}
           audioUrl={wordModal.audioUrl}
           onClose={() => setWordModal(null)}
-          onRepeat={() => {
-            if (wordModal.wordPosition) {
-              playSection(wordModal.surah, wordModal.ayah, wordModal.wordPosition, wordModal.wordPosition, 999);
-              setAyahRepeatCounts(prev => ({ ...prev, [wordModal.ayah]: 999 }));
-            } else {
-              handleSetRepeat(
-                { numberInSurah: wordModal.ayah } as ApiAyah,
-                999,
-              );
-            }
-          }}
           onCut={() => {
             setRepeatSectionInitialAyah(wordModal.ayah);
             setWordModal(null);

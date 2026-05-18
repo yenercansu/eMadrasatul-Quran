@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
@@ -24,19 +24,15 @@ interface Props {
   ayahNumber: number;
   audioUrl?: string;
   onClose: () => void;
-  onRepeat?: () => void;
   onCut?: () => void;
 }
 
-// Tiny heuristic root-extractor — last resort when no API root is provided.
-// Strips Arabic diacritics, splits character clusters, returns up to 3 root letters.
+// Strips Arabic diacritics, returns first 3 root letters
 function deriveRoot(word: string): string {
-  const stripped = word.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED\u0610-\u061A]/g, "").trim();
-  // Common particles to strip from front
+  const stripped = word.replace(/[ً-ٰٟۖ-ۭؐ-ؚ]/g, "").trim();
   const cleaned = stripped.replace(/^(ال|و|ف|ل|ب|ك)/u, "");
-  const letters = [...cleaned].filter((c) => /[\u0621-\u064A]/u.test(c));
-  const root = letters.slice(0, 3);
-  return root.join(" ");
+  const letters = [...cleaned].filter((c) => /[ء-ي]/u.test(c));
+  return letters.slice(0, 3).join(" ");
 }
 
 export function WordModal({
@@ -47,32 +43,48 @@ export function WordModal({
   ayahNumber,
   audioUrl,
   onClose,
-  onRepeat,
   onCut,
 }: Props) {
   const colors = useColors();
   const s = styles(colors);
-  const {
-    saveWord,
-    savedWords,
-    highlightWord,
-    unhighlightWord,
-    isWordHighlighted,
-    isAyahMemorized,
-    toggleAyahMemorized,
-  } = useQuran();
+  const { saveWord, savedWords, isAyahMemorized, toggleAyahMemorized } = useQuran();
+
+  const loopSoundRef = useRef<Audio.Sound | null>(null);
+  const [isLooping, setIsLooping] = useState(false);
 
   const alreadySaved = savedWords.some(
     (w) => w.arabic === word && w.surahNumber === surahNumber,
   );
-  const highlighted = isWordHighlighted(word, surahNumber, ayahNumber);
-  const ayahCompleted = isAyahMemorized(surahNumber, ayahNumber);
+  const ayahMemorized = isAyahMemorized(surahNumber, ayahNumber);
   const root = deriveRoot(word);
 
-  const handlePlayWord = async () => {
+  // Stop loop when popup closes
+  useEffect(() => {
+    if (!visible) {
+      loopSoundRef.current?.stopAsync().then(() => loopSoundRef.current?.unloadAsync());
+      loopSoundRef.current = null;
+      setIsLooping(false);
+    }
+  }, [visible]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      loopSoundRef.current?.stopAsync().then(() => loopSoundRef.current?.unloadAsync());
+    };
+  }, []);
+
+  const handleListen = async () => {
     if (!audioUrl) return;
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // Stop any active loop first
+      if (loopSoundRef.current) {
+        await loopSoundRef.current.stopAsync();
+        await loopSoundRef.current.unloadAsync();
+        loopSoundRef.current = null;
+        setIsLooping(false);
+      }
       const { sound } = await Audio.Sound.createAsync(
         { uri: audioUrl },
         { shouldPlay: true },
@@ -83,11 +95,35 @@ export function WordModal({
         }
       });
     } catch (error) {
-      if (__DEV__) console.error("[WordModal] Audio play failed", error);
+      if (__DEV__) console.error("[WordModal] Listen failed", error);
     }
   };
 
-  const handleSave = () => {
+  const handleLoop = async () => {
+    if (!audioUrl) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    if (isLooping) {
+      await loopSoundRef.current?.stopAsync();
+      await loopSoundRef.current?.unloadAsync();
+      loopSoundRef.current = null;
+      setIsLooping(false);
+      return;
+    }
+
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: audioUrl },
+        { shouldPlay: true, isLooping: true },
+      );
+      loopSoundRef.current = sound;
+      setIsLooping(true);
+    } catch (error) {
+      if (__DEV__) console.error("[WordModal] Loop failed", error);
+    }
+  };
+
+  const handleSaveWord = () => {
     if (!alreadySaved) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       saveWord({
@@ -98,28 +134,15 @@ export function WordModal({
         highlighted: false,
       });
     }
-    onClose();
   };
 
-  const handleHighlight = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (highlighted) unhighlightWord(word, surahNumber, ayahNumber);
-    else highlightWord(word, surahNumber, ayahNumber);
-  };
-
-  const handleRepeat = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onClose();
-    onRepeat?.();
-  };
-
-  const handleCut = () => {
+  const handlePracticePhrase = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onClose();
     onCut?.();
   };
 
-  const handleToggleAyahCompleted = () => {
+  const handleToggleAyahMemorized = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     toggleAyahMemorized(surahNumber, ayahNumber);
   };
@@ -139,30 +162,31 @@ export function WordModal({
                 <Text style={s.arabicWord}>{word}</Text>
                 <Text style={s.location}>Surah {surahNumber} · Ayah {ayahNumber}</Text>
 
-                {/* Quick action icon row (matches screenshot) */}
+                {/* WORD TOOLS */}
+                <Text style={s.groupLabel}>Word Tools</Text>
                 <View style={s.iconRow}>
                   {audioUrl ? (
-                    <TouchableOpacity style={s.iconBtn} onPress={handlePlayWord} activeOpacity={0.7}>
-                      <Feather name="play-circle" size={20} color="#1A1A1A" />
-                      <Text style={s.iconLabel}>Play</Text>
+                    <TouchableOpacity style={s.iconBtn} onPress={handleListen} activeOpacity={0.7}>
+                      <Feather name="volume-2" size={20} color="#1A1A1A" />
+                      <Text style={s.iconLabel}>Listen</Text>
                     </TouchableOpacity>
                   ) : null}
-                  <TouchableOpacity style={s.iconBtn} onPress={handleRepeat} activeOpacity={0.7}>
-                    <Ionicons name="repeat" size={20} color="#1A1A1A" />
-                    <Text style={s.iconLabel}>Repeat</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={s.iconBtn} onPress={handleCut} activeOpacity={0.7}>
-                    <MaterialCommunityIcons name="content-cut" size={20} color="#1A1A1A" />
-                    <Text style={s.iconLabel}>Section</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={s.iconBtn} onPress={handleSave} activeOpacity={0.7}>
+                  {audioUrl ? (
+                    <TouchableOpacity style={s.iconBtn} onPress={handleLoop} activeOpacity={0.7}>
+                      <Ionicons name="repeat" size={20} color={isLooping ? "#16A34A" : "#1A1A1A"} />
+                      <Text style={[s.iconLabel, isLooping && s.iconLabelActive]}>
+                        {isLooping ? "Stop" : "Loop"}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  <TouchableOpacity style={s.iconBtn} onPress={handleSaveWord} activeOpacity={0.7}>
                     <Feather
                       name={alreadySaved ? "check-circle" : "download"}
                       size={20}
                       color={alreadySaved ? "#16A34A" : "#1A1A1A"}
                     />
-                    <Text style={[s.iconLabel, alreadySaved && { color: "#16A34A" }]}>
-                      {alreadySaved ? "Saved" : "Save"}
+                    <Text style={[s.iconLabel, alreadySaved && s.iconLabelSaved]}>
+                      {alreadySaved ? "Saved" : "Save Word"}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -185,23 +209,34 @@ export function WordModal({
 
                 <View style={s.divider} />
 
+                {/* AYAH PRACTICE */}
+                <Text style={s.groupLabel}>Ayah Practice</Text>
                 <View style={s.section}>
-                  <Text style={s.sectionLabel}>Ayah progress</Text>
                   <ActionPill
-                    label={ayahCompleted ? "Ayah completed" : "Mark ayah completed"}
-                    icon={ayahCompleted ? "check-circle" : "circle"}
-                    variant={ayahCompleted ? "primary" : "border"}
+                    label="Practice Section"
+                    icon="scissors"
+                    variant="border"
                     size="md"
-                    onPress={handleToggleAyahCompleted}
+                    onPress={handlePracticePhrase}
+                  />
+                </View>
+                <View style={s.section}>
+                  <ActionPill
+                    label={ayahMemorized ? "Ayah Memorized" : "Mark Ayah Memorized"}
+                    icon={ayahMemorized ? "check-circle" : "circle"}
+                    variant={ayahMemorized ? "primary" : "border"}
+                    size="md"
+                    onPress={handleToggleAyahMemorized}
                     accessibilityRole="checkbox"
-                    accessibilityState={{ checked: ayahCompleted }}
-                    accessibilityLabel={ayahCompleted
-                      ? `Unmark ayah ${ayahNumber} as completed`
-                      : `Mark ayah ${ayahNumber} completed`}
+                    accessibilityState={{ checked: ayahMemorized }}
+                    accessibilityLabel={
+                      ayahMemorized
+                        ? `Unmark ayah ${ayahNumber} as memorized`
+                        : `Mark ayah ${ayahNumber} as memorized`
+                    }
                   />
                 </View>
 
-                {/* Footer hint */}
                 <Text style={s.hint}>Long-press any word to study its root and meaning</Text>
               </ScrollView>
             </View>
@@ -257,11 +292,20 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Inter_400Regular",
       textAlign: "center",
       marginTop: 4,
-      marginBottom: 18,
+      marginBottom: 14,
+    },
+    groupLabel: {
+      fontSize: 11,
+      color: "#9A9A9A",
+      fontFamily: "Inter_700Bold",
+      letterSpacing: 1.2,
+      textTransform: "uppercase",
+      marginBottom: 10,
     },
     iconRow: {
       flexDirection: "row",
-      justifyContent: "space-around",
+      justifyContent: "center",
+      gap: 4,
       marginBottom: 4,
     },
     iconBtn: {
@@ -277,6 +321,12 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       color: "#1A1A1A",
       fontFamily: "Inter_600SemiBold",
       fontWeight: "600",
+    },
+    iconLabelActive: {
+      color: "#16A34A",
+    },
+    iconLabelSaved: {
+      color: "#16A34A",
     },
     divider: {
       height: 1,
