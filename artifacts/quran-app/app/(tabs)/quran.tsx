@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,13 +8,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Animated,
   Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import Swipeable from "react-native-gesture-handler/Swipeable";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
@@ -27,75 +25,6 @@ import { useQuran } from "@/contexts/QuranContext";
 import { searchByType } from "@/services/search";
 
 type FilterType = "all" | "meccan" | "medinan" | "alphabetic";
-
-function SwipeableSurahCard({
-  surah,
-  isRecent,
-  isSaved,
-  onSave,
-  onPress,
-  memorizedCount,
-  isManuallyCompleted,
-  onToggleComplete,
-  colors,
-}: {
-  surah: ApiSurah;
-  isRecent: boolean;
-  isSaved: boolean;
-  onSave: () => void;
-  onPress: () => void;
-  memorizedCount: number;
-  isManuallyCompleted: boolean;
-  onToggleComplete: () => void;
-  colors: ReturnType<typeof useColors>;
-}) {
-  const s = styles(colors);
-
-  const renderRightActions = (progress: Animated.AnimatedInterpolation<number>) => {
-    const trans = progress.interpolate({
-      inputRange: [0, 1], outputRange: [90, 0],
-    });
-    return (
-      <Animated.View
-        style={[
-          s.swipeAction,
-          { transform: [{ translateX: trans }], backgroundColor: isSaved ? "#D9534F" : colors.primary },
-        ]}
-      >
-        <Ionicons name={isSaved ? "bookmark" : "bookmark-outline"} size={22} color="#FFFFFF" />
-        <Text style={s.swipeActionText}>{isSaved ? "Unsave" : "Save"}</Text>
-      </Animated.View>
-    );
-  };
-
-  const handleSwipeAction = () => {
-    Haptics.notificationAsync(
-      isSaved ? Haptics.NotificationFeedbackType.Warning : Haptics.NotificationFeedbackType.Success
-    );
-    onSave();
-  };
-
-  return (
-    <Swipeable
-      renderRightActions={renderRightActions}
-      rightThreshold={60}
-      overshootRight={false}
-      friction={2}
-      onSwipeableOpen={handleSwipeAction}
-    >
-      <SurahCard
-        surah={surah}
-        onPress={onPress}
-        isRecent={isRecent}
-        isSaved={isSaved}
-        onSave={onSave}
-        memorizedCount={memorizedCount}
-        isManuallyCompleted={isManuallyCompleted}
-        onToggleComplete={onToggleComplete}
-      />
-    </Swipeable>
-  );
-}
 
 export default function QuranScreen() {
   const colors = useColors();
@@ -155,7 +84,7 @@ export default function QuranScreen() {
       <View style={[s.header, { paddingTop: topPad + 8 }]}>
         <PageTitle>Al-Quran</PageTitle>
         <Text style={s.subtitle}>
-          114 Surahs — swipe ← to save/unsave
+          114 Surahs
         </Text>
         <View style={s.searchRow}>
           <View style={s.searchBar}>
@@ -244,7 +173,7 @@ export default function QuranScreen() {
             };
 
             return (
-              <SwipeableSurahCard
+              <SurahCard
                 surah={item}
                 isRecent={recentNumbers.has(item.number)}
                 isSaved={saved}
@@ -253,7 +182,6 @@ export default function QuranScreen() {
                 memorizedCount={memCount}
                 isManuallyCompleted={isSurahChecked(item.number)}
                 onToggleComplete={handleToggleComplete}
-                colors={colors}
               />
             );
           }}
@@ -306,13 +234,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Inter_400Regular",
     },
     filterRow: { flexDirection: "row", gap: 8, flexWrap: "wrap", paddingTop: 2 },
-    swipeAction: {
-      width: 90,
-      justifyContent: "center",
-      alignItems: "center",
-      gap: 4,
-    },
-    swipeActionText: { fontSize: 12, fontWeight: "700", color: colors.appWhite, fontFamily: "Inter_700Bold" },
     empty: { alignItems: "center", paddingVertical: 60, gap: 12 },
     emptyText: { fontSize: 16, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     errorDetail: { paddingHorizontal: 24, textAlign: "center", fontSize: 12, lineHeight: 18, color: colors.destructive, fontFamily: "Inter_400Regular" },
