@@ -15,6 +15,10 @@ export type SurahCertData = {
   hijriDate?: string;
   durationLabel?: string;
   ayahsPerDayLabel?: string;
+  hadith?: string;
+  hadithSource?: string;
+  dua?: string;
+  duaEn?: string;
 };
 
 export type JuzCertData = {
@@ -50,13 +54,14 @@ function esc(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+// Ornament sized for the narrower 340px content column
 function ornament(faint = false): string {
-  const stroke = faint ? "#e8e0d0" : "#c9a84c";
-  return `<div class="ornament"><svg width="200" height="12" viewBox="0 0 200 12" xmlns="http://www.w3.org/2000/svg">
-    <line x1="0" y1="6" x2="93" y2="6" stroke="${stroke}" stroke-width="0.7"/>
-    <line x1="107" y1="6" x2="200" y2="6" stroke="${stroke}" stroke-width="0.7"/>
-    <polygon points="100,1 105,6 100,11 95,6" fill="none" stroke="${stroke}" stroke-width="0.7"/>
-    <circle cx="100" cy="6" r="2" fill="${stroke}" fill-opacity="0.5"/>
+  const stroke = faint ? "#e0d8c8" : "#c9a84c";
+  return `<div class="ornament"><svg width="160" height="12" viewBox="0 0 160 12" xmlns="http://www.w3.org/2000/svg">
+    <line x1="0" y1="6" x2="72" y2="6" stroke="${stroke}" stroke-width="0.7"/>
+    <line x1="88" y1="6" x2="160" y2="6" stroke="${stroke}" stroke-width="0.7"/>
+    <polygon points="80,1 85,6 80,11 75,6" fill="none" stroke="${stroke}" stroke-width="0.7"/>
+    <circle cx="80" cy="6" r="2" fill="${stroke}" fill-opacity="0.5"/>
   </svg></div>`;
 }
 
@@ -73,7 +78,7 @@ function seal(): string {
     const ds = 2;
     return `<polygon points="${(cx + dx).toFixed(1)},${(cy + dy - ds).toFixed(1)} ${(cx + dx + ds).toFixed(1)},${(cy + dy).toFixed(1)} ${(cx + dx).toFixed(1)},${(cy + dy + ds).toFixed(1)} ${(cx + dx - ds).toFixed(1)},${(cy + dy).toFixed(1)}" fill="#c9a84c" fill-opacity="0.6"/>`;
   }).join("");
-  return `<svg width="56" height="56" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+  return `<svg width="52" height="52" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
     <circle cx="${cx}" cy="${cy}" r="${outerR}" stroke="#c9a84c" stroke-width="0.8" fill="none"/>
     <circle cx="${cx}" cy="${cy}" r="${innerR}" stroke="#c9a84c" stroke-width="0.5" stroke-dasharray="1.5 3.5" fill="none"/>
     ${diamonds}
@@ -113,97 +118,141 @@ function css(): string {
     @page { margin: 0; size: A4; }
     html, body {
       width: 100%;
-      background: #faf7f0;
+      background: #ede7d8;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
       color: #2d2416;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
+    /* A4 canvas — full page, warm parchment surround */
     .page {
       width: 595px; min-height: 842px; margin: 0 auto;
-      padding: 0 44px 52px;
+      padding: 0;
       display: flex; flex-direction: column; align-items: center;
-      background: #faf7f0;
+      background: #ede7d8;
     }
-    .accent-strip { width: 100%; height: 3px; background: #c9a84c; opacity: 0.6; }
+    /* Outer frame — ~67% of A4 width, double-border archival structure */
+    .doc-outer {
+      width: 398px;
+      margin: 30px 0 40px;
+      padding: 5px;
+      background: #faf7f0;
+      border: 0.7px solid #c9a84c;
+    }
+    /* Inner frame — hair-thin inset border for double-frame effect */
+    .doc-inner {
+      width: 100%;
+      border: 0.4px solid rgba(201, 168, 76, 0.38);
+      padding: 0 26px 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    /* Gold accent strip spans the full inner width */
+    .accent-strip {
+      width: calc(100% + 52px);
+      margin: 0 -26px 0;
+      height: 3px;
+      background: #c9a84c;
+      opacity: 0.65;
+      display: block;
+    }
     .bismillah {
-      font-size: 17px; color: #8a7a5a; text-align: center;
-      direction: rtl; line-height: 2; margin: 26px 0 4px;
+      font-size: 16px; color: #8a7a5a; text-align: center;
+      direction: rtl; line-height: 2; margin: 20px 0 2px;
       font-family: 'Al Nile', 'Geeza Pro', 'Arabic Typesetting', serif;
     }
-    .ornament { display: flex; align-items: center; justify-content: center; padding: 8px 0; width: 100%; }
+    .ornament { display: flex; align-items: center; justify-content: center; padding: 6px 0; width: 100%; }
     .cert-header {
-      text-align: center; padding: 14px 0;
-      display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%;
+      text-align: center; padding: 10px 0;
+      display: flex; flex-direction: column; align-items: center; gap: 5px; width: 100%;
     }
     .label-xs {
-      font-size: 8px; font-weight: 700; letter-spacing: 2.5px;
+      font-size: 7.5px; font-weight: 700; letter-spacing: 2.5px;
       text-transform: uppercase; color: #bfaa88; text-align: center;
     }
-    .cert-title { font-size: 23px; font-weight: 800; letter-spacing: -0.4px; color: #2d2416; text-align: center; }
+    .cert-title { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; color: #2d2416; text-align: center; }
     .cert-title-ar {
       font-size: 12px; color: #bfaa88; direction: rtl; text-align: center;
       font-family: 'Al Nile', 'Geeza Pro', serif;
     }
     .section {
-      padding: 14px 0; width: 100%; text-align: center;
-      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      padding: 10px 0; width: 100%; text-align: center;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
     }
-    .person-name { font-size: 23px; font-weight: 700; font-style: italic; letter-spacing: -0.3px; color: #a08040; }
-    .completion-stmt { font-size: 11px; line-height: 17px; color: #8a7a5a; text-align: center; }
-    .stats-grid { display: flex; width: 100%; padding: 14px 0; }
+    .person-name { font-size: 22px; font-weight: 700; font-style: italic; letter-spacing: -0.3px; color: #a08040; }
+    .completion-stmt { font-size: 10px; line-height: 16px; color: #8a7a5a; text-align: center; max-width: 260px; }
+    /* Stats grid — narrower col means cells tighter */
+    .stats-grid { display: flex; width: 100%; padding: 10px 0; }
     .stats-cell {
       flex: 1; text-align: center; display: flex; flex-direction: column;
-      align-items: center; gap: 4px; padding: 0 8px;
-      border-right: 1px solid #e2d9c8;
+      align-items: center; gap: 3px; padding: 0 4px;
+      border-right: 0.5px solid #e2d9c8;
     }
     .stats-cell:last-child { border-right: none; }
-    .stats-value { font-size: 19px; font-weight: 800; color: #2d2416; }
+    .stats-value { font-size: 17px; font-weight: 800; color: #2d2416; }
     .stats-label { font-size: 7px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #bfaa88; }
     .date-line {
-      text-align: center; padding: 10px 0; width: 100%;
-      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      text-align: center; padding: 8px 0; width: 100%;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
     }
-    .date-primary { font-size: 9px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: #bfaa88; }
-    .date-secondary { font-size: 9px; letter-spacing: 0.4px; color: #bfaa88; }
+    .date-primary { font-size: 8.5px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: #bfaa88; }
+    .date-secondary { font-size: 8.5px; letter-spacing: 0.4px; color: #bfaa88; }
+    /* Seal row — tighter, compressed */
     .seal-row {
       width: 100%; display: flex; justify-content: space-between;
-      align-items: flex-end; padding: 10px 8px;
+      align-items: flex-end; padding: 8px 0;
     }
-    .sig-block { text-align: center; width: 80px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .sig-line { width: 80px; height: 1px; background: #c9a84c; margin-bottom: 4px; opacity: 0.5; }
-    .sig-role { font-size: 8px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: #bfaa88; }
-    .records-section { width: 100%; padding: 14px 0; display: flex; flex-direction: column; gap: 10px; }
+    .sig-block { text-align: center; width: 68px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .sig-line { width: 68px; height: 0.5px; background: rgba(201,168,76,0.6); margin-bottom: 3px; }
+    .sig-role { font-size: 7px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: #bfaa88; }
+    /* Records */
+    .records-section { width: 100%; padding: 10px 0; display: flex; flex-direction: column; gap: 8px; }
     .records-list { width: 100%; }
     .record-row {
       display: flex; justify-content: space-between; align-items: flex-end;
-      padding: 7px 0; border-bottom: 0.5px solid #ede7db;
+      padding: 6px 0; border-bottom: 0.5px solid #ede7db;
     }
     .record-row.last { border-bottom: none; }
     .record-left { display: flex; flex-direction: column; gap: 2px; }
-    .record-label { font-size: 8px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #8a7a5a; }
-    .record-sublabel { font-size: 8px; color: #bfaa88; }
-    .record-value { font-size: 14px; font-weight: 700; color: #2d2416; }
-    .hadith-wrap { padding: 18px 0; width: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .hadith { font-size: 11px; font-style: italic; line-height: 19px; color: #8a7a5a; text-align: center; max-width: 300px; }
-    .hadith-source { font-size: 8px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: #bfaa88; margin-top: 4px; }
-    .dua-wrap { padding: 18px 0; width: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-    .dua-ar { font-size: 14px; direction: rtl; text-align: center; line-height: 24px; color: #bfaa88; font-family: 'Al Nile', 'Geeza Pro', serif; }
-    .dua-en { font-size: 10px; line-height: 16px; color: #bfaa88; text-align: center; }
-    .surah-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; padding: 4px 0; }
-    .surah-tag { padding: 4px 10px; border-radius: 9999px; border: 1px solid #e2d9c8; background: #f5f0e8; font-size: 11px; color: #8a7a5a; direction: rtl; }
-    .section-padded { width: 100%; padding: 14px 0; display: flex; flex-direction: column; gap: 10px; }
+    .record-label { font-size: 7.5px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #8a7a5a; }
+    .record-sublabel { font-size: 7.5px; color: #bfaa88; }
+    .record-value { font-size: 13px; font-weight: 700; color: #2d2416; }
+    /* Hadith */
+    .hadith-wrap { padding: 12px 0; width: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .hadith { font-size: 10.5px; font-style: italic; line-height: 18px; color: #8a7a5a; text-align: center; }
+    .hadith-source { font-size: 7.5px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: #bfaa88; margin-top: 3px; }
+    /* Dua */
+    .dua-wrap { padding: 12px 0; width: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    .dua-ar { font-size: 13px; direction: rtl; text-align: center; line-height: 22px; color: #bfaa88; font-family: 'Al Nile', 'Geeza Pro', serif; }
+    .dua-en { font-size: 9.5px; line-height: 15px; color: #bfaa88; text-align: center; }
+    /* Surah tags for juz cert */
+    .surah-tags { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; padding: 4px 0; }
+    .surah-tag { padding: 3px 9px; border-radius: 9999px; border: 0.5px solid #e2d9c8; background: #f5f0e8; font-size: 10px; color: #8a7a5a; direction: rtl; }
+    .section-padded { width: 100%; padding: 10px 0; display: flex; flex-direction: column; gap: 8px; }
   </style>`;
 }
 
+// Shell wraps content in the double-frame document structure
 function shell(body: string): string {
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"/>${css()}</head><body><div class="page">${body}</div></body></html>`;
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"/>${css()}</head><body>
+    <div class="page">
+      <div class="doc-outer">
+        <div class="doc-inner">${body}</div>
+      </div>
+    </div>
+  </body></html>`;
 }
 
 // ── Certificate HTML builders ─────────────────────────────────────────────────
 
 function buildSurahHtml(d: SurahCertData): string {
   const dateSubline = [d.durationLabel, d.ayahsPerDayLabel].filter(Boolean).join(" · ");
+  const hadith = d.hadith ?? "The best among you are those who learn the Quran and teach it.";
+  const hadithSource = d.hadithSource ?? "SAHIH AL-BUKHARI";
+  const dua = d.dua ?? "بَارَكَ اللَّهُ فِيكَ";
+  const duaEn = d.duaEn ?? "May this surah be light in your heart and intercession on your Day.";
+
   return shell(`
     <div class="accent-strip"></div>
     <div class="bismillah">بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</div>
@@ -234,13 +283,13 @@ function buildSurahHtml(d: SurahCertData): string {
     ${records(d.durationLabel, d.ayahsPerDayLabel)}
     ${ornament(true)}
     <div class="hadith-wrap">
-      <div class="hadith">"Whoever memorizes ten ayahs from the beginning of Surah Al-Kahf will be protected from the Dajjal."</div>
-      <div class="hadith-source">SAHIH MUSLIM</div>
+      <div class="hadith">"${esc(hadith)}"</div>
+      <div class="hadith-source">${esc(hadithSource)}</div>
     </div>
     ${ornament(true)}
     <div class="dua-wrap">
-      <div class="dua-ar">بَارَكَ اللَّهُ فِيكَ</div>
-      <div class="dua-en">May this surah be light in your heart and intercession on your Day.</div>
+      <div class="dua-ar">${esc(dua)}</div>
+      <div class="dua-en">${esc(duaEn)}</div>
     </div>
   `);
 }

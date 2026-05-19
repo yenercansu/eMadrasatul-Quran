@@ -34,7 +34,7 @@ export default function JuzCertificateScreen() {
   const { certificates, accountSettings } = useQuran();
 
   const cert = certificates.find(c => c.type === "juz" && c.juzNumber === juzNumber);
-  const personName = accountSettings.name || "The Student";
+  const personName = accountSettings.certificateName || accountSettings.name || "The Student";
   const [exporting, setExporting] = useState(false);
 
   const juzAyahs = useMemo(() => getJuzAyahs(juzNumber), [juzNumber]);

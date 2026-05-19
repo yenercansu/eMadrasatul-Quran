@@ -96,25 +96,37 @@ export function HifzSegmentedControl<T extends string>({
   options,
   onChange,
   style,
+  variant = "default",
 }: {
   value: T;
   options: readonly { value: T; label: string }[];
   onChange: (value: T) => void;
   style?: StyleProp<ViewStyle>;
+  variant?: "default" | "light";
 }) {
-  const { ui } = useHifzStyles();
+  const { colors, ui } = useHifzStyles();
   return (
     <View style={[ui.segmented, style]}>
       {options.map((option) => {
         const selected = option.value === value;
+        const segStyle = selected
+          ? variant === "light"
+            ? [ui.segment, { backgroundColor: colors.hifzCardBg, ...colors.shadows.sm }]
+            : [ui.segment, ui.segmentSelected]
+          : [ui.segment];
+        const textStyle = selected
+          ? variant === "light"
+            ? [ui.segmentText, { color: colors.hifzText }]
+            : [ui.segmentText, ui.segmentTextSelected]
+          : [ui.segmentText];
         return (
           <TouchableOpacity
             key={option.value}
-            style={[ui.segment, selected && ui.segmentSelected]}
+            style={segStyle}
             onPress={() => onChange(option.value)}
             activeOpacity={0.82}
           >
-            <Text style={[ui.segmentText, selected && ui.segmentTextSelected]}>{option.label}</Text>
+            <Text style={textStyle}>{option.label}</Text>
           </TouchableOpacity>
         );
       })}

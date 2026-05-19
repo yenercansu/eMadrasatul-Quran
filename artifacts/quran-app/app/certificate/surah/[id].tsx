@@ -7,6 +7,7 @@ import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
 import { SURAH_DATA } from "@/constants/surahData";
 import { exportAndShareCertificate } from "@/utils/exportCertificatePdf";
+import { getSurahCertContent } from "@/constants/surahCertContent";
 import { OrnamentDivider } from "@/components/cert/OrnamentDivider";
 import { CertMetaGrid } from "@/components/cert/CertMetaGrid";
 import { CertRecordRow } from "@/components/cert/CertRecordRow";
@@ -36,7 +37,8 @@ export default function SurahCertificateScreen() {
 
   const surah = SURAH_DATA[surahNumber - 1];
   const cert = certificates.find(c => c.type === "surah" && c.surahNumber === surahNumber);
-  const personName = accountSettings.name || "The Student";
+  const personName = accountSettings.certificateName || accountSettings.name || "The Student";
+  const certContent = getSurahCertContent(surahNumber);
 
   if (!surah) {
     return (
@@ -85,6 +87,10 @@ export default function SurahCertificateScreen() {
               hijriDate: hijriDate || undefined,
               durationLabel: durationLabel || undefined,
               ayahsPerDayLabel: ayahsPerDayLabel || undefined,
+              hadith: certContent.hadith,
+              hadithSource: certContent.source,
+              dua: certContent.dua,
+              duaEn: certContent.duaEn,
             });
           } catch {
             Alert.alert("Export failed", "Could not generate the certificate PDF. Please try again.");
@@ -178,19 +184,17 @@ export default function SurahCertificateScreen() {
         {/* ── Hadith ── */}
         <View style={[styles.section, { paddingVertical: 24 }]}>
           <Text style={[styles.hadith, { color: c.hifzAccentMuted }]}>
-            "Whoever memorizes ten ayahs from the beginning of Surah Al-Kahf will be protected from the Dajjal."
+            "{certContent.hadith}"
           </Text>
-          <Text style={[styles.hadithSource, { color: c.hifzFaint }]}>SAHIH MUSLIM</Text>
+          <Text style={[styles.hadithSource, { color: c.hifzFaint }]}>{certContent.source}</Text>
         </View>
 
         <OrnamentDivider faint />
 
         {/* ── Dua ── */}
         <View style={[styles.section, { paddingVertical: 24 }]}>
-          <Text style={[styles.duaAr, { color: c.hifzFaint }]}>بَارَكَ اللَّهُ فِيكَ</Text>
-          <Text style={[styles.duaEn, { color: c.hifzFaint }]}>
-            May this surah be light in your heart and{"\n"}intercession on your Day.
-          </Text>
+          <Text style={[styles.duaAr, { color: c.hifzFaint }]}>{certContent.dua}</Text>
+          <Text style={[styles.duaEn, { color: c.hifzFaint }]}>{certContent.duaEn}</Text>
         </View>
       </ScrollView>
     </View>

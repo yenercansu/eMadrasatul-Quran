@@ -26,6 +26,7 @@ interface FullQuranCertificateProps {
   fullHifzAyahsPerDay: string;
   streakDays: number;
   onBeginRevision: () => void;
+  isPreview?: boolean;
 }
 
 function formatGregorianLong(date: Date): string {
@@ -92,13 +93,14 @@ export function FullQuranCertificate({
   fullHifzAyahsPerDay,
   streakDays,
   onBeginRevision,
+  isPreview = false,
 }: FullQuranCertificateProps) {
   const c = useColors();
   const { accountSettings, dailyEntries } = useQuran();
   const [page, setPage] = useState<"cert" | "journey">("cert");
   const [exporting, setExporting] = useState(false);
 
-  const personName = accountSettings.name || "The Student";
+  const personName = accountSettings.certificateName || accountSettings.name || "The Student";
 
   const gregorianDate = formatGregorianLong(completionDate);
   const hijriDate = formatHijriLong(completionDate);
@@ -174,8 +176,8 @@ export function FullQuranCertificate({
       {/* top gradient accent strip */}
       <View style={[styles.accentStrip, { backgroundColor: c.accentSoft }]} />
 
-      {/* Floating download */}
-      <DownloadButton c={c} onPress={handleExport} loading={exporting} />
+      {/* Floating download — hidden in preview mode */}
+      {!isPreview && <DownloadButton c={c} onPress={handleExport} loading={exporting} />}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -262,37 +264,39 @@ export function FullQuranCertificate({
           </Text>
         </View>
 
-        {/* ── CTAs ── */}
-        <View style={styles.ctas}>
-          <ActionPill
-            label="Begin Revision Journey"
-            variant="primary"
-            size="lg"
-            icon="arrow-right"
-            iconPosition="right"
-            style={styles.ctaFull}
-            onPress={onBeginRevision}
-          />
-          <View style={styles.ctaRow}>
+        {/* ── CTAs — hidden in preview mode ── */}
+        {!isPreview && (
+          <View style={styles.ctas}>
             <ActionPill
-              label="View Full Journey"
-              variant="outline"
-              size="md"
-              style={styles.ctaHalf}
-              onPress={() => setPage("journey")}
+              label="Begin Revision Journey"
+              variant="primary"
+              size="lg"
+              icon="arrow-right"
+              iconPosition="right"
+              style={styles.ctaFull}
+              onPress={onBeginRevision}
             />
-            <ActionPill
-              label={exporting ? "Generating…" : "Save Certificate"}
-              variant="outline"
-              size="md"
-              icon="download"
-              iconPosition="left"
-              style={styles.ctaHalf}
-              onPress={handleExport}
-            />
+            <View style={styles.ctaRow}>
+              <ActionPill
+                label="View Full Journey"
+                variant="outline"
+                size="md"
+                style={styles.ctaHalf}
+                onPress={() => setPage("journey")}
+              />
+              <ActionPill
+                label={exporting ? "Generating…" : "Save Certificate"}
+                variant="outline"
+                size="md"
+                icon="download"
+                iconPosition="left"
+                style={styles.ctaHalf}
+                onPress={handleExport}
+              />
+            </View>
+            <Text style={[styles.shareHint, { color: c.hifzFaint }]}>Share your achievement with your family</Text>
           </View>
-          <Text style={[styles.shareHint, { color: c.hifzFaint }]}>Share your achievement with your family</Text>
-        </View>
+        )}
       </ScrollView>
     </View>
   );

@@ -105,6 +105,7 @@ export interface Certificate {
 
 export interface AccountSettings {
   name: string;
+  certificateName: string;
   email: string;
   fontSize: number;
   romanFontSize: number;
@@ -234,6 +235,7 @@ const DEFAULT_SETTINGS: Settings = {
 
 const DEFAULT_ACCOUNT: AccountSettings = {
   name: "",
+  certificateName: "",
   email: "",
   fontSize: 28,
   romanFontSize: 14,

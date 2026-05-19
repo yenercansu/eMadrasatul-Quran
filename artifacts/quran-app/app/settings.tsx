@@ -183,6 +183,15 @@ export default function SettingsScreen() {
           )}
         </Section>
 
+        <Section title="CERTIFICATES">
+          <SettingsRow
+            label="Certificate Name"
+            value={accountSettings.certificateName || accountSettings.name || "Not set"}
+            onPress={() => router.push("/edit-certificate-name" as any)}
+            last
+          />
+        </Section>
+
         <Section title="LEGAL">
           <SettingsRow
             label="Privacy Policy"
