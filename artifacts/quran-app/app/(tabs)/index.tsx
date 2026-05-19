@@ -601,22 +601,53 @@ export default function HomeScreen() {
     }).length;
   }, [currentGoalSurfaceAyahs, goal, memorizationGoal, memorizedAyahKeys]);
 
+  // Derive pace from actual memorization history (median of non-zero days).
+  // Falls back to configured goal only when no history exists.
+  const userTypicalPace = useMemo(() => {
+    const nonZero = dailyEntries.map(e => e.ayahsRead).filter(n => n > 0);
+    if (nonZero.length === 0) return Math.max(1, goal?.ayahsPerWeek ?? 5);
+    const sorted = [...nonZero].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const median = sorted.length % 2 === 0
+      ? Math.round((sorted[mid - 1] + sorted[mid]) / 2)
+      : sorted[mid];
+    return Math.max(1, median);
+  }, [dailyEntries, goal?.ayahsPerWeek]);
+
   const extensionOptionCounts = useMemo(() => {
     if (extensionRemainingCount <= 0) return [];
+    // Tiny range: show every option individually.
     if (extensionRemainingCount <= 4) {
       return Array.from({ length: extensionRemainingCount }, (_, i) => i + 1);
     }
-    // Anchor suggestions to the user's established pace, not the total range size.
-    // humanMax caps at 2× their weekly pace so suggestions stay human-sized (never 200+).
-    const typicalPace = goal?.ayahsPerWeek ?? 5;
-    const humanMax = Math.min(extensionRemainingCount, Math.max(typicalPace * 2, 4));
-    const quarter = Math.max(1, Math.round(humanMax * 0.25));
-    const half    = Math.max(1, Math.round(humanMax * 0.5));
-    const three4  = Math.max(1, Math.round(humanMax * 0.75));
-    return [...new Set([quarter, half, three4, humanMax])]
-      .sort((a, b) => a - b)
-      .filter(n => n <= extensionRemainingCount);
-  }, [extensionRemainingCount, goal?.ayahsPerWeek]);
+
+    const pace = userTypicalPace;
+
+    if (extensionRemainingCount <= pace) {
+      // Remaining is smaller than their typical pace: spread tightly between 1 and remaining.
+      // e.g. remaining=8, pace=10 → 1, 2, 4, 8
+      const opts = [
+        1,
+        Math.max(2, Math.round(extensionRemainingCount * 0.3)),
+        Math.round(extensionRemainingCount * 0.5),
+        extensionRemainingCount,
+      ];
+      return [...new Set(opts)]
+        .filter(n => n >= 1 && n <= extensionRemainingCount)
+        .sort((a, b) => a - b);
+    }
+
+    // Remaining exceeds pace: anchor to pace fractions, stretch max at 1.5× pace.
+    // Never scales with raw remaining count, so 200-ayah ranges stay human-sized.
+    // e.g. pace=10, remaining=220 → 3, 5, 10, 15
+    const low  = Math.max(1, Math.round(pace * 0.3));
+    const mid  = Math.max(1, Math.round(pace * 0.5));
+    const high = pace;
+    const cap  = Math.min(extensionRemainingCount, Math.ceil(pace * 1.5));
+    return [...new Set([low, mid, high, cap])]
+      .filter(n => n >= 1 && n <= extensionRemainingCount)
+      .sort((a, b) => a - b);
+  }, [extensionRemainingCount, userTypicalPace]);
 
   const activeRangeTotal = activeGoalAyahs.length || totalRangeAyahs || targetTotal;
   const remainingRangeAyahs = Math.max(0, activeRangeTotal - totalRangeMemorized);
