@@ -637,15 +637,6 @@ export default function HomeScreen() {
   };
 
   const todayShort = formatShortDate(new Date().toISOString());
-  const totalTimeLabel = useMemo(() => {
-    if (!goal?.startDate) return "—";
-    const start = new Date(goal.startDate);
-    if (Number.isNaN(start.getTime())) return "—";
-    const days = Math.max(1, Math.ceil((Date.now() - start.getTime()) / 86400000));
-    const weeks = Math.max(1, Math.ceil(days / 7));
-    return `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
-  }, [goal?.startDate]);
-
   const nextAyahInRange = useMemo(() => {
     if (!memorizationGoal || !goal || memorizationGoal.path === "pace") return null;
     const memorized = new Set(memorizedAyahKeys);
@@ -1211,6 +1202,19 @@ export default function HomeScreen() {
     };
   }, [hifzTransition, setGoal, setMemorizationGoal]);
 
+  const skipHifzTransition = useCallback(() => {
+    if (!hifzTransition) return;
+    setGoal(hifzTransition.nextGoal);
+    setMemorizationGoal(hifzTransition.nextMemorizationGoal);
+    setWidgetPath(hifzTransition.nextWidgetPath);
+    setWidgetFirstAyah(hifzTransition.nextFirstAyah);
+    setWidgetLastAyah(hifzTransition.nextLastAyah);
+    setWidgetJuz(hifzTransition.nextJuz);
+    setContinuationNotice(null);
+    setHifzTransition(null);
+    setHifzTransitionProgress(0);
+  }, [hifzTransition, setGoal, setMemorizationGoal]);
+
   useEffect(() => {
     if (hifzTransition) return;
     const prev = prevMilestoneCompleteRef.current;
@@ -1727,7 +1731,7 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {(hifzTransition || (milestoneComplete && !canExtendCurrentGoal)) && (
+          {hifzTransition && (
             <View style={s.journeySection}>
               <View style={s.sectionHeadingRow}>
                 <Text style={s.goalWidgetTitle}>YOUR JOURNEY</Text>
@@ -1739,99 +1743,48 @@ export default function HomeScreen() {
                       <Feather name="check" size={12} color={colors.textSecondary} />
                       <Text style={s.journeyCompleteText}>Complete</Text>
                     </View>
-                    <View style={s.journeyCompletionDateBadge}>
-                      <Feather name="award" size={13} color={colors.textSecondary} />
-                      <Text style={s.journeyCompletionDay}>{todayShort}</Text>
+                    <View style={s.journeyHeaderRight}>
+                      <View style={s.journeyCompletionDateBadge}>
+                        <Feather name="award" size={13} color={colors.textSecondary} />
+                        <Text style={s.journeyCompletionDay}>{todayShort}</Text>
+                      </View>
+                      <TouchableOpacity style={s.journeyDismissBtn} onPress={skipHifzTransition} activeOpacity={0.7} hitSlop={8}>
+                        <Feather name="x" size={16} color={colors.textTertiary} />
+                      </TouchableOpacity>
                     </View>
                   </View>
-                  {hifzTransition && (
-                    <Text style={s.journeyPreparingTitle}>Preparing next goal</Text>
-                  )}
+                  <Text style={s.journeyPreparingTitle}>Preparing next goal</Text>
                   <Text style={s.journeyTitle}>A milestone completed</Text>
                   <Text style={s.journeySubText}>
-                    {hifzTransition
-                      ? `${hifzTransition.completed} is now part of your Hifz journey.`
-                      : `${selectedRangeLabel} is now part of your Hifz journey.`}
+                    {`${hifzTransition.completed} is now part of your Hifz journey.`}
                   </Text>
-                  {hifzTransition && (
-                    <View style={s.journeyLoadingSurface}>
-                      <View style={s.journeyLoadingRow}>
-                        <View style={s.journeyLoadingColumn}>
-                          <Text style={s.journeyLoadingLabel}>Completed</Text>
-                          <Text style={s.journeyLoadingValue}>{hifzTransition.completed}</Text>
-                        </View>
-                        <View style={s.journeyLoadingDivider} />
-                        <View style={s.journeyLoadingColumn}>
-                          <Text style={s.journeyLoadingLabel}>Up next</Text>
-                          <Text style={s.journeyLoadingValue}>{hifzTransition.upNext}</Text>
-                        </View>
+                  <View style={s.journeyLoadingSurface}>
+                    <View style={s.journeyLoadingRow}>
+                      <View style={s.journeyLoadingColumn}>
+                        <Text style={s.journeyLoadingLabel}>Completed</Text>
+                        <Text style={s.journeyLoadingValue}>{hifzTransition.completed}</Text>
                       </View>
-                      <View style={s.journeyLoadingRail}>
-                        <View style={[s.journeyLoadingFill, { width: `${hifzTransitionProgress}%` as any }]} />
+                      <View style={s.journeyLoadingDivider} />
+                      <View style={s.journeyLoadingColumn}>
+                        <Text style={s.journeyLoadingLabel}>Up next</Text>
+                        <Text style={s.journeyLoadingValue}>{hifzTransition.upNext}</Text>
                       </View>
-                      <Text style={s.journeyLoadingText}>Setting up your next Hifz step</Text>
                     </View>
-                  )}
-                  <View style={s.journeyProgressRail}>
-                    <View style={s.journeyProgressFill} />
-                  </View>
-                  <Text style={s.journeyProgressText}>
-                    {hifzTransition ? hifzTransition.totalAyahs : totalRangeMemorized} of {hifzTransition?.totalAyahs ?? totalRangeAyahs} ayahs memorized
-                  </Text>
-                </View>
-
-                {!hifzTransition && (
-                <View style={s.journeyReflectionList}>
-                  <View style={s.journeyReflectionRow}>
-                    <Text style={s.journeyStatLabel}>Started</Text>
-                    <Text style={s.journeyStatValue}>{formatShortDate(goal?.startDate)}</Text>
-                  </View>
-                  <View style={s.journeyReflectionRow}>
-                    <Text style={s.journeyStatLabel}>Completed</Text>
-                    <Text style={s.journeyStatValue}>{todayShort}</Text>
-                  </View>
-                  <View style={s.journeyReflectionRow}>
-                    <Text style={s.journeyStatLabel}>Time carried</Text>
-                    <Text style={s.journeyStatValue}>{totalTimeLabel}</Text>
-                  </View>
-                  <View style={[s.journeyReflectionRow, s.journeyReflectionRowLast]}>
-                    <Text style={s.journeyStatLabel}>Steady rhythm</Text>
-                    <Text style={s.journeyStatValue}>{streakDays} days</Text>
+                    <View style={s.journeyLoadingRail}>
+                      <View style={[s.journeyLoadingFill, { width: `${hifzTransitionProgress}%` as any }]} />
+                    </View>
+                    <Text style={s.journeyLoadingText}>Setting up your next Hifz step</Text>
                   </View>
                 </View>
-                )}
 
-                {hifzTransition && (
-                  <ActionPill
-                    label="Hifz Calendar"
-                    icon="calendar"
-                    variant="border"
-                    size="md"
-                    style={s.journeySecondaryAction}
-                    onPress={() => router.push("/streak-calendar" as any)}
-                  />
-                )}
-
-                {!hifzTransition && (
-                <>
-                <TouchableOpacity
-                  style={s.journeyPrimaryBtn}
-                  onPress={() => router.push(`/surah/${goal?.startSurahNumber ?? memorizationGoal?.startSurahNumber ?? 1}?ayah=${goal?.startAyahNumber ?? 1}`)}
-                  activeOpacity={0.85}
-                >
-                  <Text style={s.journeyPrimaryText}>Review {selectedRangeLabel}</Text>
-                  <Feather name="chevron-right" size={15} color={colors.textSecondary} />
-                </TouchableOpacity>
                 <ActionPill
-                  label="Set next goal"
-                  icon="plus"
+                  label="Hifz Calendar"
+                  icon="calendar"
                   variant="border"
                   size="md"
                   style={s.journeySecondaryAction}
-                  onPress={() => setAyahRangeVisible(true)}
+                  onPress={() => router.push("/streak-calendar" as any)}
                 />
-                </>
-                )}
               </View>
             </View>
           )}
@@ -3777,6 +3730,19 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       justifyContent: "space-between",
       marginBottom: 12,
     },
+    journeyHeaderRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    journeyDismissBtn: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.overlaySoft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     journeyCompletionDay: {
       fontSize: 12,
       fontWeight: "700",
@@ -3837,31 +3803,10 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       textTransform: "uppercase",
       letterSpacing: 0.7,
     },
-    journeyProgressRail: {
-      height: 3,
-      borderRadius: 999,
-      backgroundColor: colors.overlaySoft,
-      overflow: "hidden",
-      marginBottom: 8,
-    },
-    journeyProgressFill: {
-      height: "100%" as any,
-      width: "100%" as any,
-      backgroundColor: colors.textSecondary,
-      borderRadius: 999,
-    },
-    journeyProgressText: {
-      fontSize: 12,
-      color: colors.textTertiary,
-      fontFamily: "Inter_400Regular",
-    },
     journeyLoadingSurface: {
-      borderRadius: 16,
-      backgroundColor: colors.surfaceElevated,
-      borderWidth: 1,
-      borderColor: colors.borderSubtle,
       overflow: "hidden",
-      marginBottom: 14,
+      marginTop: 14,
+      marginBottom: 2,
     },
     journeyLoadingRow: {
       flexDirection: "row",
