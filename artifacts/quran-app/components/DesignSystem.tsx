@@ -470,17 +470,17 @@ const emptyStyles = (c: ReturnType<typeof useColors>) =>
     container: {
       alignItems: "center",
       justifyContent: "center",
-      paddingVertical: 32,
+      paddingVertical: 48,
       paddingHorizontal: 24,
     },
     iconWrap: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: c.surfaceMuted,
-      marginBottom: 10,
+      marginBottom: 16,
     },
     title: {
       fontSize: 15,

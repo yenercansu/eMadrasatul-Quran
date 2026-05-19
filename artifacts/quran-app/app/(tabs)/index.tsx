@@ -29,6 +29,7 @@ import {
   getFirstUnmemorizedAyah,
   getGoalRangeAyahs,
   getNextAyahAfter,
+  isSurahFullyMemorized,
   MAX_WEEKLY_AYAHS,
 } from "@/services/hifzLogic";
 import { AyahRangeModal, type AyahRangeResult } from "@/components/AyahRangeModal";

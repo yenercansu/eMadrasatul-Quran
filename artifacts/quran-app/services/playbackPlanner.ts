@@ -273,7 +273,7 @@ async function getPlayableWordsForRange(
   return groups.flat();
 }
 
-function createUstadhProgressionSteps(words: WordPlaybackRef[], playbackRate: number): PlaybackStep[] {
+function createUstadhAyahSteps(words: WordPlaybackRef[], playbackRate: number): PlaybackStep[] {
   const steps: PlaybackStep[] = [];
   const chunkSize = 3;
   const segmentSize = 6;
@@ -295,9 +295,28 @@ function createUstadhProgressionSteps(words: WordPlaybackRef[], playbackRate: nu
   }
 
   if (segmentCount > 1) {
-    steps.push(...repeatWordSequence(words, 3, playbackRate, "ustadh-final", 0));
+    steps.push(...repeatWordSequence(words, 3, playbackRate, `ustadh-ayah-final-${words[0]?.verseKey ?? "unknown"}`, 900));
   }
   return steps;
+}
+
+async function getPlayableWordGroupsForRange(
+  surahNumber: number,
+  ayahs: number[],
+): Promise<WordPlaybackRef[][]> {
+  return Promise.all(ayahs.map((ayahNumber) => getPlayableWordRefs(surahNumber, ayahNumber)));
+}
+
+function createUstadhProgressionSteps(wordGroups: WordPlaybackRef[][], playbackRate: number): PlaybackStep[] {
+  const ayahSteps = wordGroups.flatMap((words) => createUstadhAyahSteps(words, playbackRate));
+  const allWords = wordGroups.flat();
+  if (wordGroups.filter((group) => group.length > 0).length > 1 && allWords.length > 0) {
+    return [
+      ...ayahSteps,
+      ...repeatWordSequence(allWords, 3, playbackRate, "ustadh-final-range", 0),
+    ];
+  }
+  return ayahSteps;
 }
 
 export async function createAyahPlaybackPlan(options: {
@@ -475,10 +494,10 @@ export async function createUstadhPlaybackPlan(options: {
   mode: "new" | "review" | string;
   playbackRate: number;
 }): Promise<PlaybackPlan> {
-  const words = await getPlayableWordsForRange(options.surahNumber, options.ayahs);
+  const wordGroups = await getPlayableWordGroupsForRange(options.surahNumber, options.ayahs);
   return {
     id: `ustadh:${options.reciterId}:${options.surahNumber}:${options.ayahs.join(",")}`,
     mode: "ustadh",
-    steps: createUstadhProgressionSteps(words, options.playbackRate),
+    steps: createUstadhProgressionSteps(wordGroups, options.playbackRate),
   };
 }
