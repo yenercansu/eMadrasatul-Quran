@@ -80,9 +80,13 @@ function TabIcon({ name, color }: { name: "home" | "quran" | "madrasa"; color: s
 }
 
 function FixedTabBar(props: any) {
-  const { state, navigation } = props;
+  const { state, navigation, descriptors } = props;
   const colors = useColors();
   const styles = createStyles(colors);
+
+  const currentRoute = state.routes[state.index];
+  const currentOptions = descriptors[currentRoute?.key]?.options ?? {};
+  if (currentOptions.tabBarHidden) return null;
 
   const visibleRoutes = state.routes.filter((r: any) =>
     TAB_DEFS.find(t => t.name === r.name)

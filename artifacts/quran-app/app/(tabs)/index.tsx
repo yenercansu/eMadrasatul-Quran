@@ -16,7 +16,7 @@ import Svg, { Circle } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useNavigation } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useQuran, type Goal, type MemorizationGoal } from "@/contexts/QuranContext";
 import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
@@ -41,6 +41,7 @@ import { VerseCard } from "@/components/VerseCard";
 import { ActionPill } from "@/components/ActionPill";
 import { InlineNotice } from "@/components/InlineNotice";
 import { FullQuranCertificate } from "@/components/cert/FullQuranCertificate";
+import { AppDialog } from "@/components/AppDialog";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const TOTAL_AYAHS = 6236;
@@ -129,6 +130,7 @@ export default function HomeScreen() {
   const colors = useColors();
   const s = styles(colors);
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const {
     lastListened, goal, setGoal, memorizationGoal, setMemorizationGoal,
     todayEntry, dailyEntries, onlineUsers, recentProgress, savedSurahs,
@@ -163,6 +165,7 @@ export default function HomeScreen() {
   const [showWeeklyToast, setShowWeeklyToast] = useState(false);
   const [showWeekCompleteCard, setShowWeekCompleteCard] = useState(false);
   const [showHifzGoalOptions, setShowHifzGoalOptions] = useState(false);
+  const [showRestartHifzConfirm, setShowRestartHifzConfirm] = useState(false);
   const [revisionJourneyStarted, setRevisionJourneyStarted] = useState(false);
   const [hifzSetupVisible, setHifzSetupVisible] = useState(false);
   const [setupInitialSurahNumber, setSetupInitialSurahNumber] = useState<number | undefined>(undefined);
@@ -748,6 +751,11 @@ export default function HomeScreen() {
       : "Ready for this week";
   const fullQuranComplete = memorizedAyahKeys.length >= TOTAL_AYAHS;
   const showFullQuranComplete = fullQuranComplete && !revisionJourneyStarted;
+
+  useEffect(() => {
+    navigation.setOptions({ tabBarHidden: showFullQuranComplete });
+  }, [showFullQuranComplete, navigation]);
+
   const completionDate = new Date();
   const fullHifzStartDate = useMemo(() => {
     const candidates = [
@@ -1212,17 +1220,6 @@ export default function HomeScreen() {
          locations={[0, 1]}
          style={[s.container, { paddingTop: insets.top }]}
        >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[s.scrollContent, { paddingTop: 12 }]}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={load}
-               tintColor={colors.appBorderLight}
-            />
-          }
-        >
           {showFullQuranComplete ? (
             <FullQuranCertificate
               completionDate={completionDate}
@@ -1235,6 +1232,17 @@ export default function HomeScreen() {
               }}
             />
           ) : (
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[s.scrollContent, { paddingTop: 12 }]}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={load}
+                 tintColor={colors.appBorderLight}
+              />
+            }
+          >
           <>
           {/* ── Header Row ──────────────────────────────────────────────── */}
           <View style={s.headerRow}>
@@ -1275,8 +1283,10 @@ export default function HomeScreen() {
             </View>
             {showSelectionWidget ? (
               <HifzHeroCard
-                title="Begin Your Hifz"
-                subtitle="Tap to set your Niyyah and start your Hifz journey, bi'iznillah"
+                title={fullQuranComplete || revisionJourneyStarted ? "Begin Revision" : "Begin Your Hifz"}
+                subtitle={fullQuranComplete || revisionJourneyStarted
+                  ? "Your Quran is memorized. Start your Murajaah, bi'iznillah."
+                  : "Tap to set your Niyyah and start your Hifz journey, bi'iznillah"}
                 tags={["By Juz", "By Surah", "By Pace"]}
                 progress={0.5}
                 onPress={() => setHifzSetupVisible(true)}
@@ -1320,42 +1330,47 @@ export default function HomeScreen() {
               {showHifzGoalOptions && (
               <View style={s.hifzManageCard}>
                 {showHifzGoalOptions ? (
-                  <View style={s.hifzInlineOptionsRow}>
-                    <TouchableOpacity
-                      style={s.hifzInlineOptionBtn}
-                      onPress={() => openNewHifzSelection("juz")}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={s.hifzInlineOptionText}>By Juz</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={s.hifzInlineOptionBtn}
-                      onPress={() => openNewHifzSelection("surah")}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={s.hifzInlineOptionText}>By Surah</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={s.hifzInlineOptionBtn}
-                      onPress={() => openPaceHifzSelection()}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={s.hifzInlineOptionText}>By Pace</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={s.hifzInlineOptionBtn}
-                      onPress={resetHifzFlow}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={s.hifzInlineOptionText}>Cancel Hifz</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={s.hifzInlineCloseBtn}
-                      onPress={() => setShowHifzGoalOptions(false)}
-                      activeOpacity={0.75}
-                    >
-                      <Feather name="x" size={18} color={colors.appLightText} />
-                    </TouchableOpacity>
+                  <View>
+                    <View style={s.hifzInlineOptionsRow}>
+                      <TouchableOpacity
+                        style={s.hifzInlineOptionBtn}
+                        onPress={() => openNewHifzSelection("juz")}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={s.hifzInlineOptionText}>By Juz</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={s.hifzInlineOptionBtn}
+                        onPress={() => openNewHifzSelection("surah")}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={s.hifzInlineOptionText}>By Surah</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={s.hifzInlineOptionBtn}
+                        onPress={() => openPaceHifzSelection()}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={s.hifzInlineOptionText}>By Pace</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={s.hifzInlineCloseBtn}
+                        onPress={() => setShowHifzGoalOptions(false)}
+                        activeOpacity={0.75}
+                      >
+                        <Feather name="x" size={18} color={colors.appLightText} />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={s.restartHifzRow}>
+                      <TouchableOpacity
+                        style={s.restartHifzBtn}
+                        onPress={() => setShowRestartHifzConfirm(true)}
+                        activeOpacity={0.7}
+                      >
+                        <Feather name="refresh-cw" size={12} color={colors.textTertiary} />
+                        <Text style={s.restartHifzText}>Restart Hifz Journey</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 ) : null}
               </View>
@@ -1785,8 +1800,8 @@ export default function HomeScreen() {
             )}
           </View>
           </>
+          </ScrollView>
           )}
-        </ScrollView>
       </LinearGradient>
 
 
@@ -2004,6 +2019,19 @@ export default function HomeScreen() {
           setPaceDateVisible(false);
         }}
         onClose={() => setPaceDateVisible(false)}
+      />
+      <AppDialog
+        visible={showRestartHifzConfirm}
+        title="Restart your Hifz journey?"
+        message={"This will remove your memorization progress, weekly goals, streaks, and active Hifz setup.\n\nYour earned certificates will remain on your profile."}
+        confirmLabel="Restart Hifz"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={() => {
+          setShowRestartHifzConfirm(false);
+          resetHifzFlow();
+        }}
+        onCancel={() => setShowRestartHifzConfirm(false)}
       />
       <AyahRangeModal
         visible={ayahRangeVisible}
@@ -2917,6 +2945,24 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       justifyContent: "center",
       flexShrink: 0,
+    },
+    restartHifzRow: {
+      alignItems: "center",
+      paddingBottom: 10,
+      paddingTop: 2,
+    },
+    restartHifzBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    restartHifzText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.textTertiary,
+      fontFamily: "Inter_600SemiBold",
     },
 
     // ── THIS WEEK Section ─────────────────────────────────────────────────
