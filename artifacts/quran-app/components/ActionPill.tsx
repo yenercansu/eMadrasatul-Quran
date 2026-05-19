@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  ActivityIndicator,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -30,6 +31,8 @@ interface ActionPillProps extends Omit<TouchableOpacityProps, "style"> {
   size?: ActionPillSize;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
+  disabled?: boolean;
+  loading?: boolean;
 }
 
 export function ActionPill({
@@ -41,15 +44,22 @@ export function ActionPill({
   style,
   textStyle,
   activeOpacity = 0.8,
+  disabled = false,
+  loading = false,
   ...touchableProps
 }: ActionPillProps) {
   const colors = useColors();
   const s = styles(colors);
   const isPrimary = variant === "primary";
-  const iconColor = isPrimary ? colors.onAccent : colors.appText;
+  const isDisabled = disabled || loading;
+  const iconColor = isDisabled
+    ? colors.disabledText
+    : isPrimary
+    ? colors.onAccent
+    : colors.appText;
   const iconSize = size === "sm" ? 12 : size === "lg" ? 16 : 14;
 
-  const iconNode = icon ? (
+  const iconNode = icon && !loading ? (
     <Feather name={icon} size={iconSize} color={iconColor} />
   ) : null;
 
@@ -57,20 +67,32 @@ export function ActionPill({
     <TouchableOpacity
       {...touchableProps}
       activeOpacity={activeOpacity}
-      style={[s.base, s[size], s[variant], style]}
+      disabled={isDisabled}
+      style={[s.base, s[size], s[variant], isDisabled && s.disabled, style]}
     >
-      {iconPosition === "left" ? iconNode : null}
-      <Text
-        style={[
-          s.label,
-          isPrimary && s.primaryLabel,
-          size === "sm" && s.smLabel,
-          textStyle,
-        ]}
-      >
-        {label}
-      </Text>
-      {iconPosition === "right" ? iconNode : null}
+      {loading ? (
+        <ActivityIndicator
+          size="small"
+          color={isPrimary ? colors.onAccent : colors.appText}
+        />
+      ) : (
+        <>
+          {iconPosition === "left" ? iconNode : null}
+          <Text
+            style={[
+              s.label,
+              isPrimary && s.primaryLabel,
+              size === "sm" && s.smLabel,
+              size === "lg" && s.lgLabel,
+              isDisabled && s.disabledLabel,
+              textStyle,
+            ]}
+          >
+            {label}
+          </Text>
+          {iconPosition === "right" ? iconNode : null}
+        </>
+      )}
     </TouchableOpacity>
   );
 }
@@ -105,13 +127,13 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       borderWidth: 0,
     },
     secondary: {
-      backgroundColor: colors.appSecondarySurface,
+      backgroundColor: colors.accentSoft,
       borderWidth: 0,
     },
     outline: {
       backgroundColor: colors.surfaceSecondary,
       borderWidth: 1,
-      borderColor: colors.appBorderLighter,
+      borderColor: colors.appSoftBorder,
     },
     ghost: {
       backgroundColor: "transparent",
@@ -135,5 +157,15 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontSize: 13,
       letterSpacing: 0,
       textTransform: "uppercase",
+    },
+    lgLabel: {
+      fontSize: 16,
+    },
+    disabled: {
+      backgroundColor: colors.disabledBackground,
+      borderColor: "transparent",
+    },
+    disabledLabel: {
+      color: colors.disabledText,
     },
   });

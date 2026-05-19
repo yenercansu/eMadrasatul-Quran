@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { HifzPrimaryButton, HifzSegmentedControl } from "@/components/hifz/HifzUI";
+import { HifzSegmentedControl } from "@/components/hifz/HifzUI";
+import { ActionPill } from "@/components/ActionPill";
 import { JUZ_STARTS, SURAH_DATA } from "@/constants/surahData";
 import { VerseCard } from "@/components/VerseCard";
 import { BackButton } from "@/components/BackButton";
@@ -271,9 +272,11 @@ export function HifzGoalSetupModal({
 
         </ScrollView>
         <View style={[m.bottomCta, { paddingBottom: insets.bottom + 16 }]}>
-          <HifzPrimaryButton
+          <ActionPill
             label={mode === "pace" ? "Continue with this pace →" : "Continue To Ayah Selection →"}
             onPress={handleContinue}
+            variant="primary"
+            size="lg"
           />
           <Text style={m.footerText}>To complete the Quran · Inshallah</Text>
         </View>

@@ -122,27 +122,6 @@ export function HifzSegmentedControl<T extends string>({
   );
 }
 
-export function HifzPrimaryButton({
-  label,
-  onPress,
-  disabled = false,
-}: {
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-}) {
-  const { ui } = useHifzStyles();
-  return (
-    <TouchableOpacity
-      style={[ui.primaryButton, disabled && ui.primaryButtonDisabled]}
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.86}
-    >
-      <Text style={[ui.primaryButtonText, disabled && ui.primaryButtonTextDisabled]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
 
 export function HifzStepper({
   labels,
@@ -323,25 +302,6 @@ const makeStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   },
   segmentTextSelected: {
     color: colors.onAccent,
-  },
-  primaryButton: {
-    minHeight: 56,
-    borderRadius: 16,
-    backgroundColor: colors.hifzAccent,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryButtonDisabled: {
-    backgroundColor: colors.disabledBackground,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.onAccent,
-    fontFamily: "Inter_700Bold",
-  },
-  primaryButtonTextDisabled: {
-    color: colors.disabledText,
   },
   stepper: {
     flexDirection: "row",

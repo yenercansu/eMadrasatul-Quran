@@ -61,7 +61,7 @@ export default function AuthScreen() {
         ) : null}
 
         <TouchableOpacity
-          style={s.googleBtn}
+          style={[s.googleBtn, loading && s.googleBtnLoading]}
           onPress={handleSignIn}
           activeOpacity={0.85}
           disabled={loading}
@@ -117,6 +117,9 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       shadowOpacity: 0.05,
       shadowRadius: 3,
       elevation: 2,
+    },
+    googleBtnLoading: {
+      opacity: 0.55,
     },
     googleBtnText: { color: colors.textPrimary, fontSize: 15, fontFamily: "Inter_600SemiBold" },
   });

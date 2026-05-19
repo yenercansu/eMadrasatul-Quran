@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FullScreenPage } from "@/components/FullScreenPage";
+import { ActionPill } from "@/components/ActionPill";
 import { useColors } from "@/hooks/useColors";
 import type { ApiAyah } from "@/services/quranApi";
 
@@ -153,15 +154,15 @@ export function PlayRangeSheet({
           })}
         </View>
 
-        <TouchableOpacity
-          style={[s.saveBtn, (start === null || end === null) && s.saveBtnDisabled]}
-          onPress={handleSave}
+        <ActionPill
+          label="Play Range"
+          icon="play"
+          variant="primary"
+          size="lg"
           disabled={start === null || end === null}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="play" size={18} color={colors.onAccent} />
-          <Text style={s.saveBtnText}>Play Range</Text>
-        </TouchableOpacity>
+          onPress={handleSave}
+          style={s.saveBtnSpacing}
+        />
 
         <View style={{ height: insets.bottom + 16 }} />
       </FullScreenPage>
@@ -201,7 +202,5 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     repeatChipActive: { backgroundColor: colors.appText },
     repeatChipText: { fontSize: 14, fontWeight: "700", color: colors.appTextMuted, fontFamily: "Inter_700Bold" },
     repeatChipTextActive: { color: colors.onAccent },
-    saveBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.appText, paddingVertical: 16, borderRadius: 16, marginTop: 4, marginHorizontal: 20 },
-    saveBtnDisabled: { backgroundColor: colors.disabledBackground },
-    saveBtnText: { fontSize: 15, fontWeight: "700", color: colors.onAccent, fontFamily: "Inter_700Bold" },
+    saveBtnSpacing: { marginTop: 4, marginHorizontal: 20 },
   });

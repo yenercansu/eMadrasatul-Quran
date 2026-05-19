@@ -178,10 +178,7 @@ function NoWordsScreen({ colors, topPad }: { colors: ReturnType<typeof useColors
       </ScrollView>
 
       <View style={[s.noWordsBottomBar, { paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }]}>
-        <TouchableOpacity style={s.goReadBtn} onPress={() => router.replace("/(tabs)/quran")} activeOpacity={0.85}>
-          <Ionicons name="book-outline" size={18} color={colors.primaryForeground} />
-          <Text style={s.goReadBtnText}>Start Reading</Text>
-        </TouchableOpacity>
+        <ActionPill label="Start Reading" icon="book-open" variant="primary" size="lg" onPress={() => router.replace("/(tabs)/quran")} />
       </View>
     </View>
   );
@@ -1167,13 +1164,8 @@ export default function QuizScreen() {
           </Text>
           <Text style={s.resultsSub}>{score} out of {questions.length} correct</Text>
           <View style={s.resultActions}>
-            <TouchableOpacity style={s.retryBtn} onPress={() => initQuiz(quizWords)} activeOpacity={0.85}>
-              <Ionicons name="refresh" size={18} color={colors.primaryForeground} />
-              <Text style={s.retryBtnText}>Try Again</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.doneBtn} onPress={handleBack} activeOpacity={0.85}>
-              <Text style={s.doneBtnText}>Change Selection</Text>
-            </TouchableOpacity>
+            <ActionPill label="Try Again" icon="refresh-cw" variant="primary" size="lg" onPress={() => initQuiz(quizWords)} />
+            <ActionPill label="Change Selection" variant="border" size="md" onPress={handleBack} />
           </View>
         </View>
       </View>
@@ -1397,10 +1389,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     resultsTitle: { fontSize: 26, fontWeight: "700", color: colors.foreground, fontFamily: "Inter_700Bold" },
     resultsSub: { fontSize: 16, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     resultActions: { width: "100%", gap: 12, marginTop: 8 },
-    retryBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.primary, padding: 16, borderRadius: 14 },
-    retryBtnText: { fontSize: 16, fontWeight: "700", color: colors.primaryForeground, fontFamily: "Inter_700Bold" },
-    doneBtn: { alignItems: "center", padding: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.border },
-    doneBtnText: { fontSize: 16, color: colors.foreground, fontFamily: "Inter_400Regular" },
     selectionPageHeader: {
       paddingHorizontal: 16,
       paddingBottom: 12,
@@ -1649,8 +1637,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     howToNumText: { fontSize: 13, fontWeight: "700", color: colors.primaryForeground, fontFamily: "Inter_700Bold" },
     howToIcon: { marginRight: 2 },
     howToText: { flex: 1, fontSize: 14, color: colors.foreground, fontFamily: "Inter_400Regular" },
-    goReadBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.primary, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 14, width: "100%" },
-    goReadBtnText: { fontSize: 16, fontWeight: "700", color: colors.primaryForeground, fontFamily: "Inter_700Bold" },
     wordsManagerSub: { fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
     wordManagerRow: {
       flexDirection: "row",

@@ -1778,6 +1778,15 @@ export default function HomeScreen() {
                 </View>
 
                 <ActionPill
+                  label="Add New Goal"
+                  icon="plus"
+                  iconPosition="right"
+                  variant="primary"
+                  size="md"
+                  style={s.journeyPrimarySpacing}
+                  onPress={() => setAyahRangeVisible(true)}
+                />
+                <ActionPill
                   label="Hifz Calendar"
                   icon="calendar"
                   variant="border"
@@ -3879,51 +3888,14 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       color: colors.appTextPrimary,
       fontFamily: "Inter_700Bold",
     },
-    journeyPrimaryBtn: {
+    journeyPrimarySpacing: {
       marginHorizontal: 16,
       marginTop: 10,
-      backgroundColor: colors.accentSoft,
-      borderRadius: 18,
-      minHeight: 52,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-    },
-    journeyPrimaryText: {
-      fontSize: 14,
-      fontWeight: "700",
-      color: colors.textPrimary,
-      fontFamily: "Inter_700Bold",
-    },
-    journeySecondaryBtn: {
-      marginHorizontal: 16,
-      marginTop: 10,
-      marginBottom: 16,
-      minHeight: 44,
-      borderRadius: 999,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      backgroundColor: colors.surfaceElevated,
-      borderWidth: 1,
-      borderColor: colors.accentSoft,
-    },
-    journeySecondaryText: {
-      fontSize: 12,
-      fontWeight: "700",
-      color: colors.textTertiary,
-      fontFamily: "Inter_700Bold",
-      textTransform: "uppercase",
-      letterSpacing: 0.5,
     },
     journeySecondaryAction: {
       marginHorizontal: 16,
       marginTop: 10,
       marginBottom: 16,
-      backgroundColor: "transparent",
-      borderColor: colors.accentSoft,
     },
 
     // Week done floating toast

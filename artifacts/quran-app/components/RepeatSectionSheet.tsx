@@ -12,6 +12,8 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FullScreenPage } from "@/components/FullScreenPage";
+import { ActionPill } from "@/components/ActionPill";
+import { useColors } from "@/hooks/useColors";
 
 interface Props {
   visible: boolean;
@@ -32,6 +34,8 @@ export function RepeatSectionSheet({
   visible, onClose, surahNumber, surahName, ayahNumber, ayahText, onConfirm,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const colors = useColors();
+  const s = styles(colors);
   const words = useMemo(
     () => (ayahText || "").trim().split(/\s+/).filter(Boolean),
     [ayahText],
@@ -97,7 +101,6 @@ export function RepeatSectionSheet({
           {surahName} · Ayah {ayahNumber} · {summary}
         </Text>
 
-        {/* Ayah words — flexible, fills available space */}
         <ScrollView
           style={s.wordsScroll}
           contentContainerStyle={s.wordsWrap}
@@ -126,20 +129,19 @@ export function RepeatSectionSheet({
             );
           })}
           <TouchableOpacity onPress={handleSelectAll} activeOpacity={0.7} style={s.selectAllBtn}>
-            <Feather name="maximize-2" size={14} color="#1A1A1A" />
+            <Feather name="maximize-2" size={14} color={colors.appText} />
           </TouchableOpacity>
         </ScrollView>
 
-        {/* Confirm */}
-        <TouchableOpacity
-          style={[s.saveBtn, (segLen === 0 || words.length === 0) && s.saveBtnDisabled]}
-          onPress={handleConfirm}
+        <ActionPill
+          label="Repeat Section"
+          icon="repeat"
+          variant="primary"
+          size="lg"
           disabled={segLen === 0 || words.length === 0}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="repeat" size={18} color="#FFFFFF" />
-          <Text style={s.saveBtnText}>Repeat Section</Text>
-        </TouchableOpacity>
+          onPress={handleConfirm}
+          style={s.confirmBtnSpacing}
+        />
         <View style={{ height: insets.bottom + 16 }} />
         {void surahNumber}
       </FullScreenPage>
@@ -147,62 +149,52 @@ export function RepeatSectionSheet({
   );
 }
 
-const s = StyleSheet.create({
-  hint: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 6, paddingHorizontal: 20 },
-  summary: { fontSize: 13, color: "#1A1A1A", fontFamily: "Inter_600SemiBold", fontWeight: "600", textAlign: "center", marginTop: 4, marginBottom: 14, paddingHorizontal: 20 },
+const styles = (colors: ReturnType<typeof useColors>) =>
+  StyleSheet.create({
+    hint: { fontSize: 12, color: colors.appTextMuted, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 6, paddingHorizontal: 20 },
+    summary: { fontSize: 13, color: colors.appText, fontFamily: "Inter_600SemiBold", fontWeight: "600", textAlign: "center", marginTop: 4, marginBottom: 14, paddingHorizontal: 20 },
 
-  wordsScroll: { flex: 1, paddingHorizontal: 16 },
-  wordsWrap: {
-    flexDirection: "row-reverse",
-    flexWrap: "wrap",
-    justifyContent: "flex-start",
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    gap: 6,
-  },
-  wordChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    backgroundColor: "#F5F5F5",
-    borderWidth: 1.5,
-    borderColor: "transparent",
-  },
-  wordChipActive: {
-    backgroundColor: "#DCFCE7",
-  },
-  wordChipStart: { borderTopLeftRadius: 14, borderBottomLeftRadius: 14 },
-  wordChipEnd: { borderTopRightRadius: 14, borderBottomRightRadius: 14 },
-  wordText: {
-    fontSize: 22,
-    color: "#1A1A1A",
-    fontFamily: Platform.OS === "ios" ? "System" : undefined,
-  },
-  wordTextActive: { color: "#0E5132" },
+    wordsScroll: { flex: 1, paddingHorizontal: 16 },
+    wordsWrap: {
+      flexDirection: "row-reverse",
+      flexWrap: "wrap",
+      justifyContent: "flex-start",
+      paddingVertical: 10,
+      paddingHorizontal: 4,
+      gap: 6,
+    },
+    wordChip: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 10,
+      backgroundColor: colors.appSecondarySurface,
+      borderWidth: 1.5,
+      borderColor: "transparent",
+    },
+    wordChipActive: {
+      backgroundColor: colors.successSoft,
+    },
+    wordChipStart: { borderTopLeftRadius: 14, borderBottomLeftRadius: 14 },
+    wordChipEnd: { borderTopRightRadius: 14, borderBottomRightRadius: 14 },
+    wordText: {
+      fontSize: 22,
+      color: colors.appText,
+      fontFamily: Platform.OS === "ios" ? "System" : undefined,
+    },
+    wordTextActive: { color: colors.appSuccess },
 
-  selectAllBtn: {
-    flexDirection: "row",
-    alignSelf: "center",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: "#F0F0F0",
-    borderRadius: 999,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  saveBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#1A1A1A",
-    paddingVertical: 16,
-    borderRadius: 16,
-    marginTop: 4,
-    marginHorizontal: 20,
-  },
-  saveBtnDisabled: { backgroundColor: "#9A9A9A" },
-  saveBtnText: { fontSize: 15, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
-});
+    selectAllBtn: {
+      flexDirection: "row",
+      alignSelf: "center",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: 999,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+
+    confirmBtnSpacing: { marginTop: 4, marginHorizontal: 20 },
+  });

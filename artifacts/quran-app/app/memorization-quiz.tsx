@@ -14,6 +14,7 @@ import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useQuran, type SavedAyah } from "@/contexts/QuranContext";
+import { ActionPill } from "@/components/ActionPill";
 import { SURAH_DATA } from "@/constants/surahData";
 import { SwipeableRow } from "@/components/SwipeableRow";
 import { Pagination } from "@/components/Pagination";
@@ -798,14 +799,8 @@ function ScoreScreen({ score, total, mode, onRetry, onTryDifferent, onBack }: {
         {pct >= 80 ? "Excellent!" : pct >= 60 ? "Good work!" : "Keep practicing!"}
       </Text>
       <View style={scoreStyle.btnRow}>
-        <TouchableOpacity style={[scoreStyle.retryBtn, { backgroundColor: colors.primary }]} onPress={onRetry} activeOpacity={0.85}>
-          <Ionicons name="refresh" size={18} color={colors.primaryForeground} />
-          <Text style={[scoreStyle.retryText, { color: colors.primaryForeground }]}>Try Again</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[scoreStyle.differentBtn, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]} onPress={onTryDifferent} activeOpacity={0.85}>
-          <Ionicons name="shuffle" size={16} color={colors.foreground} />
-          <Text style={[scoreStyle.differentText, { color: colors.foreground }]}>Try a Different One</Text>
-        </TouchableOpacity>
+        <ActionPill label="Try Again" icon="refresh-cw" variant="primary" size="lg" onPress={onRetry} />
+        <ActionPill label="Try a Different One" icon="shuffle" variant="outline" size="lg" onPress={onTryDifferent} />
         <Text style={[scoreStyle.differentHint, { color: colors.textMuted }]}>Get a new set of questions from your current selection</Text>
         <TouchableOpacity style={scoreStyle.backBtn} onPress={onBack} activeOpacity={0.85}>
           <Text style={[scoreStyle.backText, { color: colors.textMuted }]}>Change Mode</Text>
@@ -822,10 +817,6 @@ const scoreStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create(
   pct: { fontSize: 22, color: colors.textTertiary, fontFamily: "Inter_400Regular" },
   label: { fontSize: 18, color: colors.textPrimary, fontFamily: "Inter_600SemiBold", marginBottom: 20 },
   btnRow: { gap: 12, width: "100%" },
-  retryBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.textPrimary, borderRadius: 14, paddingVertical: 14 },
-  retryText: { fontSize: 16, fontWeight: "700", color: colors.whiteText, fontFamily: "Inter_700Bold" },
-  differentBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.surfaceSecondary, borderRadius: 14, paddingVertical: 14, borderWidth: 1, borderColor: colors.borderSubtle },
-  differentText: { fontSize: 16, fontWeight: "600", color: colors.textPrimary, fontFamily: "Inter_600SemiBold" },
   differentHint: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: -4 },
   backBtn: { alignItems: "center", paddingVertical: 12 },
   backText: { fontSize: 15, color: colors.textTertiary, fontFamily: "Inter_400Regular" },

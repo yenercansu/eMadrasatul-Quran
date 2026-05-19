@@ -986,10 +986,12 @@ export function AyahRangeModal({
           </ScrollView>
 
           <View style={[s.confirmWrap, { paddingBottom: insets.bottom + 16 }]}>
-            <TouchableOpacity
-              style={[s.confirmBtn, !paceCurrentSelected && s.confirmBtnDisabled]}
+            <ActionPill
+              label="Continue →"
+              variant="primary"
+              size="lg"
+              disabled={!paceCurrentSelected}
               onPress={() => {
-                if (!paceCurrentSelected) return;
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 if (paceRhythm === "steady") {
                   advanceStep(3);
@@ -997,11 +999,7 @@ export function AyahRangeModal({
                   setPaceStep(1);
                 }
               }}
-              disabled={!paceCurrentSelected}
-              activeOpacity={0.85}
-            >
-              <Text style={[s.confirmBtnText, !paceCurrentSelected && s.confirmBtnTextDisabled]}>Continue →</Text>
-            </TouchableOpacity>
+            />
           </View>
         </>
       );
@@ -1075,18 +1073,16 @@ export function AyahRangeModal({
           </View>
         </ScrollView>
         <View style={[s.confirmWrap, { paddingBottom: insets.bottom + 16 }]}>
-          <TouchableOpacity
-            style={[s.confirmBtn, (!paceDesiredSelected || peakCapacityPerWeek <= ayahsPerWeek) && s.confirmBtnDisabled]}
+          <ActionPill
+            label="Choose Growth Style →"
+            variant="primary"
+            size="lg"
+            disabled={!paceDesiredSelected || peakCapacityPerWeek <= ayahsPerWeek}
             onPress={() => {
-              if (!paceDesiredSelected || peakCapacityPerWeek <= ayahsPerWeek) return;
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setPaceStep(2);
             }}
-            disabled={!paceDesiredSelected || peakCapacityPerWeek <= ayahsPerWeek}
-            activeOpacity={0.85}
-          >
-            <Text style={[s.confirmBtnText, (!paceDesiredSelected || peakCapacityPerWeek <= ayahsPerWeek) && s.confirmBtnTextDisabled]}>Choose Growth Style →</Text>
-          </TouchableOpacity>
+          />
         </View>
       </>
     );
@@ -1164,18 +1160,16 @@ export function AyahRangeModal({
           </View>
         </ScrollView>
         <View style={[s.confirmWrap, { paddingBottom: insets.bottom + 16 }]}>
-          <TouchableOpacity
-            style={[s.confirmBtn, !paceGrowthSelected && s.confirmBtnDisabled]}
+          <ActionPill
+            label="See Completion Forecast →"
+            variant="primary"
+            size="lg"
+            disabled={!paceGrowthSelected}
             onPress={() => {
-              if (!paceGrowthSelected) return;
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               advanceStep(3);
             }}
-            disabled={!paceGrowthSelected}
-            activeOpacity={0.85}
-          >
-            <Text style={[s.confirmBtnText, !paceGrowthSelected && s.confirmBtnTextDisabled]}>See Completion Forecast →</Text>
-          </TouchableOpacity>
+          />
         </View>
       </>
     );
@@ -1678,22 +1672,21 @@ export function AyahRangeModal({
 
         {/* Confirm button */}
         <View style={[s.confirmWrap, { paddingBottom: insets.bottom + 16 }]}>
-          <TouchableOpacity
-            style={[s.confirmBtn, !canConfirm && s.confirmBtnDisabled]}
-            onPress={handleConfirm}
-            disabled={!canConfirm}
-            activeOpacity={0.85}
-          >
-            <Text style={[s.confirmBtnText, !canConfirm && s.confirmBtnTextDisabled]}>
-              {startAtPaceDate
+          <ActionPill
+            label={
+              startAtPaceDate
                 ? canConfirm
-                  ? `See Completion Forecast →`
+                  ? "See Completion Forecast →"
                   : "Tap your starting ayah"
                 : canConfirm
                 ? "Next: Weekly Goal →"
-                : "Select First & Last Ayah"}
-            </Text>
-          </TouchableOpacity>
+                : "Select First & Last Ayah"
+            }
+            variant="primary"
+            size="lg"
+            disabled={!canConfirm}
+            onPress={handleConfirm}
+          />
         </View>
       </>
     );
@@ -1882,11 +1875,12 @@ export function AyahRangeModal({
         </ScrollView>
 
         <View style={[s.confirmWrap, { paddingBottom: insets.bottom + 16 }]}>
-          <TouchableOpacity style={s.confirmBtn} onPress={handleFinalConfirm} activeOpacity={0.85}>
-            <Text style={s.confirmBtnText}>
-              {isRevision ? "Begin Revision →" : startAtPaceDate ? "Begin My Hifz Journey →" : confirmLabel}
-            </Text>
-          </TouchableOpacity>
+          <ActionPill
+            label={isRevision ? "Begin Revision →" : startAtPaceDate ? "Begin My Hifz Journey →" : confirmLabel}
+            variant="primary"
+            size="lg"
+            onPress={handleFinalConfirm}
+          />
         </View>
       </>
     );
@@ -1958,9 +1952,12 @@ export function AyahRangeModal({
         </ScrollView>
 
         <View style={[s.confirmWrap, { paddingBottom: insets.bottom + 16 }]}>
-          <TouchableOpacity style={s.confirmBtn} onPress={handleFinalConfirm} activeOpacity={0.85}>
-            <Text style={s.confirmBtnText}>Begin My Hifz Journey →</Text>
-          </TouchableOpacity>
+          <ActionPill
+            label="Begin My Hifz Journey →"
+            variant="primary"
+            size="lg"
+            onPress={handleFinalConfirm}
+          />
         </View>
       </>
     );
@@ -2235,21 +2232,6 @@ function createStyles(c: ReturnType<typeof useColors>) {
     paddingTop: 12,
     backgroundColor: c.overlayChrome,
   },
-  confirmBtn: {
-    backgroundColor: c.accentPrimary,
-    borderRadius: 16,
-    minHeight: 56,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  confirmBtnDisabled: { backgroundColor: c.disabledBackground },
-  confirmBtnText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: c.onAccent,
-    fontFamily: "Inter_700Bold",
-  },
-  confirmBtnTextDisabled: { color: c.disabledText },
 
   // ── Progress bar ────────────────────────────────────────────────────────────
   stepProgress: {

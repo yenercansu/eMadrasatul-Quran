@@ -40,6 +40,7 @@ import { SectionLoopChip } from "@/components/SectionLoopChip";
 import { SettingsCard, SettingsRow } from "@/components/SettingsRow";
 import { WordModal } from "@/components/WordModal";
 import { OnboardingHints } from "@/components/OnboardingHints";
+import { ActionPill } from "@/components/ActionPill";
 import { SaveButton } from "@/components/SaveButton";
 import { HifzSegmentedControl } from "@/components/hifz/HifzUI";
 import { AppDialog } from "@/components/AppDialog";
@@ -855,10 +856,13 @@ function EditSheet({
 
           {/* ── Sticky Play Range CTA ── */}
           <View style={[es.ctaBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-            <TouchableOpacity style={es.ctaBtn} onPress={handlePlay} activeOpacity={0.85}>
-              <Ionicons name="play" size={18} color={colors.surfaceElevated} />
-              <Text style={es.ctaBtnText}>Play Range</Text>
-            </TouchableOpacity>
+            <ActionPill
+              label="Play Range"
+              icon="play"
+              variant="primary"
+              size="lg"
+              onPress={handlePlay}
+            />
           </View>
         </View>
       </FullScreenPage>
@@ -1003,21 +1007,6 @@ const editSheetStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.cre
     backgroundColor: colors.surfaceElevated,
     borderTopWidth: 1,
     borderTopColor: colors.borderSubtle,
-  },
-  ctaBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.accentPrimary,
-    borderRadius: 16,
-    paddingVertical: 16,
-    gap: 8,
-  },
-  ctaBtnText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.surfaceElevated,
-    fontFamily: "Inter_700Bold",
   },
   pickerRow: {
     flexDirection: "row",
