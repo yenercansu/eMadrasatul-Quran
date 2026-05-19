@@ -41,8 +41,8 @@ export function SelectChip({
   const containerStyle = [
     hasSubLabel ? styles.cardBase : styles.pillBase,
     {
-      backgroundColor: selected ? c.appText : c.appSecondarySurface,
-      borderColor: selected ? c.appText : c.appBorderLighter,
+      backgroundColor: selected ? c.appSelectedPill : c.appSecondarySurface,
+      borderColor: selected ? c.appBorderAccent : c.appBorderLighter,
     },
     flex && { flex: 1 },
     style,
@@ -72,7 +72,7 @@ export function SelectChip({
       <Text
         style={[
           hasSubLabel ? styles.cardLabel : styles.pillLabel,
-          { color: selected ? c.onAccent : c.appText },
+          { color: c.appText },
         ]}
       >
         {label}
@@ -81,7 +81,7 @@ export function SelectChip({
         <Text
           style={[
             styles.subLabel,
-            { color: selected ? c.overlayInverseSoft : c.appDarkGray },
+            { color: c.appTextMuted },
           ]}
         >
           {sublabel}

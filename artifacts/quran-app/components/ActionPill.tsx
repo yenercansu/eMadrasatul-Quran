@@ -46,7 +46,7 @@ export function ActionPill({
   const colors = useColors();
   const s = styles(colors);
   const isPrimary = variant === "primary";
-  const iconColor = isPrimary ? colors.appWhite : colors.appText;
+  const iconColor = isPrimary ? colors.onAccent : colors.appText;
   const iconSize = size === "sm" ? 12 : size === "lg" ? 16 : 14;
 
   const iconNode = icon ? (
@@ -97,7 +97,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingHorizontal: 18,
     },
     primary: {
-      backgroundColor: colors.appBlack,
+      backgroundColor: colors.appText,
       borderWidth: 0,
     },
     soft: {
@@ -129,7 +129,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Inter_700Bold",
     },
     primaryLabel: {
-      color: colors.appWhite,
+      color: colors.onAccent,
     },
     smLabel: {
       fontSize: 13,

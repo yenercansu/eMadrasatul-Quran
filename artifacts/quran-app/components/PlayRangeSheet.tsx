@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FullScreenPage } from "@/components/FullScreenPage";
+import { useColors } from "@/hooks/useColors";
 import type { ApiAyah } from "@/services/quranApi";
 
 interface Props {
@@ -37,6 +38,8 @@ export function PlayRangeSheet({
   visible, onClose, surahNumber, surahName, ayahs, currentAyah, onConfirm,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const colors = useColors();
+  const s = styles(colors);
   const [start, setStart] = useState<number | null>(null);
   const [end, setEnd] = useState<number | null>(null);
   const [repeat, setRepeat] = useState<number>(999);
@@ -91,7 +94,7 @@ export function PlayRangeSheet({
         <Text style={s.summary}>{surahName} · {summary}</Text>
 
         {ayahs.length === 0 ? (
-          <ActivityIndicator color="#1A1A1A" style={{ marginVertical: 24 }} />
+          <ActivityIndicator color={colors.appText} style={{ marginVertical: 24 }} />
         ) : (
           <ScrollView
             ref={scrollRef}
@@ -156,7 +159,7 @@ export function PlayRangeSheet({
           disabled={start === null || end === null}
           activeOpacity={0.85}
         >
-          <Ionicons name="play" size={18} color="#FFFFFF" />
+          <Ionicons name="play" size={18} color={colors.onAccent} />
           <Text style={s.saveBtnText}>Play Range</Text>
         </TouchableOpacity>
 
@@ -166,38 +169,39 @@ export function PlayRangeSheet({
   );
 }
 
-const s = StyleSheet.create({
-  hint: { fontSize: 12, color: "#9A9A9A", fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 6, paddingHorizontal: 20 },
-  summary: { fontSize: 13, color: "#1A1A1A", fontFamily: "Inter_600SemiBold", fontWeight: "600", textAlign: "center", marginTop: 4, marginBottom: 12, paddingHorizontal: 20 },
-  ayahScroll: { flex: 1, paddingHorizontal: 20 },
-  ayahCard: {
-    backgroundColor: "#FAFAFA",
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1.5,
-    borderColor: "transparent",
-  },
-  ayahCardActive: { backgroundColor: "#DCFCE7", borderColor: "#16A34A", borderStyle: "dashed" },
-  ayahHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
-  ayahBadge: { minWidth: 26, height: 26, paddingHorizontal: 7, borderRadius: 13, backgroundColor: "#E0E0E0", alignItems: "center", justifyContent: "center" },
-  ayahBadgeActive: { backgroundColor: "#16A34A" },
-  ayahBadgeText: { fontSize: 12, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold" },
-  ayahBadgeTextActive: { color: "#FFFFFF" },
-  ayahMarker: { paddingHorizontal: 10, paddingVertical: 3, backgroundColor: "#16A34A", borderRadius: 10 },
-  ayahMarkerText: { fontSize: 12, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
-  ayahArabic: {
-    fontSize: 18, lineHeight: 32, color: "#1A1A1A", textAlign: "right",
-    writingDirection: "rtl", fontFamily: Platform.OS === "ios" ? "System" : undefined,
-  },
-  ayahArabicActive: { color: "#0E5132" },
-  repeatLabel: { fontSize: 12, fontWeight: "700", color: "#9A9A9A", letterSpacing: 1.2, fontFamily: "Inter_700Bold", marginTop: 14, marginBottom: 8, paddingHorizontal: 20 },
-  repeatRow: { flexDirection: "row", gap: 8, justifyContent: "space-between", marginBottom: 16, paddingHorizontal: 20 },
-  repeatChip: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: "#F0F0F0", alignItems: "center" },
-  repeatChipActive: { backgroundColor: "#1A1A1A" },
-  repeatChipText: { fontSize: 14, fontWeight: "700", color: "#6B6B6B", fontFamily: "Inter_700Bold" },
-  repeatChipTextActive: { color: "#FFFFFF" },
-  saveBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#1A1A1A", paddingVertical: 16, borderRadius: 16, marginTop: 4, marginHorizontal: 20 },
-  saveBtnDisabled: { backgroundColor: "#9A9A9A" },
-  saveBtnText: { fontSize: 15, fontWeight: "700", color: "#FFFFFF", fontFamily: "Inter_700Bold" },
-});
+const styles = (colors: ReturnType<typeof useColors>) =>
+  StyleSheet.create({
+    hint: { fontSize: 12, color: colors.appTextMuted, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 6, paddingHorizontal: 20 },
+    summary: { fontSize: 13, color: colors.appText, fontFamily: "Inter_600SemiBold", fontWeight: "600", textAlign: "center", marginTop: 4, marginBottom: 12, paddingHorizontal: 20 },
+    ayahScroll: { flex: 1, paddingHorizontal: 20 },
+    ayahCard: {
+      backgroundColor: colors.appCardWarm,
+      borderRadius: 14,
+      padding: 12,
+      marginBottom: 8,
+      borderWidth: 1.5,
+      borderColor: "transparent",
+    },
+    ayahCardActive: { backgroundColor: colors.successSoft, borderColor: colors.appSuccess, borderStyle: "dashed" },
+    ayahHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
+    ayahBadge: { minWidth: 26, height: 26, paddingHorizontal: 7, borderRadius: 13, backgroundColor: colors.appSoftPill, alignItems: "center", justifyContent: "center" },
+    ayahBadgeActive: { backgroundColor: colors.appSuccess },
+    ayahBadgeText: { fontSize: 12, fontWeight: "700", color: colors.appText, fontFamily: "Inter_700Bold" },
+    ayahBadgeTextActive: { color: colors.appWhite },
+    ayahMarker: { paddingHorizontal: 10, paddingVertical: 3, backgroundColor: colors.appSuccess, borderRadius: 10 },
+    ayahMarkerText: { fontSize: 12, fontWeight: "700", color: colors.appWhite, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+    ayahArabic: {
+      fontSize: 18, lineHeight: 32, color: colors.appText, textAlign: "right",
+      writingDirection: "rtl", fontFamily: Platform.OS === "ios" ? "System" : undefined,
+    },
+    ayahArabicActive: { color: colors.appSuccess },
+    repeatLabel: { fontSize: 12, fontWeight: "700", color: colors.appTextMuted, letterSpacing: 1.2, fontFamily: "Inter_700Bold", marginTop: 14, marginBottom: 8, paddingHorizontal: 20 },
+    repeatRow: { flexDirection: "row", gap: 8, justifyContent: "space-between", marginBottom: 16, paddingHorizontal: 20 },
+    repeatChip: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.appSecondarySurface, alignItems: "center" },
+    repeatChipActive: { backgroundColor: colors.appText },
+    repeatChipText: { fontSize: 14, fontWeight: "700", color: colors.appTextMuted, fontFamily: "Inter_700Bold" },
+    repeatChipTextActive: { color: colors.onAccent },
+    saveBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.appText, paddingVertical: 16, borderRadius: 16, marginTop: 4, marginHorizontal: 20 },
+    saveBtnDisabled: { backgroundColor: colors.disabledBackground },
+    saveBtnText: { fontSize: 15, fontWeight: "700", color: colors.onAccent, fontFamily: "Inter_700Bold" },
+  });

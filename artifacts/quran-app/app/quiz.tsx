@@ -1225,7 +1225,7 @@ export default function QuizScreen() {
 
             if (showResult) {
               if (isCorrect) { bgColor = colors.primary; borderColor = colors.primary; textColor = colors.primaryForeground; }
-              else if (isSelected) { bgColor = "#FFF0F0"; borderColor = colors.destructive; textColor = colors.destructive; }
+              else if (isSelected) { bgColor = colors.destructiveSoft; borderColor = colors.destructive; textColor = colors.destructive; }
             } else if (isSelected) {
               bgColor = colors.secondary; borderColor = colors.primary;
             }

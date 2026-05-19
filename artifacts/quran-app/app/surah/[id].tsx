@@ -46,6 +46,7 @@ import { AppDialog } from "@/components/AppDialog";
 import { Tag } from "@/components/Tag";
 import { InlineNotice } from "@/components/InlineNotice";
 import { MushafPageView } from "@/components/mushaf/MushafPageView";
+import { getMushafTheme, DEFAULT_MUSHAF_THEME_ID } from "@/components/mushaf/MushafTheme";
 import { TajweedWordsText } from "@/components/TajweedText";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { cacheSurahContentForOffline, fetchSurahWithTranslations, fetchTranslation, fetchWordTranslations, type SurahDetail, type ApiAyah, type WordTranslation, type QuranReciter } from "@/services/quranApi";
@@ -80,7 +81,6 @@ const PAGE_SWIPE_MIN_FLING_PX = 70;
 const PAGE_SWIPE_VELOCITY = 0.85;
 const PAGE_SWIPE_VERTICAL_REJECTION_PX = 18;
 const TOUCH_TAP_SLOP_PX = 8;
-const MUSHAF_BG = "#FFFFFF";
 const DEBUG_SURAH_TOUCH = __DEV__;
 const WORD_COLORS = ["#E8507A", "#F2994A", "#27AE60", "#2F80ED", "#9B51E0", "#EB5757"];
 const READER_MODE_OPTIONS = [
@@ -673,9 +673,9 @@ function EditSheet({
   ];
 
   const MODE_CARD_ACCENTS: Record<string, { color: string; bg: string }> = {
-    repetition: { color: "#7B5C3E", bg: "#F5F0EB" },
-    ustadh: { color: "#C9A02A", bg: "#FEF9EE" },
-    wordByWord: { color: "#E86A33", bg: "#FFF4EE" },
+    repetition: { color: colors.appWarmBorder, bg: colors.appCardPressed },
+    ustadh: { color: colors.appGold, bg: colors.warningSoft },
+    wordByWord: { color: colors.appFlame, bg: colors.appOrangeSurface },
   };
 
   return (
@@ -856,7 +856,7 @@ function EditSheet({
           {/* ── Sticky Play Range CTA ── */}
           <View style={[es.ctaBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
             <TouchableOpacity style={es.ctaBtn} onPress={handlePlay} activeOpacity={0.85}>
-              <Ionicons name="play" size={18} color="#FFFFFF" />
+              <Ionicons name="play" size={18} color={colors.surfaceElevated} />
               <Text style={es.ctaBtnText}>Play Range</Text>
             </TouchableOpacity>
           </View>
@@ -886,7 +886,7 @@ function EditSheet({
                 activeOpacity={0.7}
               >
                 <Text style={[es.pickerRowText, sel && es.pickerRowTextSel]}>Ayah {n}</Text>
-                {sel && <Feather name="check" size={16} color="#1A1A1A" />}
+                {sel && <Feather name="check" size={16} color={colors.textPrimary} />}
               </TouchableOpacity>
             );
           })}
@@ -1239,6 +1239,7 @@ const DEFAULT_PLAYBACK_CONFIG: PlaybackConfig = {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function SurahScreen() {
   const colors = useColors();
+  const mushafTheme = getMushafTheme(DEFAULT_MUSHAF_THEME_ID, colors.isDark);
   const scr = screenStyles(colors);
   const insets = useSafeAreaInsets();
   const bottomInset = Platform.OS === "web" ? 8 : insets.bottom;
@@ -2347,6 +2348,7 @@ export default function SurahScreen() {
         showBasmala={basmala}
         activeAyah={active && audioState.currentSurah === surahNum ? audioState.currentAyah : null}
         tajweedMode={tajweedMode}
+        theme={mushafTheme}
       />
     </ScrollView>
   );
@@ -2421,7 +2423,7 @@ export default function SurahScreen() {
           <View
             style={[
               scr.pageSlideViewport,
-              { flex: settings.showTranslation ? 0.75 : 1, backgroundColor: MUSHAF_BG },
+              { flex: settings.showTranslation ? 0.75 : 1, backgroundColor: mushafTheme.pageBackground },
             ]}
             onLayout={(e) => handlePageSlideLayout(e.nativeEvent.layout.width)}
             {...pagePanResponder.panHandlers}

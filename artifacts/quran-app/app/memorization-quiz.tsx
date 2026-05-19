@@ -315,8 +315,8 @@ const chipStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
     borderColor: colors.textPrimary,
   },
   chipWrong: {
-    backgroundColor: "#FEE2E2",
-    borderColor: "#DC2626",
+    backgroundColor: colors.destructiveSoft,
+    borderColor: colors.destructive,
   },
   chipDisabled: {
     opacity: 0.4,
@@ -327,7 +327,7 @@ const chipStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "System" : undefined,
   },
   chipTextSelected: { color: colors.whiteText },
-  chipTextWrong: { color: "#991B1B" },
+  chipTextWrong: { color: colors.destructiveForeground },
 });
 
 function FollowUpQuizScreen({ questions, onFinish, onBack }: { questions: FollowUpQuestion[]; onFinish: (score: number) => void; onBack: () => void }) {
@@ -391,7 +391,7 @@ function FollowUpQuizScreen({ questions, onFinish, onBack }: { questions: Follow
     surahLabel: { ...followUpStyle.surahLabel, color: colors.textMuted },
     ayahText: { ...followUpStyle.ayahText, color: colors.foreground },
     divider: { ...followUpStyle.divider, backgroundColor: colors.divider },
-    questionText: { ...followUpStyle.questionText, color: colors.mutedForeground },
+    questionText: { ...followUpStyle.questionText, color: colors.textSecondary },
     questionBold: { ...followUpStyle.questionBold, color: colors.foreground },
   };
   return (
@@ -473,7 +473,7 @@ const followUpStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.crea
     fontFamily: Platform.OS === "ios" ? "System" : undefined,
   },
   divider: { height: 1, backgroundColor: colors.borderSubtle },
-  questionText: { fontSize: 14, color: "#44403C", fontFamily: "Inter_400Regular", lineHeight: 20 },
+  questionText: { fontSize: 14, color: colors.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 20 },
   questionBold: { fontFamily: "Inter_700Bold", color: colors.textPrimary },
   optionsContainer: { gap: 8 },
   optionBtn: {
@@ -641,10 +641,10 @@ const fillStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
     padding: 12, alignItems: "center", justifyContent: "center", minHeight: 48, backgroundColor: colors.surfaceSecondary,
   },
   blankSlotCorrect: { borderColor: colors.textPrimary, backgroundColor: colors.textPrimary },
-  blankSlotWrong: { borderColor: "#DC2626", backgroundColor: "#FFF5F5" },
+  blankSlotWrong: { borderColor: colors.destructive, backgroundColor: colors.destructiveSoft },
   blankFilled: { fontSize: 20, color: colors.textPrimary, fontFamily: Platform.OS === "ios" ? "System" : undefined },
   blankFilledCorrect: { color: colors.whiteText },
-  blankFilledWrong: { color: "#991B1B" },
+  blankFilledWrong: { color: colors.destructiveForeground },
   blankPlaceholder: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular" },
   ayahCard: {
     backgroundColor: colors.backgroundPrimary, borderRadius: 16, padding: 16,
@@ -655,7 +655,7 @@ const fillStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
     fontSize: 20, lineHeight: 34, color: colors.textPrimary, textAlign: "right", writingDirection: "rtl",
     fontFamily: Platform.OS === "ios" ? "System" : undefined,
   },
-  blankInText: { color: "#4F46E5", fontFamily: "Inter_700Bold", fontSize: 18 },
+  blankInText: { color: colors.appGold, fontFamily: "Inter_700Bold", fontSize: 18 },
   dragHint: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular", textAlign: "center" },
   chipsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center" },
 });
@@ -721,7 +721,7 @@ function TafsirMatchQuizScreen({ questions, onFinish, onBack }: { questions: Taf
     surahLabel: { ...followUpStyle.surahLabel, color: colors.textMuted },
     ayahText: { ...followUpStyle.ayahText, color: colors.foreground },
     divider: { ...followUpStyle.divider, backgroundColor: colors.divider },
-    questionText: { ...followUpStyle.questionText, color: colors.mutedForeground },
+    questionText: { ...followUpStyle.questionText, color: colors.textSecondary },
     questionBold: { ...followUpStyle.questionBold, color: colors.foreground },
   };
   return (
@@ -1756,7 +1756,7 @@ const pageStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
     paddingVertical: 14,
   },
   startBtnDisabled: { opacity: 0.35 },
-  startBtnText: { fontSize: 15, color: colors.whiteText, fontFamily: "Inter_700Bold" },
+  startBtnText: { fontSize: 15, color: colors.onAccent, fontFamily: "Inter_700Bold" },
   savedSection: { marginTop: 4, gap: 8 },
   savedSectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 },
   savedSectionTitle: { fontSize: 12, fontWeight: "700", color: colors.textTertiary, fontFamily: "Inter_700Bold", letterSpacing: 0.8, textTransform: "uppercase" },
@@ -1960,5 +1960,5 @@ const pageStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
     paddingVertical: 16,
   },
   startBtn2Disabled: { opacity: 0.45 },
-  startBtnText2: { fontSize: 15, color: colors.whiteText, fontFamily: "Inter_700Bold" },
+  startBtnText2: { fontSize: 15, color: colors.onAccent, fontFamily: "Inter_700Bold" },
 });

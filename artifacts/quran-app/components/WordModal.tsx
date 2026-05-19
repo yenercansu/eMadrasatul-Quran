@@ -154,7 +154,7 @@ export function WordModal({
           <TouchableWithoutFeedback>
             <View style={s.card}>
               <TouchableOpacity style={s.closeTopBtn} onPress={onClose} activeOpacity={0.7}>
-                <Feather name="x" size={20} color="#9A9A9A" />
+                <Feather name="x" size={20} color={colors.appIconMuted} />
               </TouchableOpacity>
 
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
@@ -167,13 +167,13 @@ export function WordModal({
                 <View style={s.iconRow}>
                   {audioUrl ? (
                     <TouchableOpacity style={s.iconBtn} onPress={handleListen} activeOpacity={0.7}>
-                      <Feather name="volume-2" size={20} color="#1A1A1A" />
+                      <Feather name="volume-2" size={20} color={colors.appText} />
                       <Text style={s.iconLabel}>Listen</Text>
                     </TouchableOpacity>
                   ) : null}
                   {audioUrl ? (
                     <TouchableOpacity style={s.iconBtn} onPress={handleLoop} activeOpacity={0.7}>
-                      <Ionicons name="repeat" size={20} color={isLooping ? "#16A34A" : "#1A1A1A"} />
+                      <Ionicons name="repeat" size={20} color={isLooping ? colors.appSuccess : colors.appText} />
                       <Text style={[s.iconLabel, isLooping && s.iconLabelActive]}>
                         {isLooping ? "Stop" : "Loop"}
                       </Text>
@@ -183,7 +183,7 @@ export function WordModal({
                     <Feather
                       name={alreadySaved ? "check-circle" : "download"}
                       size={20}
-                      color={alreadySaved ? "#16A34A" : "#1A1A1A"}
+                      color={alreadySaved ? colors.appSuccess : colors.appText}
                     />
                     <Text style={[s.iconLabel, alreadySaved && s.iconLabelSaved]}>
                       {alreadySaved ? "Saved" : "Save Word"}
@@ -251,19 +251,19 @@ const styles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     overlay: {
       flex: 1,
-      backgroundColor: "rgba(0,0,0,0.55)",
+      backgroundColor: colors.overlay,
       justifyContent: "center",
       alignItems: "center",
       padding: 20,
     },
     card: {
-      backgroundColor: "#FFFFFF",
+      backgroundColor: colors.appCard,
       borderRadius: 24,
       padding: 22,
       paddingTop: 26,
       width: "100%",
       maxHeight: "88%",
-      shadowColor: "#000",
+      shadowColor: colors.shadowNeutral,
       shadowOffset: { width: 0, height: 10 },
       shadowOpacity: 0.25,
       shadowRadius: 20,
@@ -281,14 +281,14 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     arabicWord: {
       fontSize: 42,
-      color: "#1A1A1A",
+      color: colors.appText,
       fontFamily: Platform.OS === "ios" ? "System" : undefined,
       textAlign: "center",
       marginTop: 4,
     },
     location: {
       fontSize: 12,
-      color: "#9A9A9A",
+      color: colors.appTextMuted,
       fontFamily: "Inter_400Regular",
       textAlign: "center",
       marginTop: 4,
@@ -296,7 +296,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     groupLabel: {
       fontSize: 11,
-      color: "#9A9A9A",
+      color: colors.appTextMuted,
       fontFamily: "Inter_700Bold",
       letterSpacing: 1.2,
       textTransform: "uppercase",
@@ -318,19 +318,19 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     iconLabel: {
       fontSize: 12,
-      color: "#1A1A1A",
+      color: colors.appText,
       fontFamily: "Inter_600SemiBold",
       fontWeight: "600",
     },
     iconLabelActive: {
-      color: "#16A34A",
+      color: colors.appSuccess,
     },
     iconLabelSaved: {
-      color: "#16A34A",
+      color: colors.appSuccess,
     },
     divider: {
       height: 1,
-      backgroundColor: "#F0F0F0",
+      backgroundColor: colors.appSoftDivider,
       marginVertical: 14,
     },
     section: {
@@ -338,7 +338,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     sectionLabel: {
       fontSize: 12,
-      color: "#9A9A9A",
+      color: colors.appTextMuted,
       fontFamily: "Inter_700Bold",
       letterSpacing: 1.2,
       textTransform: "uppercase",
@@ -346,20 +346,20 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     rootText: {
       fontSize: 26,
-      color: "#1A1A1A",
+      color: colors.appText,
       fontFamily: Platform.OS === "ios" ? "System" : undefined,
       letterSpacing: 4,
       textAlign: "right",
     },
     meaningText: {
       fontSize: 14,
-      color: "#4A4A4A",
+      color: colors.textSecondary,
       fontFamily: "Inter_400Regular",
       lineHeight: 22,
     },
     hint: {
       fontSize: 12,
-      color: "#B0B0B0",
+      color: colors.appIconMuted,
       fontFamily: "Inter_400Regular",
       fontStyle: "italic",
       textAlign: "center",
