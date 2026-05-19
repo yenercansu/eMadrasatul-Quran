@@ -611,6 +611,22 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
 
   return (
     <View style={[wvs.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      {/* ── Certifications shortcut ─────────────────────────────── */}
+      {!showDrillDown && (
+        <TouchableOpacity
+          onPress={() => router.push("/certifications")}
+          activeOpacity={0.8}
+          style={[
+            wvs.certRow,
+            { backgroundColor: colors.appCardWarm, borderColor: colors.appSoftBorder },
+          ]}
+        >
+          <Feather name="award" size={16} color={colors.appIconMuted} />
+          <Text style={[wvs.certRowText, { color: colors.appText }]}>Certifications</Text>
+          <Feather name="chevron-right" size={15} color={colors.appIconMuted} />
+        </TouchableOpacity>
+      )}
+
       {/* Content */}
       {filterMode === "ayah" ? (
         <AyahListView ayahs={savedAyahs} onRemove={removeAyah} listHeader={wordsViewHeader} />
@@ -845,6 +861,22 @@ const wordsViewStyles = StyleSheet.create({
   empty: { alignItems: "center", paddingVertical: 48, paddingHorizontal: 24, gap: 8 },
   emptyTitle: { fontSize: 18, fontFamily: "Inter_700Bold", textAlign: "center" },
   emptySubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
+
+  // Certifications shortcut
+  certRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+  },
+  certRowText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    fontWeight: "600",
+  },
 
 });
 

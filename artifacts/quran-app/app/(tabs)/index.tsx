@@ -40,25 +40,13 @@ import { HifzHeroCard } from "@/components/hifz/HifzUI";
 import { VerseCard } from "@/components/VerseCard";
 import { ActionPill } from "@/components/ActionPill";
 import { InlineNotice } from "@/components/InlineNotice";
+import { FullQuranCertificate } from "@/components/cert/FullQuranCertificate";
+import { PersistentCertToast } from "@/components/cert/PersistentCertToast";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const TOTAL_AYAHS = 6236;
 const WEEKLY_TOAST_CELEBRATIONS_KEY = "@squran/weekly-complete-toast-celebrations-v1";
 
-function formatCompletionMonth(date: Date) {
-  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-}
-
-function formatIslamicMonthYear(date: Date) {
-  try {
-    return new Intl.DateTimeFormat("en-u-ca-islamic", {
-      month: "long",
-      year: "numeric",
-    }).format(date).replace(/\s*AH$/i, "");
-  } catch {
-    return "";
-  }
-}
 
 function expandLastAyahForWeeklyCount(options: {
   path: "surah" | "juz";
@@ -146,7 +134,7 @@ export default function HomeScreen() {
     lastListened, goal, setGoal, memorizationGoal, setMemorizationGoal,
     todayEntry, dailyEntries, onlineUsers, recentProgress, savedSurahs,
     getWeekGoalAyahs, isSurahChecked, checkedSurahs, markAyahsMemorized, recordMilestoneCompletion,
-    memorizedAyahKeys,
+    memorizedAyahKeys, pendingCertToast, dismissCertToast,
   } = useQuran();
   const [refreshing, setRefreshing] = useState(false);
   const [weeklyGoalVisible, setWeeklyGoalVisible] = useState(false);
@@ -762,11 +750,6 @@ export default function HomeScreen() {
   const fullQuranComplete = memorizedAyahKeys.length >= TOTAL_AYAHS;
   const showFullQuranComplete = fullQuranComplete && !revisionJourneyStarted;
   const completionDate = new Date();
-  const completionDateLabel = useMemo(() => {
-    const islamic = formatIslamicMonthYear(completionDate);
-    const gregorian = formatCompletionMonth(completionDate);
-    return `Completed · ${islamic ? `${islamic} · ` : ""}${gregorian}`;
-  }, []);
   const fullHifzStartDate = useMemo(() => {
     const candidates = [
       memorizationGoal?.startDate,
@@ -1242,70 +1225,23 @@ export default function HomeScreen() {
           }
         >
           {showFullQuranComplete ? (
-            <View style={s.fullHifzScreen}>
-              <Text style={s.fullHifzCompletedLabel}>{completionDateLabel}</Text>
-
-              <View style={s.fullHifzSealWrap}>
-                <View style={s.fullHifzSeal}>
-                  <Feather name="book-open" size={58} color={colors.accentPrimary} strokeWidth={1.8} />
-                </View>
-                <View style={s.fullHifzCheck}>
-                  <Feather name="check" size={22} color={colors.whiteText} strokeWidth={2.6} />
-                </View>
-              </View>
-
-              <Text style={s.fullHifzPraise}>Alhamdulillah</Text>
-              <Text style={s.fullHifzTitle}>You have memorized{"\n"}the Holy Quran</Text>
-              <Text style={s.fullHifzSub}>All 6,236 ayahs · 114 surahs · 30 juz</Text>
-
-              <View style={s.fullHifzStatsRow}>
-                <View style={s.fullHifzStatBox}>
-                  <Text style={s.fullHifzStatValue}>{fullHifzDays}</Text>
-                  <Text style={s.fullHifzStatLabel}>Days</Text>
-                </View>
-                <View style={s.fullHifzStatBox}>
-                  <Text style={s.fullHifzStatValue}>{streakDays}</Text>
-                  <Text style={s.fullHifzStatLabel}>Streak</Text>
-                </View>
-                <View style={s.fullHifzStatBox}>
-                  <Text style={s.fullHifzStatValue}>{fullHifzAyahsPerDay}</Text>
-                  <Text style={s.fullHifzStatLabel}>Ayahs/day</Text>
-                </View>
-              </View>
-
-              <View style={s.fullHifzQuoteBox}>
-                <Text style={s.fullHifzQuote}>
-                  "The best among you are those who learn the Quran and teach it."
-                </Text>
-                <Text style={s.fullHifzQuoteSource}>— Sahih al-Bukhari</Text>
-              </View>
-
-              <TouchableOpacity
-                style={s.fullHifzPrimaryBtn}
-                onPress={() => {
-                  resetHifzFlow();
-                  setRevisionJourneyStarted(true);
-                }}
-                activeOpacity={0.86}
-              >
-                <Text style={s.fullHifzPrimaryText}>Begin Revision Journey</Text>
-                <Feather name="arrow-right" size={18} color={colors.whiteText} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={s.fullHifzShareBtn}
-                onPress={() => {
-                  Share.share({
-                    message: "Alhamdulillah, I have memorized the Holy Quran.",
-                  });
-                }}
-                activeOpacity={0.75}
-              >
-                <Text style={s.fullHifzShareText}>Share your achievement</Text>
-              </TouchableOpacity>
-            </View>
+            <FullQuranCertificate
+              completionDate={completionDate}
+              fullHifzDays={fullHifzDays}
+              fullHifzAyahsPerDay={fullHifzAyahsPerDay}
+              streakDays={streakDays}
+              onBeginRevision={() => {
+                resetHifzFlow();
+                setRevisionJourneyStarted(true);
+              }}
+            />
           ) : (
           <>
+          {/* ── Certificate unlock toast (persistent) ──────────────────── */}
+          {pendingCertToast ? (
+            <PersistentCertToast cert={pendingCertToast} onDismiss={dismissCertToast} />
+          ) : null}
+
           {/* ── Header Row ──────────────────────────────────────────────── */}
           <View style={s.headerRow}>
             <View style={s.studyingNowPill}>
@@ -2194,179 +2130,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontWeight: "600",
       color: colors.textSecondary,
       fontFamily: "Inter_600SemiBold",
-    },
-
-    // ── Full Quran Completion ────────────────────────────────────────────────
-    fullHifzScreen: {
-      minHeight: 720,
-      paddingHorizontal: 28,
-      paddingTop: 20,
-      paddingBottom: 44,
-      alignItems: "center",
-    },
-    fullHifzCompletedLabel: {
-      fontSize: 12,
-      lineHeight: 16,
-      fontWeight: "700",
-      color: colors.textTertiary,
-      fontFamily: "Inter_700Bold",
-      textTransform: "uppercase",
-      letterSpacing: 3,
-      textAlign: "center",
-      marginBottom: 86,
-    },
-    fullHifzSealWrap: {
-      width: 132,
-      height: 132,
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: 34,
-    },
-    fullHifzSeal: {
-      width: 124,
-      height: 124,
-      borderRadius: 62,
-      backgroundColor: colors.accentSoft,
-      alignItems: "center",
-      justifyContent: "center",
-      shadowColor: colors.shadowWarm,
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.10,
-      shadowRadius: 28,
-      elevation: 5,
-    },
-    fullHifzCheck: {
-      position: "absolute",
-      right: 7,
-      bottom: 10,
-      width: 46,
-      height: 46,
-      borderRadius: 23,
-      backgroundColor: colors.accentPrimary,
-      borderWidth: 3,
-      borderColor: colors.hifzBackground,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    fullHifzPraise: {
-      fontSize: 14,
-      lineHeight: 20,
-      fontWeight: "700",
-      color: colors.textTertiary,
-      fontFamily: "Inter_700Bold",
-      textTransform: "uppercase",
-      letterSpacing: 4,
-      marginBottom: 18,
-      textAlign: "center",
-    },
-    fullHifzTitle: {
-      fontSize: 36,
-      lineHeight: 43,
-      fontWeight: "700",
-      color: colors.textPrimary,
-      fontFamily: "Inter_700Bold",
-      textAlign: "center",
-      marginBottom: 22,
-    },
-    fullHifzSub: {
-      fontSize: 17,
-      lineHeight: 24,
-      color: colors.textTertiary,
-      fontFamily: "Inter_400Regular",
-      textAlign: "center",
-      marginBottom: 34,
-    },
-    fullHifzStatsRow: {
-      width: "100%" as any,
-      flexDirection: "row",
-      gap: 12,
-      marginBottom: 38,
-    },
-    fullHifzStatBox: {
-      flex: 1,
-      minHeight: 96,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: colors.borderSubtle,
-      backgroundColor: colors.surfaceSecondary,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingHorizontal: 8,
-    },
-    fullHifzStatValue: {
-      fontSize: 27,
-      lineHeight: 34,
-      fontWeight: "700",
-      color: colors.textPrimary,
-      fontFamily: "Inter_700Bold",
-      textAlign: "center",
-    },
-    fullHifzStatLabel: {
-      fontSize: 12,
-      lineHeight: 16,
-      fontWeight: "700",
-      color: colors.textTertiary,
-      fontFamily: "Inter_700Bold",
-      textTransform: "uppercase",
-      letterSpacing: 1,
-      marginTop: 4,
-      textAlign: "center",
-    },
-    fullHifzQuoteBox: {
-      width: "100%" as any,
-      borderRadius: 22,
-      borderWidth: 1,
-      borderColor: colors.borderSubtle,
-      backgroundColor: colors.surfaceSecondary,
-      paddingHorizontal: 24,
-      paddingVertical: 26,
-      marginBottom: 86,
-    },
-    fullHifzQuote: {
-      fontSize: 17,
-      lineHeight: 27,
-      color: colors.textSecondary,
-      fontFamily: "Inter_400Regular",
-      fontStyle: "italic",
-      textAlign: "center",
-    },
-    fullHifzQuoteSource: {
-      fontSize: 12,
-      lineHeight: 18,
-      fontWeight: "700",
-      color: colors.disabledText,
-      fontFamily: "Inter_700Bold",
-      textAlign: "center",
-      marginTop: 14,
-    },
-    fullHifzPrimaryBtn: {
-      width: "100%" as any,
-      minHeight: 64,
-      borderRadius: 32,
-      backgroundColor: colors.accentPrimary,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      marginBottom: 18,
-    },
-    fullHifzPrimaryText: {
-      fontSize: 17,
-      fontWeight: "700",
-      color: colors.whiteText,
-      fontFamily: "Inter_700Bold",
-    },
-    fullHifzShareBtn: {
-      minHeight: 34,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    fullHifzShareText: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: colors.disabledText,
-      fontFamily: "Inter_600SemiBold",
-      textAlign: "center",
     },
 
     // ── Goal Widget Cards ───────────────────────────────────────────────────────

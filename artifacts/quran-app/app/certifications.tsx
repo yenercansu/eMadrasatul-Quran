@@ -10,6 +10,7 @@ import { useColors } from "@/hooks/useColors";
 import { BackButton } from "@/components/BackButton";
 import { Tag } from "@/components/Tag";
 import { InlineNotice } from "@/components/InlineNotice";
+import { CertListItem } from "@/components/cert/CertListItem";
 import colors from "@/constants/colors";
 
 const TOTAL_AYAHS = 6236;
@@ -69,7 +70,7 @@ function getLevel(percent: number) {
 
 export default function CertificationsScreen() {
   const insets = useSafeAreaInsets();
-  const { memorizedAyahKeys, goal } = useQuran();
+  const { memorizedAyahKeys, goal, certificates } = useQuran();
   const c = useColors();
 
   const stats = useMemo(() => {
@@ -105,6 +106,50 @@ export default function CertificationsScreen() {
         <View style={{ width: 40, height: 40 }} />
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: sp.lg, paddingBottom: 40, gap: 14, paddingTop: 14 }}>
+
+        {/* ── Earned Certificates ───────────────────────────────── */}
+        <View style={{ ...c.cardStyle, padding: sp.lg, gap: sp.md }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <Text style={{ fontSize: ty.fontSize.lg, fontWeight: "800", color: c.appText, fontFamily: "Inter_700Bold" }}>
+              Your Certificates
+            </Text>
+            <View style={{
+              backgroundColor: certificates.length > 0 ? c.appGoldSurface : c.appLightGray,
+              borderRadius: br.full,
+              paddingHorizontal: sp.sm + 2,
+              paddingVertical: 3,
+              minWidth: 26,
+              alignItems: "center",
+            }}>
+              <Text style={{ fontSize: ty.fontSize.sm, fontWeight: "800", color: certificates.length > 0 ? c.appText : c.appTextMuted, fontFamily: "Inter_700Bold" }}>
+                {certificates.length}
+              </Text>
+            </View>
+          </View>
+
+          {certificates.length > 0 ? (
+            <View style={{ gap: sp.sm }}>
+              {[...certificates].reverse().map(cert => (
+                <CertListItem
+                  key={cert.id}
+                  cert={cert}
+                  onPress={() => {
+                    if (cert.type === "full-quran") router.push("/certifications");
+                    else if (cert.type === "surah") router.push(`/certificate/surah/${cert.surahNumber}` as any);
+                    else if (cert.type === "juz") router.push(`/certificate/juz/${cert.juzNumber}` as any);
+                  }}
+                />
+              ))}
+            </View>
+          ) : (
+            <InlineNotice
+              variant="neutral"
+              icon="award"
+              title="No certificates yet"
+              description="Complete a surah, juz, or the full Quran to earn your first certificate."
+            />
+          )}
+        </View>
 
         {/* ── Hero Card ──────────────────────────────────────────── */}
         <View style={{ ...c.cardStyle, padding: 18, alignItems: "center" }}>

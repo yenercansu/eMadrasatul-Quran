@@ -1,0 +1,92 @@
+import React from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useColors } from "@/hooks/useColors";
+import type { Certificate } from "@/contexts/QuranContext";
+
+interface PersistentCertToastProps {
+  cert: Certificate;
+  onDismiss: () => void;
+}
+
+function getCertLabel(cert: Certificate): string {
+  if (cert.type === "full-quran") return "Full Quran Hifz certificate is ready.";
+  if (cert.type === "surah") return "Your surah certificate is ready in Madrasa.";
+  return "Your juz certificate is ready in Madrasa.";
+}
+
+function getCertRoute(cert: Certificate): string {
+  if (cert.type === "full-quran") return "/certifications";
+  if (cert.type === "surah") return `/certificate/surah/${cert.surahNumber}`;
+  return `/certificate/juz/${cert.juzNumber}`;
+}
+
+export function PersistentCertToast({ cert, onDismiss }: PersistentCertToastProps) {
+  const c = useColors();
+
+  return (
+    <View style={[styles.toast, { backgroundColor: c.hifzCardBg, borderColor: c.borderSubtle, ...c.shadows.premiumCard }]}>
+      <View style={[styles.iconWrap, { backgroundColor: c.hifzWarmBand, borderColor: c.borderSubtle }]}>
+        <Feather name="award" size={16} color={c.hifzAccentMuted} />
+      </View>
+      <View style={styles.body}>
+        <Text style={[styles.title, { color: c.hifzText }]}>Certificate Unlocked</Text>
+        <Text style={[styles.desc, { color: c.hifzMuted }]} numberOfLines={2}>
+          {getCertLabel(cert)}
+        </Text>
+        <TouchableOpacity
+          onPress={() => { onDismiss(); router.push(getCertRoute(cert) as any); }}
+          activeOpacity={0.75}
+        >
+          <Text style={[styles.cta, { color: c.hifzAccentMuted }]}>View Certificate</Text>
+        </TouchableOpacity>
+      </View>
+      <TouchableOpacity onPress={onDismiss} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <Feather name="x" size={16} color={c.hifzFaint} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  toast: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  body: {
+    flex: 1,
+    gap: 2,
+  },
+  title: {
+    fontSize: 13,
+    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
+  },
+  desc: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 18,
+  },
+  cta: {
+    fontSize: 12,
+    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
+    marginTop: 4,
+  },
+});

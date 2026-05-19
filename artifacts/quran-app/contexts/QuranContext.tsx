@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppState, Appearance, type AppStateStatus } from "react-native";
 import type { ArabicFontKey } from "@/constants/arabicFonts";
 import { getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
-import { getAyahKey, getGoalRangeAyahs } from "@/services/hifzLogic";
+import { getAyahKey, getGoalRangeAyahs, isSurahFullyMemorized, isJuzFullyMemorized } from "@/services/hifzLogic";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNetworkStatus } from "@/contexts/NetworkContext";
 import * as madeenanApi from "@/services/madeenanApi";
@@ -92,6 +92,17 @@ export interface GoalAyah {
   ayahNumber: number;
 }
 
+export interface Certificate {
+  id: string;
+  type: "surah" | "juz" | "full-quran";
+  unlockedAt: string;
+  surahNumber?: number;
+  juzNumber?: number;
+  startDate?: string;
+  durationDays?: number;
+  ayahsPerDay?: number;
+}
+
 export interface AccountSettings {
   name: string;
   email: string;
@@ -173,6 +184,9 @@ interface QuranContextType {
   removeMemorizedAyahKeys: (keys: string[]) => void;
   toggleAyahMemorized: (surahNumber: number, ayahNumber: number) => void;
   isAyahMemorized: (surahNumber: number, ayahNumber: number) => boolean;
+  certificates: Certificate[];
+  pendingCertToast: Certificate | null;
+  dismissCertToast: () => void;
 }
 
 const TOTAL_AYAHS = 6236;
@@ -283,6 +297,10 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const [quizSelectedSurahs, setQuizSelectedSurahsState] = useState<number[]>(DEFAULT_QUIZ_SELECTED_SURAHS);
   const [memorizedAyahKeys, setMemorizedAyahKeys] = useState<string[]>([]);
   const memorizedAyahSet = useMemo(() => new Set(memorizedAyahKeys), [memorizedAyahKeys]);
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [pendingCertToast, setPendingCertToast] = useState<Certificate | null>(null);
+  const certificatesRef = useRef<Certificate[]>([]);
+  const dataLoadedRef = useRef(false);
 
   useEffect(() => { loadData(); }, []);
   useEffect(() => {
@@ -332,7 +350,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         "quran_account", "quran_saved_surahs", "quran_highlighted_words",
         "quran_saved_ayahs", "quran_position", "quran_surah_positions",
         "quran_checked_surahs", "quran_memorization_goal", "quran_memorized_ayahs",
-        "quran_quiz_selected_surahs",
+        "quran_quiz_selected_surahs", "quran_certificates",
       ];
       const results = await AsyncStorage.multiGet(keys);
       const map = Object.fromEntries(results.map(([k, v]) => [k, v]));
@@ -376,6 +394,12 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         await AsyncStorage.setItem("quran_quiz_selected_surahs", JSON.stringify(DEFAULT_QUIZ_SELECTED_SURAHS));
       }
       if (map.quran_memorized_ayahs) setMemorizedAyahKeys(JSON.parse(map.quran_memorized_ayahs));
+      if (map.quran_certificates) {
+        const loaded: Certificate[] = JSON.parse(map.quran_certificates);
+        setCertificates(loaded);
+        certificatesRef.current = loaded;
+      }
+      dataLoadedRef.current = true;
     } catch {}
   }
 
@@ -724,6 +748,9 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     setCheckedSurahs([]);
     setQuizSelectedSurahsState(DEFAULT_QUIZ_SELECTED_SURAHS);
     setMemorizedAyahKeys([]);
+    setCertificates([]);
+    certificatesRef.current = [];
+    setPendingCertToast(null);
     applyTheme(DEFAULT_ACCOUNT.theme);
   }, []);
 
@@ -935,6 +962,49 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const isAyahMemorized = useCallback((surahNumber: number, ayahNumber: number) =>
     memorizedAyahSet.has(`${surahNumber}:${ayahNumber}`), [memorizedAyahSet]);
 
+  // Keep certificatesRef in sync so the detection effect always reads the latest value
+  useEffect(() => {
+    certificatesRef.current = certificates;
+  }, [certificates]);
+
+  // Detect newly completed surahs / juz / full Quran and unlock certificates
+  useEffect(() => {
+    if (!dataLoadedRef.current) return;
+
+    const memorized = new Set(memorizedAyahKeys);
+    const current = certificatesRef.current;
+    const certifiedSurahs = new Set(current.filter(c => c.type === "surah").map(c => c.surahNumber!));
+    const certifiedJuz = new Set(current.filter(c => c.type === "juz").map(c => c.juzNumber!));
+    const hasFullQuranCert = current.some(c => c.type === "full-quran");
+
+    const newCerts: Certificate[] = [];
+    const now = new Date().toISOString();
+
+    for (const surah of SURAH_DATA) {
+      if (!certifiedSurahs.has(surah.number) && isSurahFullyMemorized(surah.number, memorized)) {
+        newCerts.push({ id: `s-${surah.number}-${Date.now()}`, type: "surah", unlockedAt: now, surahNumber: surah.number });
+      }
+    }
+    for (let juz = 1; juz <= 30; juz++) {
+      if (!certifiedJuz.has(juz) && isJuzFullyMemorized(juz, memorized)) {
+        newCerts.push({ id: `j-${juz}-${Date.now()}`, type: "juz", unlockedAt: now, juzNumber: juz });
+      }
+    }
+    if (!hasFullQuranCert && memorizedAyahKeys.length >= TOTAL_AYAHS) {
+      newCerts.push({ id: `fq-${Date.now()}`, type: "full-quran", unlockedAt: now });
+    }
+
+    if (newCerts.length > 0) {
+      const next = [...current, ...newCerts];
+      certificatesRef.current = next;
+      setCertificates(next);
+      AsyncStorage.setItem("quran_certificates", JSON.stringify(next)).catch(() => {});
+      setPendingCertToast(newCerts[newCerts.length - 1]);
+    }
+  }, [memorizedAyahKeys]);
+
+  const dismissCertToast = useCallback(() => setPendingCertToast(null), []);
+
   const todayEntry = dailyEntries.find(e => e.date === getTodayStr()) ?? null;
 
   return (
@@ -955,6 +1025,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       checkedSurahs, toggleCheckedSurah, isSurahChecked, clearCheckedSurahs,
       quizSelectedSurahs, setQuizSelectedSurahs, toggleQuizSurahSelection, isQuizSurahSelected,
       memorizedAyahKeys, markAyahsMemorized, removeMemorizedAyahKeys, toggleAyahMemorized, isAyahMemorized,
+      certificates, pendingCertToast, dismissCertToast,
     }}>
       {children}
     </QuranContext.Provider>

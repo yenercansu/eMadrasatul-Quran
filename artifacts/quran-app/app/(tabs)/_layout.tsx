@@ -3,7 +3,6 @@ import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import React from "react";
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Svg, { ClipPath, Defs, G, Path, Rect } from "react-native-svg";
 import { useColors } from "@/hooks/useColors";
@@ -84,14 +83,13 @@ function FixedTabBar(props: any) {
   const { state, navigation } = props;
   const colors = useColors();
   const styles = createStyles(colors);
-  const insets = useSafeAreaInsets();
 
   const visibleRoutes = state.routes.filter((r: any) =>
     TAB_DEFS.find(t => t.name === r.name)
   );
 
   return (
-    <View style={[styles.shell, { bottom: Math.max(insets.bottom, 16) }]} pointerEvents="box-none">
+    <View style={styles.shell}>
       <View style={styles.surface}>
         <View style={styles.itemsRow}>
           {visibleRoutes.map((route: any) => {
@@ -137,45 +135,37 @@ function FixedTabBar(props: any) {
 const createStyles = (colors: ReturnType<typeof useColors>) =>
 StyleSheet.create({
   shell: {
-    position: "absolute",
-    left: 24,
-    right: 24,
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: colors.tabBarBackground,
   },
   surface: {
-    flexDirection: "row",
-    height: 72,
+    minHeight: 82,
     backgroundColor: colors.tabBarBackground,
-    borderRadius: 36,
+    paddingTop: 10,
     paddingHorizontal: 8,
-    borderWidth: 1,
-    borderColor: colors.divider,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 5,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.divider,
   },
   itemsRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 8,
+    justifyContent: "center",
+    alignItems: "flex-start",
+    gap: 38,
   },
   item: {
-    width: 76,
+    width: 72,
     height: 56,
+    padding: 8,
     alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    borderRadius: 20,
+    justifyContent: "flex-end",
+    gap: 5,
+    borderRadius: 18,
+    transform: [{ translateY: -6 }],
   },
   itemActive: {
     backgroundColor: colors.tabBarActiveBackground,
   },
   iconWrap: {
-    height: 24,
+    height: 22,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -184,6 +174,7 @@ StyleSheet.create({
     lineHeight: 12,
     fontFamily: "Inter_700Bold",
     fontWeight: "600",
+    transform: [{ translateY: 2 }],
   },
 });
 
@@ -203,4 +194,3 @@ function ClassicTabLayout() {
 export default function TabLayout() {
   return <ClassicTabLayout />;
 }
-
