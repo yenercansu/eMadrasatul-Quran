@@ -186,11 +186,11 @@ export default function SettingsScreen() {
         <Section title="LEGAL">
           <SettingsRow
             label="Privacy Policy"
-            onPress={() => router.push("/legal/privacy-policy")}
+            onPress={() => router.push("/legal/privacy-policy" as any)}
           />
           <SettingsRow
             label="Terms & Conditions"
-            onPress={() => router.push("/legal/terms")}
+            onPress={() => router.push("/legal/terms" as any)}
             last
           />
         </Section>

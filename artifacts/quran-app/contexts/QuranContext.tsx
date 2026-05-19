@@ -258,10 +258,7 @@ function applyTheme(theme: AccountSettings["theme"]) {
 const SEED_WORDS: SavedWord[] = [];
 
 function normalizeReciterId(id: unknown): string {
-  if (typeof id === "number") return String(id);
-  if (typeof id !== "string") return DEFAULT_SETTINGS.selectedReciter;
-  if (/^\d+$/.test(id)) return id;
-  if (id === "ar.alafasy") return "7";
+  if (id === 7 || id === "7" || id === "ar.alafasy") return "7";
   return DEFAULT_SETTINGS.selectedReciter;
 }
 
@@ -450,7 +447,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       setSettings((prev) => {
         const next = {
           ...prev,
-          selectedReciter: String(prefs.defaultReciterId ?? 7),
+          selectedReciter: normalizeReciterId(prefs.defaultReciterId),
           repeatCount: Number(prefs.repeatCount ?? prev.repeatCount) || prev.repeatCount,
         };
         AsyncStorage.setItem("quran_settings", JSON.stringify(next)).catch(() => {});

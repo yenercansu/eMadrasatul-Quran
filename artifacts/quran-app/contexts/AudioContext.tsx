@@ -125,6 +125,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const planStepRepeatRef = useRef(0);
   const planStepFinishedRef = useRef(false);
   const planAdvancingRef = useRef(false);
+  const planRunIdRef = useRef(0);
   const pauseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveRepeatCountRef = useRef<number | null>(null);
 
@@ -157,14 +158,17 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const abortCurrentPlan = useCallback(() => {
     clearPauseTimeout();
     const s = soundRef.current;
+    planRunIdRef.current += 1;
     soundRef.current = null;
     planRef.current = null;
+    planStepIndexRef.current = 0;
+    planStepRepeatRef.current = 0;
     planAdvancingRef.current = true;
     planStepFinishedRef.current = false;
     liveRepeatCountRef.current = null;
     rangeRef.current = null;
     s?.stopAsync().catch(() => {}).finally(() => s?.unloadAsync().catch(() => {}));
-    setAudioState(prev => ({ ...prev, isPlaying: false, isLoading: false }));
+    setAudioState(prev => ({ ...prev, isPlaying: false, isLoading: false, range: null, planMode: null }));
   }, [clearPauseTimeout]);
 
   const finishPlaybackPlan = useCallback(async () => {
@@ -199,6 +203,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       await finishPlaybackPlan();
       return;
     }
+    const runId = planRunIdRef.current;
 
     clearPauseTimeout();
     const effectiveRate = playbackRateRef.current || step.playbackRate || 1;
@@ -249,6 +254,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       },
       (status) => {
         if (!status.isLoaded) return;
+        if (runId !== planRunIdRef.current) return;
         setAudioState((prev) => ({
           ...prev,
           isPlaying: status.isPlaying,
@@ -273,6 +279,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
         const startMs = activeStep.startMs ?? 0;
 
         const continueAfterPause = () => {
+          if (runId !== planRunIdRef.current) return;
           const nextIndex = planStepIndexRef.current + 1;
           if (nextIndex < (planRef.current?.steps.length ?? 0)) {
             playPlanStep(nextIndex).catch(() => finishPlaybackPlan());
@@ -310,6 +317,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       },
     );
 
+    if (runId !== planRunIdRef.current) {
+      await sound.unloadAsync().catch(() => {});
+      return;
+    }
     soundRef.current = sound;
     repeatCountRef.current = step.repeatCount;
     currentRepeatRef.current = 0;
@@ -321,10 +332,16 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const playPlan = useCallback(async (plan: PlaybackPlan, startIndex = 0) => {
     if (plan.steps.length === 0) return;
+    abortCurrentPlan();
     liveRepeatCountRef.current = null;
+    planRunIdRef.current += 1;
     planRef.current = plan;
+    planStepIndexRef.current = 0;
+    planStepRepeatRef.current = 0;
+    planStepFinishedRef.current = false;
+    planAdvancingRef.current = false;
     await playPlanStep(Math.max(0, Math.min(startIndex, plan.steps.length - 1)));
-  }, [playPlanStep]);
+  }, [abortCurrentPlan, playPlanStep]);
 
   useEffect(() => {
     Audio.setAudioModeAsync({
@@ -581,6 +598,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const playUstadhMode = useCallback(async (surahNum: number, ayahs: number[]) => {
     rangeRef.current = null;
     segmentRef.current = null;
+    await AsyncStorage.removeItem(USTADH_PROGRESS_KEY).catch(() => {});
     const plan = await createUstadhPlaybackPlan({
       surahNumber: surahNum,
       reciterId: Number(settings.selectedReciter) || 7,
@@ -588,13 +606,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       mode: "new",
       playbackRate: playbackRateRef.current,
     });
-    const saved = await AsyncStorage.getItem(USTADH_PROGRESS_KEY)
-      .then((raw) => raw ? JSON.parse(raw) as { planId?: string; stepIndex?: number } : null)
-      .catch(() => null);
-    const stepIndex = saved?.planId === plan.id && typeof saved.stepIndex === "number"
-      ? Math.max(0, Math.min(saved.stepIndex, plan.steps.length - 1))
-      : 0;
-    await playPlan(plan, stepIndex);
+    await playPlan(plan, 0);
   }, [playPlan, settings.selectedReciter]);
 
   const playWordByWord = useCallback(async (surahNum: number, startAyah: number, endAyah: number, wordRepeat: number) => {

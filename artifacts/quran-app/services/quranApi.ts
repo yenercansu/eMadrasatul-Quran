@@ -101,59 +101,17 @@ export interface QuranReciter {
   style: string;
 }
 
-type QuranComRecitationResource = {
-  id?: number | string;
-  reciter_name?: string;
-  style?: string | { name?: string | null };
-  translated_name?: { name?: string | null } | null;
+const MISHARY_RECITER: QuranReciter = {
+  id: "7",
+  name: "Mishary Rashid Alafasy",
+  style: "Murattal",
 };
 
 let recitersMemoryCache: QuranReciter[] | null = null;
-let recitersInFlight: Promise<QuranReciter[]> | null = null;
 
-function quranComUrl(path: string, query?: Record<string, string | number | boolean | undefined>): string {
-  const url = new URL(QURAN_COM_API_BASE_URL);
-  const basePath = url.pathname.replace(/\/$/, "");
-  const resourcePath = path.startsWith("/") ? path : `/${path}`;
-  url.pathname = `${basePath}${resourcePath}`;
-  if (query) {
-    for (const [key, value] of Object.entries(query)) {
-      if (value !== undefined && value !== "") url.searchParams.set(key, String(value));
-    }
-  }
-  return url.toString();
-}
-
-function normalizeRecitationResource(resource: QuranComRecitationResource): QuranReciter | null {
-  const id = resource.id === undefined || resource.id === null ? "" : String(resource.id);
-  const name = resource.translated_name?.name || resource.reciter_name || "";
-  const style = typeof resource.style === "string" ? resource.style : resource.style?.name || "Recitation";
-  if (!id || !name) return null;
-  return { id, name, style };
-}
-
-export async function fetchReciters(language = "en"): Promise<QuranReciter[]> {
-  if (recitersMemoryCache) return recitersMemoryCache;
-  if (recitersInFlight) return recitersInFlight;
-
-  recitersInFlight = (async () => {
-    const response = await fetch(quranComUrl("/resources/recitations", { language }), {
-      headers: { accept: "application/json" },
-    });
-    if (!response.ok) throw new Error(`Unable to load reciters (${response.status})`);
-
-    const data = await response.json() as { recitations?: QuranComRecitationResource[] };
-    const reciters = (data.recitations ?? [])
-      .map(normalizeRecitationResource)
-      .filter((reciter): reciter is QuranReciter => !!reciter);
-    if (reciters.length === 0) throw new Error("Quran.com returned no reciters.");
-    recitersMemoryCache = reciters;
-    return reciters;
-  })().finally(() => {
-    recitersInFlight = null;
-  });
-
-  return recitersInFlight;
+export async function fetchReciters(_language = "en"): Promise<QuranReciter[]> {
+  if (!recitersMemoryCache) recitersMemoryCache = [MISHARY_RECITER];
+  return recitersMemoryCache;
 }
 
 function fallbackRevelationType(chapterNumber: number): string {
