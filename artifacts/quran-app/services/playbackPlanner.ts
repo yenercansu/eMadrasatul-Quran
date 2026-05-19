@@ -275,17 +275,26 @@ async function getPlayableWordsForRange(
 
 function createUstadhProgressionSteps(words: WordPlaybackRef[], playbackRate: number): PlaybackStep[] {
   const steps: PlaybackStep[] = [];
-  const localChunkSize = 3;
-  const cycleSize = 6;
-  for (let start = 0; start < words.length; start += cycleSize) {
-    const local = words.slice(start, Math.min(start + localChunkSize, words.length));
-    const expanded = words.slice(start, Math.min(start + cycleSize, words.length));
-    if (local.length === 0 || expanded.length === 0) continue;
-    steps.push(...repeatWordSequence(local, 3, playbackRate, `ustadh-local-${start}`, 500));
-    steps.push(...repeatWordSequence(expanded, 3, playbackRate, `ustadh-expanded-${start}`, 500));
-    steps.push(...repeatWordSequence(expanded, 3, playbackRate, `ustadh-reinforce-${start}`, 900));
+  const chunkSize = 3;
+  const segmentSize = 6;
+  let segmentCount = 0;
+
+  for (let segmentStart = 0; segmentStart < words.length; segmentStart += segmentSize) {
+    const segment = words.slice(segmentStart, Math.min(segmentStart + segmentSize, words.length));
+    if (segment.length === 0) continue;
+    segmentCount += 1;
+
+    for (let chunkStart = 0; chunkStart < segment.length; chunkStart += chunkSize) {
+      const chunk = segment.slice(chunkStart, Math.min(chunkStart + chunkSize, segment.length));
+      if (chunk.length === 0) continue;
+      const globalChunkStart = segmentStart + chunkStart;
+      steps.push(...repeatWordSequence(chunk, 3, playbackRate, `ustadh-chunk-${globalChunkStart}`, 500));
+    }
+
+    steps.push(...repeatWordSequence(segment, 3, playbackRate, `ustadh-segment-${segmentStart}`, 900));
   }
-  if (words.length > 0) {
+
+  if (segmentCount > 1) {
     steps.push(...repeatWordSequence(words, 3, playbackRate, "ustadh-final", 0));
   }
   return steps;
