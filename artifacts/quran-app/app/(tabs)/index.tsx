@@ -21,6 +21,16 @@ import { useColors } from "@/hooks/useColors";
 import { useQuran, type Goal, type MemorizationGoal } from "@/contexts/QuranContext";
 import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
 import { getJuzAyahs, SURAH_DATA, type AyahRef } from "@/constants/surahData";
+import {
+  buildWeeklyGoal,
+  findNextIncompleteJuz,
+  findNextIncompleteSurah,
+  getAyahKey,
+  getFirstUnmemorizedAyah,
+  getGoalRangeAyahs,
+  getNextAyahAfter,
+  MAX_WEEKLY_AYAHS,
+} from "@/services/hifzLogic";
 import { AyahRangeModal, type AyahRangeResult } from "@/components/AyahRangeModal";
 import { SubSectionTitle } from "@/components/Typography";
 import { MemorizedBadge } from "@/components/SurahCard";
@@ -32,120 +42,7 @@ import { InlineNotice } from "@/components/InlineNotice";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const TOTAL_AYAHS = 6236;
-const MAX_WEEKLY_AYAHS = 70;
 const WEEKLY_TOAST_CELEBRATIONS_KEY = "@squran/weekly-complete-toast-celebrations-v1";
-
-function getAyahKey(ayah: Pick<AyahRef, "surahNumber" | "ayahNumber">) {
-  return `${ayah.surahNumber}:${ayah.ayahNumber}`;
-}
-
-function getGoalRangeAyahs(options: {
-  path: "surah" | "juz";
-  targetJuz?: number;
-  startSurahNumber: number;
-  startAyahNumber: number;
-  endSurahNumber?: number;
-  endAyahNumber?: number;
-}): AyahRef[] {
-  const source = options.path === "juz" && options.targetJuz
-    ? getJuzAyahs(options.targetJuz)
-    : (() => {
-        const surah = SURAH_DATA.find(s => s.number === options.startSurahNumber);
-        if (!surah) return [];
-        return Array.from({ length: surah.ayahCount }, (_, index) => ({
-          surahNumber: surah.number,
-          surahName: surah.englishName,
-          ayahNumber: index + 1,
-        }));
-      })();
-  const startIdx = source.findIndex(
-    a => a.surahNumber === options.startSurahNumber && a.ayahNumber === options.startAyahNumber
-  );
-  const fallbackEndIdx = source.length - 1;
-  const endIdx = options.endSurahNumber != null && options.endAyahNumber != null
-    ? source.findIndex(a => a.surahNumber === options.endSurahNumber && a.ayahNumber === options.endAyahNumber)
-    : fallbackEndIdx;
-  if (startIdx < 0) return [];
-  return source.slice(startIdx, endIdx >= startIdx ? endIdx + 1 : undefined);
-}
-
-function buildWeeklyGoal(options: {
-  path: "surah" | "juz";
-  targetJuz?: number;
-  startSurahNumber: number;
-  startAyahNumber: number;
-  endSurahNumber?: number;
-  endAyahNumber?: number;
-  requestedAyahsPerWeek: number;
-  memorizedAyahKeys: string[];
-}) {
-  const memorized = new Set(options.memorizedAyahKeys);
-  const remaining = getGoalRangeAyahs(options).filter(ayah => !memorized.has(getAyahKey(ayah)));
-  const target = remaining.slice(0, Math.min(MAX_WEEKLY_AYAHS, options.requestedAyahsPerWeek));
-  const first = target[0];
-
-  return {
-    ayahsPerWeek: Math.max(1, target.length || Math.min(MAX_WEEKLY_AYAHS, options.requestedAyahsPerWeek)),
-    startSurahNumber: first?.surahNumber ?? options.startSurahNumber,
-    startAyahNumber: first?.ayahNumber ?? options.startAyahNumber,
-    weeklyTargetAyahKeys: target.map(getAyahKey),
-  };
-}
-
-function isSurahFullyMemorized(surahNumber: number, memorized: Set<string>) {
-  const surah = SURAH_DATA[surahNumber - 1];
-  if (!surah) return false;
-  for (let ayah = 1; ayah <= surah.ayahCount; ayah++) {
-    if (!memorized.has(`${surahNumber}:${ayah}`)) return false;
-  }
-  return true;
-}
-
-function isJuzFullyMemorized(juz: number, memorized: Set<string>) {
-  const ayahs = getJuzAyahs(juz);
-  return ayahs.length > 0 && ayahs.every((ayah) => memorized.has(getAyahKey(ayah)));
-}
-
-function findNextIncompleteSurah(
-  currentSurahNumber: number,
-  memorizedAyahKeys: string[],
-  checkedSurahsSet: Set<number> = new Set()
-) {
-  const memorized = new Set(memorizedAyahKeys);
-  const isFullyDone = (n: number) =>
-    checkedSurahsSet.has(n) || isSurahFullyMemorized(n, memorized);
-  const after = SURAH_DATA.find(
-    (surah) => surah.number > currentSurahNumber && !isFullyDone(surah.number)
-  );
-  if (after) return after;
-  return SURAH_DATA.find((surah) => !isFullyDone(surah.number)) ?? null;
-}
-
-function findNextIncompleteJuz(currentJuz: number, memorizedAyahKeys: string[]) {
-  const memorized = new Set(memorizedAyahKeys);
-  for (let juz = currentJuz + 1; juz <= 30; juz++) {
-    if (!isJuzFullyMemorized(juz, memorized)) return juz;
-  }
-  for (let juz = 1; juz <= 30; juz++) {
-    if (!isJuzFullyMemorized(juz, memorized)) return juz;
-  }
-  return null;
-}
-
-function getFirstUnmemorizedAyah(ayahs: AyahRef[], memorizedAyahKeys: string[]) {
-  const memorized = new Set(memorizedAyahKeys);
-  return ayahs.find((ayah) => !memorized.has(getAyahKey(ayah))) ?? null;
-}
-
-function getNextAyahAfter(ayah: Pick<AyahRef, "surahNumber" | "ayahNumber">): AyahRef | null {
-  const surah = SURAH_DATA.find(s => s.number === ayah.surahNumber);
-  if (!surah) return null;
-  if (ayah.ayahNumber < surah.ayahCount) {
-    return { surahNumber: surah.number, surahName: surah.englishName, ayahNumber: ayah.ayahNumber + 1 };
-  }
-  const nextSurah = SURAH_DATA.find(s => s.number === ayah.surahNumber + 1);
-  return nextSurah ? { surahNumber: nextSurah.number, surahName: nextSurah.englishName, ayahNumber: 1 } : null;
-}
 
 function formatCompletionMonth(date: Date) {
   return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });

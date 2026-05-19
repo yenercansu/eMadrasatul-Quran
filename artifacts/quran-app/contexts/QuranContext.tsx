@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppState, Appearance, type AppStateStatus } from "react-native";
 import type { ArabicFontKey } from "@/constants/arabicFonts";
-import { getJuzAyahs, getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
+import { getWeeklyGoalAyahsFrom, SURAH_DATA } from "@/constants/surahData";
+import { getAyahKey, getGoalRangeAyahs } from "@/services/hifzLogic";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNetworkStatus } from "@/contexts/NetworkContext";
 import * as madeenanApi from "@/services/madeenanApi";
@@ -187,37 +188,21 @@ export function getAyahAtLinearIndex(index: number): { surahNumber: number; sura
 
 function getActiveGoalRangeKeySet(goal: Goal, memorizationGoal: MemorizationGoal | null): Set<string> | null {
   if (memorizationGoal?.path === "pace") return null;
-
-  if (
-    goal.startSurahNumber == null ||
-    goal.startAyahNumber == null ||
-    goal.endSurahNumber == null ||
-    goal.endAyahNumber == null
-  ) {
+  if (goal.startSurahNumber == null || goal.startAyahNumber == null ||
+      goal.endSurahNumber == null || goal.endAyahNumber == null) {
     return null;
   }
-
-  const source = memorizationGoal?.path === "juz" && memorizationGoal.targetJuz
-    ? getJuzAyahs(memorizationGoal.targetJuz)
-    : (() => {
-        const surah = SURAH_DATA.find((s) => s.number === goal.startSurahNumber);
-        if (!surah) return [];
-        return Array.from({ length: surah.ayahCount }, (_, index) => ({
-          surahNumber: surah.number,
-          surahName: surah.englishName,
-          ayahNumber: index + 1,
-        }));
-      })();
-
-  const startIdx = source.findIndex(
-    (ayah) => ayah.surahNumber === goal.startSurahNumber && ayah.ayahNumber === goal.startAyahNumber
-  );
-  const endIdx = source.findIndex(
-    (ayah) => ayah.surahNumber === goal.endSurahNumber && ayah.ayahNumber === goal.endAyahNumber
-  );
-  if (startIdx < 0 || endIdx < startIdx) return null;
-
-  return new Set(source.slice(startIdx, endIdx + 1).map((ayah) => `${ayah.surahNumber}:${ayah.ayahNumber}`));
+  const path = memorizationGoal?.path === "juz" ? "juz" : "surah";
+  const ayahs = getGoalRangeAyahs({
+    path,
+    targetJuz: memorizationGoal?.targetJuz,
+    startSurahNumber: goal.startSurahNumber,
+    startAyahNumber: goal.startAyahNumber,
+    endSurahNumber: goal.endSurahNumber,
+    endAyahNumber: goal.endAyahNumber,
+  });
+  if (ayahs.length === 0) return null;
+  return new Set(ayahs.map(getAyahKey));
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -297,6 +282,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const [checkedSurahs, setCheckedSurahs] = useState<number[]>([]);
   const [quizSelectedSurahs, setQuizSelectedSurahsState] = useState<number[]>(DEFAULT_QUIZ_SELECTED_SURAHS);
   const [memorizedAyahKeys, setMemorizedAyahKeys] = useState<string[]>([]);
+  const memorizedAyahSet = useMemo(() => new Set(memorizedAyahKeys), [memorizedAyahKeys]);
 
   useEffect(() => { loadData(); }, []);
   useEffect(() => {
@@ -947,7 +933,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated, recordAyahRead]);
 
   const isAyahMemorized = useCallback((surahNumber: number, ayahNumber: number) =>
-    memorizedAyahKeys.includes(`${surahNumber}:${ayahNumber}`), [memorizedAyahKeys]);
+    memorizedAyahSet.has(`${surahNumber}:${ayahNumber}`), [memorizedAyahSet]);
 
   const todayEntry = dailyEntries.find(e => e.date === getTodayStr()) ?? null;
 

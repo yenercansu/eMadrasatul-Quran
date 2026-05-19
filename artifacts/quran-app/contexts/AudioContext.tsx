@@ -3,7 +3,6 @@ import { Audio } from "expo-av";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuran } from "./QuranContext";
 import { getAyahCount, getNextAyah, isRangeEnd } from "@/constants/surahData";
-import { getAudioUrl as getAudioUrlFromService } from "@/services/quranApi";
 import {
   createAyahPlaybackPlan,
   createRangePlaybackPlan,
@@ -105,18 +104,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   });
   const soundRef = useRef<Audio.Sound | null>(null);
   const totalAyahsRef = useRef<number>(0);
-  const repeatCountRef = useRef<number>(1);
-  const currentRepeatRef = useRef<number>(0);
   const rangeRef = useRef<AyahRange | null>(null);
   const rangeRepeatRef = useRef<number>(1);
   const rangeCurrentRepeatRef = useRef<number>(0);
   const playbackRateRef = useRef<number>(1.0);
-  // Word-segment playback (single ayah, sub-range of words)
-  const segmentRef = useRef<AyahSegment | null>(null);
-  const segmentStartMsRef = useRef<number>(0);
-  const segmentEndMsRef = useRef<number | null>(null);
-  const segmentSeekedRef = useRef<boolean>(false);
-  const segmentFinishedRef = useRef<boolean>(false);
   const onNextAyahRef = useRef<((surahNum: number, ayahNum: number) => void) | null>(null);
   const [onNextAyah, setOnNextAyahState] = useState<((surahNum: number, ayahNum: number) => void) | null>(null);
   const onPlanFinishRef = useRef<((surahNum: number, ayahNum: number) => void) | null>(null);
@@ -211,7 +202,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     planStepRepeatRef.current = 0;
     planStepFinishedRef.current = false;
     planAdvancingRef.current = false;
-    segmentRef.current = null;
 
     setAudioState((prev) => ({
       ...prev,
@@ -322,8 +312,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     soundRef.current = sound;
-    repeatCountRef.current = step.repeatCount;
-    currentRepeatRef.current = 0;
     await sound.setRateAsync(effectiveRate, true, Audio.PitchCorrectionQuality.High).catch(() => {});
     if (step.startMs !== undefined) await sound.setPositionAsync(step.startMs).catch(() => {});
     await sound.playAsync();
@@ -350,178 +338,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     });
     return () => { soundRef.current?.unloadAsync(); };
   }, []);
-
-  const loadAndPlay = useCallback(async (
-    surahNum: number,
-    ayahNum: number,
-    repeatCount: number,
-    range: AyahRange | null,
-  ) => {
-    try {
-      setAudioState((prev) => ({ ...prev, isLoading: true }));
-
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-        soundRef.current = null;
-      }
-
-      const url = await getAudioUrlFromService(surahNum, ayahNum, settings.selectedReciter);
-      const rate = playbackRateRef.current;
-
-      // Track recently used reciters (fire-and-forget, max 3 entries)
-      AsyncStorage.getItem(RECENT_RECITERS_KEY).then((v) => {
-        const prev: string[] = v ? JSON.parse(v) : [];
-        const next = [settings.selectedReciter, ...prev.filter(id => id !== settings.selectedReciter)].slice(0, 3);
-        AsyncStorage.setItem(RECENT_RECITERS_KEY, JSON.stringify(next));
-      }).catch(() => {});
-
-      // Reset segment state for this load
-      segmentSeekedRef.current = false;
-      segmentFinishedRef.current = false;
-      segmentEndMsRef.current = null;
-      segmentStartMsRef.current = 0;
-
-      const hasSeg = !!segmentRef.current;
-
-      // For segments: resolve duration as soon as the first status callback
-      // reports it. Audio starts playing immediately (shouldPlay: true) so
-      // expo-av buffers the file on all platforms, including web.
-      let resolveDuration: ((ms: number) => void) | null = null;
-      const durationPromise: Promise<number> | null = hasSeg
-        ? new Promise(res => { resolveDuration = res; })
-        : null;
-
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: url },
-        {
-          shouldPlay: true,
-          rate,
-          pitchCorrectionQuality: Audio.PitchCorrectionQuality.High,
-          progressUpdateIntervalMillis: hasSeg ? 40 : 250,
-        },
-        (status) => {
-          if (!status.isLoaded) return;
-          setAudioState((prev) => ({
-            ...prev,
-            isPlaying: status.isPlaying,
-            duration: status.durationMillis ?? 0,
-            position: status.positionMillis ?? 0,
-          }));
-
-          // Signal duration availability so the segment setup below can proceed.
-          if (resolveDuration && (status.durationMillis ?? 0) > 0) {
-            resolveDuration(status.durationMillis!);
-            resolveDuration = null;
-          }
-
-          if (segmentRef.current) {
-            // Start boundary is resolved eagerly below; only detect end here.
-            if (!segmentSeekedRef.current || !status.isPlaying) return;
-            const endMs = segmentEndMsRef.current;
-            const cur = status.positionMillis ?? 0;
-            if (endMs !== null && cur >= endMs && !segmentFinishedRef.current) {
-              segmentFinishedRef.current = true;
-              const nextRepeat = currentRepeatRef.current + 1;
-              if (nextRepeat < repeatCountRef.current) {
-                currentRepeatRef.current = nextRepeat;
-                setAudioState((prev) => ({ ...prev, currentRepeat: nextRepeat }));
-                soundRef.current?.setPositionAsync(segmentStartMsRef.current).then(() => {
-                  segmentFinishedRef.current = false;
-                  soundRef.current?.playAsync();
-                }).catch(() => {});
-              } else {
-                currentRepeatRef.current = 0;
-                segmentRef.current = null;
-                segmentEndMsRef.current = null;
-                soundRef.current?.pauseAsync().catch(() => {});
-                setAudioState((prev) => ({ ...prev, isPlaying: false, currentRepeat: 0 }));
-              }
-            }
-            return;
-          }
-
-          if (status.didJustFinish) {
-            const nextRepeat = currentRepeatRef.current + 1;
-            if (nextRepeat < repeatCountRef.current) {
-              currentRepeatRef.current = nextRepeat;
-              setAudioState((prev) => ({ ...prev, currentRepeat: nextRepeat }));
-              sound.replayAsync();
-            } else {
-              currentRepeatRef.current = 0;
-              setAudioState((prev) => ({ ...prev, isPlaying: false, currentRepeat: 0 }));
-              // Determine next ayah
-              const currentRange = rangeRef.current;
-              if (currentRange) {
-                if (isRangeEnd(surahNum, ayahNum, currentRange.endSurah, currentRange.endAyah)) {
-                  const nextRangeRepeat = rangeCurrentRepeatRef.current + 1;
-                  if (nextRangeRepeat < rangeRepeatRef.current) {
-                    rangeCurrentRepeatRef.current = nextRangeRepeat;
-                    // Restart range from beginning
-                    if (onNextAyahRef.current) {
-                      onNextAyahRef.current(currentRange.startSurah, currentRange.startAyah);
-                    }
-                  } else {
-                    rangeCurrentRepeatRef.current = 0;
-                    setAudioState((prev) => ({ ...prev, range: null }));
-                    rangeRef.current = null;
-                  }
-                } else {
-                  const next = getNextAyah(surahNum, ayahNum);
-                  if (next && onNextAyahRef.current) {
-                    onNextAyahRef.current(next.surah, next.ayah);
-                  }
-                }
-              } else {
-                const totalAyahs = getAyahCount(surahNum) || totalAyahsRef.current;
-                if (ayahNum < totalAyahs && onNextAyahRef.current) {
-                  onNextAyahRef.current(surahNum, ayahNum + 1);
-                }
-              }
-            }
-          }
-        }
-      );
-
-      soundRef.current = sound;
-      await sound.setRateAsync(rate, true, Audio.PitchCorrectionQuality.High).catch(() => {});
-      repeatCountRef.current = repeatCount;
-      currentRepeatRef.current = 0;
-
-      // For segment playback: wait for the duration (signalled by the status
-      // callback above), then seek to the start word. Audio is already playing
-      // so expo-av is definitely buffering on all platforms.
-      if (hasSeg && durationPromise && segmentRef.current) {
-        const seg = segmentRef.current;
-        const dur = await Promise.race([
-          durationPromise,
-          new Promise<number>(r => setTimeout(() => r(0), 5000)),
-        ]);
-        if (dur > 0) {
-          const total = Math.max(1, seg.totalWords);
-          segmentStartMsRef.current = Math.floor(dur * seg.startWordIdx / total);
-          segmentEndMsRef.current = Math.floor(dur * (seg.endWordIdx + 1) / total);
-          if (segmentStartMsRef.current > 0) {
-            await sound.setPositionAsync(segmentStartMsRef.current);
-          }
-        }
-        segmentSeekedRef.current = true;
-        // Audio is already playing — no playAsync() needed here.
-      }
-
-      setAudioState((prev) => ({
-        ...prev,
-        isLoading: false,
-        isPlaying: true,
-        currentAyah: ayahNum,
-        currentSurah: surahNum,
-        repeatCount,
-        currentRepeat: 0,
-        range: range ?? prev.range,
-      }));
-    } catch {
-      setAudioState((prev) => ({ ...prev, isLoading: false, isPlaying: false }));
-    }
-  }, [settings.selectedReciter]);
 
   const playAyah = useCallback(async (
     surahNum: number,
@@ -560,7 +376,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     rangeRef.current = range;
     rangeRepeatRef.current = setRepeat;
     rangeCurrentRepeatRef.current = 0;
-    segmentRef.current = null;
     setAudioState((prev) => ({ ...prev, range }));
     const reciterId = Number(settings.selectedReciter) || 7;
     const plan = await createRangePlaybackPlan({
@@ -582,7 +397,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     repeatCount: number,
   ) => {
     rangeRef.current = null;
-    segmentRef.current = null;
     const plan = await createSectionPlaybackPlan({
       surahNumber: surahNum,
       ayahNumber: ayahNum,
@@ -597,7 +411,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const playUstadhMode = useCallback(async (surahNum: number, ayahs: number[]) => {
     rangeRef.current = null;
-    segmentRef.current = null;
     await AsyncStorage.removeItem(USTADH_PROGRESS_KEY).catch(() => {});
     const plan = await createUstadhPlaybackPlan({
       surahNumber: surahNum,
@@ -611,7 +424,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const playWordByWord = useCallback(async (surahNum: number, startAyah: number, endAyah: number, wordRepeat: number) => {
     rangeRef.current = null;
-    segmentRef.current = null;
     const plan = await createWordByWordRangePlaybackPlan({
       surahNumber: surahNum,
       reciterId: Number(settings.selectedReciter) || 7,
@@ -699,10 +511,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     rangeRef.current = null;
     rangeRepeatRef.current = 1;
     rangeCurrentRepeatRef.current = 0;
-    segmentRef.current = null;
-    segmentEndMsRef.current = null;
-    segmentSeekedRef.current = false;
-    segmentFinishedRef.current = false;
     setAudioState((prev) => ({
       ...prev,
       isPlaying: false,
