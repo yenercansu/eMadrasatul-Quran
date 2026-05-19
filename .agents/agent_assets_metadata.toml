@@ -3,7 +3,7 @@ outputs = []
 
 [[generated]]
 id = "9Wbv-CKyLZREkc-69Crwq"
-uri = "file://artifacts/quran-app/assets/images/icon.png"
+uri = "file://artifacts/quran-app/assets/images/logo.png"
 type = "image"
 title = "quran app icon"
 
