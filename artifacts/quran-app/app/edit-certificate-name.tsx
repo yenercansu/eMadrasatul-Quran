@@ -36,7 +36,7 @@ export default function EditCertificateNameScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={[styles.keyboardAvoid, { backgroundColor: c.appBackground }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={[styles.screen, { backgroundColor: c.appBackground, paddingTop: insets.top }]}>
@@ -57,6 +57,7 @@ export default function EditCertificateNameScreen() {
 
         <ScrollView
           showsVerticalScrollIndicator={false}
+          style={{ backgroundColor: c.appBackground }}
           contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]}
           keyboardShouldPersistTaps="handled"
         >
@@ -97,6 +98,9 @@ export default function EditCertificateNameScreen() {
 }
 
 const styles = StyleSheet.create({
+  keyboardAvoid: {
+    flex: 1,
+  },
   screen: {
     flex: 1,
   },

@@ -189,16 +189,17 @@ export default function JuzCertificateScreen() {
 
         {/* ── Records ── */}
         {(durationLabel || ayahsPerDayLabel) ? (
-          <View style={styles.sectionPadded}>
-            <Text style={[styles.labelXs, { color: c.hifzFaint }]}>MEMORIZATION RECORDS</Text>
-            <View>
-              {durationLabel ? <CertRecordRow label="DURATION" value={durationLabel} /> : null}
-              {ayahsPerDayLabel ? <CertRecordRow label="DAILY AVG." sublabel="memorized per session" value={ayahsPerDayLabel} last /> : null}
+          <>
+            <View style={styles.sectionPadded}>
+              <Text style={[styles.labelXs, { color: c.hifzFaint }]}>MEMORIZATION RECORDS</Text>
+              <View>
+                {durationLabel ? <CertRecordRow label="DURATION" value={durationLabel} /> : null}
+                {ayahsPerDayLabel ? <CertRecordRow label="DAILY AVG." sublabel="memorized per session" value={ayahsPerDayLabel} last /> : null}
+              </View>
             </View>
-          </View>
+            <OrnamentDivider faint />
+          </>
         ) : null}
-
-        <OrnamentDivider faint />
 
         {/* ── Hadith ── */}
         <View style={[styles.section, { paddingVertical: 24 }]}>
