@@ -8,8 +8,8 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Switch,
 } from "react-native";
+import { AppSwitch } from "@/components/DesignSystem";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
@@ -167,12 +167,9 @@ export default function SettingsScreen() {
             label="Daily Reading Reminder"
             last={!accountSettings.dailyNotifications}
             right={
-              <Switch
+              <AppSwitch
                 value={accountSettings.dailyNotifications}
                 onValueChange={v => updateAccountSettings({ dailyNotifications: v })}
-                trackColor={{ false: colors.appSoftPill, true: colors.appSelectedPill }}
-                thumbColor={colors.appCardWarm}
-                ios_backgroundColor={colors.appSoftPill}
               />
             }
           />
@@ -189,11 +186,11 @@ export default function SettingsScreen() {
         <Section title="LEGAL">
           <SettingsRow
             label="Privacy Policy"
-            onPress={() => setDialog({ title: "Privacy Policy", message: "Your Quran Madrasa data syncs through Madeenan. Quran Foundation tokens are linked and stored by the backend, not in this mobile app." })}
+            onPress={() => router.push("/legal/privacy-policy")}
           />
           <SettingsRow
             label="Terms & Conditions"
-            onPress={() => setDialog({ title: "Terms & Conditions", message: "This app is provided for educational and religious purposes. Quran content is served through the Madeenan backend." })}
+            onPress={() => router.push("/legal/terms")}
             last
           />
         </Section>

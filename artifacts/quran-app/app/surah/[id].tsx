@@ -11,12 +11,12 @@ import {
   ScrollView,
   Modal,
   Pressable,
-  Switch,
   LayoutAnimation,
   UIManager,
   Animated,
   PanResponder,
 } from "react-native";
+import { AppSwitch } from "@/components/DesignSystem";
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -807,7 +807,7 @@ function EditSheet({
 
             {/* ── Download ── */}
             <TouchableOpacity style={[es.optionRow, { marginTop: 20 }]} onPress={() => { onClose(); onDownloadCurrentSurah(); }} activeOpacity={0.7}>
-              <Feather name="download" size={20} color="#1A1A1A" style={es.optionIcon} />
+              <Feather name="download" size={20} color={colors.appText} style={es.optionIcon} />
               <View style={es.optionInfo}>
                 <Text style={es.optionLabel}>Download Current Surah</Text>
                 <Text style={es.optionDesc}>{offlineStatusLabel}</Text>
@@ -824,12 +824,12 @@ function EditSheet({
                   const isActive = settings.selectedReciter === id;
                   return (
                     <TouchableOpacity key={id} style={es.optionRow} onPress={() => updateSettings({ selectedReciter: id })} activeOpacity={0.7}>
-                      <Feather name="mic" size={20} color="#1A1A1A" style={es.optionIcon} />
+                      <Feather name="mic" size={20} color={colors.appText} style={es.optionIcon} />
                       <View style={es.optionInfo}>
                         <Text style={es.optionLabel}>{reciter.name}</Text>
                         <Text style={es.optionDesc}>{reciter.style}</Text>
                       </View>
-                      {isActive && <Feather name="check" size={18} color="#1A1A1A" />}
+                      {isActive && <Feather name="check" size={18} color={colors.appText} />}
                     </TouchableOpacity>
                   );
                 })}
@@ -944,7 +944,7 @@ const editSheetStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.cre
     borderRadius: 8,
     backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
+    borderColor: colors.borderSubtle,
   },
   segActive: {
     backgroundColor: colors.accentPrimary,
@@ -1046,11 +1046,11 @@ function MeaningPanel({ visible, onClose, selected, onToggle, onPlay }: {
       <View style={[mp.container, { paddingTop: insets.top }]}>
         <View style={mp.header}>
           <TouchableOpacity onPress={onPlay} style={mp.iconBtn} activeOpacity={0.7}>
-            <Ionicons name="play" size={22} color="#1A1A1A" />
+            <Ionicons name="play" size={22} color={colors.appText} />
           </TouchableOpacity>
           <Text style={mp.title}>Meaning</Text>
           <TouchableOpacity onPress={onClose} style={mp.iconBtn} activeOpacity={0.7}>
-            <Feather name="x" size={22} color="#1A1A1A" />
+            <Feather name="x" size={22} color={colors.appText} />
           </TouchableOpacity>
         </View>
         {TRANSLATION_OPTIONS.map((t) => {
@@ -1063,14 +1063,9 @@ function MeaningPanel({ visible, onClose, selected, onToggle, onPlay }: {
               activeOpacity={0.8}
             >
               <Text style={mp.rowLabel}>{t.name}</Text>
-              <Switch
-                value={active}
-                onValueChange={undefined}
-                trackColor={{ false: "#E0E0E0", true: "#2E8B7A" }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor="#E0E0E0"
-                pointerEvents="none"
-              />
+              <View pointerEvents="none">
+                <AppSwitch value={active} />
+              </View>
             </TouchableOpacity>
           );
         })}
@@ -1113,11 +1108,11 @@ function TafsirModal({ visible, onClose, entries, selected, currentAyah, loading
       <View style={[tm.container, { paddingTop: insets.top }]}>
         <View style={tm.header}>
           <TouchableOpacity onPress={onPlay} style={tm.headerBtn} activeOpacity={0.75}>
-            <Ionicons name="play" size={22} color="#1A1A1A" />
+            <Ionicons name="play" size={22} color={colors.appText} />
           </TouchableOpacity>
           <Text style={tm.title}>Tafsir</Text>
           <TouchableOpacity onPress={onClose} style={tm.headerBtn} activeOpacity={0.75}>
-            <Feather name="x" size={22} color="#1A1A1A" />
+            <Feather name="x" size={22} color={colors.appText} />
           </TouchableOpacity>
         </View>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
@@ -1132,7 +1127,7 @@ function TafsirModal({ visible, onClose, entries, selected, currentAyah, loading
                   onPress={() => onToggleSource(ed.id)}
                   activeOpacity={0.8}
                 >
-                  {active && <Feather name="check" size={12} color="#FFFFFF" />}
+                  {active && <Feather name="check" size={12} color={colors.onAccent} />}
                   <Text style={[tm.sourceChipText, active && tm.sourceChipTextActive]}>{ed.name}</Text>
                 </TouchableOpacity>
               );
@@ -1140,7 +1135,7 @@ function TafsirModal({ visible, onClose, entries, selected, currentAyah, loading
           </View>
           {loading && (
             <View style={tm.loadingRow}>
-              <ActivityIndicator size="small" color="#1A1A1A" />
+              <ActivityIndicator size="small" color={colors.appText} />
               <Text style={tm.loadingText}>Loading tafsir…</Text>
             </View>
           )}
@@ -1156,7 +1151,7 @@ function TafsirModal({ visible, onClose, entries, selected, currentAyah, loading
                   activeOpacity={0.75}
                 >
                   <Text style={tm.sectionName}>{ed.name}</Text>
-                  <Feather name={isExp ? "chevron-up" : "chevron-down"} size={18} color="#6B6B6B" />
+                  <Feather name={isExp ? "chevron-up" : "chevron-down"} size={18} color={colors.appIconMuted} />
                 </TouchableOpacity>
                 {isExp && (
                   <Text style={tm.sectionText}>
@@ -1168,7 +1163,7 @@ function TafsirModal({ visible, onClose, entries, selected, currentAyah, loading
           })}
         </ScrollView>
         <View style={tm.footer}>
-          <Feather name="chevron-down" size={22} color="#9A9A9A" />
+          <Feather name="chevron-down" size={22} color={colors.appIconMuted} />
         </View>
       </View>
     </Modal>

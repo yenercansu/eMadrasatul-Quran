@@ -603,9 +603,20 @@ export default function HomeScreen() {
 
   const extensionOptionCounts = useMemo(() => {
     if (extensionRemainingCount <= 0) return [];
-    const start = Math.max(1, extensionRemainingCount - 3);
-    return Array.from({ length: extensionRemainingCount - start + 1 }, (_, i) => start + i);
-  }, [extensionRemainingCount]);
+    if (extensionRemainingCount <= 4) {
+      return Array.from({ length: extensionRemainingCount }, (_, i) => i + 1);
+    }
+    // Anchor suggestions to the user's established pace, not the total range size.
+    // humanMax caps at 2× their weekly pace so suggestions stay human-sized (never 200+).
+    const typicalPace = goal?.ayahsPerWeek ?? 5;
+    const humanMax = Math.min(extensionRemainingCount, Math.max(typicalPace * 2, 4));
+    const quarter = Math.max(1, Math.round(humanMax * 0.25));
+    const half    = Math.max(1, Math.round(humanMax * 0.5));
+    const three4  = Math.max(1, Math.round(humanMax * 0.75));
+    return [...new Set([quarter, half, three4, humanMax])]
+      .sort((a, b) => a - b)
+      .filter(n => n <= extensionRemainingCount);
+  }, [extensionRemainingCount, goal?.ayahsPerWeek]);
 
   const activeRangeTotal = activeGoalAyahs.length || totalRangeAyahs || targetTotal;
   const remainingRangeAyahs = Math.max(0, activeRangeTotal - totalRangeMemorized);

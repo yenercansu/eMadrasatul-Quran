@@ -1703,7 +1703,7 @@ const pageStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
     paddingHorizontal: 2,
   },
   excludeToggleActive: { backgroundColor: colors.textPrimary, alignItems: "flex-end" },
-  excludeDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.whiteText },
+  excludeDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.appCardWarm },
   excludeText: { fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular" },
   surahSelectRow: {
     flexDirection: "row",

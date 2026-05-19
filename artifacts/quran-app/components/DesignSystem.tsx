@@ -2,6 +2,7 @@ import React from "react";
 import {
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -158,6 +159,26 @@ export function IconButton({
         color={resolvedIconColor}
       />
     </TouchableOpacity>
+  );
+}
+
+interface AppSwitchProps {
+  value: boolean;
+  onValueChange?: (val: boolean) => void;
+  disabled?: boolean;
+}
+
+export function AppSwitch({ value, onValueChange, disabled }: AppSwitchProps) {
+  const c = useColors();
+  return (
+    <Switch
+      value={value}
+      onValueChange={onValueChange}
+      disabled={disabled}
+      trackColor={{ false: c.appSoftPill, true: c.accentPrimary }}
+      thumbColor={c.appCardWarm}
+      ios_backgroundColor={c.appSoftPill}
+    />
   );
 }
 
