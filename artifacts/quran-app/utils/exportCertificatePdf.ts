@@ -65,6 +65,7 @@ function ornament(faint = false): string {
   </svg></div>`;
 }
 
+
 function seal(): string {
   const cx = 28;
   const cy = 28;
@@ -91,7 +92,12 @@ function sealRow(): string {
   return `<div class="seal-row">
     <div class="sig-block"><div class="sig-line"></div><div class="sig-role">TEACHER</div></div>
     <div>${seal()}</div>
-    <div class="sig-block"><div class="sig-line"></div><div class="sig-role">INSTITUTION</div></div>
+    <div class="sig-block">
+      <div class="sig-institution-name">Al-Zahira</div>
+      <div class="sig-institution-ar">مدرسة الزاهرة</div>
+      <div class="sig-line"></div>
+      <div class="sig-role">INSTITUTION</div>
+    </div>
   </div>`;
 }
 
@@ -206,6 +212,8 @@ function css(): string {
     .sig-block { text-align: center; width: 68px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
     .sig-line { width: 68px; height: 0.5px; background: rgba(201,168,76,0.6); margin-bottom: 3px; }
     .sig-role { font-size: 7px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: #bfaa88; }
+    .sig-institution-name { font-size: 10px; font-weight: 600; font-style: italic; color: #8a7a5a; text-align: center; }
+    .sig-institution-ar { font-size: 8px; direction: rtl; color: #bfaa88; font-family: 'Al Nile', 'Geeza Pro', serif; text-align: center; margin-bottom: 2px; }
     /* Records */
     .records-section { width: 100%; padding: 10px 0; display: flex; flex-direction: column; gap: 8px; }
     .records-list { width: 100%; }

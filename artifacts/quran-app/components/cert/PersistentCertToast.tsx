@@ -8,9 +8,15 @@ import type { Certificate } from "@/contexts/QuranContext";
 interface PersistentCertToastProps {
   cert: Certificate;
   onDismiss: () => void;
+  alreadyEarned?: boolean;
 }
 
-function getCertLabel(cert: Certificate): string {
+function getCertLabel(cert: Certificate, alreadyEarned: boolean): string {
+  if (alreadyEarned) {
+    if (cert.type === "full-quran") return "Full Quran certificate is already available in Madrasa.";
+    if (cert.type === "surah") return "This surah certificate is already available in Madrasa.";
+    return "This juz certificate is already available in Madrasa.";
+  }
   if (cert.type === "full-quran") return "Full Quran Hifz certificate is ready.";
   if (cert.type === "surah") return "Your surah certificate is ready in Madrasa.";
   return "Your juz certificate is ready in Madrasa.";
@@ -22,7 +28,7 @@ function getCertRoute(cert: Certificate): string {
   return `/certificate/juz/${cert.juzNumber}`;
 }
 
-export function PersistentCertToast({ cert, onDismiss }: PersistentCertToastProps) {
+export function PersistentCertToast({ cert, onDismiss, alreadyEarned = false }: PersistentCertToastProps) {
   const c = useColors();
 
   return (
@@ -31,9 +37,11 @@ export function PersistentCertToast({ cert, onDismiss }: PersistentCertToastProp
         <Feather name="award" size={16} color={c.hifzAccentMuted} />
       </View>
       <View style={styles.body}>
-        <Text style={[styles.title, { color: c.hifzText }]}>Certificate Unlocked</Text>
+        <Text style={[styles.title, { color: c.hifzText }]}>
+          {alreadyEarned ? "Certificate Already Earned" : "Certificate Unlocked"}
+        </Text>
         <Text style={[styles.desc, { color: c.hifzMuted }]} numberOfLines={2}>
-          {getCertLabel(cert)}
+          {getCertLabel(cert, alreadyEarned)}
         </Text>
         <TouchableOpacity
           onPress={() => { onDismiss(); router.push(getCertRoute(cert) as any); }}

@@ -239,6 +239,8 @@ export function FullQuranCertificate({
           </View>
           <CertSeal size={56} />
           <View style={styles.sigBlock}>
+            <Text style={[styles.sigInstitutionName, { color: c.hifzAccentMuted }]}>Al-Zahira</Text>
+            <Text style={[styles.sigInstitutionAr, { color: c.hifzFaint }]}>مدرسة الزاهرة</Text>
             <View style={[styles.sigLine, { borderColor: c.accentSoft }]} />
             <Text style={[styles.sigRole, { color: c.hifzFaint }]}>INSTITUTION</Text>
           </View>
@@ -578,6 +580,18 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 1.2,
     textTransform: "uppercase",
+  },
+  sigInstitutionName: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    fontStyle: "italic",
+    textAlign: "center",
+  },
+  sigInstitutionAr: {
+    fontSize: 9,
+    textAlign: "center",
+    writingDirection: "rtl",
+    marginBottom: 2,
   },
   hadith: {
     fontSize: 12,

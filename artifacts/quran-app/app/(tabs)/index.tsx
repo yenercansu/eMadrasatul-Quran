@@ -41,7 +41,6 @@ import { VerseCard } from "@/components/VerseCard";
 import { ActionPill } from "@/components/ActionPill";
 import { InlineNotice } from "@/components/InlineNotice";
 import { FullQuranCertificate } from "@/components/cert/FullQuranCertificate";
-import { PersistentCertToast } from "@/components/cert/PersistentCertToast";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const TOTAL_AYAHS = 6236;
@@ -134,7 +133,7 @@ export default function HomeScreen() {
     lastListened, goal, setGoal, memorizationGoal, setMemorizationGoal,
     todayEntry, dailyEntries, onlineUsers, recentProgress, savedSurahs,
     getWeekGoalAyahs, isSurahChecked, checkedSurahs, markAyahsMemorized, recordMilestoneCompletion,
-    memorizedAyahKeys, pendingCertToast, dismissCertToast,
+    memorizedAyahKeys,
   } = useQuran();
   const [refreshing, setRefreshing] = useState(false);
   const [weeklyGoalVisible, setWeeklyGoalVisible] = useState(false);
@@ -1237,11 +1236,6 @@ export default function HomeScreen() {
             />
           ) : (
           <>
-          {/* ── Certificate unlock toast (persistent) ──────────────────── */}
-          {pendingCertToast ? (
-            <PersistentCertToast cert={pendingCertToast} onDismiss={dismissCertToast} />
-          ) : null}
-
           {/* ── Header Row ──────────────────────────────────────────────── */}
           <View style={s.headerRow}>
             <View style={s.studyingNowPill}>

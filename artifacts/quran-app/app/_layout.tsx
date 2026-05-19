@@ -16,19 +16,40 @@ import React, { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { QuranProvider } from "@/contexts/QuranContext";
+import { QuranProvider, useQuran } from "@/contexts/QuranContext";
 import { AudioProvider } from "@/contexts/AudioContext";
 import { NetworkProvider } from "@/contexts/NetworkContext";
 import LogoMark from "@/components/LogoMark";
 import { useColors } from "@/hooks/useColors";
+import { PersistentCertToast } from "@/components/cert/PersistentCertToast";
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
+
+function GlobalCertToastLayer() {
+  const { pendingCertToast, dismissCertToast, pendingAlreadyCertToast, dismissAlreadyCertToast } = useQuran();
+  const insets = useSafeAreaInsets();
+
+  const activeCert = pendingCertToast ?? pendingAlreadyCertToast;
+  if (!activeCert) return null;
+
+  const isAlreadyEarned = !pendingCertToast && !!pendingAlreadyCertToast;
+  const onDismiss = isAlreadyEarned ? dismissAlreadyCertToast : dismissCertToast;
+
+  return (
+    <View
+      pointerEvents="box-none"
+      style={{ position: "absolute", top: insets.top + 8, left: 0, right: 0, zIndex: 9999 }}
+    >
+      <PersistentCertToast cert={activeCert} onDismiss={onDismiss} alreadyEarned={isAlreadyEarned} />
+    </View>
+  );
+}
 
 function RootLayoutNav() {
   return (
@@ -110,6 +131,7 @@ export default function RootLayout() {
                       <KeyboardProvider>
                         <RootLayoutNav />
                       </KeyboardProvider>
+                      <GlobalCertToastLayer />
                     </GestureHandlerRootView>
                   </AudioProvider>
                 </QuranProvider>

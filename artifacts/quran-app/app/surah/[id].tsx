@@ -213,11 +213,8 @@ function SwipeableAyahCard({
             <SaveButton
               saved={isSaved}
               size="md"
-              onPress={() => {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                onSave(ayah);
-              }}
-              accessibilityLabel={`Save ayah ${ayah.numberInSurah}`}
+              onPress={() => onSave(ayah)}
+              accessibilityLabel={`${isSaved ? "Unsave" : "Save"} ayah ${ayah.numberInSurah}`}
             />
             {showMemorizedToggle && (
               <TouchableOpacity
@@ -1538,7 +1535,7 @@ export default function SurahScreen() {
     settings, updateSettings,
     accountSettings,
     saveProgress, recordVisit, recordAyahRead,
-    saveAyah, saveWord, isAyahSaved, savedAyahs,
+    saveAyah, removeAyah, saveWord, isAyahSaved, savedAyahs,
     surahPositions, saveSurahPosition,
     goal, memorizationGoal, memorizedAyahKeys, isAyahMemorized, toggleAyahMemorized,
   } = useQuran();
@@ -1786,6 +1783,15 @@ export default function SurahScreen() {
   }
 
   const handleSaveAyah = useCallback(async (ayah: ApiAyah) => {
+    const existing = savedAyahs.find(
+      (a) => a.surahNumber === surahNum && a.ayahNumber === ayah.numberInSurah
+    );
+    if (existing) {
+      removeAyah(existing.id);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      return;
+    }
+
     const sahih = translationsMap["en.sahih"];
     const ayahTranslation = sahih?.ayahs[ayah.numberInSurah - 1]?.text ?? "";
     saveAyah({
@@ -1814,7 +1820,7 @@ export default function SurahScreen() {
     }
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [surahNum, saveAyah, saveWord, arabic, translationsMap]);
+  }, [surahNum, saveAyah, removeAyah, saveWord, savedAyahs, arabic, translationsMap]);
 
   const handleStop = useCallback(() => {
     setAyahRepeatCounts({});

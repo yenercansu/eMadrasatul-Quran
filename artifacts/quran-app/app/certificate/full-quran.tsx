@@ -30,7 +30,7 @@ export default function FullQuranCertificatePreviewScreen() {
       <View style={[styles.previewBanner, { backgroundColor: c.hifzWarmBand, borderBottomColor: c.borderSubtle }]}>
         <Feather name="eye" size={12} color={c.hifzFaint} strokeWidth={1.8} />
         <Text style={[styles.previewBannerText, { color: c.hifzFaint }]}>
-          PREVIEW — Complete your Hifz to earn this certificate
+          PREVIEW — Complete your Hifz to earn this certificate, inshaAllah
         </Text>
       </View>
 

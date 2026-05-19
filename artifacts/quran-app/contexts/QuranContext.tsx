@@ -188,6 +188,8 @@ interface QuranContextType {
   certificates: Certificate[];
   pendingCertToast: Certificate | null;
   dismissCertToast: () => void;
+  pendingAlreadyCertToast: Certificate | null;
+  dismissAlreadyCertToast: () => void;
 }
 
 const TOTAL_AYAHS = 6236;
@@ -301,7 +303,9 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const memorizedAyahSet = useMemo(() => new Set(memorizedAyahKeys), [memorizedAyahKeys]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [pendingCertToast, setPendingCertToast] = useState<Certificate | null>(null);
+  const [pendingAlreadyCertToast, setPendingAlreadyCertToast] = useState<Certificate | null>(null);
   const certificatesRef = useRef<Certificate[]>([]);
+  const prevFullyMemorizedRef = useRef<{ surahs: Set<number>; juz: Set<number>; fullQuran: boolean } | null>(null);
   const dataLoadedRef = useRef(false);
 
   useEffect(() => { loadData(); }, []);
@@ -752,7 +756,9 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     setMemorizedAyahKeys([]);
     setCertificates([]);
     certificatesRef.current = [];
+    prevFullyMemorizedRef.current = null;
     setPendingCertToast(null);
+    setPendingAlreadyCertToast(null);
     applyTheme(DEFAULT_ACCOUNT.theme);
   }, []);
 
@@ -979,22 +985,56 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     const certifiedJuz = new Set(current.filter(c => c.type === "juz").map(c => c.juzNumber!));
     const hasFullQuranCert = current.some(c => c.type === "full-quran");
 
+    // Build current completion state
+    const nowFullSurahs = new Set<number>();
+    for (const surah of SURAH_DATA) {
+      if (isSurahFullyMemorized(surah.number, memorized)) nowFullSurahs.add(surah.number);
+    }
+    const nowFullJuz = new Set<number>();
+    for (let juz = 1; juz <= 30; juz++) {
+      if (isJuzFullyMemorized(juz, memorized)) nowFullJuz.add(juz);
+    }
+    const nowFullQuran = memorizedAyahKeys.length >= TOTAL_AYAHS;
+
+    const prev = prevFullyMemorizedRef.current;
     const newCerts: Certificate[] = [];
+    let alreadyEarnedCert: Certificate | null = null;
     const now = new Date().toISOString();
 
-    for (const surah of SURAH_DATA) {
-      if (!certifiedSurahs.has(surah.number) && isSurahFullyMemorized(surah.number, memorized)) {
-        newCerts.push({ id: `s-${surah.number}-${Date.now()}`, type: "surah", unlockedAt: now, surahNumber: surah.number });
+    for (const surahNum of nowFullSurahs) {
+      // On first load (prev===null): catch-up new certs only. On subsequent runs: detect newly completed transitions.
+      const isNewlyCompleted = prev === null || !prev.surahs.has(surahNum);
+      if (isNewlyCompleted) {
+        if (!certifiedSurahs.has(surahNum)) {
+          newCerts.push({ id: `s-${surahNum}-${Date.now()}`, type: "surah", unlockedAt: now, surahNumber: surahNum });
+        } else if (prev !== null) {
+          alreadyEarnedCert ??= current.find(c => c.type === "surah" && c.surahNumber === surahNum) ?? null;
+        }
       }
     }
-    for (let juz = 1; juz <= 30; juz++) {
-      if (!certifiedJuz.has(juz) && isJuzFullyMemorized(juz, memorized)) {
-        newCerts.push({ id: `j-${juz}-${Date.now()}`, type: "juz", unlockedAt: now, juzNumber: juz });
+    for (const juz of nowFullJuz) {
+      const isNewlyCompleted = prev === null || !prev.juz.has(juz);
+      if (isNewlyCompleted) {
+        if (!certifiedJuz.has(juz)) {
+          newCerts.push({ id: `j-${juz}-${Date.now()}`, type: "juz", unlockedAt: now, juzNumber: juz });
+        } else if (prev !== null) {
+          alreadyEarnedCert ??= current.find(c => c.type === "juz" && c.juzNumber === juz) ?? null;
+        }
       }
     }
-    if (!hasFullQuranCert && memorizedAyahKeys.length >= TOTAL_AYAHS) {
-      newCerts.push({ id: `fq-${Date.now()}`, type: "full-quran", unlockedAt: now });
+    if (nowFullQuran) {
+      const isNewlyCompleted = prev === null || !prev.fullQuran;
+      if (isNewlyCompleted) {
+        if (!hasFullQuranCert) {
+          newCerts.push({ id: `fq-${Date.now()}`, type: "full-quran", unlockedAt: now });
+        } else if (prev !== null) {
+          alreadyEarnedCert ??= current.find(c => c.type === "full-quran") ?? null;
+        }
+      }
     }
+
+    // Always update tracking ref so the next run can detect transitions
+    prevFullyMemorizedRef.current = { surahs: nowFullSurahs, juz: nowFullJuz, fullQuran: nowFullQuran };
 
     if (newCerts.length > 0) {
       const next = [...current, ...newCerts];
@@ -1002,10 +1042,13 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       setCertificates(next);
       AsyncStorage.setItem("quran_certificates", JSON.stringify(next)).catch(() => {});
       setPendingCertToast(newCerts[newCerts.length - 1]);
+    } else if (alreadyEarnedCert) {
+      setPendingAlreadyCertToast(alreadyEarnedCert);
     }
   }, [memorizedAyahKeys]);
 
   const dismissCertToast = useCallback(() => setPendingCertToast(null), []);
+  const dismissAlreadyCertToast = useCallback(() => setPendingAlreadyCertToast(null), []);
 
   const todayEntry = dailyEntries.find(e => e.date === getTodayStr()) ?? null;
 
@@ -1027,7 +1070,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       checkedSurahs, toggleCheckedSurah, isSurahChecked, clearCheckedSurahs,
       quizSelectedSurahs, setQuizSelectedSurahs, toggleQuizSurahSelection, isQuizSurahSelected,
       memorizedAyahKeys, markAyahsMemorized, removeMemorizedAyahKeys, toggleAyahMemorized, isAyahMemorized,
-      certificates, pendingCertToast, dismissCertToast,
+      certificates, pendingCertToast, dismissCertToast, pendingAlreadyCertToast, dismissAlreadyCertToast,
     }}>
       {children}
     </QuranContext.Provider>
