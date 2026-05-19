@@ -23,6 +23,7 @@ import { MadeenanApiError } from "@/services/madeenanApi";
 import { useQuran } from "@/contexts/QuranContext";
 import { searchByType } from "@/services/search";
 import { AppDialog } from "@/components/AppDialog";
+import { InlineNotice } from "@/components/InlineNotice";
 
 type FilterType = "all" | "meccan" | "medinan" | "alphabetic";
 
@@ -124,18 +125,16 @@ export default function QuranScreen() {
       {surahsQuery.isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ flex: 1 }} />
       ) : surahsQuery.isError ? (
-          <View style={s.empty}>
-            <Feather name="alert-circle" size={40} color={colors.destructive} />
-            <Text style={s.emptyText}>Could not load surahs</Text>
-            <Text style={s.errorDetail}>
-              {madeenanError
-                ? `${madeenanError.status || "Network"} ${madeenanError.code} · auth=${madeenanError.hadAuthToken ? "yes" : "no"}${madeenanError.requestId ? ` · request ${madeenanError.requestId}` : ""}`
-                : loadError instanceof Error ? loadError.message : "Unknown error"}
-            </Text>
-            <TouchableOpacity onPress={() => surahsQuery.refetch()} style={s.retryBtn} activeOpacity={0.85}>
-              <Text style={s.retryText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
+        <InlineNotice
+          variant="error"
+          title="Could not load surahs"
+          description={madeenanError
+            ? `${madeenanError.status || "Network"} ${madeenanError.code} · auth=${madeenanError.hadAuthToken ? "yes" : "no"}${madeenanError.requestId ? ` · request ${madeenanError.requestId}` : ""}`
+            : loadError instanceof Error ? loadError.message : "Unknown error"}
+          actionLabel="Retry"
+          onActionPress={() => surahsQuery.refetch()}
+          style={s.emptyNotice}
+        />
       ) : (
         <FlatList
           data={filtered}
@@ -192,10 +191,12 @@ export default function QuranScreen() {
           showsVerticalScrollIndicator={false}
           scrollEnabled={!!filtered.length}
           ListEmptyComponent={
-            <View style={s.empty}>
-              <Feather name="book-open" size={40} color={colors.mutedForeground} />
-              <Text style={s.emptyText}>No surahs found</Text>
-            </View>
+            <InlineNotice
+              variant="neutral"
+              icon="book-open"
+              description="No surahs found"
+              style={s.emptyNotice}
+            />
           }
         />
       )}
@@ -247,9 +248,5 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Inter_400Regular",
     },
     filterRow: { flexDirection: "row", gap: 8, flexWrap: "wrap", paddingTop: 2 },
-    empty: { alignItems: "center", paddingVertical: 60, gap: 12 },
-    emptyText: { fontSize: 16, color: colors.mutedForeground, fontFamily: "Inter_400Regular" },
-    errorDetail: { paddingHorizontal: 24, textAlign: "center", fontSize: 12, lineHeight: 18, color: colors.destructive, fontFamily: "Inter_400Regular" },
-    retryBtn: { paddingHorizontal: 16, height: 40, borderRadius: 10, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
-    retryText: { fontSize: 13, color: colors.primaryForeground, fontFamily: "Inter_700Bold" },
+    emptyNotice: { marginHorizontal: 16, marginTop: 48 },
   });

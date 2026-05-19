@@ -9,6 +9,7 @@ import { useQuran } from "@/contexts/QuranContext";
 import { SURAH_DATA } from "@/constants/surahData";
 import { fetchSurahs, type ApiSurah } from "@/services/quranApi";
 import { SurahListRow } from "@/components/SurahListRow";
+import { InlineNotice } from "@/components/InlineNotice";
 
 export default function SavedSurahsScreen() {
   const colors = useColors();
@@ -44,11 +45,13 @@ export default function SavedSurahsScreen() {
       {surahsQuery.isLoading ? (
         <ActivityIndicator color={colors.appBlack} style={{ flex: 1 }} />
       ) : surahsQuery.isError ? (
-        <TouchableOpacity style={s.empty} onPress={() => surahsQuery.refetch()} activeOpacity={0.8}>
-          <Feather name="alert-circle" size={40} color={colors.destructive} />
-          <Text style={s.emptyText}>Could not load saved surah details</Text>
-          <Text style={s.emptyHint}>Tap to retry</Text>
-        </TouchableOpacity>
+        <InlineNotice
+          variant="error"
+          title="Could not load saved surah details"
+          description="Tap to retry"
+          onPress={() => surahsQuery.refetch()}
+          style={s.emptyNotice}
+        />
       ) : (
         <FlatList
           data={savedSurahsMeta}
@@ -56,11 +59,13 @@ export default function SavedSurahsScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={s.listContent}
           ListEmptyComponent={
-            <View style={s.empty}>
-              <Feather name="bookmark" size={40} color={colors.appBorderMid} />
-              <Text style={s.emptyText}>No saved surahs yet</Text>
-              <Text style={s.emptyHint}>Swipe left on any surah to save it</Text>
-            </View>
+            <InlineNotice
+              variant="neutral"
+              icon="bookmark"
+              title="No saved surahs yet"
+              description="Swipe left on any surah to save it"
+              style={s.emptyNotice}
+            />
           }
           renderItem={({ item, index }) => {
             const apiSurah = apiSurahs.find(a => a.number === item.number);
@@ -107,7 +112,5 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Inter_700Bold",
     },
     listContent: { paddingBottom: 120 },
-    empty: { alignItems: "center", paddingVertical: 60, gap: 8 },
-    emptyText: { fontSize: 16, color: colors.appBorderMid, fontFamily: "Inter_400Regular" },
-    emptyHint: { fontSize: 13, color: colors.appBorderMid, fontFamily: "Inter_400Regular" },
+    emptyNotice: { marginHorizontal: 16, marginTop: 48 },
   });

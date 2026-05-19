@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import LogoMark from "@/components/LogoMark";
+import { InlineNotice } from "@/components/InlineNotice";
 import { useAuth } from "@/contexts/AuthContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -56,10 +57,7 @@ export default function AuthScreen() {
 
       <View style={s.form}>
         {authError ? (
-          <View style={s.errorBox}>
-            <Feather name="alert-circle" size={16} color={colors.destructive} />
-            <Text style={s.errorText}>{authError}</Text>
-          </View>
+          <InlineNotice variant="error" description={authError} style={{ marginBottom: 8 }} />
         ) : null}
 
         <TouchableOpacity
@@ -104,18 +102,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       maxWidth: 320,
     },
     form: { gap: 12 },
-    errorBox: {
-      flexDirection: "row",
-      gap: 8,
-      alignItems: "flex-start",
-      backgroundColor: colors.destructiveSoft,
-      borderWidth: 1,
-      borderColor: colors.destructive,
-      borderRadius: 12,
-      padding: 12,
-      marginBottom: 8,
-    },
-    errorText: { flex: 1, fontSize: 13, lineHeight: 18, color: colors.destructive, fontFamily: "Inter_400Regular" },
     googleBtn: {
       height: 52,
       borderRadius: 12,

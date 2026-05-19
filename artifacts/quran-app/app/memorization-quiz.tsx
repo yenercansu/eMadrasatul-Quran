@@ -22,6 +22,7 @@ import { QuestionNav } from "@/components/QuestionNav";
 import { searchByType } from "@/services/search";
 import { HifzSegmentedControl } from "@/components/hifz/HifzUI";
 import { AppDialog } from "@/components/AppDialog";
+import { InlineNotice } from "@/components/InlineNotice";
 
 const DEFAULT_SURAHS: { number: number; name: string; englishName: string; ayahs: string[]; translations: string[] }[] = [
   {
@@ -1415,23 +1416,24 @@ export default function MemorizationQuizScreen() {
             {filterMode === "by-surah" ? (
               <>
                 {selectedQuizPoolAyahCount === 0 && (
-                  <View style={[s.infoBox, s.emptySelectionBox]}>
-                    <Ionicons name="information-circle-outline" size={18} color="#A8A29E" />
-                    <Text style={s.infoText}>No Surah selected, please select a Surah or Ayah to continue</Text>
-                  </View>
+                  <InlineNotice
+                    variant="info"
+                    description="No Surah selected, please select a Surah or Ayah to continue"
+                    style={s.emptySelectionBox}
+                  />
                 )}
                 {/* Info text for special surahs */}
-                <View style={[s.infoBox, { marginBottom: 8 }]}>
-                  <Ionicons name="information-circle-outline" size={16} color="#A8A29E" />
-                  <Text style={s.infoText}>
-                    Bookmark ayahs from the Reading screen to add them here.
-                  </Text>
-                </View>
+                <InlineNotice
+                  variant="info"
+                  density="compact"
+                  description="Bookmark ayahs from the Reading screen to add them here."
+                  style={{ marginBottom: 8 }}
+                />
                 {pagedSurahs.length === 0 ? (
-                  <View style={s.infoBox}>
-                    <Ionicons name="information-circle-outline" size={18} color="#A8A29E" />
-                    <Text style={s.infoText}>{surahGroups.length === 0 ? "No saved ayahs yet. Bookmark ayahs from the Reading screen to add them here." : surahSearchQuery.trim() ? "No surahs match your search." : "No surahs match this filter."}</Text>
-                  </View>
+                  <InlineNotice
+                    variant="info"
+                    description={surahGroups.length === 0 ? "No saved ayahs yet. Bookmark ayahs from the Reading screen to add them here." : surahSearchQuery.trim() ? "No surahs match your search." : "No surahs match this filter."}
+                  />
                 ) : (() => {
                   const byJuz: { juz: number; surahs: typeof SURAH_DATA }[] = [];
                   for (const surah of pagedSurahs) {
@@ -1476,10 +1478,10 @@ export default function MemorizationQuizScreen() {
               </>
             ) : (
               ayahsByJuz.length === 0 ? (
-                <View style={s.infoBox}>
-                  <Ionicons name="information-circle-outline" size={18} color="#A8A29E" />
-                  <Text style={s.infoText}>{ayahSearchQuery.trim() ? "No ayahs match your search." : tagFilter === "all" ? "No saved ayahs yet. Bookmark ayahs from the Reading screen to add them here." : "No ayahs match this filter."}</Text>
-                </View>
+                <InlineNotice
+                  variant="info"
+                  description={ayahSearchQuery.trim() ? "No ayahs match your search." : tagFilter === "all" ? "No saved ayahs yet. Bookmark ayahs from the Reading screen to add them here." : "No ayahs match this filter."}
+                />
               ) : (
                 <>
                   <Text style={[s.swipeHint, { color: colors.mutedForeground }]}>← swipe left to remove · swipe right to open →</Text>
@@ -1639,11 +1641,7 @@ const pageStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   modeInfo: { flex: 1 },
   modeName: { fontSize: 16, fontWeight: "700", color: colors.textPrimary, fontFamily: "Inter_700Bold", marginBottom: 4 },
   modeDesc: { fontSize: 13, color: colors.textTertiary, fontFamily: "Inter_400Regular", lineHeight: 19 },
-  infoBox: {
-    flexDirection: "row", gap: 10, backgroundColor: colors.surfaceSecondary, borderRadius: 14, padding: 14, alignItems: "flex-start",
-  },
-  emptySelectionBox: { marginBottom: 8, borderWidth: 1, borderColor: colors.borderSubtle },
-  infoText: { flex: 1, fontSize: 13, color: colors.textTertiary, fontFamily: "Inter_400Regular", lineHeight: 20 },
+  emptySelectionBox: { marginBottom: 8 },
   selectionWrap: { flex: 1, flexDirection: "column" },
   filterRow: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 },
   filterChip: {

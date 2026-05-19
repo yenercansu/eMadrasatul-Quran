@@ -44,6 +44,7 @@ import { SaveButton } from "@/components/SaveButton";
 import { HifzSegmentedControl } from "@/components/hifz/HifzUI";
 import { AppDialog } from "@/components/AppDialog";
 import { Tag } from "@/components/Tag";
+import { InlineNotice } from "@/components/InlineNotice";
 import { MushafPageView } from "@/components/mushaf/MushafPageView";
 import { TajweedWordsText } from "@/components/TajweedText";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -2402,15 +2403,16 @@ export default function SurahScreen() {
 
       {/* ── Content ──────────────────────────────────────────── */}
       {loading ? (
-        <ActivityIndicator color="#1A1A1A" style={{ flex: 1 }} size="large" />
+        <ActivityIndicator color={colors.accentPrimary} style={{ flex: 1 }} size="large" />
       ) : loadError ? (
         <View style={scr.errorState}>
-          <Feather name="alert-circle" size={34} color="#B91C1C" />
-          <Text style={scr.errorTitle}>Could not load this surah</Text>
-          <Text style={scr.errorText}>{loadError}</Text>
-          <TouchableOpacity style={scr.errorRetry} onPress={loadData} activeOpacity={0.85}>
-            <Text style={scr.errorRetryText}>Retry</Text>
-          </TouchableOpacity>
+          <InlineNotice
+            variant="error"
+            title="Could not load this surah"
+            description={loadError}
+            actionLabel="Retry"
+            onActionPress={loadData}
+          />
         </View>
       ) : settings.mushafMode ? (
         // Split view: TOP fixed Mushaf panel, BOTTOM scrollable translations.
@@ -2749,23 +2751,10 @@ const screenStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create
   },
   errorState: {
     flex: 1,
-    alignItems: "center",
     justifyContent: "center",
     padding: 24,
     backgroundColor: colors.backgroundPrimary,
   },
-  errorTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary, fontFamily: "Inter_700Bold", marginTop: 14 },
-  errorText: { fontSize: 13, lineHeight: 20, color: colors.textTertiary, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 6 },
-  errorRetry: {
-    height: 42,
-    paddingHorizontal: 18,
-    borderRadius: 11,
-    backgroundColor: colors.accentPrimary,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 18,
-  },
-  errorRetryText: { fontSize: 13, color: colors.surfaceElevated, fontFamily: "Inter_700Bold" },
   pageSlideViewport: {
     flex: 1,
     overflow: "hidden",

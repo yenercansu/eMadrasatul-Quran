@@ -16,6 +16,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { getJuzAyahs, JUZ_STARTS, SURAH_DATA, type AyahRef } from "@/constants/surahData";
 import { searchByType } from "@/services/search";
+import { useColors } from "@/hooks/useColors";
 import { ActionPill } from "@/components/ActionPill";
 import { SelectChip } from "@/components/SelectChip";
 import { ValuePill } from "@/components/ValuePill";
@@ -23,6 +24,8 @@ import { useQuran } from "@/contexts/QuranContext";
 import { HifzStepper } from "@/components/hifz/HifzUI";
 import { BackButton } from "@/components/BackButton";
 import { AppDialog } from "@/components/AppDialog";
+import { MemorizedBadge } from "@/components/SurahCard";
+import { InlineNotice } from "@/components/InlineNotice";
 
 const TOTAL_QURAN_AYAHS = 6236;
 
@@ -166,6 +169,8 @@ function AyahSlider({
   value: number; onChange: (v: number) => void; maxValue?: number;
   onDragStart?: () => void; onDragEnd?: () => void;
 }) {
+  const c = useColors();
+  const s = useMemo(() => createStyles(c), [c]);
   const sliderRef = useRef<View>(null);
   const trackWidthRef = useRef(0);
   const [trackWidth, setTrackWidth] = useState(0);
@@ -252,6 +257,7 @@ interface Props {
   startAtAyahSelection?: boolean;
   initialSurahNumber?: number;
   initialJuz?: number;
+  initialPaceStep?: 0 | 1 | 2 | 3;
   modalAnimationType?: "none" | "slide" | "fade";
   paceDaysPerWeek?: number;
   paceTargetDaysPerWeek?: number;
@@ -271,6 +277,7 @@ export function AyahRangeModal({
   startAtAyahSelection = false,
   initialSurahNumber,
   initialJuz,
+  initialPaceStep,
   modalAnimationType = "slide",
   paceDaysPerWeek = 7,
   paceTargetDaysPerWeek = paceDaysPerWeek,
@@ -279,6 +286,8 @@ export function AyahRangeModal({
   onConfirm,
   onClose,
 }: Props) {
+  const c = useColors();
+  const s = useMemo(() => createStyles(c), [c]);
   const insets = useSafeAreaInsets();
   const { removeMemorizedAyahKeys } = useQuran();
   const { width: windowWidth } = useWindowDimensions();
@@ -323,7 +332,7 @@ export function AyahRangeModal({
       const initialStep = (startAtPaceDate ? 0 : startAtWeeklyGoal && initialSelection ? 3 : startAtAyahSelection ? 2 : 1) as 0 | 1 | 2 | 3;
       setStep(initialStep);
       setMaxStepReached(initialStep);
-      setPaceStep(0);
+      setPaceStep(initialPaceStep ?? 0);
       setPaceRangeTab(path);
       setSearch("");
       setSelectedSurah(
@@ -823,7 +832,7 @@ export function AyahRangeModal({
         activeOpacity={disabled ? 1 : 0.7}
       >
         {showMemorized ? (
-          <Feather name="check" size={11} color="#16A34A" />
+          <Feather name="check" size={11} color={c.appSuccess} />
         ) : (
           <Text
             style={[
@@ -1056,7 +1065,7 @@ export function AyahRangeModal({
           )}
           <View style={s.ultimateIntention}>
             <View style={s.ultimateCheck}>
-              <Feather name="check" size={14} color="#FFFFFF" strokeWidth={2.4} />
+              <Feather name="check" size={14} color={c.onAccent} strokeWidth={2.4} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.ultimateLabel}>Ultimate Intention</Text>
@@ -1128,19 +1137,19 @@ export function AyahRangeModal({
               <Text style={s.timelineLabel}>Today</Text>
               <Text style={s.timelineValue}>{formatPaceOptionLabel(capacityOptions.find(o => o.ayahsPerWeek === ayahsPerWeek)?.label ?? "")}</Text>
             </View>
-            <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color="#C8C0B0" /></View>
+            <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color={c.accentSoft} /></View>
             <View style={s.timelineRow}>
               <View style={s.timelineDot} />
               <Text style={s.timelineLabel}>In ~{formatWeeks(Math.max(1, Math.round(peakRampWeeks / 2)))}</Text>
               <Text style={s.timelineValue}>{formatPaceOptionLabel("½ page daily")}</Text>
             </View>
-            <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color="#C8C0B0" /></View>
+            <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color={c.accentSoft} /></View>
             <View style={s.timelineRow}>
               <View style={s.timelineDot} />
               <Text style={s.timelineLabel}>In ~{formatWeeks(peakRampWeeks)}</Text>
               <Text style={s.timelineValue}>{selectedPeakLabel.replace(" daily", "/day")}</Text>
             </View>
-            <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color="#C8C0B0" /></View>
+            <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color={c.accentSoft} /></View>
             <View style={s.timelineRow}>
               <View style={[s.timelineDot, s.timelineDotMuted]} />
               <Text style={s.timelineLabel}>Estimated completion</Text>
@@ -1184,11 +1193,11 @@ export function AyahRangeModal({
       </View>
       {renderProgressBar()}
       <View style={s.searchWrap}>
-        <Feather name="search" size={15} color="#9A9A9A" />
+        <Feather name="search" size={15} color={c.textTertiary} />
         <TextInput
           style={s.searchInput}
           placeholder="Search surahs..."
-          placeholderTextColor="#9A9A9A"
+          placeholderTextColor={c.textTertiary}
           value={search}
           onChangeText={setSearch}
           clearButtonMode="while-editing"
@@ -1220,19 +1229,15 @@ export function AyahRangeModal({
               <View style={s.listRowInfo}>
                 <Text style={s.listRowTitle}>{item.englishName}</Text>
                 <Text style={s.listRowSub}>{item.ayahCount} ayahs</Text>
-                {isCompleted && (
-                  <View style={s.completedListTag}>
-                    <Text style={s.completedListTagText}>Completed</Text>
-                  </View>
-                )}
+                {isCompleted && <MemorizedBadge />}
               </View>
               <Text style={s.listRowArabic}>{item.name}</Text>
               {isSelected ? (
                 <View style={s.checkCircle}>
-                  <Feather name="check" size={14} color="#FFFFFF" />
+                  <Feather name="check" size={14} color={c.onAccent} />
                 </View>
               ) : (
-                <Feather name="chevron-right" size={16} color="#C0C0C0" />
+                <Feather name="chevron-right" size={16} color={c.disabledText} />
               )}
             </TouchableOpacity>
           );
@@ -1288,18 +1293,14 @@ export function AyahRangeModal({
                   {group.name ? <Text style={s.juzNameText}>{group.name}</Text> : null}
                 </View>
                 <Text style={s.listRowSub}>{subText}</Text>
-                {isJuzCompleted && (
-                  <View style={s.completedListTag}>
-                    <Text style={s.completedListTagText}>Completed</Text>
-                  </View>
-                )}
+                {isJuzCompleted && <MemorizedBadge />}
               </View>
               {isSelected ? (
                 <View style={s.checkCircle}>
-                  <Feather name="check" size={14} color="#FFFFFF" />
+                  <Feather name="check" size={14} color={c.onAccent} />
                 </View>
               ) : (
-                <Feather name="chevron-right" size={16} color="#C0C0C0" />
+                <Feather name="chevron-right" size={16} color={c.disabledText} />
               )}
             </TouchableOpacity>
           );
@@ -1335,11 +1336,11 @@ export function AyahRangeModal({
           </TouchableOpacity>
         </View>
         <View style={s.searchWrap}>
-          <Feather name="search" size={15} color="#9A9A9A" />
+          <Feather name="search" size={15} color={c.textTertiary} />
           <TextInput
             style={s.searchInput}
             placeholder={paceRangeTab === "surah" ? "Search surahs..." : "Search juz..."}
-            placeholderTextColor="#9A9A9A"
+            placeholderTextColor={c.textTertiary}
             value={search}
             onChangeText={setSearch}
             clearButtonMode="while-editing"
@@ -1379,9 +1380,9 @@ export function AyahRangeModal({
                   </View>
                   <Text style={s.listRowArabic}>{item.name}</Text>
                   {isSelected ? (
-                    <View style={s.checkCircle}><Feather name="check" size={14} color="#FFFFFF" /></View>
+                    <View style={s.checkCircle}><Feather name="check" size={14} color={c.onAccent} /></View>
                   ) : (
-                    <Feather name="chevron-right" size={16} color="#C0C0C0" />
+                    <Feather name="chevron-right" size={16} color={c.disabledText} />
                   )}
                 </TouchableOpacity>
               );
@@ -1423,9 +1424,9 @@ export function AyahRangeModal({
                 <Text style={s.listRowSub}>{subText}</Text>
               </View>
               {isSelected ? (
-                <View style={s.checkCircle}><Feather name="check" size={14} color="#FFFFFF" /></View>
+                <View style={s.checkCircle}><Feather name="check" size={14} color={c.onAccent} /></View>
               ) : (
-                <Feather name="chevron-right" size={16} color="#C0C0C0" />
+                <Feather name="chevron-right" size={16} color={c.disabledText} />
               )}
             </TouchableOpacity>
           );
@@ -1527,7 +1528,7 @@ export function AyahRangeModal({
               activeOpacity={startAtPaceDate ? 1 : 0.8}
             >
               {firstIsSet ? (
-                <Feather name="check-circle" size={10} color="#16A34A" style={s.phaseCardIcon} />
+                <Feather name="check-circle" size={10} color={c.appSuccess} style={s.phaseCardIcon} />
               ) : (
                 <View style={s.phaseDot} />
               )}
@@ -1535,7 +1536,7 @@ export function AyahRangeModal({
               <Text style={firstIsSet ? s.phaseValue : s.phasePlaceholder}>{firstLabel}</Text>
             </TouchableOpacity>
 
-            <Feather name="arrow-right" size={14} color="#C0C0C0" style={s.phaseArrow} />
+            <Feather name="arrow-right" size={14} color={c.disabledText} style={s.phaseArrow} />
 
             {startAtPaceDate ? (
               <View style={[s.phaseCard, lastIsSet && s.phaseCardActive]}>
@@ -1549,9 +1550,9 @@ export function AyahRangeModal({
                   </>
                 ) : (
                   <>
-                    <View style={[s.phaseDot, { backgroundColor: "#D6D3D1" }]} />
-                    <Text style={[s.phaseLabel, { color: "#C0C0C0" }]}>LAST AYAH</Text>
-                    <Text style={[s.phasePlaceholder, { color: "#D6D3D1" }]}>Auto-calculated</Text>
+                    <View style={[s.phaseDot, { backgroundColor: c.borderSubtle }]} />
+                    <Text style={[s.phaseLabel, { color: c.disabledText }]}>LAST AYAH</Text>
+                    <Text style={[s.phasePlaceholder, { color: c.borderSubtle }]}>Auto-calculated</Text>
                   </>
                 )}
               </View>
@@ -1569,17 +1570,17 @@ export function AyahRangeModal({
                   style={[
                     s.phaseDot,
                     lastIsSet
-                      ? { backgroundColor: "#1A1A1A" }
+                      ? { backgroundColor: c.accentPrimary }
                       : firstIsSet
-                      ? { backgroundColor: "#A8A29E" }
-                      : { backgroundColor: "#D6D3D1" },
+                      ? { backgroundColor: c.textTertiary }
+                      : { backgroundColor: c.borderSubtle },
                   ]}
                 />
-                <Text style={[s.phaseLabel, !firstIsSet && { color: "#C0C0C0" }]}>LAST AYAH</Text>
+                <Text style={[s.phaseLabel, !firstIsSet && { color: c.disabledText }]}>LAST AYAH</Text>
                 <Text
                   style={[
                     lastIsSet ? s.phaseValue : s.phasePlaceholder,
-                    !firstIsSet && { color: "#D6D3D1" },
+                    !firstIsSet && { color: c.borderSubtle },
                   ]}
                 >
                   {lastLabel}
@@ -1591,46 +1592,57 @@ export function AyahRangeModal({
           {/* Hint row */}
           {startAtPaceDate ? (
             firstIsSet && lastIsSet ? (
-              <View style={s.autoRangeBanner}>
-                <Feather name="check-circle" size={12} color="#16A34A" />
-                <Text style={s.autoRangeBannerText}>
-                  {`Range set · ${totalRangeAyahs} ayahs (Ayah ${firstAyah!.ayahNumber} → ${lastAyah!.ayahNumber})`}
-                </Text>
-              </View>
+              <InlineNotice
+                variant="success"
+                density="compact"
+                description={`Range set · ${totalRangeAyahs} ayahs (Ayah ${firstAyah!.ayahNumber} → ${lastAyah!.ayahNumber})`}
+                style={{ marginBottom: 10 }}
+              />
             ) : (
-              <View style={s.hintRow}>
-                <Feather name="info" size={12} color="#9A9A9A" />
-                <Text style={s.hintText}>Tap your starting ayah — last ayah will auto-calculate based on your goal</Text>
-              </View>
+              <InlineNotice
+                variant="info"
+                density="compact"
+                description="Tap your starting ayah — last ayah will auto-calculate based on your goal"
+                style={{ marginBottom: 10 }}
+              />
             )
           ) : firstIsSet && lastIsSet ? (
-            <View style={s.hintRow}>
-              <View style={s.hintDot} />
-              <Text style={s.hintText}>{`= range (${between} ayahs between)`}</Text>
-            </View>
+            <InlineNotice
+              variant="neutral"
+              density="compact"
+              icon={false}
+              description={`= range (${between} ayahs between)`}
+              style={{ marginBottom: 10 }}
+            />
           ) : (
-            <View style={s.hintRow}>
-              <Feather name="clock" size={12} color="#9A9A9A" />
-              <Text style={s.hintText}>{hintText()}</Text>
-            </View>
+            <InlineNotice
+              variant="info"
+              density="compact"
+              icon="clock"
+              description={hintText()}
+              style={{ marginBottom: 10 }}
+            />
           )}
 
           {/* Memorized banner — surah path, first phase only */}
           {activePath === "surah" && (startAtPaceDate ? !firstIsSet : activePhase === "first") && memorizedRange && (
-            <View style={s.memorizedBanner}>
-              <Feather name="check-circle" size={14} color="#16A34A" />
-              <Text style={s.memorizedBannerText}>{memorizedRange} already memorized</Text>
-            </View>
+            <InlineNotice
+              variant="success"
+              density="compact"
+              description={`${memorizedRange} already memorized`}
+              style={{ marginBottom: 10 }}
+            />
           )}
 
           {/* Revision intent banner — entire selected range is memorized */}
           {isRevisionMode && (
-            <View style={s.revisionIntentBanner}>
-              <Feather name="refresh-cw" size={13} color="#92400E" />
-              <Text style={s.revisionIntentBannerText}>
-                This memorized range will become a revision track.
-              </Text>
-            </View>
+            <InlineNotice
+              variant="warning"
+              density="compact"
+              icon="refresh-cw"
+              description="This memorized range will become a revision track."
+              style={{ marginBottom: 10 }}
+            />
           )}
 
           {/* Ayah grid */}
@@ -1731,15 +1743,17 @@ export function AyahRangeModal({
           <Text style={s.targetNum}>{clampedAyahsPerWeek}</Text>
           <Text style={s.targetUnit}>{isRevision ? "Ayahs to revisit" : "Ayahs per week"}</Text>
 
-          <View style={[s.dynamicLimitChip, isRevision && s.dynamicLimitChipRevision]}>
-            <Feather name={isRevision ? "refresh-cw" : "info"} size={12} color={isRevision ? "#92400E" : "#8E8E93"} />
-            <Text style={[s.dynamicLimitText, isRevision && s.dynamicLimitTextRevision]}>
-              {isRevision
-                ? <>All <Text style={[s.dynamicLimitBold, s.dynamicLimitTextRevision]}>{totalRangeAyahs}</Text> selected ayahs are already memorized</>
+          <InlineNotice
+            variant={isRevision ? "warning" : "info"}
+            density="compact"
+            icon={isRevision ? "refresh-cw" : "info"}
+            description={
+              isRevision
+                ? <>All <Text style={s.dynamicLimitBold}>{totalRangeAyahs}</Text> selected ayahs are already memorized</>
                 : <>Max <Text style={s.dynamicLimitBold}>{dynamicMax}</Text> ayahs available in your selected range</>
-              }
-            </Text>
-          </View>
+            }
+            style={{ marginBottom: 18 }}
+          />
 
           <View style={s.sliderRangeRow}>
             <Text style={s.sliderRangeText}>1</Text>
@@ -1755,7 +1769,7 @@ export function AyahRangeModal({
 
           <View style={[s.weeklyPreviewCard, isRevision && s.weeklyPreviewCardRevision]}>
             <View style={s.weeklyPreviewIcon}>
-              <Feather name={isRevision ? "refresh-cw" : "target"} size={15} color={isRevision ? "#92400E" : "#1A1A1A"} />
+              <Feather name={isRevision ? "refresh-cw" : "target"} size={15} color={isRevision ? c.appWarning : c.textPrimary} />
             </View>
             <View style={s.weeklyPreviewTextWrap}>
               <Text style={[s.weeklyPreviewLabel, isRevision && s.weeklyPreviewLabelRevision]}>
@@ -1773,7 +1787,7 @@ export function AyahRangeModal({
           {/* Finish date card — updates live as slider moves */}
           {remainingRangeAyahs > 0 && (
             <View style={s.finishDateCard}>
-              <Feather name="calendar" size={18} color="#78716C" style={{ marginBottom: 6 }} />
+              <Feather name="calendar" size={18} color={c.textTertiary} style={{ marginBottom: 6 }} />
               <Text style={s.finishDateCardLabel}>FINISH DATE</Text>
               <Text style={s.finishDateCardDate}>
                 {(() => {
@@ -1933,7 +1947,7 @@ export function AyahRangeModal({
               <Feather
                 name="rotate-ccw"
                 size={14}
-                color="#16A34A"
+                color={c.appSuccess}
               />
               <Text style={[s.insightTitle, s.insightTitleFullHifz]}>Built-in Revision Support</Text>
             </View>
@@ -1983,15 +1997,16 @@ export function AyahRangeModal({
   );
 }
 
-const s = StyleSheet.create({
-  sheet: { flex: 1, backgroundColor: "#F5F0E8" },
+function createStyles(c: ReturnType<typeof useColors>) {
+  return StyleSheet.create({
+  sheet: { flex: 1, backgroundColor: c.hifzBackground },
 
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 8,
     paddingBottom: 12,
-    backgroundColor: "#F5F0E8",
+    backgroundColor: c.hifzBackground,
   },
   navBtn: {
     width: 64,
@@ -2003,13 +2018,13 @@ const s = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_700Bold",
     textAlign: "center",
   },
   cancelText: {
     fontSize: 16,
-    color: "#8A8070",
+    color: c.textTertiary,
     fontFamily: "Inter_400Regular",
     textAlign: "right",
   },
@@ -2019,7 +2034,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     marginHorizontal: 16,
     marginVertical: 12,
-    backgroundColor: "#F0ECE4",
+    backgroundColor: c.surfaceSecondary,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -2028,7 +2043,7 @@ const s = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_400Regular",
   },
 
@@ -2038,48 +2053,33 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 13,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E7E5DB",
+    borderBottomColor: c.borderSubtle,
     gap: 12,
   },
   listRowInfo: { flex: 1 },
   listRowTitle: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_600SemiBold",
   },
   listRowSub: {
     fontSize: 12,
-    color: "#78716C",
+    color: c.textTertiary,
     fontFamily: "Inter_400Regular",
     marginTop: 2,
   },
-  listRowArabic: { fontSize: 16, color: "#78716C" },
+  listRowArabic: { fontSize: 16, color: c.textTertiary },
   checkCircle: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.accentPrimary,
     alignItems: "center",
     justifyContent: "center",
   },
   juzTitleRow: { flexDirection: "row", alignItems: "baseline", gap: 8 },
-  juzNameText: { fontSize: 13, color: "#78716C", fontFamily: "Inter_400Regular" },
-  completedListTag: {
-    alignSelf: "flex-start",
-    backgroundColor: "#F0FAF4",
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    marginTop: 4,
-  },
-  completedListTagText: {
-    fontSize: 11,
-    color: "#16A34A",
-    fontFamily: "Inter_600SemiBold",
-  },
+  juzNameText: { fontSize: 13, color: c.textTertiary, fontFamily: "Inter_400Regular" },
 
   // ── Step 2 ─────────────────────────────────────────────────────────────────
   ayahScrollContent: { paddingHorizontal: 16, paddingBottom: 24 },
@@ -2087,31 +2087,31 @@ const s = StyleSheet.create({
   infoCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: c.surfaceElevated,
     borderRadius: 12,
     padding: 14,
     marginVertical: 12,
     borderWidth: 1,
-    borderColor: "#E7E5DB",
+    borderColor: c.borderSubtle,
   },
   infoCardTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_700Bold",
   },
   infoCardSub: {
     fontSize: 12,
-    color: "#78716C",
+    color: c.textTertiary,
     fontFamily: "Inter_400Regular",
     marginTop: 2,
   },
-  infoCardArabic: { fontSize: 20, color: "#78716C", marginLeft: 12 },
+  infoCardArabic: { fontSize: 20, color: c.textTertiary, marginLeft: 12 },
   juzBadge: {
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: "#F0ECE4",
+    backgroundColor: c.surfaceSecondary,
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 12,
@@ -2119,7 +2119,7 @@ const s = StyleSheet.create({
   juzBadgeText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_700Bold",
   },
 
@@ -2131,27 +2131,27 @@ const s = StyleSheet.create({
   },
   phaseCard: {
     flex: 1,
-    backgroundColor: "#F6F2EA",
+    backgroundColor: c.surfaceSecondary,
     borderRadius: 10,
     padding: 10,
     borderWidth: 1.5,
     borderColor: "transparent",
     minHeight: 68,
   },
-  phaseCardActive: { borderColor: "#1A1A1A", backgroundColor: "#FFFFFF" },
+  phaseCardActive: { borderColor: c.textPrimary, backgroundColor: c.surfaceElevated },
   phaseCardMuted: { opacity: 0.5 },
   phaseCardIcon: { marginBottom: 4 },
   phaseDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#A8A29E",
+    backgroundColor: c.textTertiary,
     marginBottom: 4,
   },
   phaseLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#78716C",
+    color: c.textTertiary,
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.8,
     textTransform: "uppercase",
@@ -2160,91 +2160,53 @@ const s = StyleSheet.create({
   phaseValue: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_600SemiBold",
     lineHeight: 18,
   },
   phasePlaceholder: {
     fontSize: 13,
-    color: "#A8A29E",
+    color: c.textTertiary,
     fontFamily: "Inter_400Regular",
   },
   phaseArrow: { alignSelf: "center", flexShrink: 0 },
-
-  hintRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 10,
-  },
-  hintDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#C9A02A",
-  },
-  hintText: {
-    fontSize: 12,
-    color: "#78716C",
-    fontFamily: "Inter_400Regular",
-    flex: 1,
-  },
-
-  memorizedBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#F0FDF4",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
-  },
-  memorizedBannerText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#16A34A",
-    fontFamily: "Inter_600SemiBold",
-  },
 
   ayahGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 6 },
   ayahBubble: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#EEE8DF",
+    backgroundColor: c.appStone,
     alignItems: "center",
     justifyContent: "center",
   },
-  ayahBubbleSelected: { backgroundColor: "#1A1A1A" },
-  ayahBubbleInRange: { backgroundColor: "#C9B9A4" },
-  ayahBubbleDisabled: { backgroundColor: "#F0EDE8", opacity: 0.45 },
+  ayahBubbleSelected: { backgroundColor: c.accentPrimary },
+  ayahBubbleInRange: { backgroundColor: c.accentSoft },
+  ayahBubbleDisabled: { backgroundColor: c.disabledBackground, opacity: 0.45 },
   ayahBubbleMemorized: {
-    backgroundColor: "#F0FAF4",
+    backgroundColor: c.successSoft,
     borderWidth: 1.5,
-    borderColor: "#16A34A",
+    borderColor: c.appSuccess,
   },
   ayahBubbleMemorizedDisabled: {
-    backgroundColor: "#F0FAF4",
+    backgroundColor: c.successSoft,
     borderWidth: 1,
-    borderColor: "#A7D8B5",
+    borderColor: c.appSuccess,
     opacity: 0.55,
   },
   ayahBubbleText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_600SemiBold",
   },
-  ayahBubbleTextSelected: { color: "#FFFFFF" },
-  ayahBubbleTextInRange: { color: "#5C3D1A" },
-  ayahBubbleTextDisabled: { color: "#C0C0C0" },
+  ayahBubbleTextSelected: { color: c.onAccent },
+  ayahBubbleTextInRange: { color: c.textSecondary },
+  ayahBubbleTextDisabled: { color: c.disabledText },
 
   gridCaption: {
     fontSize: 12,
-    color: "#A8A29E",
+    color: c.textTertiary,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     marginBottom: 10,
@@ -2258,36 +2220,36 @@ const s = StyleSheet.create({
     marginBottom: 10,
     paddingBottom: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E7E5DB",
+    borderBottomColor: c.borderSubtle,
   },
   juzGroupTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_700Bold",
   },
-  juzGroupArabic: { fontSize: 16, color: "#78716C" },
+  juzGroupArabic: { fontSize: 16, color: c.textTertiary },
 
   confirmWrap: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    backgroundColor: "rgba(245,240,232,0.96)",
+    backgroundColor: c.overlayChrome,
   },
   confirmBtn: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.accentPrimary,
     borderRadius: 16,
     minHeight: 56,
     alignItems: "center",
     justifyContent: "center",
   },
-  confirmBtnDisabled: { backgroundColor: "#E8E2D8" },
+  confirmBtnDisabled: { backgroundColor: c.disabledBackground },
   confirmBtnText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#FAF7F2",
+    color: c.onAccent,
     fontFamily: "Inter_700Bold",
   },
-  confirmBtnTextDisabled: { color: "#B0A898" },
+  confirmBtnTextDisabled: { color: c.disabledText },
 
   // ── Progress bar ────────────────────────────────────────────────────────────
   stepProgress: {
@@ -2295,7 +2257,7 @@ const s = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 0,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#DDD6C8",
+    borderBottomColor: c.borderSubtle,
   },
   stepProgressTrack: {
     flexDirection: "row",
@@ -2306,10 +2268,10 @@ const s = StyleSheet.create({
     flex: 1,
     height: 3,
     borderRadius: 2,
-    backgroundColor: "#E7E5DB",
+    backgroundColor: c.borderSubtle,
   },
   stepSegFilled: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.accentPrimary,
   },
   stepLabels: {
     flexDirection: "row",
@@ -2326,7 +2288,7 @@ const s = StyleSheet.create({
     width: "100%" as any,
     height: 2,
     borderRadius: 2,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.accentPrimary,
   },
   stepLabelCell: {
     flex: 1,
@@ -2335,15 +2297,15 @@ const s = StyleSheet.create({
   stepLabelText: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
-    color: "#C8C0B0",
+    color: c.accentSoft,
   },
   stepLabelActive: {
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_700Bold",
     fontSize: 12,
   },
   stepLabelTappable: {
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_600SemiBold",
     fontSize: 12,
   },
@@ -2363,7 +2325,7 @@ const s = StyleSheet.create({
   weeklyGoalTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_700Bold",
     textAlign: "center",
     marginTop: 4,
@@ -2371,45 +2333,39 @@ const s = StyleSheet.create({
   },
 
   targetLabel: {
-    fontSize: 12, fontWeight: "700", color: "#78716C",
+    fontSize: 12, fontWeight: "700", color: c.textTertiary,
     letterSpacing: 1.5, fontFamily: "Inter_700Bold",
     textTransform: "uppercase", textAlign: "center", marginBottom: 6,
   },
   targetNum: {
-    fontSize: 80, fontWeight: "700", color: "#1A1A1A",
+    fontSize: 80, fontWeight: "700", color: c.textPrimary,
     fontFamily: "Inter_700Bold", textAlign: "center", lineHeight: 90,
   },
   targetUnit: {
-    fontSize: 15, color: "#78716C", fontFamily: "Inter_400Regular",
+    fontSize: 15, color: c.textTertiary, fontFamily: "Inter_400Regular",
     textAlign: "center", marginBottom: 10,
   },
-  dynamicLimitChip: {
-    flexDirection: "row", alignItems: "flex-start", gap: 7,
-    backgroundColor: "#F6F2EA", borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 9, marginBottom: 14,
-  },
-  dynamicLimitText: { flex: 1, fontSize: 12, color: "#78716C", fontFamily: "Inter_400Regular", lineHeight: 17 },
-  dynamicLimitBold: { fontFamily: "Inter_700Bold", color: "#1A1A1A" },
+  dynamicLimitBold: { fontFamily: "Inter_700Bold", color: c.textPrimary },
   sliderRangeRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 2 },
-  sliderRangeText: { fontSize: 12, color: "#A8A29E", fontFamily: "Inter_400Regular" },
+  sliderRangeText: { fontSize: 12, color: c.textTertiary, fontFamily: "Inter_400Regular" },
   sliderContainer: { height: 44, justifyContent: "center", marginBottom: 4 },
-  sliderTrack: { height: 3, backgroundColor: "#E7E5DB", borderRadius: 2 },
-  sliderFill: { position: "absolute", height: 3, backgroundColor: "#1A1A1A", borderRadius: 2 },
+  sliderTrack: { height: 3, backgroundColor: c.borderSubtle, borderRadius: 2 },
+  sliderFill: { position: "absolute", height: 3, backgroundColor: c.accentPrimary, borderRadius: 2 },
   sliderThumb: {
     position: "absolute", top: -11.5,
     width: 26, height: 26, borderRadius: 13,
-    backgroundColor: "#1A1A1A",
-    shadowColor: "#000", shadowOpacity: 0.2,
+    backgroundColor: c.accentPrimary,
+    shadowColor: c.shadowNeutral, shadowOpacity: 0.2,
     shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 4,
   },
   weeklyPreviewCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#EEE8DF",
+    backgroundColor: c.appStone,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#DED6C9",
+    borderColor: c.borderSubtle,
     paddingHorizontal: 14,
     paddingVertical: 13,
     marginBottom: 12,
@@ -2418,7 +2374,7 @@ const s = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: "#FDFBF7",
+    backgroundColor: c.backgroundPrimary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -2426,7 +2382,7 @@ const s = StyleSheet.create({
   weeklyPreviewLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#78716C",
+    color: c.textTertiary,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1.1,
     textTransform: "uppercase",
@@ -2435,17 +2391,17 @@ const s = StyleSheet.create({
   weeklyPreviewRange: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_700Bold",
   },
   weeklyPreviewSub: {
     fontSize: 12,
-    color: "#78716C",
+    color: c.textTertiary,
     fontFamily: "Inter_400Regular",
     marginTop: 2,
   },
   finishDateCard: {
-    backgroundColor: "#F6F2EA",
+    backgroundColor: c.surfaceSecondary,
     borderRadius: 14,
     paddingVertical: 16,
     paddingHorizontal: 16,
@@ -2455,7 +2411,7 @@ const s = StyleSheet.create({
   finishDateCardLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#78716C",
+    color: c.textTertiary,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1.2,
     textTransform: "uppercase",
@@ -2464,102 +2420,75 @@ const s = StyleSheet.create({
   finishDateCardDate: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_700Bold",
     marginBottom: 4,
   },
   finishDateCardSub: {
     fontSize: 12,
-    color: "#78716C",
+    color: c.textTertiary,
     fontFamily: "Inter_400Regular",
   },
 
   commitmentLabel: {
-    fontSize: 12, fontWeight: "700", color: "#78716C", letterSpacing: 1.2,
+    fontSize: 12, fontWeight: "700", color: c.textTertiary, letterSpacing: 1.2,
     fontFamily: "Inter_700Bold", textTransform: "uppercase",
     textAlign: "center", marginTop: 12, marginBottom: 10,
   },
   dots: { flexDirection: "row", gap: 7, justifyContent: "center", marginBottom: 22 },
-  dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: "#D6D3D1" },
-  dotFilled: { backgroundColor: "#1A1A1A" },
+  dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: c.borderSubtle },
+  dotFilled: { backgroundColor: c.accentPrimary },
   summaryCard: {
-    backgroundColor: "#FDFBF7", borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: "#D6D3D1",
+    backgroundColor: c.backgroundPrimary, borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: c.borderSubtle,
     paddingHorizontal: 16, marginBottom: 20,
   },
   summaryRow: {
     flexDirection: "row", alignItems: "center",
     justifyContent: "space-between", paddingVertical: 12,
   },
-  summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: "#D6D3D1" },
-  summaryLabel: { fontSize: 13, color: "#78716C", fontFamily: "Inter_400Regular" },
-  summaryValue: { fontSize: 13, fontWeight: "600", color: "#1A1A1A", fontFamily: "Inter_600SemiBold" },
+  summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: c.borderSubtle },
+  summaryLabel: { fontSize: 13, color: c.textTertiary, fontFamily: "Inter_400Regular" },
+  summaryValue: { fontSize: 13, fontWeight: "600", color: c.textPrimary, fontFamily: "Inter_600SemiBold" },
   summaryValueBold: { fontFamily: "Inter_700Bold" },
   infoPager: { marginBottom: 12, overflow: "hidden" },
   infoPagerDots: { flexDirection: "row", justifyContent: "center", gap: 5, marginTop: 8 },
-  infoPagerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#D6D3D1" },
-  infoPagerDotActive: { backgroundColor: "#1A1A1A" },
-  wkInfoCard: { backgroundColor: "#F6F2EA", borderRadius: 12, padding: 16 },
+  infoPagerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: c.borderSubtle },
+  infoPagerDotActive: { backgroundColor: c.accentPrimary },
+  wkInfoCard: { backgroundColor: c.surfaceSecondary, borderRadius: 12, padding: 16 },
   wkInfoCardTitle: {
-    fontSize: 12, fontWeight: "700", color: "#1A1A1A", fontFamily: "Inter_700Bold",
+    fontSize: 12, fontWeight: "700", color: c.textPrimary, fontFamily: "Inter_700Bold",
     letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4,
   },
-  wkInfoCardText: { fontSize: 12, color: "#71717A", fontFamily: "Inter_400Regular", lineHeight: 20 },
-  wkInfoCardBold: { fontFamily: "Inter_700Bold", color: "#1A1A1A" },
+  wkInfoCardText: { fontSize: 12, color: c.textTertiary, fontFamily: "Inter_400Regular", lineHeight: 20 },
+  wkInfoCardBold: { fontFamily: "Inter_700Bold", color: c.textPrimary },
   estimateCard: {
-    backgroundColor: "#1A1A1A", borderRadius: 12, padding: 16, marginBottom: 16, gap: 4,
+    backgroundColor: c.accentPrimary, borderRadius: 12, padding: 16, marginBottom: 16, gap: 4,
   },
   estimateLabel: {
-    fontSize: 12, fontWeight: "700", color: "rgba(255,255,255,0.55)", fontFamily: "Inter_700Bold",
+    fontSize: 12, fontWeight: "700", color: c.onAccent, fontFamily: "Inter_700Bold",
     letterSpacing: 0.8, textTransform: "uppercase",
   },
-  estimateText: { fontSize: 14, color: "#FFFFFF", fontFamily: "Inter_400Regular", lineHeight: 22 },
-  estimateBold: { fontFamily: "Inter_700Bold", color: "#FFFFFF" },
+  estimateText: { fontSize: 14, color: c.onAccent, fontFamily: "Inter_400Regular", lineHeight: 22 },
+  estimateBold: { fontFamily: "Inter_700Bold", color: c.onAccent },
 
   // ── Revision mode styles ─────────────────────────────────────────────────────
-  revisionIntentBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#FEF3C7",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#FDE68A",
-  },
-  revisionIntentBannerText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#92400E",
-    fontFamily: "Inter_600SemiBold",
-    flex: 1,
-  },
-  dynamicLimitChipRevision: {
-    backgroundColor: "#FEF3C7",
-    borderWidth: 1,
-    borderColor: "#FDE68A",
-  },
-  dynamicLimitTextRevision: {
-    color: "#92400E",
-  },
   weeklyPreviewCardRevision: {
-    backgroundColor: "#FEF9EC",
-    borderColor: "#F59E0B",
+    backgroundColor: c.warningSoft,
+    borderColor: c.appWarning,
     borderWidth: 1,
   },
   weeklyPreviewLabelRevision: {
-    color: "#92400E",
+    color: c.appWarning,
   },
   commitmentLabelRevision: {
-    color: "#92400E",
+    color: c.appWarning,
   },
   revisionEstimateCard: {
-    backgroundColor: "#FEF3C7",
+    backgroundColor: c.warningSoft,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#FDE68A",
+    borderColor: c.appWarningLight,
     padding: 16,
     marginBottom: 16,
     gap: 6,
@@ -2567,14 +2496,14 @@ const s = StyleSheet.create({
   revisionEstimateTitle: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#92400E",
+    color: c.appWarning,
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.8,
     textTransform: "uppercase",
   },
   revisionEstimateText: {
     fontSize: 14,
-    color: "#78350F",
+    color: c.textSecondary,
     fontFamily: "Inter_400Regular",
     lineHeight: 22,
   },
@@ -2583,10 +2512,10 @@ const s = StyleSheet.create({
   paceDateContent: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 24, gap: 12 },
 
   paceSectionCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: c.surfaceElevated,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#E7E5DB",
+    borderColor: c.borderSubtle,
     padding: 16,
   },
   paceSectionTopRow: {
@@ -2598,16 +2527,16 @@ const s = StyleSheet.create({
   paceSectionLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#78716C",
+    color: c.textTertiary,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
   styleSectionCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: c.surfaceElevated,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#E7E5DB",
+    borderColor: c.borderSubtle,
     padding: 16,
   },
   stepOverviewTags: {
@@ -2623,17 +2552,17 @@ const s = StyleSheet.create({
   styleOption: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E7E5DB",
-    backgroundColor: "#FDFBF7",
+    borderColor: c.borderSubtle,
+    backgroundColor: c.backgroundPrimary,
     padding: 12,
   },
   styleOptionSelected: {
-    borderColor: "#1A1A1A",
-    backgroundColor: "#FFFFFF",
+    borderColor: c.textPrimary,
+    backgroundColor: c.surfaceElevated,
   },
   styleOptionDisabled: {
-    backgroundColor: "#F4EFE7",
-    borderColor: "#E7E5DB",
+    backgroundColor: c.disabledBackground,
+    borderColor: c.borderSubtle,
     opacity: 0.72,
   },
   styleOptionTop: {
@@ -2646,18 +2575,18 @@ const s = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: "#C9B9A4",
+    borderColor: c.accentSoft,
     alignItems: "center",
     justifyContent: "center",
   },
   radioOuterSelected: {
-    borderColor: "#1A1A1A",
+    borderColor: c.textPrimary,
   },
   radioInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.accentPrimary,
   },
   styleTextWrap: {
     flex: 1,
@@ -2665,13 +2594,13 @@ const s = StyleSheet.create({
   styleTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_700Bold",
     marginBottom: 2,
   },
   styleSub: {
     fontSize: 12,
-    color: "#78716C",
+    color: c.textTertiary,
     fontFamily: "Inter_400Regular",
     lineHeight: 17,
   },
@@ -2686,7 +2615,7 @@ const s = StyleSheet.create({
   miniBar: {
     width: 4,
     borderRadius: 2,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.accentPrimary,
   },
   peakCapacityGrid: {
     gap: 8,
@@ -2697,24 +2626,24 @@ const s = StyleSheet.create({
   paceChoiceCard: {
     minHeight: 64,
     borderRadius: 16,
-    backgroundColor: "#EDE8DE",
+    backgroundColor: c.surfaceSecondary,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,
   },
   paceChoiceCardSelected: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.accentPrimary,
   },
   paceChoiceText: {
     fontSize: 17,
     lineHeight: 22,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_700Bold",
     textAlign: "center",
   },
   paceChoiceTextSelected: {
-    color: "#FFFFFF",
+    color: c.onAccent,
   },
   peakCapacityRow: {
     flexDirection: "row",
@@ -2723,16 +2652,16 @@ const s = StyleSheet.create({
   gradualPanel: {
     marginTop: 12,
     borderRadius: 12,
-    backgroundColor: "#F6F2EA",
+    backgroundColor: c.surfaceSecondary,
     borderWidth: 1,
-    borderColor: "#E7E5DB",
+    borderColor: c.borderSubtle,
     padding: 12,
     gap: 12,
   },
   gradualLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#78716C",
+    color: c.textTertiary,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1,
     textTransform: "uppercase",
@@ -2745,42 +2674,42 @@ const s = StyleSheet.create({
     flex: 1,
     minHeight: 98,
     borderRadius: 16,
-    backgroundColor: "#EDE8DE",
+    backgroundColor: c.surfaceSecondary,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 8,
     paddingVertical: 16,
   },
   growthChoiceCardSelected: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.accentPrimary,
   },
   growthChoiceTitle: {
     fontSize: 14,
     lineHeight: 18,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_700Bold",
     textAlign: "center",
     marginBottom: 4,
   },
   growthChoiceTitleSelected: {
-    color: "#FFFFFF",
+    color: c.onAccent,
   },
   growthChoiceSub: {
     fontSize: 12,
     lineHeight: 14,
-    color: "#8A8070",
+    color: c.textTertiary,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
   },
   growthChoiceSubSelected: {
-    color: "#A8A29E",
+    color: c.textTertiary,
   },
   weekPreview: {
     borderRadius: 20,
-    backgroundColor: "#FFFCF8",
+    backgroundColor: c.surfaceElevated,
     borderWidth: 1,
-    borderColor: "#DDD6C8",
+    borderColor: c.borderSubtle,
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 0,
@@ -2795,29 +2724,29 @@ const s = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: "#8A8070",
+    backgroundColor: c.textTertiary,
   },
   timelineDotActive: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.accentPrimary,
   },
   timelineDotMuted: {
-    backgroundColor: "#C8C0B0",
+    backgroundColor: c.accentSoft,
   },
   timelineLabel: {
     flex: 1,
     fontSize: 12,
-    color: "#8A8070",
+    color: c.textTertiary,
     fontFamily: "Inter_400Regular",
   },
   timelineValue: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_700Bold",
     textAlign: "right",
   },
   timelineValueMuted: {
-    color: "#8A8070",
+    color: c.textTertiary,
   },
   timelineArrow: {
     paddingLeft: 1,
@@ -2844,21 +2773,21 @@ const s = StyleSheet.create({
   weekPreviewBar: {
     width: 8,
     borderRadius: 4,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.accentPrimary,
   },
   weekPreviewLabel: {
     fontSize: 8,
-    color: "#A8A29E",
+    color: c.textTertiary,
     fontFamily: "Inter_700Bold",
   },
   weekPreviewCount: {
     fontSize: 12,
-    color: "#78716C",
+    color: c.textTertiary,
     fontFamily: "Inter_700Bold",
   },
   weekPreviewText: {
     fontSize: 12,
-    color: "#78716C",
+    color: c.textTertiary,
     fontFamily: "Inter_400Regular",
     lineHeight: 17,
   },
@@ -2868,7 +2797,7 @@ const s = StyleSheet.create({
     fontSize: 20,
     lineHeight: 28,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_700Bold",
     textAlign: "center",
     marginTop: 0,
@@ -2876,18 +2805,18 @@ const s = StyleSheet.create({
   },
   paceStepSub: {
     fontSize: 13,
-    color: "#8A8070",
+    color: c.textTertiary,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     marginBottom: 24,
     lineHeight: 20,
   },
   paceStepSubStrong: {
-    color: "#5A5248",
+    color: c.textSecondary,
     fontFamily: "Inter_700Bold",
   },
   whyBox: {
-    backgroundColor: "#EDE8DE",
+    backgroundColor: c.surfaceSecondary,
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -2897,7 +2826,7 @@ const s = StyleSheet.create({
   whyTitle: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#8A8070",
+    color: c.textTertiary,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1.4,
     textTransform: "uppercase",
@@ -2906,12 +2835,12 @@ const s = StyleSheet.create({
   whyText: {
     fontSize: 13,
     lineHeight: 20,
-    color: "#3B3834",
+    color: c.textSecondary,
     fontFamily: "Inter_400Regular",
   },
   ultimateIntention: {
     borderTopWidth: 1,
-    borderTopColor: "#DDD6C8",
+    borderTopColor: c.borderSubtle,
     paddingTop: 12,
     marginTop: 20,
     flexDirection: "row",
@@ -2922,7 +2851,7 @@ const s = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 4,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.accentPrimary,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 2,
@@ -2930,7 +2859,7 @@ const s = StyleSheet.create({
   ultimateLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#8A8070",
+    color: c.textTertiary,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1.4,
     textTransform: "uppercase",
@@ -2940,13 +2869,13 @@ const s = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: "600",
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_600SemiBold",
   },
   ultimateSub: {
     fontSize: 12,
     lineHeight: 17,
-    color: "#8A8070",
+    color: c.textTertiary,
     fontFamily: "Inter_400Regular",
     marginTop: 2,
   },
@@ -2957,7 +2886,7 @@ const s = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 8,
     marginBottom: 4,
-    backgroundColor: "#F0ECE4",
+    backgroundColor: c.surfaceSecondary,
     borderRadius: 10,
     padding: 3,
     gap: 3,
@@ -2969,8 +2898,8 @@ const s = StyleSheet.create({
     borderRadius: 8,
   },
   rangeTabActive: {
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
+    backgroundColor: c.surfaceElevated,
+    shadowColor: c.shadowNeutral,
     shadowOpacity: 0.06,
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
@@ -2978,17 +2907,17 @@ const s = StyleSheet.create({
   },
   rangeTabText: {
     fontSize: 14,
-    color: "#78716C",
+    color: c.textTertiary,
     fontFamily: "Inter_600SemiBold",
   },
   rangeTabTextActive: {
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_700Bold",
   },
 
   // ── Forecast card ───────────────────────────────────────────────────────────
   forecastCard: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.accentPrimary,
     borderRadius: 18,
     paddingVertical: 20,
     paddingHorizontal: 20,
@@ -2998,7 +2927,7 @@ const s = StyleSheet.create({
   forecastLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#8A8070",
+    color: c.onAccent,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1.2,
     textTransform: "uppercase",
@@ -3007,25 +2936,25 @@ const s = StyleSheet.create({
   forecastTime: {
     fontSize: 32,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: c.onAccent,
     fontFamily: "Inter_700Bold",
     lineHeight: 38,
   },
   forecastDate: {
     fontSize: 13,
     fontStyle: "italic",
-    color: "#A8A29E",
+    color: c.onAccent,
     fontFamily: "Inter_400Regular",
   },
   forecastSub: {
     fontSize: 12,
-    color: "#8A8070",
+    color: c.onAccent,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     marginTop: 4,
   },
   forecastInfoCard: {
-    backgroundColor: "#EDE8DE",
+    backgroundColor: c.surfaceSecondary,
     borderRadius: 18,
     paddingHorizontal: 20,
     paddingVertical: 16,
@@ -3033,7 +2962,7 @@ const s = StyleSheet.create({
   forecastInfoLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#8A8070",
+    color: c.textTertiary,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1.5,
     textTransform: "uppercase",
@@ -3043,19 +2972,19 @@ const s = StyleSheet.create({
     fontSize: 22,
     lineHeight: 28,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_700Bold",
   },
   forecastInfoSub: {
     fontSize: 12,
     lineHeight: 18,
-    color: "#8A8070",
+    color: c.textTertiary,
     fontFamily: "Inter_400Regular",
     marginTop: 2,
   },
 
   rangeCapCard: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.accentPrimary,
     borderRadius: 14,
     padding: 16,
     gap: 6,
@@ -3063,34 +2992,34 @@ const s = StyleSheet.create({
   rangeCapTitle: {
     fontSize: 12,
     fontWeight: "700",
-    color: "rgba(255,255,255,0.55)",
+    color: c.onAccent,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
   rangeCapText: {
     fontSize: 14,
-    color: "#FFFFFF",
+    color: c.onAccent,
     fontFamily: "Inter_400Regular",
     lineHeight: 22,
   },
   rangeCapBold: {
     fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
+    color: c.onAccent,
   },
 
   // ── Personalized Hifz Insight ───────────────────────────────────────────────
   insightBox: {
-    backgroundColor: "#FEF9EE",
+    backgroundColor: c.warningSoft,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(201,160,42,0.25)",
+    borderColor: c.appWarningLight,
     padding: 14,
     gap: 6,
   },
   insightBoxFullHifz: {
-    backgroundColor: "#F0FAF4",
-    borderColor: "#A8DDB8",
+    backgroundColor: c.successSoft,
+    borderColor: c.appSuccess,
   },
   insightHeader: {
     flexDirection: "row",
@@ -3101,30 +3030,30 @@ const s = StyleSheet.create({
   insightTitle: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#C9A02A",
+    color: c.appGold,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1,
     textTransform: "uppercase",
   },
   insightTitleFullHifz: {
-    color: "#16A34A",
+    color: c.appSuccess,
     fontSize: 12,
   },
   insightText: {
     fontSize: 14,
-    color: "#1A1A1A",
+    color: c.textPrimary,
     fontFamily: "Inter_400Regular",
     lineHeight: 22,
   },
   insightTextFullHifz: {
-    color: "#1A3A1A",
+    color: c.textSecondary,
     fontFamily: "Inter_400Regular",
     fontSize: 12,
     lineHeight: 20,
   },
   insightBold: {
     fontFamily: "Inter_700Bold",
-    color: "#1A1A1A",
+    color: c.textPrimary,
   },
 
   // ── Auto-last ayah (paceDate flow) ──────────────────────────────────────────
@@ -3135,7 +3064,7 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
   autoBadgePill: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.accentPrimary,
     borderRadius: 4,
     paddingHorizontal: 5,
     paddingVertical: 2,
@@ -3143,29 +3072,9 @@ const s = StyleSheet.create({
   autoBadgePillText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: c.onAccent,
     fontFamily: "Inter_700Bold",
     letterSpacing: 0.5,
-  },
-  autoRangeBanner: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 6,
-    backgroundColor: "#F0FDF4",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
-  },
-  autoRangeBannerText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#16A34A",
-    fontFamily: "Inter_600SemiBold",
-    flex: 1,
-    lineHeight: 18,
   },
   autoLastBubbleBadge: {
     position: "absolute",
@@ -3174,16 +3083,17 @@ const s = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.accentPrimary,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: "#FDFBF7",
+    borderColor: c.backgroundPrimary,
   },
   autoLastBubbleBadgeText: {
     fontSize: 8,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: c.onAccent,
     fontFamily: "Inter_700Bold",
   },
-});
+  });
+}

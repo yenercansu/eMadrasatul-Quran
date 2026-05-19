@@ -1,7 +1,6 @@
 import React from "react";
-import { View, Text } from "react-native";
-import { useColors } from "@/hooks/useColors";
-import { AppCard } from "@/components/DesignSystem";
+import { View } from "react-native";
+import { InlineNotice } from "@/components/InlineNotice";
 
 interface InfoBoxProps {
   title: string;
@@ -10,34 +9,20 @@ interface InfoBoxProps {
 }
 
 export function InfoBox({ title, description, rightContent }: InfoBoxProps) {
-  const colors = useColors();
   return (
-    <AppCard
-      style={{ flexDirection: "row", alignItems: "flex-start", gap: 20 }}
+    <InlineNotice
+      variant="neutral"
+      icon={false}
+      title={title}
+      description={description}
+      style={{ gap: 20 }}
+      contentStyle={{ gap: 4 }}
+      titleStyle={{ fontSize: 16, lineHeight: 21 }}
+      descriptionStyle={{ lineHeight: 19 }}
     >
-      <View style={{ flex: 1, gap: 4 }}>
-        <Text
-          style={{
-            fontSize: 16,
-            fontWeight: "700",
-            color: colors.appText,
-            fontFamily: "Inter_700Bold",
-          }}
-        >
-          {title}
-        </Text>
-        <Text
-          style={{
-            fontSize: 13,
-            color: colors.appTextMuted,
-            fontFamily: "Inter_400Regular",
-            lineHeight: 19,
-          }}
-        >
-          {description}
-        </Text>
+      <View>
+        {rightContent}
       </View>
-      {rightContent}
-    </AppCard>
+    </InlineNotice>
   );
 }

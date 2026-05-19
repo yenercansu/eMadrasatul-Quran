@@ -26,6 +26,7 @@ import { HifzSegmentedControl } from "@/components/hifz/HifzUI";
 import { ActionPill } from "@/components/ActionPill";
 import { QuestionNav } from "@/components/QuestionNav";
 import { AppDialog } from "@/components/AppDialog";
+import { InlineNotice } from "@/components/InlineNotice";
 
 type QuizMode = "word-meaning";
 type QuizState = "selection" | "cards" | "answering" | "answered" | "finished" | "no-words";
@@ -946,10 +947,10 @@ export default function QuizScreen() {
           <View style={s.selectionContent2}>
             {showingAyahs ? (
               pagedAyahs.length === 0 ? (
-                <View style={s.infoBox}>
-                  <Ionicons name="information-circle-outline" size={18} color={colors.appIconMuted} />
-                  <Text style={s.infoText}>{ayahSearchQuery.trim() ? "No ayahs match your search." : tagFilter === "all" ? "No saved ayahs yet. Bookmark ayahs from the Reading screen to add them here." : "No ayahs match this filter."}</Text>
-                </View>
+                <InlineNotice
+                  variant="info"
+                  description={ayahSearchQuery.trim() ? "No ayahs match your search." : tagFilter === "all" ? "No saved ayahs yet. Bookmark ayahs from the Reading screen to add them here." : "No ayahs match this filter."}
+                />
               ) : (
                 <>
                   <Text style={[s.swipeHint, { color: colors.appTextMuted }]}>← swipe left to remove · swipe right to open →</Text>
@@ -986,10 +987,10 @@ export default function QuizScreen() {
               )
             ) : (
               pagedWords.length === 0 ? (
-                <View style={s.infoBox}>
-                  <Ionicons name="information-circle-outline" size={18} color={colors.appIconMuted} />
-                  <Text style={s.infoText}>{wordSearchQuery.trim() ? "No words match your search." : tagFilter === "all" ? "No saved words yet. Long-press individual words while reading to save them here." : "No words match this filter."}</Text>
-                </View>
+                <InlineNotice
+                  variant="info"
+                  description={wordSearchQuery.trim() ? "No words match your search." : tagFilter === "all" ? "No saved words yet. Long-press individual words while reading to save them here." : "No words match this filter."}
+                />
               ) : (
                 <>
                   <Text style={[s.swipeHint, { color: colors.appTextMuted }]}>← swipe left to remove · swipe right to open →</Text>
@@ -1463,18 +1464,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     tagChipsRow: { flexDirection: "row", gap: 8 },
     tagActions: { flexDirection: "row", gap: 10, alignItems: "center" },
     tagActionText: { fontSize: 13, color: colors.appTextMuted, fontFamily: "Inter_600SemiBold" },
-    infoBox: {
-      flexDirection: "row",
-      gap: 10,
-      backgroundColor: colors.appCardWarm,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: colors.appSoftBorder,
-      padding: 16,
-      alignItems: "flex-start",
-      ...colors.shadows.softLift,
-    },
-    infoText: { flex: 1, fontSize: 13, color: colors.appTextMuted, fontFamily: "Inter_400Regular", lineHeight: 20 },
     selectionContent2: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24 },
     swipeHint: { textAlign: "center", fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 6, marginTop: 4 },
     ayahCard2: {

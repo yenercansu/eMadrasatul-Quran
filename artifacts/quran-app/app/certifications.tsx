@@ -9,6 +9,7 @@ import { SURAH_DATA } from "@/constants/surahData";
 import { useColors } from "@/hooks/useColors";
 import { BackButton } from "@/components/BackButton";
 import { Tag } from "@/components/Tag";
+import { InlineNotice } from "@/components/InlineNotice";
 import colors from "@/constants/colors";
 
 const TOTAL_AYAHS = 6236;
@@ -196,12 +197,11 @@ export default function CertificationsScreen() {
               ))}
             </View>
           ) : (
-            <View style={{ alignItems: "center", paddingVertical: sp["2xl"] + sp.sm }}>
-              <Ionicons name="book-outline" size={28} color={c.appTextMuted} />
-              <Text style={{ fontSize: ty.fontSize.sm, color: c.appTextMuted, fontFamily: "Inter_400Regular", marginTop: sp.sm, textAlign: "center" }}>
-                No completed surahs yet
-              </Text>
-            </View>
+            <InlineNotice
+              variant="neutral"
+              icon="book-open"
+              description="No completed surahs yet"
+            />
           )}
         </View>
 
@@ -248,12 +248,11 @@ export default function CertificationsScreen() {
               ))}
             </View>
           ) : (
-            <View style={{ alignItems: "center", paddingVertical: sp["2xl"] + sp.sm }}>
-              <Ionicons name="hourglass-outline" size={28} color={c.appTextMuted} />
-              <Text style={{ fontSize: ty.fontSize.sm, color: c.appTextMuted, fontFamily: "Inter_400Regular", marginTop: sp.sm, textAlign: "center" }}>
-                No surahs in progress yet
-              </Text>
-            </View>
+            <InlineNotice
+              variant="neutral"
+              icon="clock"
+              description="No surahs in progress yet"
+            />
           )}
         </View>
 

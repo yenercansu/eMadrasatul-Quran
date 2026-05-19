@@ -28,6 +28,7 @@ import { HifzGoalSetupModal, type PaceRhythm } from "@/components/hifz/HifzGoalS
 import { HifzHeroCard } from "@/components/hifz/HifzUI";
 import { VerseCard } from "@/components/VerseCard";
 import { ActionPill } from "@/components/ActionPill";
+import { InlineNotice } from "@/components/InlineNotice";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const TOTAL_AYAHS = 6236;
@@ -1605,7 +1606,7 @@ export default function HomeScreen() {
                       </ScrollView>
                       <LinearGradient
                         pointerEvents="none"
-                        colors={["transparent", colors.surfaceSecondary]}
+                        colors={[colors.surfaceSecondaryTransparent, colors.surfaceSecondary]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={s.dotsRightFade}
@@ -1916,10 +1917,12 @@ export default function HomeScreen() {
             {surahsQuery.isLoading ? (
               <ActivityIndicator color={colors.appLightText} style={{ paddingVertical: 28 }} />
             ) : surahsQuery.isError ? (
-              <TouchableOpacity style={s.emptySurahState} onPress={load} activeOpacity={0.8}>
-                <Feather name="alert-circle" size={24} color={colors.destructive} />
-                <Text style={s.emptySurahText}>Could not load surahs. Tap to retry.</Text>
-              </TouchableOpacity>
+              <InlineNotice
+                variant="error"
+                description="Could not load surahs. Tap to retry."
+                onPress={load}
+                style={{ marginHorizontal: 20 }}
+              />
             ) : (
               juzGroups.map(group => (
                 <View key={group.juz}>
@@ -2746,8 +2749,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
 
     // ── All Surahs by Juz ──────────────────────────────────────────────────────
     surahSection: { marginTop: 28 },
-    emptySurahState: { alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 28 },
-    emptySurahText: { fontSize: 13, color: colors.appLightText, fontFamily: "Inter_400Regular" },
     juzHeader: {
       backgroundColor: colors.appStone,
       paddingHorizontal: 20,
@@ -3697,7 +3698,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       paddingVertical: 11,
       marginHorizontal: 16,
       marginTop: 12,
-      backgroundColor: colors.surfaceElevated,
     },
     doneRevisionBtnText: {
       fontSize: 13,
@@ -3713,7 +3713,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       gap: 12,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.borderSubtle,
-      backgroundColor: colors.surfaceElevated,
+      backgroundColor: colors.surfacePrimary,
     },
     thisWeekStreakGroup: {
       flex: 1,
