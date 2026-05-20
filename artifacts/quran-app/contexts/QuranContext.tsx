@@ -805,15 +805,24 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     setSavedWords(SEED_WORDS);
     setSavedAyahs([]);
     setAddedCollectionIds([]);
+    setRecentProgress([]);
+    setLastListened(null);
+    setSavedSurahs([]);
+    setSurahPositions({});
     AsyncStorage.multiRemove([
       "quran_goal",
       "quran_memorization_goal",
       "quran_memorized_ayahs",
+      "quran_checked_surahs",
       "quran_certificates",
       "quran_daily_entries",
       "quran_position",
       "quran_saved_ayahs",
       "quran_added_collections",
+      "quran_recent_progress",
+      "quran_last_listened",
+      "quran_saved_surahs",
+      "quran_surah_positions",
     ]).catch(() => {});
     AsyncStorage.setItem("quran_quiz_selected_surahs", JSON.stringify(DEFAULT_QUIZ_SELECTED_SURAHS)).catch(() => {});
     AsyncStorage.setItem("quran_saved_words", JSON.stringify(SEED_WORDS)).catch(() => {});

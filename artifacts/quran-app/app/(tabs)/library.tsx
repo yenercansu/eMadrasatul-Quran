@@ -19,7 +19,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useQuran, type SavedWord, type SavedAyah } from "@/contexts/QuranContext";
-import { PageTitle } from "@/components/Typography";
+import { PageTitle, SubSectionTitle } from "@/components/Typography";
 import { InfoBox } from "@/components/InfoBox";
 import { Tag } from "@/components/Tag";
 import { Pagination } from "@/components/Pagination";
@@ -884,11 +884,32 @@ const wordsViewStyles = StyleSheet.create({
 const TOTAL_AYAHS = 6236;
 const QUIZ_TYPES = 3;
 
+const TADABBUR_CARDS = [
+  '"Read, ascend, and recite slowly and distinctly as you used to recite in the world…"\n(Abū Dāwūd)',
+  '"This is a blessed Book which We revealed to you, that they may reflect upon its verses, and those with understanding may take heed."\n(38:29)',
+  '"From the greatest of voluntary acts through which Allah\'s Love is earned, is reciting and pondering upon Qur\'ān."\n— Ibn Rajab (raḥimahullāh)',
+  'Once Abū Bakr (raḍiy Allāhu ʿanhu) said to the Prophet ﷺ, "O Messenger of Allah, you have become old." He ﷺ said, "(The sūrahs) Hūd, al-Wāqiʿah, al-Mursalāt, ʿAmma Yatasā\'alūn and Ithā al-Shamsu Kuwwirat have aged me."\n(Tirmidhī)',
+  '"Do not scatter the Qur\'ān like poor quality dates are scattered, and do not recite it quickly like poetry is recited. Take a pause at its wonders, move the hearts with it, and do not let your concern be to (merely) reach the end of the sūrah."\n— ʿAbdullāh b. Masʿūd (raḍiy Allāhu ʿanhu)',
+  '"As for the one who does not reflect, ponder and is not blessed with Allah\'s help in this regard, he will remain ignorant of the amazing secrets mentioned in this Magnificent Qur\'ān."\n— Imām al-Rāzī (raḥimahullāh)',
+];
+
+const NIGHT_CARDS = [
+  'The Messenger of Allah ﷺ said, "Whoever recites 10 verses at night (regularly), he will not be recorded among the negligent."\n(Ḥākim)',
+  'The Messenger of Allah ﷻ said, "Whoever slept through all or part of his nightly ḥizb (portion of recitation), but recited it between Fajr and Ẓuhr, its (reward) will be recorded for him as if he had read it at night."\n(Muslim)',
+  'Allah ﷻ says, "As for those who strive in Our way, We will surely guide them along Our Way. And Allah is certainly with the good-doers."\n(29:69)',
+  'Imām al-Nawawī (raḥimahullāh) states that one should devote more time to reciting at night, as Allah says, "…There are some among the People of the Book who are upright, who recite Allah\'s revelations throughout the night, prostrating."\n(3:113)',
+  'The scholars of the past considered tahajjud as essential for students of knowledge. ʿĀsim al-Bayhaqī (raḥimahullāh) said: "I spent a night in the company of Aḥmad b. Ḥanbal (raḥimahullāh). When the morning came, he looked at the water for wuḍū\' and found it untouched. He said, \'SubḥānAllāh! A man seeking knowledge does not have a wird at night?!\'"',
+  'Allah ﷻ says, "Is one who worships devoutly during the hours of the night, prostrating and standing, fearing the Hereafter and hoping for the mercy of his Lord, [like one who does not]? Say: \'Are those who know equal to those who do not know?\' Only those who have understanding will take heed."\n(39:9)',
+  '"Those before you saw the Qur\'ān as a correspondence from their Lord; they would ponder upon it at night and review it in the day."\n— al-Ḥasan al-Baṣrī (raḥimahullāh)',
+];
+
 export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const { memorizedAyahKeys, savedWords, savedAyahs, dailyEntries } = useQuran();
   const [view, setView] = useState<"select" | "words">("select");
+  const [tadabburPage, setTadabburPage] = useState(0);
+  const [nightPage, setNightPage] = useState(0);
   const topPad = insets.top;
 
   const totalPackCount = useMemo(
@@ -970,7 +991,11 @@ export default function LibraryScreen() {
 
       <View style={s.swipeHintSpacer} />
 
-      {/* ── Memorization Quiz Card ─────────────────────────────────────── */}
+      {/* ── Memorization Practices ─────────────────────────────────────── */}
+      <View style={s.sectionTitleRow}>
+        <SubSectionTitle>Memorization Practices</SubSectionTitle>
+      </View>
+
       <TouchableOpacity
         style={s.quizCard}
         onPress={() => router.push("/memorization-quiz")}
@@ -993,53 +1018,6 @@ export default function LibraryScreen() {
         </View>
       </TouchableOpacity>
 
-      {/* ── Words Quiz Card ────────────────────────────────────────────── */}
-      <TouchableOpacity
-        style={s.quizCard}
-        onPress={() => router.push("/quiz")}
-        activeOpacity={0.88}
-      >
-        <View style={s.cardTopRow}>
-          <View style={s.cardTextBlock}>
-            <Text style={s.cardTitle}>Words Quiz</Text>
-            <Text style={s.cardDesc}>Review vocabulary & meanings</Text>
-          </View>
-          <View style={s.cardBadge}>
-            <Text style={s.cardBadgeNum}>{savedWords.length}</Text>
-            <Text style={s.cardBadgeLabel}>words</Text>
-          </View>
-        </View>
-        <View style={s.cardDivider} />
-        <View style={s.startRow}>
-          <Text style={s.startText}>Start Quiz</Text>
-          <Feather name="chevron-right" size={16} color={colors.appTextMuted} />
-        </View>
-      </TouchableOpacity>
-
-      {/* ── Certifications Card ────────────────────────────────────────── */}
-      <TouchableOpacity
-        style={s.quizCard}
-        onPress={() => router.push("/certifications")}
-        activeOpacity={0.88}
-      >
-        <View style={s.cardTopRow}>
-          <View style={s.cardTextBlock}>
-            <Text style={s.cardTitle}>Certifications</Text>
-            <Text style={s.cardDesc}>{memorizedCount}/{TOTAL_AYAHS} ayahs memorized</Text>
-          </View>
-          <View style={s.cardBadge}>
-            <Text style={s.cardBadgeNum}>{certificationPercent}%</Text>
-            <Text style={s.cardBadgeLabel}>memorized</Text>
-          </View>
-        </View>
-        <View style={s.cardDivider} />
-        <View style={s.startRow}>
-          <Text style={s.startText}>See Certifications</Text>
-          <Feather name="chevron-right" size={16} color={colors.appTextMuted} />
-        </View>
-      </TouchableOpacity>
-
-      {/* ── Memorization Packs entry ───────────────────────────────────── */}
       <TouchableOpacity
         style={s.quizCard}
         onPress={() => router.push("/memorization-packs")}
@@ -1062,6 +1040,60 @@ export default function LibraryScreen() {
         </View>
       </TouchableOpacity>
 
+      {/* ── Vocabulary Practices ───────────────────────────────────────── */}
+      <View style={s.sectionTitleRow}>
+        <SubSectionTitle>Vocabulary Practices</SubSectionTitle>
+      </View>
+
+      <TouchableOpacity
+        style={s.quizCard}
+        onPress={() => router.push("/quiz")}
+        activeOpacity={0.88}
+      >
+        <View style={s.cardTopRow}>
+          <View style={s.cardTextBlock}>
+            <Text style={s.cardTitle}>Words Quiz</Text>
+            <Text style={s.cardDesc}>Review vocabulary & meanings</Text>
+          </View>
+          <View style={s.cardBadge}>
+            <Text style={s.cardBadgeNum}>{savedWords.length}</Text>
+            <Text style={s.cardBadgeLabel}>words</Text>
+          </View>
+        </View>
+        <View style={s.cardDivider} />
+        <View style={s.startRow}>
+          <Text style={s.startText}>Start Quiz</Text>
+          <Feather name="chevron-right" size={16} color={colors.appTextMuted} />
+        </View>
+      </TouchableOpacity>
+
+      {/* ── Your Personal Progress ─────────────────────────────────────── */}
+      <View style={s.sectionTitleRow}>
+        <SubSectionTitle>Your Personal Progress</SubSectionTitle>
+      </View>
+
+      <TouchableOpacity
+        style={s.quizCard}
+        onPress={() => router.push("/certifications")}
+        activeOpacity={0.88}
+      >
+        <View style={s.cardTopRow}>
+          <View style={s.cardTextBlock}>
+            <Text style={s.cardTitle}>Certifications</Text>
+            <Text style={s.cardDesc}>{memorizedCount}/{TOTAL_AYAHS} ayahs memorized</Text>
+          </View>
+          <View style={s.cardBadge}>
+            <Text style={s.cardBadgeNum}>{certificationPercent}%</Text>
+            <Text style={s.cardBadgeLabel}>memorized</Text>
+          </View>
+        </View>
+        <View style={s.cardDivider} />
+        <View style={s.startRow}>
+          <Text style={s.startText}>See Certifications</Text>
+          <Feather name="chevron-right" size={16} color={colors.appTextMuted} />
+        </View>
+      </TouchableOpacity>
+
       {/* ── Saved Ayahs Card ───────────────────────────────────────────── */}
       <InfoBox
         title="Saved Ayahs"
@@ -1073,6 +1105,58 @@ export default function LibraryScreen() {
           </View>
         }
       />
+
+      {/* ── Tadabbur Carousel ──────────────────────────────────────────── */}
+      <View style={s.sectionTitleRow}>
+        <SubSectionTitle>Tadabbur</SubSectionTitle>
+      </View>
+      <View style={s.infoPager}>
+        <ScrollView
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={(e) =>
+            setTadabburPage(Math.round(e.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 40)))
+          }
+        >
+          {TADABBUR_CARDS.map((text, i) => (
+            <View key={i} style={[s.infoWidgetCard, { width: SCREEN_WIDTH - 40 }]}>
+              <Text style={s.infoWidgetText}>{text}</Text>
+            </View>
+          ))}
+        </ScrollView>
+        <View style={s.infoPagerDots}>
+          {TADABBUR_CARDS.map((_, i) => (
+            <View key={i} style={[s.infoPagerDot, i === tadabburPage && s.infoPagerDotActive]} />
+          ))}
+        </View>
+      </View>
+
+      {/* ── Qur'an at Night Virtues Carousel ───────────────────────────── */}
+      <View style={s.sectionTitleRow}>
+        <SubSectionTitle>Qur'an at Night Virtues</SubSectionTitle>
+      </View>
+      <View style={s.infoPager}>
+        <ScrollView
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={(e) =>
+            setNightPage(Math.round(e.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 40)))
+          }
+        >
+          {NIGHT_CARDS.map((text, i) => (
+            <View key={i} style={[s.infoWidgetCard, { width: SCREEN_WIDTH - 40 }]}>
+              <Text style={s.infoWidgetText}>{text}</Text>
+            </View>
+          ))}
+        </ScrollView>
+        <View style={s.infoPagerDots}>
+          {NIGHT_CARDS.map((_, i) => (
+            <View key={i} style={[s.infoPagerDot, i === nightPage && s.infoPagerDotActive]} />
+          ))}
+        </View>
+      </View>
     </ScrollView>
     </LinearGradient>
   );
@@ -1161,6 +1245,12 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
       height: 20,
     },
 
+    sectionTitleRow: {
+      paddingHorizontal: 20,
+      paddingTop: 24,
+      paddingBottom: 8,
+    },
+
     // ── Quiz / Info Cards ─────────────────────────────────────────────────
     quizCard: {
       backgroundColor: colors.appCardWarm,
@@ -1245,6 +1335,48 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
       borderRadius: 18,
       alignItems: "center",
       flexShrink: 0,
+    },
+
+    // ── Info Widget Carousel ──────────────────────────────────────────────
+    infoPager: {
+      overflow: "hidden",
+    },
+    infoWidgetCard: {
+      backgroundColor: colors.appCardWarm,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: colors.appSoftBorder,
+      padding: 18,
+      ...colors.shadows.softLift,
+    },
+    infoWidgetTitle: {
+      fontSize: 11,
+      fontFamily: "Inter_700Bold",
+      color: colors.appTextMuted,
+      letterSpacing: 1.1,
+      textTransform: "uppercase",
+      marginBottom: 12,
+    },
+    infoWidgetText: {
+      fontSize: 13,
+      color: colors.appTextMuted,
+      fontFamily: "Inter_400Regular",
+      lineHeight: 20,
+    },
+    infoPagerDots: {
+      flexDirection: "row",
+      justifyContent: "center",
+      gap: 5,
+      marginTop: 8,
+    },
+    infoPagerDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.appSoftPill,
+    },
+    infoPagerDotActive: {
+      backgroundColor: colors.appText,
     },
 
   });

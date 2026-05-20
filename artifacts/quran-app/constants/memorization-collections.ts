@@ -506,6 +506,29 @@ export const MEMORIZATION_COLLECTIONS: ReadonlyArray<MemorizationCollection> = [
     enabled: true,
   },
 
+  {
+    id: "adhkar-before-sleep",
+    title: "Adhkar before Sleep",
+    localizedTitle: { tr: "Uyku Öncesi Duaları", ar: "أذكار النوم" },
+    aliases: ["sleep adhkar", "before sleep", "uyku duaları", "night surahs", "Sajdah and Mulk"],
+    section: "sunnah-collections",
+    group: "our-recommendations",
+    description:
+      "Surah As-Sajdah and Surah Al-Mulk — the two surahs the Prophet ﷺ recited every night before sleeping.",
+    ayahRanges: [
+      { surahNumber: 32, startAyah: 1, endAyah: 30 },
+      { surahNumber: 67, startAyah: 1, endAyah: 30 },
+    ],
+    ayahCount: 60,
+    difficulty: "Intermediate",
+    estimatedTimeMin: 180,
+    tags: ["night", "sleep", "adhkar", "protection"],
+    ctaLabel: "Start Memorizing",
+    recommendedFor: ["intermediate", "nightly-routine"],
+    sourceType: "builtIn",
+    enabled: true,
+  },
+
   // ── Hifz Packs › Surahs ──────────────────────────────────────────────────
 
   {
