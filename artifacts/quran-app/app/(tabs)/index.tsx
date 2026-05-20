@@ -1233,7 +1233,28 @@ export default function HomeScreen() {
               fullHifzAyahsPerDay={fullHifzAyahsPerDay}
               streakDays={streakDays}
               onBeginRevision={() => {
-                resetHifzFlow();
+                // Clear the active goal only — never wipe memorizedAyahKeys or certificates
+                setGoal(null);
+                setMemorizationGoal(null);
+                // Reset UI trackers so completion effects run cleanly from new baseline
+                weeklyToastCelebratedRef.current = new Set();
+                AsyncStorage.removeItem(WEEKLY_TOAST_CELEBRATIONS_KEY).catch(() => {});
+                prevMemPercentRef.current = null;
+                prevWeekPercentRef.current = null;
+                prevMilestoneCompleteRef.current = null;
+                // Reset local UI state
+                setShowHifzGoalOptions(false);
+                setShowWeeklyToast(false);
+                setShowWeekCompleteCard(false);
+                setShowMilestoneToast(false);
+                setContinuationNotice(null);
+                setHifzTransition(null);
+                setHifzTransitionProgress(0);
+                setHifzDirection("forward");
+                setWidgetPath("surah");
+                setWidgetFirstAyah(null);
+                setWidgetLastAyah(null);
+                setWidgetJuz(null);
                 setRevisionJourneyStarted(true);
               }}
             />

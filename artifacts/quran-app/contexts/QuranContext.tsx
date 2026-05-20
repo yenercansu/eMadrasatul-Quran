@@ -794,6 +794,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     setQuizSelectedSurahsState(DEFAULT_QUIZ_SELECTED_SURAHS);
     setQuranPosition(0);
     setDailyEntries([]);
+    setSavedWords(SEED_WORDS);
     AsyncStorage.multiRemove([
       "quran_goal",
       "quran_memorization_goal",
@@ -803,6 +804,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       "quran_position",
     ]).catch(() => {});
     AsyncStorage.setItem("quran_quiz_selected_surahs", JSON.stringify(DEFAULT_QUIZ_SELECTED_SURAHS)).catch(() => {});
+    AsyncStorage.setItem("quran_saved_words", JSON.stringify(SEED_WORDS)).catch(() => {});
   }, []);
 
   const toggleCheckedSurah = useCallback((surahNum: number) => {
