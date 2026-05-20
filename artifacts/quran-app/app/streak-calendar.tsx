@@ -12,6 +12,8 @@ import { Feather } from "@expo/vector-icons";
 import { useQuran } from "@/contexts/QuranContext";
 import { useColors } from "@/hooks/useColors";
 import { BackButton } from "@/components/BackButton";
+import { useAdaptiveForecast } from "@/hooks/useAdaptiveForecast";
+import { getGoalRangeAyahs, getAyahKey } from "@/services/hifzLogic";
 
 const WEEK_DAYS = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -22,12 +24,13 @@ const MONTH_NAMES = [
 
 type CalendarCell =
   | null
-  | { day: number; dateStr: string; completed: boolean; milestoneCompleted: boolean; isToday: boolean; isFuture: boolean };
+  | { day: number; dateStr: string; completed: boolean; milestoneCompleted: boolean; isToday: boolean; isFuture: boolean; isFinishLine: boolean };
 
 export default function StreakCalendarScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { dailyEntries } = useQuran();
+  const { dailyEntries, memorizationGoal, goal, memorizedAyahKeys } = useQuran();
+  const forecast = useAdaptiveForecast();
 
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
@@ -51,6 +54,37 @@ export default function StreakCalendarScreen() {
 
   const todayStr = useMemo(() => now.toISOString().split("T")[0], []);
 
+  const finishLineDate = useMemo((): string | null => {
+    if (!goal || !memorizationGoal || memorizationGoal.path === "pace") return null;
+
+    if (forecast?.estimatedCompletionDate) {
+      return forecast.estimatedCompletionDate.toISOString().split("T")[0];
+    }
+
+    if (!goal.ayahsPerWeek) return null;
+    if (
+      goal.startSurahNumber == null || goal.startAyahNumber == null ||
+      goal.endSurahNumber == null || goal.endAyahNumber == null
+    ) return null;
+
+    const rangeAyahs = getGoalRangeAyahs({
+      path: memorizationGoal.path,
+      targetJuz: memorizationGoal.targetJuz,
+      startSurahNumber: goal.startSurahNumber,
+      startAyahNumber: goal.startAyahNumber,
+      endSurahNumber: goal.endSurahNumber,
+      endAyahNumber: goal.endAyahNumber,
+    });
+    const memorized = new Set(memorizedAyahKeys);
+    const remaining = rangeAyahs.filter(a => !memorized.has(getAyahKey(a))).length;
+    if (remaining <= 0) return null;
+
+    const weeksNeeded = Math.max(1, Math.ceil(remaining / goal.ayahsPerWeek));
+    const d = new Date();
+    d.setDate(d.getDate() + weeksNeeded * 7);
+    return d.toISOString().split("T")[0];
+  }, [forecast, goal, memorizationGoal, memorizedAyahKeys]);
+
   const { cells, weeks } = useMemo(() => {
     const firstDay = new Date(viewYear, viewMonth, 1);
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -69,6 +103,7 @@ export default function StreakCalendarScreen() {
         milestoneCompleted: milestoneDays.has(dateStr),
         isToday: dateStr === todayStr,
         isFuture: dateStr > todayStr,
+        isFinishLine: dateStr === finishLineDate,
       });
     }
 
@@ -81,7 +116,7 @@ export default function StreakCalendarScreen() {
     }
 
     return { cells: flatCells, weeks: rows };
-  }, [viewYear, viewMonth, completedDays, milestoneDays, todayStr]);
+  }, [viewYear, viewMonth, completedDays, milestoneDays, todayStr, finishLineDate]);
 
   const monthLabel = `${MONTH_NAMES[viewMonth]} ${viewYear}`;
 
@@ -106,6 +141,16 @@ export default function StreakCalendarScreen() {
   const totalPast = useMemo(() => {
     return cells.filter(c => c && !c.isFuture).length;
   }, [cells]);
+
+  const milestoneLabel =
+    memorizationGoal?.path === "surah" ? "finish lines" :
+    memorizationGoal?.path === "juz" ? "finish lines" :
+    "milestones";
+
+  const milestoneLegendText =
+    memorizationGoal?.path === "surah" ? "Surah finish line day" :
+    memorizationGoal?.path === "juz" ? "Juz finish line day" :
+    "Milestone day";
 
   const s = styles(colors);
 
@@ -142,8 +187,8 @@ export default function StreakCalendarScreen() {
           <Text style={s.summaryText}>{totalPast - completedCount} days missed</Text>
         </View>
         <View style={s.summaryChip}>
-          <View style={[s.summaryDot, { backgroundColor: colors.appGold }]} />
-          <Text style={s.summaryText}>{milestoneCount} milestones</Text>
+          <View style={[s.summaryDot, { backgroundColor: colors.accentPrimary, borderWidth: 2, borderColor: colors.appGold }]} />
+          <Text style={s.summaryText}>{milestoneCount} {milestoneLabel}</Text>
         </View>
       </View>
 
@@ -167,17 +212,18 @@ export default function StreakCalendarScreen() {
                     s.dayCircle,
                     cell.completed && s.dayCircleCompleted,
                     !cell.completed && !cell.isFuture && s.dayCircleMissed,
-                    cell.milestoneCompleted && s.dayCircleMilestone,
                     cell.isFuture && s.dayCircleFuture,
-                    cell.isToday && s.dayCircleToday,
+                    cell.isToday && !cell.milestoneCompleted && !cell.isFinishLine && s.dayCircleToday,
+                    cell.milestoneCompleted && s.dayCircleMilestone,
+                    cell.isFinishLine && s.dayCircleFinishLine,
                   ]}>
                     <Text style={[
                       s.dayNum,
-                      cell.milestoneCompleted && s.dayNumMilestone,
-                      cell.completed && s.dayNumCompleted,
                       !cell.completed && !cell.isFuture && s.dayNumMissed,
                       cell.isFuture && s.dayNumFuture,
-                      cell.isToday && !cell.completed && s.dayNumToday,
+                      cell.isToday && !cell.completed && !cell.isFinishLine && s.dayNumToday,
+                      cell.completed && s.dayNumCompleted,
+                      cell.isFinishLine && s.dayNumFinishLine,
                     ]}>
                       {cell.day}
                     </Text>
@@ -200,9 +246,17 @@ export default function StreakCalendarScreen() {
           <Text style={s.legendText}>Missed day</Text>
         </View>
         <View style={s.legendItem}>
-          <View style={[s.legendDot, { backgroundColor: "#B7791F" }]} />
-          <Text style={s.legendText}>Milestone complete day (Surah or Juz completion)</Text>
+          <View style={[s.legendDot, { backgroundColor: "#1A1A1A", borderWidth: 2, borderColor: colors.appGold }]} />
+          <Text style={s.legendText}>{milestoneLegendText}</Text>
         </View>
+        {finishLineDate && (
+          <View style={s.legendItem}>
+            <View style={[s.legendDot, { backgroundColor: "transparent", borderWidth: 2, borderColor: colors.appGold }]} />
+            <Text style={s.legendText}>
+              {memorizationGoal?.path === "juz" ? "Juz" : "Surah"} finish line (target completion date)
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -322,7 +376,13 @@ const styles = (colors: ReturnType<typeof import("@/hooks/useColors").useColors>
       backgroundColor: colors.accentPrimary,
     },
     dayCircleMilestone: {
-      backgroundColor: colors.appGold,
+      borderWidth: 2.5,
+      borderColor: colors.appGold,
+    },
+    dayCircleFinishLine: {
+      borderWidth: 2.5,
+      borderColor: colors.appGold,
+      backgroundColor: "transparent",
     },
     dayCircleMissed: {
       backgroundColor: colors.appLightGray,
@@ -342,8 +402,10 @@ const styles = (colors: ReturnType<typeof import("@/hooks/useColors").useColors>
     dayNumCompleted: {
       color: colors.onAccent,
     },
-    dayNumMilestone: {
-      color: colors.onAccent,
+    dayNumFinishLine: {
+      color: colors.appGold,
+      fontWeight: "700" as const,
+      fontFamily: "Inter_700Bold",
     },
     dayNumMissed: {
       color: colors.appLightText,

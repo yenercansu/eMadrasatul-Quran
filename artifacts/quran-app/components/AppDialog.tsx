@@ -108,6 +108,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       marginBottom: 8,
     },
     destructiveBtn: {
-      backgroundColor: colors.destructive,
+      backgroundColor: colors.appText,
     },
   });

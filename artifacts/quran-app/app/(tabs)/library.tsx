@@ -968,7 +968,7 @@ export default function LibraryScreen() {
       </View>
     <ScrollView
       style={{ flex: 1 }}
-      contentContainerStyle={[s.content, { paddingTop: 10 }]}
+      contentContainerStyle={[s.content, { paddingTop: 16 }]}
       showsVerticalScrollIndicator={false}
     >
       {/* ── Streak ─────────────────────────────────────────────────────── */}
@@ -1244,12 +1244,12 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
 
     // ── Swipe hint spacer (text removed, spacing preserved) ──────────────
     swipeHintSpacer: {
-      height: 20,
+      height: 8,
     },
 
     sectionTitleRow: {
       paddingHorizontal: 20,
-      paddingTop: 24,
+      paddingTop: 10,
       paddingBottom: 8,
     },
 

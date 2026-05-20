@@ -25,6 +25,7 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
+import { SwipeToast } from "@/components/SwipeToast";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useReciters } from "@/hooks/useReciters";
@@ -1537,8 +1538,33 @@ export default function SurahScreen() {
     saveProgress, recordVisit, recordAyahRead,
     saveAyah, removeAyah, saveWord, isAyahSaved, savedAyahs,
     surahPositions, saveSurahPosition,
-    goal, memorizationGoal, memorizedAyahKeys, isAyahMemorized, toggleAyahMemorized,
+    goal, memorizationGoal, memorizedAyahKeys, isAyahMemorized, toggleAyahMemorized, getWeekGoalAyahs,
   } = useQuran();
+
+  const [showWeeklyToast, setShowWeeklyToast] = useState(false);
+  const prevWeekPercentSurahRef = useRef<number | null>(null);
+  const isPaceGoalSurah = memorizationGoal?.path === "pace";
+  const weekGoalAyahsSurah = useMemo(() => (goal ? getWeekGoalAyahs() : []), [goal, getWeekGoalAyahs]);
+  const memorizedKeySetSurah = useMemo(() => new Set(memorizedAyahKeys), [memorizedAyahKeys]);
+  const weekGoalProgressSurah = useMemo(() => {
+    if (!goal || isPaceGoalSurah) return 0;
+    return weekGoalAyahsSurah.filter(a => memorizedKeySetSurah.has(`${a.surahNumber}:${a.ayahNumber}`)).length;
+  }, [goal, isPaceGoalSurah, weekGoalAyahsSurah, memorizedKeySetSurah]);
+  const weekPercentSurah = useMemo(() => {
+    if (!goal || isPaceGoalSurah) return 0;
+    const total = weekGoalAyahsSurah.length;
+    return total > 0 ? Math.min(100, Math.round((weekGoalProgressSurah / total) * 100)) : 0;
+  }, [goal, isPaceGoalSurah, weekGoalAyahsSurah, weekGoalProgressSurah]);
+  useEffect(() => {
+    const prev = prevWeekPercentSurahRef.current;
+    prevWeekPercentSurahRef.current = weekPercentSurah;
+    if (prev !== null && prev < 100 && weekPercentSurah >= 100) {
+      setShowWeeklyToast(true);
+      const t = setTimeout(() => setShowWeeklyToast(false), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [weekPercentSurah]);
+
   mushafModeRef.current = settings.mushafMode;
 
   const { audioState, playAyah, playRange, playSection, playUstadhMode, playWordByWord, pauseAudio, resumeAudio, stopAudio, setPlaybackRate, playNextAyah, playPrevAyah, setOnNextAyah, setOnPlanFinish } = useAudio();
@@ -2671,6 +2697,44 @@ export default function SurahScreen() {
         message={appDialog?.message}
         onCancel={() => setAppDialog(null)}
       />
+
+      {showWeeklyToast && (
+        <SwipeToast
+          onDismiss={() => setShowWeeklyToast(false)}
+          style={{
+            position: "absolute",
+            top: insets.top + 12,
+            left: 16,
+            right: 16,
+            zIndex: 999,
+            backgroundColor: colors.surfaceElevated,
+            borderRadius: 18,
+            borderWidth: 1,
+            borderColor: colors.borderSubtle,
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            gap: 12,
+            shadowColor: colors.shadowNeutral,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.08,
+            shadowRadius: 14,
+            elevation: 8,
+          }}
+        >
+          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.accentSoft, alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Feather name="check" size={16} color={colors.textSecondary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.appText, fontFamily: "Inter_700Bold" }}>Weekly target complete</Text>
+            <Text style={{ fontSize: 12, color: colors.textTertiary, fontFamily: "Inter_400Regular", marginTop: 2 }}>{weekGoalProgressSurah} ayahs memorized this week</Text>
+          </View>
+          <TouchableOpacity onPress={() => setShowWeeklyToast(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Feather name="x" size={16} color={colors.textTertiary} />
+          </TouchableOpacity>
+        </SwipeToast>
+      )}
     </View>
   );
 }

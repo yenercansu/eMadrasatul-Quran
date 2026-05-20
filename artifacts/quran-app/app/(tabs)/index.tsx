@@ -192,6 +192,7 @@ export default function HomeScreen() {
   const [paceDateVisible, setPaceDateVisible] = useState(false);
   const [paceDateInitialStep, setPaceDateInitialStep] = useState(0);
   const [pendingCheck, setPendingCheck] = useState(false);
+  const [dotPendingIndex, setDotPendingIndex] = useState<number | null>(null);
 
   const surahsQuery = useQuery({ queryKey: ["chapters"], queryFn: fetchSurahs });
   const surahs = surahsQuery.data ?? [];
@@ -656,6 +657,12 @@ export default function HomeScreen() {
     setMemorizationGoal,
   ]);
 
+  const extendPaceGoal = useCallback((count: number) => {
+    if (!goal) return;
+    setGoal({ ...goal, ayahsPerWeek: goal.ayahsPerWeek + count });
+    setShowWeekCompleteCard(false);
+  }, [goal, setGoal]);
+
   const widgetWeeklySelection = useMemo<AyahRangeResult | undefined>(() => {
     if (!widgetFirstAyah || !widgetLastAyah) return undefined;
     return {
@@ -733,7 +740,9 @@ export default function HomeScreen() {
       : { surahNumber: memorizationGoal?.startSurahNumber ?? 1, ayahNumber: goal?.startAyahNumber ?? 1 });
   const heroSurahMeta = SURAH_DATA[heroTarget.surahNumber - 1];
   const activeModeLabel = isPaceGoal
-    ? "Pace by Pace"
+    ? paceRhythm === "gentle" ? "Gentle Pace"
+      : paceRhythm === "steady" ? "Steady Pace"
+      : "Deep Pace"
     : memorizationGoal?.path === "juz"
     ? "Juz by Juz"
     : "Surah by Surah";
@@ -743,25 +752,63 @@ export default function HomeScreen() {
   const heroSub = heroSurahMeta
     ? `${heroSurahMeta.name} · Juz ${heroSurahMeta.juz} · Ayah ${heroTarget.ayahNumber} of ${heroSurahMeta.ayahCount}`
     : `Ayah ${heroTarget.ayahNumber}`;
-  const nextPaceCount = goal?.gradualWeeklyPlan?.[1] ?? goal?.targetAyahsPerWeek;
-  const paceWeeksLabel = goal?.finishWeeks ? ` · in ${goal.finishWeeks} wks` : "";
+  const currentWeekIndex = goal?.startDate
+    ? Math.max(0, Math.floor((Date.now() - new Date(goal.startDate).getTime()) / (7 * 24 * 3600 * 1000)))
+    : 0;
+  const plan = goal?.gradualWeeklyPlan ?? [];
+  const currentPaceInPlan = plan[currentWeekIndex] ?? goal?.ayahsPerWeek ?? 0;
+  const nextMilestoneIdx = plan.findIndex((v, i) => i > currentWeekIndex && v !== currentPaceInPlan);
+  const nextPaceCount = nextMilestoneIdx >= 0 ? plan[nextMilestoneIdx] : goal?.targetAyahsPerWeek;
+  const weeksUntilNext = nextMilestoneIdx >= 0 ? nextMilestoneIdx - currentWeekIndex : null;
+  const paceWeeksLabel = weeksUntilNext != null
+    ? weeksUntilNext === 1
+      ? " · next week"
+      : weeksUntilNext < 8
+      ? ` · in ${weeksUntilNext} weeks`
+      : ` · in ~${Math.round(weeksUntilNext / 4)} months`
+    : "";
   const weeklySequence = weekGoalAyahs;
   const weeklySequenceFallback = Array.from({ length: Math.max(1, effectiveGoalCount || (goal?.ayahsPerWeek ?? 7)) });
   const memorizedAyahKeySet = useMemo(() => new Set(memorizedAyahKeys), [memorizedAyahKeys]);
 
-  const paceDotsAyahs = useMemo((): AyahRef[] => {
-    if (!isPaceGoal || !goal) return [];
-    const count = Math.max(1, goal.ayahsPerWeek);
-    const result: AyahRef[] = [];
-    let cur: AyahRef | null = lastMemorizedAyah
-      ? getNextAyahAfter(lastMemorizedAyah)
-      : { surahNumber: 1, surahName: SURAH_DATA[0].englishName, ayahNumber: 1 };
-    while (cur && result.length < count) {
-      result.push(cur);
-      cur = getNextAyahAfter(cur);
+  const nextPaceAyah = useMemo((): AyahRef | null => {
+    if (!isPaceGoal) return null;
+    let cur: { surahNumber: number; ayahNumber: number } = lastMemorizedAyah
+      ?? { surahNumber: 1, ayahNumber: 0 };
+    for (let i = 0; i < TOTAL_AYAHS; i++) {
+      const next = getNextAyahAfter(cur);
+      if (!next) break;
+      if (!memorizedAyahKeySet.has(getAyahKey(next))) return next;
+      cur = next;
     }
-    return result;
-  }, [isPaceGoal, goal, lastMemorizedAyah]);
+    return null;
+  }, [isPaceGoal, lastMemorizedAyah, memorizedAyahKeySet]);
+
+  const paceExtensionRemainingCount = useMemo(() => {
+    if (!isPaceGoal || !nextPaceAyah) return 0;
+    const surah = SURAH_DATA.find(s => s.number === nextPaceAyah.surahNumber);
+    if (!surah) return 0;
+    let count = 0;
+    for (let a = nextPaceAyah.ayahNumber; a <= surah.ayahCount; a++) {
+      if (!memorizedAyahKeySet.has(`${nextPaceAyah.surahNumber}:${a}`)) count++;
+    }
+    return count;
+  }, [isPaceGoal, nextPaceAyah, memorizedAyahKeySet]);
+
+  const paceExtensionOptionCounts = useMemo(() => {
+    const remaining = paceExtensionRemainingCount;
+    if (remaining <= 0) return [];
+    const pace = Math.max(1, goal?.ayahsPerWeek ?? 5);
+    if (remaining <= 4) return Array.from({ length: remaining }, (_, i) => i + 1);
+    if (remaining <= pace) {
+      const opts = [1, Math.max(2, Math.round(remaining * 0.3)), Math.round(remaining * 0.5), remaining];
+      return [...new Set(opts)].filter(n => n >= 1 && n <= remaining).sort((a, b) => a - b);
+    }
+    const low = Math.max(1, Math.round(pace * 0.3));
+    const mid = Math.max(1, Math.round(pace * 0.5));
+    const cap = Math.min(remaining, Math.ceil(pace * 1.5));
+    return [...new Set([low, mid, pace, cap])].filter(n => n >= 1 && n <= remaining).sort((a, b) => a - b);
+  }, [paceExtensionRemainingCount, goal?.ayahsPerWeek]);
 
   const weeklyHeadline = isRevisionGoal
     ? (weekGoalProgress > 0 ? `${weekGoalProgress} ayahs revisited` : "Revision ready")
@@ -772,8 +819,8 @@ export default function HomeScreen() {
   const showFullQuranComplete = fullQuranComplete && !revisionJourneyStarted;
 
   useEffect(() => {
-    navigation.setOptions({ tabBarHidden: showFullQuranComplete });
-  }, [showFullQuranComplete, navigation]);
+    navigation.setOptions({ tabBarHidden: showFullQuranComplete || hifzSetupVisible });
+  }, [showFullQuranComplete, hifzSetupVisible, navigation]);
 
   const completionDate = new Date();
   const fullHifzStartDate = useMemo(() => {
@@ -1202,7 +1249,7 @@ export default function HomeScreen() {
     if (weekPercent < 100) {
       setShowWeekCompleteCard(false);
     }
-    if (weekPercent >= 100 && goal && (!milestoneComplete || canExtendCurrentGoal)) {
+    if (weekPercent >= 100 && goal) {
       setShowWeekCompleteCard(true);
     }
     if (
@@ -1476,7 +1523,7 @@ export default function HomeScreen() {
                     <View style={s.weeklyMetaPills}>
                       <View style={s.weeklyMetaPill}>
                         <Feather name="zap" size={13} color={colors.appLightText} />
-                        <Text style={s.weeklyMetaPillText}>Current: {goal?.ayahsPerWeek ?? 0} page/day</Text>
+                        <Text style={s.weeklyMetaPillText}>Current: {goal?.ayahsPerWeek ?? 0} ayah/day</Text>
                       </View>
                       {nextPaceCount ? (
                         <View style={s.weeklyMetaPill}>
@@ -1544,36 +1591,52 @@ export default function HomeScreen() {
                           const nonPaceRef = ayah && typeof ayah === "object" && "ayahNumber" in ayah
                             ? (ayah as AyahRef)
                             : null;
-                          const ayahRef = isPaceGoal ? (paceDotsAyahs[i] ?? null) : nonPaceRef;
+                          const ayahRef = isPaceGoal ? null : nonPaceRef;
                           const dotKey = ayahRef ? getAyahKey(ayahRef) : null;
-                          const done = dotKey
-                            ? memorizedAyahKeySet.has(dotKey)
-                            : (isPaceGoal ? i < weekGoalProgress : false);
+                          const done = isPaceGoal
+                            ? i < weekGoalProgress
+                            : !!dotKey && memorizedAyahKeySet.has(dotKey);
+                          const isPending = dotPendingIndex === i;
                           const ayahNumber = ayahRef?.ayahNumber ?? i + 1;
                           const handleDotPress = () => {
-                            if (!ayahRef) return;
+                            if (dotPendingIndex !== null) return;
                             if (isPaceGoal) {
+                              if (done) return; // pace dots are one-directional
+                              if (!nextPaceAyah) return;
+                              setDotPendingIndex(i);
+                              setTimeout(() => {
+                                markAyahsMemorized([getAyahKey(nextPaceAyah)]);
+                                setDotPendingIndex(null);
+                              }, 500);
+                            } else {
+                              if (!ayahRef) return;
                               if (done) {
                                 removeMemorizedAyahKeys([getAyahKey(ayahRef)]);
-                              } else {
-                                markAyahsMemorized([getAyahKey(ayahRef)]);
+                                setShowWeekCompleteCard(false);
+                                return;
                               }
-                            } else {
-                              toggleAyahMemorized(ayahRef.surahNumber, ayahRef.ayahNumber);
+                              setDotPendingIndex(i);
+                              setTimeout(() => {
+                                markAyahsMemorized([getAyahKey(ayahRef)]);
+                                setDotPendingIndex(null);
+                              }, 500);
                             }
                           };
                           return (
                             <TouchableOpacity
                               key={i}
-                              style={[s.dotCircle, done ? s.dotCircleDone : s.dotCircleEmpty]}
+                              style={[
+                                s.dotCircle,
+                                (isPending || done) ? s.dotCircleDone : s.dotCircleEmpty,
+                              ]}
                               onPress={handleDotPress}
                               activeOpacity={0.65}
-                              disabled={!ayahRef}
+                              disabled={isPaceGoal ? done : !ayahRef}
                             >
-                              {done && isPaceGoal ? (
-                                <Feather name="check" size={11} color={colors.textSecondary} />
+                              {(isPending || done) && isPaceGoal ? (
+                                <Feather name="check" size={16} color={colors.textSecondary} />
                               ) : !isPaceGoal ? (
-                                <Text style={done ? s.dotNumDone : s.dotNum}>{ayahNumber}</Text>
+                                <Text style={(isPending || done) ? s.dotNumDone : s.dotNum}>{ayahNumber}</Text>
                               ) : null}
                             </TouchableOpacity>
                           );
@@ -1591,7 +1654,7 @@ export default function HomeScreen() {
                   </View>
                 )}
 
-                {!isPaceGoal && weekPercent >= 100 && showWeekCompleteCard && (
+                {weekPercent >= 100 && showWeekCompleteCard && (isPaceGoal ? paceExtensionOptionCounts.length > 0 : true) && (
                   <View style={s.weekCompleteCard}>
                     <View style={s.weekCompleteTopRow}>
                       <View style={s.weekCompleteIcon}>
@@ -1610,11 +1673,11 @@ export default function HomeScreen() {
                       </TouchableOpacity>
                     </View>
                     <View style={s.weekAddOptionsRow}>
-                      {extensionOptionCounts.map((count) => (
+                      {(isPaceGoal ? paceExtensionOptionCounts : extensionOptionCounts).map((count) => (
                         <TouchableOpacity
                           key={count}
                           style={s.weekAddOption}
-                          onPress={() => extendCurrentGoal(count)}
+                          onPress={() => isPaceGoal ? extendPaceGoal(count) : extendCurrentGoal(count)}
                           activeOpacity={0.8}
                         >
                           <Text style={s.weekAddOptionText}>+{count}</Text>
