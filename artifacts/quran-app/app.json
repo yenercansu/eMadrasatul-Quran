@@ -27,7 +27,9 @@
       ],
       "package": "com.alzahira.quranmadrasa"
     },
+    "platforms": ["ios", "android", "web"],
     "web": {
+      "bundler": "metro",
       "favicon": "./assets/images/logo.png"
     },
     "plugins": [
