@@ -1,0 +1,19 @@
+[build]
+  # Expo web export outputs to dist/ inside the app package.
+  publish = "artifacts/quran-app/dist"
+  # If Netlify builds from source instead of using the pre-built dist, use:
+  # command = "cd artifacts/quran-app && npx expo export --platform web"
+
+[[redirects]]
+  # SPA fallback: all paths must resolve to index.html so Expo Router can
+  # handle client-side navigation, including /oauth/google/callback which
+  # is where the backend redirects after Google sign-in.
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[build.environment]
+  # Required at build time so Linking.createURL resolves to the production domain.
+  # Set this in the Netlify UI → Site settings → Environment variables instead
+  # of hardcoding it here if you prefer to keep domains out of source control.
+  EXPO_PUBLIC_DOMAIN = "emadrasatulquran.com"

@@ -12,6 +12,12 @@ export default function GoogleOAuthCallbackScreen() {
   const params = useLocalSearchParams<{ token?: string; session?: string; session_token?: string }>();
 
   useEffect(() => {
+    // On web the OAuth flow runs in a popup opened by openAuthSessionAsync.
+    // maybeCompleteAuthSession signals the parent window (via postMessage +
+    // localStorage) so it can resolve with { type: "success", url } and extract
+    // the token inline. This must run before any navigation.
+    WebBrowser.maybeCompleteAuthSession({ skipRedirectCheck: true });
+
     WebBrowser.dismissBrowser();
     if (__DEV__) console.info("[Google Auth] Callback raw params", { keys: Object.keys(params) });
 
@@ -35,10 +41,15 @@ export default function GoogleOAuthCallbackScreen() {
     if (__DEV__) console.info("[Google Auth] Callback extracted token", { length: token?.length ?? 0, prefix: token?.slice(0, 12), suffix: token?.slice(-10) });
 
     if (token) {
-      storeSessionToken(token).then(() => {
-        setApiSessionToken(token);
-        router.replace("/(tabs)");
-      });
+      // storeSessionToken uses localStorage on web (SecureStore is unavailable).
+      // Don't let storage failure block navigation — the in-memory token set
+      // by persistSession in the parent window is sufficient for the session.
+      storeSessionToken(token)
+        .catch(() => {})
+        .then(() => {
+          setApiSessionToken(token!);
+          router.replace("/(tabs)");
+        });
     } else {
       if (__DEV__) console.warn("[Google Auth] No token in callback URL");
       router.replace("/auth");
