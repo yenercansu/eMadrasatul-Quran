@@ -134,7 +134,7 @@ export default function HomeScreen() {
   const {
     lastListened, goal, setGoal, memorizationGoal, setMemorizationGoal,
     todayEntry, dailyEntries, onlineUsers, recentProgress, savedSurahs,
-    getWeekGoalAyahs, isSurahChecked, checkedSurahs, markAyahsMemorized, recordMilestoneCompletion,
+    getWeekGoalAyahs, isSurahChecked, markAyahsMemorized, recordMilestoneCompletion,
     memorizedAyahKeys, resetHifzProgress,
   } = useQuran();
   const [refreshing, setRefreshing] = useState(false);
@@ -275,10 +275,6 @@ export default function HomeScreen() {
     if (memorizationGoal.path === "pace") return memorizedAyahKeys.length;
     if (memorizationGoal.path === "surah") {
       const targetSurahNum = memorizationGoal.startSurahNumber;
-      // Manually marked complete → count the full surah
-      if (isSurahChecked(targetSurahNum)) {
-        return SURAH_DATA.find(s => s.number === targetSurahNum)?.ayahCount ?? 0;
-      }
       return memorizedAyahKeys.filter((key) => {
         const [surahRaw, ayahRaw] = key.split(":");
         return Number(surahRaw) === targetSurahNum && Number.isFinite(Number(ayahRaw));
@@ -292,7 +288,7 @@ export default function HomeScreen() {
       if (!Number.isFinite(Number(surahRaw)) || !Number.isFinite(Number(ayahRaw))) return false;
       return !!targetJuzAyahKeys?.has(key);
     }).length;
-  }, [memorizedAyahKeys, memorizationGoal, isSurahChecked]);
+  }, [memorizedAyahKeys, memorizationGoal]);
 
   const streakDays = useMemo(() => {
     const today = new Date();
@@ -336,10 +332,10 @@ export default function HomeScreen() {
     const memorized = new Set(memorizedAyahKeys);
     return new Set(
       SURAH_DATA
-        .filter((surah) => isSurahChecked(surah.number) || isSurahFullyMemorized(surah.number, memorized))
+        .filter((surah) => isSurahFullyMemorized(surah.number, memorized))
         .map((surah) => surah.number)
     );
-  }, [isSurahChecked, memorizedAyahKeys]);
+  }, [memorizedAyahKeys]);
 
   const targetTotal = memorizationGoal?.path === "pace"
     ? TOTAL_AYAHS
@@ -902,7 +898,7 @@ export default function HomeScreen() {
         totalAyahs: targetTotal,
       });
     } else {
-      const nextSurah = findNextIncompleteSurah(memorizationGoal.startSurahNumber, memorizedAyahKeys, new Set(checkedSurahs));
+      const nextSurah = findNextIncompleteSurah(memorizationGoal.startSurahNumber, memorizedAyahKeys);
       if (!nextSurah) return;
       const surahAyahsNext = Array.from({ length: nextSurah.ayahCount }, (_, index) => ({
         surahNumber: nextSurah.number,
@@ -961,7 +957,7 @@ export default function HomeScreen() {
     }
   }, [
     memorizationGoal, hifzTransition, targetJuz, targetSurah,
-    goal, memorizedAyahKeys, checkedSurahs, todayEntry, targetTotal, recordMilestoneCompletion,
+    goal, memorizedAyahKeys, todayEntry, targetTotal, recordMilestoneCompletion,
     setHifzTransition,
   ]);
 
@@ -1033,7 +1029,7 @@ export default function HomeScreen() {
           totalAyahs: targetTotal,
         });
       } else {
-        const nextSurah = findNextIncompleteSurah(memorizationGoal.startSurahNumber, memorizedAyahKeys, new Set(checkedSurahs));
+        const nextSurah = findNextIncompleteSurah(memorizationGoal.startSurahNumber, memorizedAyahKeys);
         if (!nextSurah) return;
         const surahAyahs = Array.from({ length: nextSurah.ayahCount }, (_, index) => ({
           surahNumber: nextSurah.number,
@@ -1110,7 +1106,6 @@ export default function HomeScreen() {
     memorizationGoal,
     memorizationPercent,
     memorizedAyahKeys,
-    checkedSurahs,
     recordMilestoneCompletion,
     setGoal,
     setMemorizationGoal,

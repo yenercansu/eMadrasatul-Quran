@@ -66,11 +66,9 @@ export function isJuzFullyMemorized(juz: number, memorized: Set<string>): boolea
 export function findNextIncompleteSurah(
   currentSurahNumber: number,
   memorizedAyahKeys: string[],
-  checkedSurahsSet: Set<number> = new Set(),
 ): typeof SURAH_DATA[number] | null {
   const memorized = new Set(memorizedAyahKeys);
-  const isFullyDone = (n: number) =>
-    checkedSurahsSet.has(n) || isSurahFullyMemorized(n, memorized);
+  const isFullyDone = (n: number) => isSurahFullyMemorized(n, memorized);
   const after = SURAH_DATA.find(s => s.number > currentSurahNumber && !isFullyDone(s.number));
   if (after) return after;
   return SURAH_DATA.find(s => !isFullyDone(s.number)) ?? null;

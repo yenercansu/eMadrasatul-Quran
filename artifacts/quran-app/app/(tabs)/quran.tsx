@@ -142,7 +142,7 @@ export default function QuranScreen() {
           renderItem={({ item }) => {
             const saved = isSurahSaved(item.number);
             const memCount = memorizedCountBySurah[item.number] ?? 0;
-            const isCompleted = memCount === item.numberOfAyahs || isSurahChecked(item.number);
+            const isCompleted = isSurahChecked(item.number);
 
             const handleToggleComplete = () => {
               if (isCompleted) {
