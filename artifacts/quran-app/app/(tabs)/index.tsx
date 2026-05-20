@@ -137,7 +137,7 @@ export default function HomeScreen() {
     lastListened, goal, setGoal, memorizationGoal, setMemorizationGoal,
     todayEntry, dailyEntries, onlineUsers, recentProgress, savedSurahs,
     getWeekGoalAyahs, isSurahChecked, markAyahsMemorized, recordMilestoneCompletion,
-    memorizedAyahKeys, resetHifzProgress,
+    memorizedAyahKeys, resetHifzProgress, toggleAyahMemorized, removeMemorizedAyahKeys,
   } = useQuran();
   const [refreshing, setRefreshing] = useState(false);
   const [weeklyGoalVisible, setWeeklyGoalVisible] = useState(false);
@@ -748,6 +748,21 @@ export default function HomeScreen() {
   const weeklySequence = weekGoalAyahs;
   const weeklySequenceFallback = Array.from({ length: Math.max(1, effectiveGoalCount || (goal?.ayahsPerWeek ?? 7)) });
   const memorizedAyahKeySet = useMemo(() => new Set(memorizedAyahKeys), [memorizedAyahKeys]);
+
+  const paceDotsAyahs = useMemo((): AyahRef[] => {
+    if (!isPaceGoal || !goal) return [];
+    const count = Math.max(1, goal.ayahsPerWeek);
+    const result: AyahRef[] = [];
+    let cur: AyahRef | null = lastMemorizedAyah
+      ? getNextAyahAfter(lastMemorizedAyah)
+      : { surahNumber: 1, surahName: SURAH_DATA[0].englishName, ayahNumber: 1 };
+    while (cur && result.length < count) {
+      result.push(cur);
+      cur = getNextAyahAfter(cur);
+    }
+    return result;
+  }, [isPaceGoal, goal, lastMemorizedAyah]);
+
   const weeklyHeadline = isRevisionGoal
     ? (weekGoalProgress > 0 ? `${weekGoalProgress} ayahs revisited` : "Revision ready")
     : weekGoalProgress > 0
@@ -826,23 +841,28 @@ export default function HomeScreen() {
     daysPerWeek?: number;
     targetDaysPerWeek?: number;
   }) => {
-    setContinuationNotice(null);
-    setHifzTransition(null);
-    setHifzTransitionProgress(0);
+    // Minimal state for the modal swap — fewer state changes = faster re-render,
+    // which reduces the home screen flash between HifzGoalSetupModal and pace modal.
     setWidgetPath("surah");
-    setWidgetFirstAyah(null);
-    setWidgetLastAyah(null);
-    setWidgetJuz(null);
-    setSetupStartAtAyahSelection(false);
-    setSetupInitialSurahNumber(undefined);
-    setSetupInitialJuz(undefined);
-    setShowHifzGoalOptions(false);
-    setHifzSetupVisible(false);
     if (options?.rhythm) setPaceRhythm(options.rhythm);
     if (options?.daysPerWeek) setPaceDaysPerWeek(options.daysPerWeek);
     if (options?.targetDaysPerWeek) setPaceTargetDaysPerWeek(options.targetDaysPerWeek);
     setPaceDateInitialStep(0);
+    setHifzSetupVisible(false);
     setPaceDateVisible(true);
+    // Defer home-screen cleanup; it's invisible while the pace modal is open.
+    requestAnimationFrame(() => {
+      setContinuationNotice(null);
+      setHifzTransition(null);
+      setHifzTransitionProgress(0);
+      setWidgetFirstAyah(null);
+      setWidgetLastAyah(null);
+      setWidgetJuz(null);
+      setSetupStartAtAyahSelection(false);
+      setSetupInitialSurahNumber(undefined);
+      setSetupInitialJuz(undefined);
+      setShowHifzGoalOptions(false);
+    });
   }, []);
 
   const handleRevisionComplete = useCallback(() => {
@@ -1521,19 +1541,41 @@ export default function HomeScreen() {
                         contentContainerStyle={s.dotsScrollContent}
                       >
                         {(weeklySequence.length ? weeklySequence : weeklySequenceFallback).map((ayah, i) => {
-                          const ayahRef = ayah && typeof ayah === "object" && "ayahNumber" in ayah
+                          const nonPaceRef = ayah && typeof ayah === "object" && "ayahNumber" in ayah
                             ? (ayah as AyahRef)
                             : null;
-                          const done = isPaceGoal
-                            ? i < weekGoalProgress
-                            : !!ayahRef && memorizedAyahKeySet.has(getAyahKey(ayahRef));
+                          const ayahRef = isPaceGoal ? (paceDotsAyahs[i] ?? null) : nonPaceRef;
+                          const dotKey = ayahRef ? getAyahKey(ayahRef) : null;
+                          const done = dotKey
+                            ? memorizedAyahKeySet.has(dotKey)
+                            : (isPaceGoal ? i < weekGoalProgress : false);
                           const ayahNumber = ayahRef?.ayahNumber ?? i + 1;
+                          const handleDotPress = () => {
+                            if (!ayahRef) return;
+                            if (isPaceGoal) {
+                              if (done) {
+                                removeMemorizedAyahKeys([getAyahKey(ayahRef)]);
+                              } else {
+                                markAyahsMemorized([getAyahKey(ayahRef)]);
+                              }
+                            } else {
+                              toggleAyahMemorized(ayahRef.surahNumber, ayahRef.ayahNumber);
+                            }
+                          };
                           return (
-                            <View key={i} style={[s.dotCircle, done ? s.dotCircleDone : s.dotCircleEmpty]}>
-                              {isPaceGoal ? null : (
+                            <TouchableOpacity
+                              key={i}
+                              style={[s.dotCircle, done ? s.dotCircleDone : s.dotCircleEmpty]}
+                              onPress={handleDotPress}
+                              activeOpacity={0.65}
+                              disabled={!ayahRef}
+                            >
+                              {done && isPaceGoal ? (
+                                <Feather name="check" size={11} color={colors.textSecondary} />
+                              ) : !isPaceGoal ? (
                                 <Text style={done ? s.dotNumDone : s.dotNum}>{ayahNumber}</Text>
-                              )}
-                            </View>
+                              ) : null}
+                            </TouchableOpacity>
                           );
                         })}
                       </ScrollView>
@@ -1729,30 +1771,32 @@ export default function HomeScreen() {
 
           {/* ── Last Visited ──────────────────────────────────────────────── */}
           {recentProgress.length > 0 && (
-            <View style={s.listSection}>
-              <SubSectionTitle style={{ paddingHorizontal: 20, marginBottom: 14 }}>Last Visited</SubSectionTitle>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={s.lvScroll}
-              >
-                {recentProgress.slice(0, 5).map((p) => {
-                  const meta = SURAH_DATA[p.surahNumber - 1];
-                  if (!meta) return null;
-                  return (
-                    <TouchableOpacity
-                      key={p.surahNumber}
-                      style={s.lvCard}
-                      onPress={() => router.push(`/surah/${p.surahNumber}?ayah=${p.ayahNumberInSurah}`)}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={s.lvArabic}>{meta.name}</Text>
-                      <Text style={s.lvName}>{p.surahName}</Text>
-                      <Text style={s.lvAyah}>Ayah {p.ayahNumberInSurah}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
+            <View style={s.surahSection}>
+              <View style={s.listSectionHeader}>
+                <SubSectionTitle>Last Visited</SubSectionTitle>
+              </View>
+              {recentProgress.slice(0, 5).map((p, i) => {
+                const meta = SURAH_DATA[p.surahNumber - 1];
+                if (!meta) return null;
+                const memorized = fullyMemorizedSurahs.has(p.surahNumber);
+                const isLast = i === Math.min(recentProgress.length, 5) - 1;
+                return (
+                  <TouchableOpacity
+                    key={`${p.surahNumber}-${i}`}
+                    style={[s.surahRow, isLast && s.surahRowLast]}
+                    onPress={() => router.push(`/surah/${p.surahNumber}?ayah=${p.ayahNumberInSurah}`)}
+                    activeOpacity={0.65}
+                  >
+                    <View style={s.surahInfo}>
+                      <Text style={s.surahName}>{p.surahName}</Text>
+                      {memorized && <MemorizedBadge />}
+                      <Text style={s.surahMeta}>Ayah {p.ayahNumberInSurah} · {meta.ayahCount} Ayahs</Text>
+                    </View>
+                    <Text style={s.surahArabic}>{meta.name}</Text>
+                    <Feather name="clock" size={16} color={colors.appLightText} />
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
 
@@ -1819,6 +1863,7 @@ export default function HomeScreen() {
                 <View key={group.juz}>
                   <View style={s.juzHeader}>
                     <Text style={s.juzLabel}>JUZ {group.juz}</Text>
+                    <View style={s.juzDivider} />
                   </View>
                   {group.surahs.map((surah, i) => {
                     const memorized = fullyMemorizedSurahs.has(surah.number);
@@ -2483,7 +2528,13 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     juzHeader: {
       paddingHorizontal: 20,
       paddingTop: 20,
-      paddingBottom: 4,
+      paddingBottom: 8,
+    },
+    juzDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.borderStrong,
+      marginTop: 6,
+      marginRight: 40,
     },
     juzLabel: {
       fontSize: 11,

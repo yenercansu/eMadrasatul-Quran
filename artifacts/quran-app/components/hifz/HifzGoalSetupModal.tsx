@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { BackHandler, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { HifzSegmentedControl } from "@/components/hifz/HifzUI";
@@ -7,6 +7,7 @@ import { ActionPill } from "@/components/ActionPill";
 import { JUZ_STARTS, SURAH_DATA } from "@/constants/surahData";
 import { VerseCard } from "@/components/VerseCard";
 import { BackButton } from "@/components/BackButton";
+import { IconButton } from "@/components/DesignSystem";
 import { useColors } from "@/hooks/useColors";
 
 export type HifzSetupMode = "surah" | "juz" | "pace";
@@ -50,6 +51,17 @@ export function HifzGoalSetupModal({
   const selectedSurah = SURAH_DATA[selectedSurahNumber - 1] ?? SURAH_DATA[0];
   const selectedJuzStart = JUZ_STARTS[selectedJuz - 1] ?? JUZ_STARTS[0];
 
+  // Android back button handling (Modal handled this automatically before)
+  useEffect(() => {
+    if (!visible) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (picker) { setPicker(null); return true; }
+      onClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [visible, picker, onClose]);
+
   const handleContinue = () => {
     if (mode === "surah") onSelectSurah(selectedSurah.number);
     else if (mode === "juz") onSelectJuz(selectedJuz);
@@ -62,7 +74,12 @@ export function HifzGoalSetupModal({
     }
   };
 
-  if (picker) {
+  // Render nothing when not visible — no native Modal queuing, so the pace
+  // AyahRangeModal (a real Modal) can appear instantly on top without a gap.
+  if (!visible) return null;
+
+  const pickerContent = () => {
+    if (!picker) return null;
     const query = pickerSearch.trim().toLowerCase();
     const data = picker === "surah"
       ? SURAH_DATA.filter((surah) => {
@@ -81,93 +98,91 @@ export function HifzGoalSetupModal({
             startSurah?.englishName.toLowerCase().includes(query)
           );
         });
+
     return (
-      <Modal visible={visible} animationType="none" onRequestClose={() => setPicker(null)}>
-        <View style={[m.screen, { paddingTop: insets.top }]}>
-          <View style={[m.pickerHeader, { paddingTop: 14 }]}>
-            <BackButton onPress={() => setPicker(null)} />
-            <Text style={m.pickerTitle}>{picker === "surah" ? "Choose Surah" : "Choose Juz"}</Text>
-            <TouchableOpacity style={m.pickerIconButton} onPress={onClose} activeOpacity={0.72}>
-              <Feather name="x" size={18} color={colors.hifzLightMuted} />
-            </TouchableOpacity>
-          </View>
-          <View style={m.searchWrap}>
-            <Feather name="search" size={15} color={colors.hifzLightMuted} />
-            <TextInput
-              style={m.searchInput}
-              placeholder={picker === "surah" ? "Search surahs..." : "Search juz..."}
-              placeholderTextColor={colors.hifzFaint}
-              value={pickerSearch}
-              onChangeText={setPickerSearch}
-              autoCorrect={false}
-              clearButtonMode="while-editing"
-            />
-          </View>
-          <FlatList
-            data={data as any[]}
-            keyExtractor={(item) => picker === "surah" ? String(item.number) : String(item.juz)}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={m.pickerList}
-            renderItem={({ item }) => {
-              if (picker === "surah") {
-                const selected = item.number === selectedSurahNumber;
-                return (
-                  <TouchableOpacity
-                    style={m.pickerRow}
-                    onPress={() => {
-                      setSelectedSurahNumber(item.number);
-                      setPickerSearch("");
-                      setPicker(null);
-                    }}
-                    activeOpacity={0.65}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={m.pickerRowTitle}>{item.englishName}</Text>
-                      <Text style={m.pickerRowSub}>{item.ayahCount} ayahs · Juz {item.juz}</Text>
-                    </View>
-                  <Text style={m.pickerArabic}>{item.name}</Text>
-                    {selected ? <Feather name="check" size={18} color={colors.hifzAccent} /> : <Feather name="chevron-right" size={16} color={colors.hifzFaint} />}
-                  </TouchableOpacity>
-                );
-              }
-              const startSurah = SURAH_DATA[(item.startsAt?.surah ?? 1) - 1];
-              const selected = item.juz === selectedJuz;
+      <View style={[StyleSheet.absoluteFill, m.screen, { paddingTop: insets.top }]}>
+        <View style={[m.pickerHeader, { paddingTop: 14 }]}>
+          <BackButton onPress={() => setPicker(null)} />
+          <Text style={m.pickerTitle}>{picker === "surah" ? "Choose Surah" : "Choose Juz"}</Text>
+          <IconButton icon="x" tone="plain" onPress={onClose} accessibilityLabel="Close" />
+        </View>
+        <View style={m.searchWrap}>
+          <Feather name="search" size={15} color={colors.hifzLightMuted} />
+          <TextInput
+            style={m.searchInput}
+            placeholder={picker === "surah" ? "Search surahs..." : "Search juz..."}
+            placeholderTextColor={colors.hifzFaint}
+            value={pickerSearch}
+            onChangeText={setPickerSearch}
+            autoCorrect={false}
+            clearButtonMode="while-editing"
+          />
+        </View>
+        <FlatList
+          data={data as any[]}
+          keyExtractor={(item) => picker === "surah" ? String(item.number) : String(item.juz)}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={m.pickerList}
+          renderItem={({ item }) => {
+            if (picker === "surah") {
+              const selected = item.number === selectedSurahNumber;
               return (
                 <TouchableOpacity
                   style={m.pickerRow}
                   onPress={() => {
-                    setSelectedJuz(item.juz);
+                    setSelectedSurahNumber(item.number);
                     setPickerSearch("");
                     setPicker(null);
                   }}
                   activeOpacity={0.65}
                 >
                   <View style={{ flex: 1 }}>
-                    <Text style={m.pickerRowTitle}>Juz {item.juz}</Text>
-                    <Text style={m.pickerRowSub}>Opens at {startSurah?.englishName ?? "Al-Fatiha"}</Text>
+                    <Text style={m.pickerRowTitle}>{item.englishName}</Text>
+                    <Text style={m.pickerRowSub}>{item.ayahCount} ayahs · Juz {item.juz}</Text>
                   </View>
+                  <Text style={m.pickerArabic}>{item.name}</Text>
                   {selected ? <Feather name="check" size={18} color={colors.hifzAccent} /> : <Feather name="chevron-right" size={16} color={colors.hifzFaint} />}
                 </TouchableOpacity>
               );
-            }}
-          />
-        </View>
-      </Modal>
+            }
+            const startSurah = SURAH_DATA[(item.startsAt?.surah ?? 1) - 1];
+            const selected = item.juz === selectedJuz;
+            return (
+              <TouchableOpacity
+                style={m.pickerRow}
+                onPress={() => {
+                  setSelectedJuz(item.juz);
+                  setPickerSearch("");
+                  setPicker(null);
+                }}
+                activeOpacity={0.65}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={m.pickerRowTitle}>Juz {item.juz}</Text>
+                  <Text style={m.pickerRowSub}>Opens at {startSurah?.englishName ?? "Al-Fatiha"}</Text>
+                </View>
+                {selected ? <Feather name="check" size={18} color={colors.hifzAccent} /> : <Feather name="chevron-right" size={16} color={colors.hifzFaint} />}
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
     );
-  }
+  };
 
   return (
-    <Modal visible={visible} animationType="none" onRequestClose={onClose}>
-      <View style={[m.screen, { paddingTop: insets.top }]}>
-        {/* Close button — anchored */}
+    <View style={[StyleSheet.absoluteFill, m.screen, { paddingTop: insets.top }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 136 }}
+      >
+        {/* Close button */}
         <View style={m.topRow}>
           <View />
-          <TouchableOpacity style={m.closeIconButton} onPress={onClose} activeOpacity={0.72}>
-            <Feather name="x" size={18} color={colors.hifzLightMuted} strokeWidth={2} />
-          </TouchableOpacity>
+          <IconButton icon="x" tone="soft" onPress={onClose} accessibilityLabel="Close" />
         </View>
 
-        {/* Title + mode switcher — anchored */}
+        {/* Title + mode switcher */}
         <View style={m.anchoredHeader}>
           <Text style={m.bismillah}>Bismillahirrahmanirrahim</Text>
           <Text style={m.title}>How would you like{"\n"}to begin?</Text>
@@ -190,10 +205,7 @@ export function HifzGoalSetupModal({
           <Text style={m.switchNote}>You can always switch modes later.</Text>
         </View>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[m.content, { paddingBottom: insets.bottom + 136 }]}
-        >
+        <View style={m.content}>
           {mode === "pace" ? (
             <View style={m.rhythmStack}>
               {rhythmOptions.map((option) => {
@@ -269,19 +281,22 @@ export function HifzGoalSetupModal({
               )}
             </>
           )}
-
-        </ScrollView>
-        <View style={[m.bottomCta, { paddingBottom: insets.bottom + 16 }]}>
-          <ActionPill
-            label={mode === "pace" ? "Continue with this pace →" : "Continue To Ayah Selection →"}
-            onPress={handleContinue}
-            variant="primary"
-            size="lg"
-          />
-          <Text style={m.footerText}>To complete the Quran · Inshallah</Text>
         </View>
+      </ScrollView>
+
+      <View style={[m.bottomCta, { paddingBottom: insets.bottom + 16 }]}>
+        <ActionPill
+          label={mode === "pace" ? "Continue with this pace →" : "Continue To Ayah Selection →"}
+          onPress={handleContinue}
+          variant="primary"
+          size="lg"
+        />
+        <Text style={m.footerText}>To complete the Quran · Inshallah</Text>
       </View>
-    </Modal>
+
+      {/* Picker overlay — rendered on top within the same View hierarchy */}
+      {pickerContent()}
+    </View>
   );
 }
 
@@ -296,14 +311,6 @@ const styles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
     paddingHorizontal: 28,
     paddingTop: 22,
     paddingBottom: 16,
-  },
-  closeIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.hifzWarmBand,
-    alignItems: "center",
-    justifyContent: "center",
   },
   bismillah: {
     fontSize: 12,
@@ -380,19 +387,6 @@ const styles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
     lineHeight: 20,
     fontWeight: "400",
     color: colors.hifzLightMuted,
-    fontFamily: "Inter_400Regular",
-  },
-  quote: {
-    fontSize: 17,
-    lineHeight: 28,
-    color: colors.hifzMuted,
-    fontFamily: "Inter_400Regular",
-    fontStyle: "italic",
-  },
-  helperText: {
-    fontSize: 16,
-    lineHeight: 25,
-    color: colors.hifzMuted,
     fontFamily: "Inter_400Regular",
   },
   juzBlock: { marginTop: 38 },
@@ -521,12 +515,6 @@ const styles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
     color: colors.hifzText,
     fontFamily: "Inter_400Regular",
     paddingVertical: 0,
-  },
-  pickerIconButton: {
-    width: 48,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
   },
   pickerTitle: {
     flex: 1,

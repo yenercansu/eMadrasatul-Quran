@@ -213,6 +213,7 @@ interface Props {
   initialJuz?: number;
   initialPaceStep?: 0 | 1 | 2 | 3;
   modalAnimationType?: "none" | "slide" | "fade";
+  onModalShow?: () => void;
   paceDaysPerWeek?: number;
   paceTargetDaysPerWeek?: number;
   paceRhythm?: PaceRhythm;
@@ -239,6 +240,7 @@ export function AyahRangeModal({
   confirmLabel = "Start Memorizing →",
   onConfirm,
   onClose,
+  onModalShow,
 }: Props) {
   const c = useColors();
   const s = useMemo(() => createStyles(c), [c]);
@@ -250,8 +252,12 @@ export function AyahRangeModal({
   const ayahScrollRef = useRef<ScrollView>(null);
   const forecastScrollRef = useRef<ScrollView>(null);
 
-  const [step, setStep] = useState<0 | 1 | 2 | 3>(1);
-  const [maxStepReached, setMaxStepReached] = useState<0 | 1 | 2 | 3>(1);
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(() =>
+    startAtPaceDate ? 0 : startAtWeeklyGoal && initialSelection ? 3 : startAtAyahSelection ? 2 : 1
+  );
+  const [maxStepReached, setMaxStepReached] = useState<0 | 1 | 2 | 3>(() =>
+    startAtPaceDate ? 0 : startAtWeeklyGoal && initialSelection ? 3 : startAtAyahSelection ? 2 : 1
+  );
   const [paceStep, setPaceStep] = useState<0 | 1 | 2 | 3>(0);
   const [paceRangeTab, setPaceRangeTab] = useState<"surah" | "juz">("surah");
   const [search, setSearch] = useState("");
@@ -908,7 +914,7 @@ export function AyahRangeModal({
         <>
           <View style={[s.header, { paddingTop: 8 }]}>
             {renderHeaderBack(onClose)}
-            <Text style={s.screenTitle}>Set Your Goal</Text>
+            <Text style={s.screenTitle}>Your Starting Pace</Text>
             <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Text style={s.cancelText}>Cancel</Text>
             </TouchableOpacity>
@@ -1064,7 +1070,7 @@ export function AyahRangeModal({
       <>
         <View style={[s.header, { paddingTop: 8 }]}>
           {renderHeaderBack(() => setPaceStep(1))}
-          <Text style={s.screenTitle}>Set Your Goal</Text>
+          <Text style={s.screenTitle}>How You'll Grow</Text>
           <TouchableOpacity onPress={onClose} style={s.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Text style={s.cancelText}>Cancel</Text>
           </TouchableOpacity>
@@ -1110,16 +1116,19 @@ export function AyahRangeModal({
                   <Text style={s.timelineLabel}>Today</Text>
                   <Text style={s.timelineValue}>{formatPaceOptionLabel(capacityOptions.find(o => o.ayahsPerWeek === ayahsPerWeek)?.label ?? "")}</Text>
                 </View>
-                {growthMilestones.map((milestone) => (
-                  <React.Fragment key={milestone.label}>
-                    <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color={c.accentSoft} /></View>
-                    <View style={s.timelineRow}>
-                      <View style={s.timelineDot} />
-                      <Text style={s.timelineLabel}>In ~{formatWeeks(milestone.weeksToReach)}</Text>
-                      <Text style={s.timelineValue}>{milestone.label}</Text>
-                    </View>
-                  </React.Fragment>
-                ))}
+                {growthMilestones.map((milestone, index) => {
+                  const isGoal = index === growthMilestones.length - 1;
+                  return (
+                    <React.Fragment key={milestone.label}>
+                      <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color={c.accentSoft} /></View>
+                      <View style={s.timelineRow}>
+                        <View style={[s.timelineDot, isGoal && s.timelineDotActive]} />
+                        <Text style={s.timelineLabel}>{isGoal ? "your goal" : "checkpoint"} · in ~{formatWeeks(milestone.weeksToReach)}</Text>
+                        <Text style={s.timelineValue}>{milestone.label}</Text>
+                      </View>
+                    </React.Fragment>
+                  );
+                })}
                 <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color={c.accentSoft} /></View>
                 <View style={s.timelineRow}>
                   <View style={[s.timelineDot, s.timelineDotMuted]} />
@@ -1917,7 +1926,7 @@ export function AyahRangeModal({
             <Text style={s.forecastLabel}>ESTIMATED COMPLETION</Text>
             <Text style={s.forecastTime}>{completionLabel}</Text>
             <Text style={s.forecastDate}>Inshallah</Text>
-            <Text style={s.forecastSub}>{timeLabel} at your selected pace</Text>
+            <Text style={s.forecastSub}>{timeLabel} from today</Text>
           </View>
 
           <View style={[s.insightBox, s.insightBoxFullHifz]}>
@@ -1951,7 +1960,7 @@ export function AyahRangeModal({
   };
 
   return (
-    <Modal visible={visible} animationType={modalAnimationType} onRequestClose={onClose}>
+    <Modal visible={visible} animationType={modalAnimationType} onRequestClose={onClose} onShow={onModalShow}>
       <View style={[s.sheet, { paddingTop: insets.top }]}>
         {step === 0
           ? renderPaceDate()

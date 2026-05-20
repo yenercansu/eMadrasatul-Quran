@@ -19,7 +19,7 @@ export function VerseCard({ verse, reference, style }: VerseCardProps) {
   const s = styles(colors);
   return (
     <View style={[s.card, style]}>
-      <Text style={s.label}>Qur'an Reflection</Text>
+      <Text style={s.label}>{"السَّلَامُ عَلَيْكُمْ وَرَحْمَةُ اللَّهِ وَبَرَكَاتُهُ، يَا طَالِبَ الْقُرْآنِ"}</Text>
       <View style={s.divider} />
       <Text style={s.verse}>{verse}</Text>
       <Text style={s.reference}>— {reference}</Text>
@@ -38,12 +38,12 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
     },
     label: {
-      fontSize: 10,
-      lineHeight: 14,
+      fontSize: 17,
+      lineHeight: 30,
       color: colors.textTertiary,
-      fontFamily: "Inter_600SemiBold",
-      letterSpacing: 1.8,
-      textTransform: "uppercase",
+      fontFamily: "Amiri_700Bold",
+      textAlign: "center",
+      writingDirection: "rtl",
       marginBottom: 10,
     },
     divider: {
