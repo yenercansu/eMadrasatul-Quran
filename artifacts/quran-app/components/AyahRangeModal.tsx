@@ -926,32 +926,34 @@ export function AyahRangeModal({
               <Text style={s.paceStepSubStrong}>Choose your real current pace.</Text>
             </Text>
             <View style={s.paceChoiceStack}>
-              {capacityOptions.map((option) => {
-                return renderPaceChoice({
-                  label: formatPaceOptionLabel(option.label),
-                  selected: paceCurrentSelected && ayahsPerWeek === option.ayahsPerWeek,
-                  onPress: () => {
-                        const selectedCapacity = option.ayahsPerWeek;
-                        if (selectedCapacity == null) return;
-                        const baseCurrentOption = VISUAL_CAPACITY_OPTIONS.find((opt) => opt.label === option.label);
-                        const baseCapacity = baseCurrentOption?.ayahsPerWeek ?? selectedCapacity;
-                        setAyahsPerWeek(selectedCapacity);
-                        setCurrentBaseAyahsPerWeek(baseCapacity);
-                        const nextDesired = desiredCapacityOptions.find((desired) => {
-                          const baseDesired = DESIRED_CAPACITY_OPTIONS.find((opt) => opt.label === desired.label)?.ayahsPerWeek ?? desired.ayahsPerWeek;
-                          return baseDesired > baseCapacity;
-                        });
-                        setPeakCapacityPerWeek(
-                          paceRhythm === "steady"
-                            ? selectedCapacity
-                            : nextDesired?.ayahsPerWeek ?? desiredCapacityOptions[desiredCapacityOptions.length - 1].ayahsPerWeek
-                        );
-                        setPaceCurrentSelected(true);
-                        setPaceDesiredSelected(paceRhythm === "steady");
-                        setPaceGrowthSelected(paceRhythm === "steady");
-                  },
-                });
-              })}
+              {capacityOptions.map((option) => (
+                <React.Fragment key={option.label}>
+                  {renderPaceChoice({
+                    label: formatPaceOptionLabel(option.label),
+                    selected: paceCurrentSelected && ayahsPerWeek === option.ayahsPerWeek,
+                    onPress: () => {
+                          const selectedCapacity = option.ayahsPerWeek;
+                          if (selectedCapacity == null) return;
+                          const baseCurrentOption = VISUAL_CAPACITY_OPTIONS.find((opt) => opt.label === option.label);
+                          const baseCapacity = baseCurrentOption?.ayahsPerWeek ?? selectedCapacity;
+                          setAyahsPerWeek(selectedCapacity);
+                          setCurrentBaseAyahsPerWeek(baseCapacity);
+                          const nextDesired = desiredCapacityOptions.find((desired) => {
+                            const baseDesired = DESIRED_CAPACITY_OPTIONS.find((opt) => opt.label === desired.label)?.ayahsPerWeek ?? desired.ayahsPerWeek;
+                            return baseDesired > baseCapacity;
+                          });
+                          setPeakCapacityPerWeek(
+                            paceRhythm === "steady"
+                              ? selectedCapacity
+                              : nextDesired?.ayahsPerWeek ?? desiredCapacityOptions[desiredCapacityOptions.length - 1].ayahsPerWeek
+                          );
+                          setPaceCurrentSelected(true);
+                          setPaceDesiredSelected(paceRhythm === "steady");
+                          setPaceGrowthSelected(paceRhythm === "steady");
+                    },
+                  })}
+                </React.Fragment>
+              ))}
             </View>
           </ScrollView>
 
@@ -1010,15 +1012,19 @@ export function AyahRangeModal({
               {peakOptions.map((option) => {
                 const baseDesiredAyahsPerWeek = DESIRED_CAPACITY_OPTIONS.find((opt) => opt.label === option.label)?.ayahsPerWeek ?? option.ayahsPerWeek;
                 const selected = paceDesiredSelected && peakCapacityPerWeek === option.ayahsPerWeek && baseDesiredAyahsPerWeek > currentBaseAyahsPerWeek;
-                return renderPaceChoice({
-                  label: formatPaceOptionLabel(option.label).replace(/^~/, ""),
-                  selected,
-                  onPress: () => {
-                      setPeakCapacityPerWeek(option.ayahsPerWeek);
-                      setPaceDesiredSelected(true);
-                      setPaceGrowthSelected(false);
-                  },
-                });
+                return (
+                  <React.Fragment key={option.label}>
+                    {renderPaceChoice({
+                      label: formatPaceOptionLabel(option.label).replace(/^~/, ""),
+                      selected,
+                      onPress: () => {
+                          setPeakCapacityPerWeek(option.ayahsPerWeek);
+                          setPaceDesiredSelected(true);
+                          setPaceGrowthSelected(false);
+                      },
+                    })}
+                  </React.Fragment>
+                );
               })}
             </View>
           ) : (
