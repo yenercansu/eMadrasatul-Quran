@@ -122,7 +122,7 @@ function records(durationLabel?: string, ayahsPerDayLabel?: string): string {
 
 function css(): string {
   return `<style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Amiri:wght@400;700&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
     @page { margin: 0; }
     html, body {
@@ -185,6 +185,11 @@ function css(): string {
       font-size: 12px; color: #bfaa88; direction: rtl; text-align: center;
       font-family: 'Al Nile', 'Geeza Pro', serif;
     }
+    .cert-title-arabic {
+      font-size: 35px; font-weight: 700; color: #2d2416; text-align: center; direction: rtl;
+      font-family: 'Amiri', 'Al Nile', 'Geeza Pro', 'Arabic Typesetting', serif; line-height: 1.6;
+    }
+    .cert-subtitle-en { font-size: 12px; color: #bfaa88; text-align: center; letter-spacing: 0.5px; }
     .section {
       padding: 10px 0; width: 100%; text-align: center;
       display: flex; flex-direction: column; align-items: center; gap: 6px;
@@ -278,6 +283,20 @@ function shellTwoPage(body1: string, body2: string): string {
   </body></html>`;
 }
 
+// ── Juz Arabic names ─────────────────────────────────────────────────────────
+
+export const JUZ_ARABIC_NAMES: Record<number, string> = {
+  1: "الجزء الأول", 2: "الجزء الثاني", 3: "الجزء الثالث", 4: "الجزء الرابع",
+  5: "الجزء الخامس", 6: "الجزء السادس", 7: "الجزء السابع", 8: "الجزء الثامن",
+  9: "الجزء التاسع", 10: "الجزء العاشر", 11: "الجزء الحادي عشر", 12: "الجزء الثاني عشر",
+  13: "الجزء الثالث عشر", 14: "الجزء الرابع عشر", 15: "الجزء الخامس عشر", 16: "الجزء السادس عشر",
+  17: "الجزء السابع عشر", 18: "الجزء الثامن عشر", 19: "الجزء التاسع عشر", 20: "الجزء العشرون",
+  21: "الجزء الحادي والعشرون", 22: "الجزء الثاني والعشرون", 23: "الجزء الثالث والعشرون",
+  24: "الجزء الرابع والعشرون", 25: "الجزء الخامس والعشرون", 26: "الجزء السادس والعشرون",
+  27: "الجزء السابع والعشرون", 28: "الجزء الثامن والعشرون", 29: "الجزء التاسع والعشرون",
+  30: "الجزء الثلاثون",
+};
+
 // ── Certificate HTML builders ─────────────────────────────────────────────────
 
 function buildSurahHtml(d: SurahCertData): string {
@@ -293,8 +312,8 @@ function buildSurahHtml(d: SurahCertData): string {
     ${ornament()}
     <div class="cert-header">
       <div class="label-xs">MEMORIZATION COMPLETE</div>
-      <div class="cert-title">${esc(d.surahEnglishName)}</div>
-      <div class="cert-title-ar">${esc(d.surahArabicName)}</div>
+      <div class="cert-title-arabic">${esc(d.surahArabicName)}</div>
+      <div class="cert-subtitle-en">${esc(d.surahEnglishName)}</div>
     </div>
     ${ornament(true)}
     <div class="section">
@@ -339,7 +358,8 @@ function buildJuzHtml(d: JuzCertData): string {
     ${ornament()}
     <div class="cert-header">
       <div class="label-xs">MEMORIZATION COMPLETE</div>
-      <div class="cert-title">Juz ${d.juzNumber}</div>
+      <div class="cert-title-arabic">${esc(JUZ_ARABIC_NAMES[d.juzNumber] ?? "")}</div>
+      <div class="cert-subtitle-en">Juz ${d.juzNumber}</div>
     </div>
     ${ornament(true)}
     <div class="section">
@@ -385,8 +405,8 @@ function buildFullQuranBody(d: FullQuranCertData): string {
     ${ornament()}
     <div class="cert-header">
       <div class="label-xs">CERTIFICATE OF COMPLETION</div>
-      <div class="cert-title">Hifz Al-Quran Al-Karim</div>
-      <div class="cert-title-ar">حفظ القرآن الكريم</div>
+      <div class="cert-title-arabic">حفظ القرآن الكريم</div>
+      <div class="cert-subtitle-en">Hifz Al-Quran Al-Karim</div>
     </div>
     ${ornament(true)}
     <div class="section">
@@ -511,7 +531,7 @@ export async function exportAndShareCertificate(data: CertificateData): Promise<
     html = buildFullQuranHtml(data);
   }
 
-  const printHeight = data.type === "full-quran" ? 654 : data.type === "juz" ? 656 : 616;
+  const printHeight = data.type === "full-quran" ? 669 : data.type === "juz" ? 671 : 631;
   const { uri } = await Print.printToFileAsync({ html, base64: false, width: 398, height: printHeight });
 
   const available = await Sharing.isAvailableAsync();

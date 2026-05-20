@@ -196,8 +196,8 @@ export function FullQuranCertificate({
         {/* ── Cert header ── */}
         <View style={styles.certHeader}>
           <Text style={[styles.labelXs, { color: c.hifzFaint }]}>CERTIFICATE OF COMPLETION</Text>
-          <Text style={[styles.certTitle, { color: c.hifzText }]}>Hifz Al-Quran Al-Karim</Text>
-          <Text style={[styles.certTitleAr, { color: c.hifzFaint }]}>حفظ القرآن الكريم</Text>
+          <Text style={[styles.certTitleAr, { color: c.hifzText }]}>حفظ القرآن الكريم</Text>
+          <Text style={[styles.certTitle, { color: c.hifzFaint }]}>Hifz Al-Quran Al-Karim</Text>
         </View>
 
         <OrnamentDivider faint />
@@ -493,19 +493,17 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     textAlign: "center",
   },
-  certTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -0.3,
-    lineHeight: 28,
-    textAlign: "center",
-  },
   certTitleAr: {
+    fontSize: 40,
+    fontFamily: "Amiri_400Regular",
+    lineHeight: 54,
+    textAlign: "center",
+    writingDirection: "rtl",
+  },
+  certTitle: {
     fontSize: 11,
     textAlign: "center",
     letterSpacing: 0.5,
-    writingDirection: "rtl",
     marginTop: 2,
   },
   section: {

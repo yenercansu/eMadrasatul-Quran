@@ -121,8 +121,8 @@ export default function SurahCertificateScreen() {
         {/* ── Cert header ── */}
         <View style={styles.certHeader}>
           <Text style={[styles.labelXs, { color: c.hifzFaint }]}>MEMORIZATION COMPLETE</Text>
-          <Text style={[styles.surahTitle, { color: c.hifzText }]}>{surah.englishName}</Text>
-          <Text style={[styles.surahTitleAr, { color: c.hifzFaint }]}>{surah.name}</Text>
+          <Text style={[styles.surahTitleAr, { color: c.hifzText }]}>{surah.name}</Text>
+          <Text style={[styles.surahTitle, { color: c.hifzFaint }]}>{surah.englishName}</Text>
         </View>
 
         <OrnamentDivider faint />
@@ -243,18 +243,17 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   surahTitle: {
-    fontSize: 26,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -0.4,
-    lineHeight: 32,
-    textAlign: "center",
-  },
-  surahTitleAr: {
     fontSize: 13,
     textAlign: "center",
-    writingDirection: "rtl",
     marginTop: 2,
+    letterSpacing: 0.3,
+  },
+  surahTitleAr: {
+    fontSize: 40,
+    fontFamily: "Amiri_400Regular",
+    lineHeight: 54,
+    textAlign: "center",
+    writingDirection: "rtl",
   },
   section: { width: "100%", alignItems: "center", gap: 8, paddingVertical: 16 },
   sectionFlat: { width: "100%", paddingVertical: 16 },

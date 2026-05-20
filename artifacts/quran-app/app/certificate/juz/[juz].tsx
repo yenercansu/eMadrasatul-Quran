@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useQuran } from "@/contexts/QuranContext";
 import { SURAH_DATA, getJuzAyahs } from "@/constants/surahData";
-import { exportAndShareCertificate } from "@/utils/exportCertificatePdf";
+import { exportAndShareCertificate, JUZ_ARABIC_NAMES } from "@/utils/exportCertificatePdf";
 import { OrnamentDivider } from "@/components/cert/OrnamentDivider";
 import { CertMetaGrid } from "@/components/cert/CertMetaGrid";
 import { CertRecordRow } from "@/components/cert/CertRecordRow";
@@ -126,7 +126,8 @@ export default function JuzCertificateScreen() {
         {/* ── Cert header ── */}
         <View style={styles.certHeader}>
           <Text style={[styles.labelXs, { color: c.hifzFaint }]}>MEMORIZATION COMPLETE</Text>
-          <Text style={[styles.juzTitle, { color: c.hifzText }]}>Juz {juzNumber}</Text>
+          <Text style={[styles.juzTitleAr, { color: c.hifzText }]}>{JUZ_ARABIC_NAMES[juzNumber] ?? ""}</Text>
+          <Text style={[styles.juzTitle, { color: c.hifzFaint }]}>Juz {juzNumber}</Text>
         </View>
 
         <OrnamentDivider faint />
@@ -263,13 +264,18 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     textAlign: "center",
   },
-  juzTitle: {
-    fontSize: 26,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -0.4,
-    lineHeight: 32,
+  juzTitleAr: {
+    fontSize: 40,
+    fontFamily: "Amiri_400Regular",
+    lineHeight: 54,
     textAlign: "center",
+    writingDirection: "rtl",
+  },
+  juzTitle: {
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: 2,
+    letterSpacing: 0.3,
   },
   section: { width: "100%", alignItems: "center", gap: 8, paddingVertical: 16 },
   sectionFlat: { width: "100%", paddingVertical: 16 },
