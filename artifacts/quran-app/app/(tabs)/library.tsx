@@ -522,6 +522,7 @@ function WordsQuizView({ onBack }: { onBack: () => void }) {
     <InfoBox
       title="Save words as you read"
       description="Tap any word in the Quran reader to save it here for review."
+      style={{ backgroundColor: colors.surfaceSecondary }}
     />
   );
 
@@ -1044,6 +1045,7 @@ export default function LibraryScreen() {
       <InfoBox
         title="Saved Ayahs"
         description="For the memorization quizzes"
+        style={{ backgroundColor: colors.surfaceSecondary }}
         rightContent={
           <View style={s.savedCardBadge}>
             <Text style={s.cardBadgeNum}>{savedAyahs.length}</Text>
@@ -1342,7 +1344,7 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
       overflow: "hidden",
     },
     infoWidgetCard: {
-      backgroundColor: colors.surfaceElevated,
+      backgroundColor: colors.surfaceSecondary,
       borderRadius: 22,
       borderWidth: 1,
       borderColor: colors.appSoftBorder,
