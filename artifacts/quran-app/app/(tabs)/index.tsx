@@ -44,6 +44,7 @@ import { FullQuranCertificate } from "@/components/cert/FullQuranCertificate";
 import { AppDialog } from "@/components/AppDialog";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAdaptiveForecast } from "@/hooks/useAdaptiveForecast";
+import { SwipeToast } from "@/components/SwipeToast";
 
 const TOTAL_AYAHS = 6236;
 const WEEKLY_TOAST_CELEBRATIONS_KEY = "@squran/weekly-complete-toast-celebrations-v1";
@@ -1850,7 +1851,7 @@ export default function HomeScreen() {
 
       {/* ── Week Done Toast (floating overlay) ──────────────────────── */}
       {showWeeklyToast && (
-        <View style={[s.weekDoneToast, { top: insets.top + 12 }]} pointerEvents="box-none">
+        <SwipeToast onDismiss={() => setShowWeeklyToast(false)} style={[s.weekDoneToast, { top: insets.top + 12 }]}>
           <View style={s.toastIcon}>
             <Feather name="check" size={16} color={colors.textSecondary} />
           </View>
@@ -1861,11 +1862,11 @@ export default function HomeScreen() {
           <TouchableOpacity onPress={() => setShowWeeklyToast(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Feather name="x" size={16} color={colors.textTertiary} />
           </TouchableOpacity>
-        </View>
+        </SwipeToast>
       )}
 
       {showMilestoneToast && (
-        <View style={[s.weekDoneToast, { top: insets.top + 12, alignItems: "flex-start" }]} pointerEvents="box-none">
+        <SwipeToast onDismiss={() => setShowMilestoneToast(false)} style={[s.weekDoneToast, { top: insets.top + 12, alignItems: "flex-start" }]}>
           <View style={[s.toastIcon, { marginTop: 2 }]}>
             <Feather name="flag" size={15} color={colors.textSecondary} />
           </View>
@@ -1885,11 +1886,11 @@ export default function HomeScreen() {
           <TouchableOpacity onPress={() => setShowMilestoneToast(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Feather name="x" size={16} color={colors.textTertiary} />
           </TouchableOpacity>
-        </View>
+        </SwipeToast>
       )}
 
       {showHifzCompleteToast && (
-        <View style={[s.weekDoneToast, { top: insets.top + 12 }]} pointerEvents="box-none">
+        <SwipeToast onDismiss={() => setShowHifzCompleteToast(false)} style={[s.weekDoneToast, { top: insets.top + 12 }]}>
           <View style={s.toastIcon}>
             <Feather name="book-open" size={15} color={colors.textSecondary} />
           </View>
@@ -1900,7 +1901,7 @@ export default function HomeScreen() {
           <TouchableOpacity onPress={() => setShowHifzCompleteToast(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Feather name="x" size={16} color={colors.textTertiary} />
           </TouchableOpacity>
-        </View>
+        </SwipeToast>
       )}
 
       <HifzGoalSetupModal

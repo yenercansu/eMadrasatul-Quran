@@ -24,6 +24,7 @@ import { InfoBox } from "@/components/InfoBox";
 import { Tag } from "@/components/Tag";
 import { Pagination } from "@/components/Pagination";
 import { SURAH_DATA } from "@/constants/surahData";
+import { MEMORIZATION_COLLECTIONS } from "@/constants/memorization-collections";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 type FilterMode = "ayah" | "words" | "by-surah";
@@ -890,6 +891,11 @@ export default function LibraryScreen() {
   const [view, setView] = useState<"select" | "words">("select");
   const topPad = insets.top;
 
+  const totalPackCount = useMemo(
+    () => MEMORIZATION_COLLECTIONS.filter((c) => c.enabled).length,
+    []
+  );
+
   const streakDays = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1029,6 +1035,29 @@ export default function LibraryScreen() {
         <View style={s.cardDivider} />
         <View style={s.startRow}>
           <Text style={s.startText}>See Certifications</Text>
+          <Feather name="chevron-right" size={16} color={colors.appTextMuted} />
+        </View>
+      </TouchableOpacity>
+
+      {/* ── Memorization Packs entry ───────────────────────────────────── */}
+      <TouchableOpacity
+        style={s.quizCard}
+        onPress={() => router.push("/memorization-packs")}
+        activeOpacity={0.88}
+      >
+        <View style={s.cardTopRow}>
+          <View style={s.cardTextBlock}>
+            <Text style={s.cardTitle}>Memorization Packs</Text>
+            <Text style={s.cardDesc}>Quickly add guided memorization packs to your quizzes</Text>
+          </View>
+          <View style={s.cardBadge}>
+            <Text style={s.cardBadgeNum}>{totalPackCount}</Text>
+            <Text style={s.cardBadgeLabel}>packs</Text>
+          </View>
+        </View>
+        <View style={s.cardDivider} />
+        <View style={s.startRow}>
+          <Text style={s.startText}>Explore Collections</Text>
           <Feather name="chevron-right" size={16} color={colors.appTextMuted} />
         </View>
       </TouchableOpacity>
@@ -1217,4 +1246,5 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
       alignItems: "center",
       flexShrink: 0,
     },
+
   });

@@ -8,6 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNetworkStatus } from "@/contexts/NetworkContext";
 import * as madeenanApi from "@/services/madeenanApi";
 import { normalizeTafsirKeys, type TafsirKey } from "@/services/tafsirApi";
+import { fetchSurahWithTranslations } from "@/services/quranApi";
+import { MEMORIZATION_COLLECTIONS } from "@/constants/memorization-collections";
 
 export interface SavedWord {
   id: string;
@@ -191,6 +193,10 @@ interface QuranContextType {
   dismissCertToast: () => void;
   pendingAlreadyCertToast: Certificate | null;
   dismissAlreadyCertToast: () => void;
+  addedCollectionIds: string[];
+  addCollection: (id: string) => void;
+  removeCollection: (id: string) => void;
+  isCollectionAdded: (id: string) => boolean;
 }
 
 const TOTAL_AYAHS = 6236;
@@ -302,6 +308,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const [memorizedAyahKeys, setMemorizedAyahKeys] = useState<string[]>([]);
   const memorizedAyahSet = useMemo(() => new Set(memorizedAyahKeys), [memorizedAyahKeys]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [addedCollectionIds, setAddedCollectionIds] = useState<string[]>([]);
   const [pendingCertToast, setPendingCertToast] = useState<Certificate | null>(null);
   const [pendingAlreadyCertToast, setPendingAlreadyCertToast] = useState<Certificate | null>(null);
   const certificatesRef = useRef<Certificate[]>([]);
@@ -356,7 +363,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         "quran_account", "quran_saved_surahs", "quran_highlighted_words",
         "quran_saved_ayahs", "quran_position", "quran_surah_positions",
         "quran_checked_surahs", "quran_memorization_goal", "quran_memorized_ayahs",
-        "quran_quiz_selected_surahs", "quran_certificates",
+        "quran_quiz_selected_surahs", "quran_certificates", "quran_added_collections",
       ];
       const results = await AsyncStorage.multiGet(keys);
       const map = Object.fromEntries(results.map(([k, v]) => [k, v]));
@@ -423,6 +430,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         setCertificates(loaded);
         certificatesRef.current = loaded;
       }
+      if (map.quran_added_collections) setAddedCollectionIds(JSON.parse(map.quran_added_collections));
       dataLoadedRef.current = true;
     } catch {}
   }
@@ -795,6 +803,8 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     setQuranPosition(0);
     setDailyEntries([]);
     setSavedWords(SEED_WORDS);
+    setSavedAyahs([]);
+    setAddedCollectionIds([]);
     AsyncStorage.multiRemove([
       "quran_goal",
       "quran_memorization_goal",
@@ -802,6 +812,8 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       "quran_certificates",
       "quran_daily_entries",
       "quran_position",
+      "quran_saved_ayahs",
+      "quran_added_collections",
     ]).catch(() => {});
     AsyncStorage.setItem("quran_quiz_selected_surahs", JSON.stringify(DEFAULT_QUIZ_SELECTED_SURAHS)).catch(() => {});
     AsyncStorage.setItem("quran_saved_words", JSON.stringify(SEED_WORDS)).catch(() => {});
@@ -1086,6 +1098,65 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   const dismissCertToast = useCallback(() => setPendingCertToast(null), []);
   const dismissAlreadyCertToast = useCallback(() => setPendingAlreadyCertToast(null), []);
 
+  const addCollection = useCallback(async (id: string) => {
+    // Optimistically mark as added
+    setAddedCollectionIds((prev) => {
+      if (prev.includes(id)) return prev;
+      const next = [...prev, id];
+      AsyncStorage.setItem("quran_added_collections", JSON.stringify(next));
+      return next;
+    });
+
+    const collection = MEMORIZATION_COLLECTIONS.find((c) => c.id === id);
+    if (!collection) return;
+
+    // Add all surah numbers to quiz selection immediately
+    const surahNums = [...new Set(collection.ayahRanges.map((r) => r.surahNumber))];
+    setQuizSelectedSurahsState((prev) => {
+      const prevSet = new Set(prev);
+      const toAdd = surahNums.filter((n) => !prevSet.has(n));
+      if (toAdd.length === 0) return prev;
+      const next = [...prev, ...toAdd].sort((a, b) => a - b);
+      AsyncStorage.setItem("quran_quiz_selected_surahs", JSON.stringify(next));
+      return next;
+    });
+
+    // Fetch ayah texts and save to library in the background
+    for (const range of collection.ayahRanges) {
+      try {
+        const { arabic, translation } = await fetchSurahWithTranslations(range.surahNumber);
+        const surahName = SURAH_DATA[range.surahNumber - 1]?.englishName ?? arabic.englishName;
+        for (let n = range.startAyah; n <= range.endAyah; n++) {
+          const ar = arabic.ayahs.find((a) => a.numberInSurah === n);
+          const tr = translation.ayahs.find((a) => a.numberInSurah === n);
+          if (!ar) continue;
+          saveAyah({
+            surahNumber: range.surahNumber,
+            surahName,
+            ayahNumber: n,
+            arabicText: ar.text,
+            translationText: tr?.text ?? "",
+          });
+        }
+      } catch {
+        // Silently fail — surah numbers already added to quiz selection
+      }
+    }
+  }, [saveAyah]);
+
+  const removeCollection = useCallback((id: string) => {
+    setAddedCollectionIds((prev) => {
+      const next = prev.filter((c) => c !== id);
+      AsyncStorage.setItem("quran_added_collections", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const isCollectionAdded = useCallback(
+    (id: string) => addedCollectionIds.includes(id),
+    [addedCollectionIds]
+  );
+
   const todayEntry = dailyEntries.find(e => e.date === getTodayStr()) ?? null;
 
   return (
@@ -1107,6 +1178,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       quizSelectedSurahs, setQuizSelectedSurahs, toggleQuizSurahSelection, isQuizSurahSelected,
       memorizedAyahKeys, markAyahsMemorized, removeMemorizedAyahKeys, toggleAyahMemorized, isAyahMemorized,
       certificates, pendingCertToast, dismissCertToast, pendingAlreadyCertToast, dismissAlreadyCertToast,
+      addedCollectionIds, addCollection, removeCollection, isCollectionAdded,
     }}>
       {children}
     </QuranContext.Provider>

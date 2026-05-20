@@ -536,7 +536,12 @@ export default function QuizScreen() {
   const [wordSearchQuery, setWordSearchQuery] = useState("");
   const [ayahPage, setAyahPage] = useState(0);
   const [wordPage, setWordPage] = useState(0);
-  const [selectedAyahIds, setSelectedAyahIds] = useState<Set<string>>(() => new Set(savedAyahs.map(a => a.id)));
+  const ayahsWithWords = useMemo(() => {
+    const wordKeys = new Set(savedWords.map(w => `${w.surahNumber}:${w.ayahNumber}`));
+    return savedAyahs.filter(a => wordKeys.has(`${a.surahNumber}:${a.ayahNumber}`));
+  }, [savedAyahs, savedWords]);
+
+  const [selectedAyahIds, setSelectedAyahIds] = useState<Set<string>>(() => new Set(ayahsWithWords.map(a => a.id)));
   const [excludedAyahIds, setExcludedAyahIds] = useState<Set<string>>(new Set());
   const [selectedWordIds, setSelectedWordIds] = useState<Set<string>>(() => new Set(savedWords.map(w => w.id)));
   const [excludedWordIds, setExcludedWordIds] = useState<Set<string>>(new Set());
@@ -545,19 +550,19 @@ export default function QuizScreen() {
 
   useEffect(() => {
     setSelectedAyahIds(prev => {
-      const existingIds = new Set(savedAyahs.map(a => a.id));
+      const existingIds = new Set(ayahsWithWords.map(a => a.id));
       const next = new Set([...prev].filter(id => existingIds.has(id)));
       if (prev.size === 0 && excludedAyahIds.size === 0) {
-        savedAyahs.forEach(ayah => next.add(ayah.id));
+        ayahsWithWords.forEach(ayah => next.add(ayah.id));
       }
       return setsEqual(prev, next) ? prev : next;
     });
     setExcludedAyahIds(prev => {
-      const existingIds = new Set(savedAyahs.map(a => a.id));
+      const existingIds = new Set(ayahsWithWords.map(a => a.id));
       const next = new Set([...prev].filter(id => existingIds.has(id)));
       return setsEqual(prev, next) ? prev : next;
     });
-  }, [excludedAyahIds.size, savedAyahs]);
+  }, [excludedAyahIds.size, ayahsWithWords]);
 
   useEffect(() => {
     setSelectedWordIds(prev => {
@@ -576,7 +581,7 @@ export default function QuizScreen() {
   }, [excludedWordIds.size, savedWords]);
 
   const filteredAyahs = useMemo(() => {
-    let ayahs = savedAyahs;
+    let ayahs = ayahsWithWords;
     if (tagFilter === "selected") ayahs = ayahs.filter(ayah => selectedAyahIds.has(ayah.id) && !excludedAyahIds.has(ayah.id));
     if (ayahSearchQuery.trim()) {
       const q = ayahSearchQuery.toLowerCase();
