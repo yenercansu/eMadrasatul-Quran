@@ -30,6 +30,31 @@ export function PageTitle({ children, style }: TextProps) {
 }
 
 /**
+ * Third-level label for sub-sections or grouped content within a section.
+ * Smaller and muted compared to SubSectionTitle.
+ */
+export function TertiaryTitle({ children, style }: TextProps) {
+  const colors = useColors();
+  return (
+    <Text
+      style={[
+        {
+          fontSize: 12,
+          fontWeight: "700",
+          color: colors.appTextMuted,
+          fontFamily: "Inter_700Bold",
+          textTransform: "uppercase",
+          letterSpacing: 1.1,
+        },
+        style,
+      ]}
+    >
+      {children}
+    </Text>
+  );
+}
+
+/**
  * Section heading used inside screens (Last Visited, Saved Surahs, All Surahs by Juz, etc.)
  * Does NOT include horizontal padding — let the container or a style prop handle alignment.
  */

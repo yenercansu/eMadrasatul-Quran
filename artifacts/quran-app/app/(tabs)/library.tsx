@@ -19,7 +19,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
 import { useQuran, type SavedWord, type SavedAyah } from "@/contexts/QuranContext";
-import { PageTitle, SubSectionTitle } from "@/components/Typography";
+import { PageTitle, SubSectionTitle, TertiaryTitle } from "@/components/Typography";
 import { InfoBox } from "@/components/InfoBox";
 import { Tag } from "@/components/Tag";
 import { Pagination } from "@/components/Pagination";
@@ -1040,6 +1040,18 @@ export default function LibraryScreen() {
         </View>
       </TouchableOpacity>
 
+      {/* ── Saved Ayahs Card ───────────────────────────────────────────── */}
+      <InfoBox
+        title="Saved Ayahs"
+        description="For the memorization quizzes"
+        rightContent={
+          <View style={s.savedCardBadge}>
+            <Text style={s.cardBadgeNum}>{savedAyahs.length}</Text>
+            <Text style={s.cardBadgeLabel}>ayahs</Text>
+          </View>
+        }
+      />
+
       {/* ── Vocabulary Practices ───────────────────────────────────────── */}
       <View style={s.sectionTitleRow}>
         <SubSectionTitle>Vocabulary Practices</SubSectionTitle>
@@ -1094,21 +1106,9 @@ export default function LibraryScreen() {
         </View>
       </TouchableOpacity>
 
-      {/* ── Saved Ayahs Card ───────────────────────────────────────────── */}
-      <InfoBox
-        title="Saved Ayahs"
-        description="Used across all quizzes"
-        rightContent={
-          <View style={s.savedCardBadge}>
-            <Text style={s.cardBadgeNum}>{savedAyahs.length}</Text>
-            <Text style={s.cardBadgeLabel}>ayahs</Text>
-          </View>
-        }
-      />
-
       {/* ── Tadabbur Carousel ──────────────────────────────────────────── */}
       <View style={s.sectionTitleRow}>
-        <SubSectionTitle>Tadabbur</SubSectionTitle>
+        <TertiaryTitle>Tadabbur</TertiaryTitle>
       </View>
       <View style={s.infoPager}>
         <ScrollView
@@ -1134,7 +1134,7 @@ export default function LibraryScreen() {
 
       {/* ── Qur'an at Night Virtues Carousel ───────────────────────────── */}
       <View style={s.sectionTitleRow}>
-        <SubSectionTitle>Qur'an at Night Virtues</SubSectionTitle>
+        <TertiaryTitle>Qur'an at Night Virtues</TertiaryTitle>
       </View>
       <View style={s.infoPager}>
         <ScrollView
@@ -1342,7 +1342,7 @@ const libStyles = (colors: ReturnType<typeof useColors>) =>
       overflow: "hidden",
     },
     infoWidgetCard: {
-      backgroundColor: colors.appCardWarm,
+      backgroundColor: colors.surfaceElevated,
       borderRadius: 22,
       borderWidth: 1,
       borderColor: colors.appSoftBorder,
