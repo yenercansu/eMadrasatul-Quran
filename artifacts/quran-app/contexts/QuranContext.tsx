@@ -68,6 +68,8 @@ export interface Goal {
   gradualDaysPerWeekPlan?: number[];
   paceRhythm?: "gentle" | "steady" | "deep";
   finishWeeks?: number;
+  startCanonicalAyahsPerDay?: number;
+  targetCanonicalAyahsPerDay?: number;
   startDate: string;
   startSurahNumber?: number;
   startAyahNumber?: number;

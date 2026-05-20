@@ -23,12 +23,14 @@ export function useAdaptiveForecast(): ForecastResult | null {
     const daysPerWeek = Math.max(1, goal.hifzDaysPerWeek ?? 7);
     const targetDaysPerWeek = Math.max(1, goal.targetHifzDaysPerWeek ?? daysPerWeek);
 
-    const configuredStartPacePerDay = Math.max(0.1, goal.ayahsPerWeek / daysPerWeek);
+    // Prefer canonical paces stored at setup time; fall back to weekly-derived values
+    // for goals created before canonical tracking was added.
+    const derivedStartPace = Math.max(0.1, goal.ayahsPerWeek / daysPerWeek);
     const peakWeekly = goal.targetAyahsPerWeek ?? goal.ayahsPerWeek;
-    const configuredPeakPacePerDay = Math.max(
-      configuredStartPacePerDay,
-      peakWeekly / targetDaysPerWeek
-    );
+    const derivedPeakPace = Math.max(derivedStartPace, peakWeekly / targetDaysPerWeek);
+
+    const configuredStartPacePerDay = goal.startCanonicalAyahsPerDay ?? derivedStartPace;
+    const configuredPeakPacePerDay = goal.targetCanonicalAyahsPerDay ?? derivedPeakPace;
 
     const remainingAyahs = computeRemainingAyahs(goal, memorizationGoal, memorizedAyahKeys);
 

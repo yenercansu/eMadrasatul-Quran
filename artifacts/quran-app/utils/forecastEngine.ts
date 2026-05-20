@@ -1,5 +1,11 @@
 import type { DailyEntry } from "@/contexts/QuranContext";
-import { advanceCapacity, GROWTH_STYLE_CONFIG, PACE_MILESTONES } from "@/utils/paceUtils";
+import {
+  advanceCapacity,
+  DAYS_PER_MONTH,
+  estimateCompletionDays,
+  GROWTH_SPEED_PER_MONTH,
+  PACE_MILESTONES,
+} from "@/utils/paceUtils";
 import type { GrowthStyle } from "@/utils/paceUtils";
 
 export type { GrowthStyle };
@@ -90,16 +96,14 @@ function simulateCompletionWeeks(
   style: GrowthStyle,
   remainingAyahs: number
 ): number {
-  if (remainingAyahs <= 0) return 0;
-  let daily = Math.max(0.1, startDaily);
-  let remaining = remainingAyahs;
-  let weeks = 0;
-  while (remaining > 0 && weeks < 1040) {
-    remaining -= daily * 7;
-    daily = advanceCapacity(daily, peakDaily, style);
-    weeks++;
-  }
-  return weeks;
+  return Math.ceil(
+    estimateCompletionDays({
+      remainingAyahs,
+      currentDailyPace: startDaily,
+      targetDailyPace: peakDaily,
+      growthStyle: style,
+    }) / 7
+  );
 }
 
 function computeAdaptiveMilestones(
@@ -107,22 +111,17 @@ function computeAdaptiveMilestones(
   peakVelocityPerDay: number,
   style: GrowthStyle
 ): AdaptiveMilestone[] {
+  if (currentVelocityPerDay >= peakVelocityPerDay) return [];
   const relevant = PACE_MILESTONES.filter(
     (m) => m.ayahsPerDay > currentVelocityPerDay && m.ayahsPerDay <= peakVelocityPerDay
   );
   if (relevant.length === 0) return [];
-
-  const reached: AdaptiveMilestone[] = [];
-  let current = currentVelocityPerDay;
-  for (let week = 1; week <= 1040 && reached.length < relevant.length; week++) {
-    current = advanceCapacity(current, peakVelocityPerDay, style);
-    for (const m of relevant) {
-      if (!reached.find((r) => r.label === m.label) && current >= m.ayahsPerDay) {
-        reached.push({ label: m.label, ayahsPerDay: m.ayahsPerDay, weeksFromNow: week });
-      }
-    }
-  }
-  return reached;
+  const dailyGrowth = GROWTH_SPEED_PER_MONTH[style] / DAYS_PER_MONTH;
+  return relevant.map((m) => {
+    const daysToReach = (m.ayahsPerDay - currentVelocityPerDay) / dailyGrowth;
+    const weeksFromNow = Math.max(1, Math.ceil(daysToReach / 7));
+    return { label: m.label, ayahsPerDay: m.ayahsPerDay, weeksFromNow };
+  });
 }
 
 export function computeForecast(input: ForecastInput): ForecastResult {

@@ -26,7 +26,7 @@ import { BackButton } from "@/components/BackButton";
 import { AppDialog } from "@/components/AppDialog";
 import { MemorizedBadge } from "@/components/SurahCard";
 import { InlineNotice } from "@/components/InlineNotice";
-import { calculatePaceMilestones, calculateQuranCompletionWeeks } from "@/utils/paceUtils";
+import { calculatePaceMilestones, calculateQuranCompletionWeeks, DAYS_PER_MONTH, GROWTH_SPEED_PER_MONTH } from "@/utils/paceUtils";
 import { buildAdaptiveWeeklyPlan, estimatePeakWeeks } from "@/utils/forecastEngine";
 
 const TOTAL_QURAN_AYAHS = 6236;
@@ -35,21 +35,22 @@ const AYAHS_PER_PAGE = 12.5;
 const weeklyFromDailyRange = (min: number, max: number) => Math.round(((min + max) / 2) * 7);
 const COMMITMENT_STEPS = [1, 2, 3, 5, 7, 10, 15, 25, 45, 70];
 const MAX_WEEKLY = 70;
+// canonicalAyahsPerDay is the fixed daily-capacity value used for all growth math.
+// It never scales with days/week — it represents "how many ayahs can this person
+// memorize on a single active practice day."
 const VISUAL_CAPACITY_OPTIONS = [
-  { label: "1 ayah every few days", sublabel: "around 1 ayah", ayahsPerWeek: 2 },
-  { label: "1 small portion daily", sublabel: "around 2-4 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(2, 4) },
-  { label: "¼ page daily", sublabel: "around 3-5 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(3, 5) },
-  { label: "½ page daily", sublabel: "around 5-8 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(5, 8) },
-  { label: "1 page daily", sublabel: "around 10-15 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(10, 15) },
-  { label: "2 pages daily", sublabel: "around 20-30 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(20, 30) },
+  { label: "1 ayah every few days", sublabel: "around 1 ayah", ayahsPerWeek: 2, canonicalAyahsPerDay: 0.5 },
+  { label: "1 small portion daily", sublabel: "around 2-4 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(2, 4), canonicalAyahsPerDay: 1 },
+  { label: "¼ page daily", sublabel: "around 3-5 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(3, 5), canonicalAyahsPerDay: 5 },
+  { label: "½ page daily", sublabel: "around 5-8 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(5, 8), canonicalAyahsPerDay: 10 },
+  { label: "1 page daily", sublabel: "around 10-15 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(10, 15), canonicalAyahsPerDay: 20 },
 ] as const;
 
 const DESIRED_CAPACITY_OPTIONS = [
-  { label: "¼ page daily", sublabel: "around 3-5 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(3, 5) },
-  { label: "½ page daily", sublabel: "around 5-8 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(5, 8) },
-  { label: "1 page daily", sublabel: "around 10-15 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(10, 15) },
-  { label: "2 pages daily", sublabel: "around 20-30 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(20, 30) },
-  { label: "3 pages daily", sublabel: "around 30-45 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(30, 45) },
+  { label: "¼ page daily", sublabel: "around 3-5 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(3, 5), canonicalAyahsPerDay: 5 },
+  { label: "½ page daily", sublabel: "around 5-8 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(5, 8), canonicalAyahsPerDay: 10 },
+  { label: "1 page daily", sublabel: "around 10-15 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(10, 15), canonicalAyahsPerDay: 20 },
+  { label: "2 pages daily", sublabel: "around 20-30 ayahs/day", ayahsPerWeek: weeklyFromDailyRange(20, 30), canonicalAyahsPerDay: 40 },
 ] as const;
 
 function scaleCapacityByDays<T extends { label: string; sublabel: string; ayahsPerWeek: number }>(
@@ -103,7 +104,10 @@ function getPeakRampWeeks(
 function formatWeeks(weeks: number): string {
   if (weeks <= 0) return "—";
   if (weeks < 4) return `${weeks} week${weeks === 1 ? "" : "s"}`;
-  if (weeks < 52) return `${Math.round(weeks / 4)} month${Math.round(weeks / 4) === 1 ? "" : "s"}`;
+  // Show months up to ~3 years so growth-style differences (which are in the range
+  // of a few months) are visible rather than collapsing into the same "X.5 years" bucket.
+  const months = Math.round(weeks / 4.345);
+  if (months < 36) return `${months} month${months === 1 ? "" : "s"}`;
   const y = weeks / 52;
   const rounded = Math.round(y * 2) / 2;
   return `${rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1)} year${rounded === 1 ? "" : "s"}`;
@@ -199,6 +203,9 @@ export interface AyahRangeResult {
   targetHifzDaysPerWeek?: number;
   gradualDaysPerWeekPlan?: number[];
   paceRhythm?: PaceRhythm;
+  // Canonical daily-capacity values used for growth math (not scaled by days/week).
+  startCanonicalAyahsPerDay?: number;
+  targetCanonicalAyahsPerDay?: number;
 }
 
 interface Props {
@@ -266,6 +273,8 @@ export function AyahRangeModal({
   const [memorizationStyle, setMemorizationStyle] = useState<MemorizationStyle>("steady");
   const [gradualIncreaseStyle, setGradualIncreaseStyle] = useState<GradualIncreaseStyle>("medium");
   const [peakCapacityPerWeek, setPeakCapacityPerWeek] = useState(105);
+  const [currentCanonicalPace, setCurrentCanonicalPace] = useState<number | null>(null);
+  const [targetCanonicalPace, setTargetCanonicalPace] = useState<number | null>(null);
   const [paceCurrentSelected, setPaceCurrentSelected] = useState(false);
   const [paceDesiredSelected, setPaceDesiredSelected] = useState(false);
   const [paceGrowthSelected, setPaceGrowthSelected] = useState(false);
@@ -325,6 +334,8 @@ export function AyahRangeModal({
       setPaceCurrentSelected(!!initialSelection);
       setPaceDesiredSelected(!!initialSelection && validPeak > initialAyahsPerWeek);
       setPaceGrowthSelected(paceRhythm === "steady" || !!initialSelection?.gradualIncreaseStyle);
+      setCurrentCanonicalPace(initialSelection?.startCanonicalAyahsPerDay ?? null);
+      setTargetCanonicalPace(initialSelection?.targetCanonicalAyahsPerDay ?? null);
       setResetVisible(false);
     }
   }, [visible, startAtPaceDate, startAtWeeklyGoal, startAtAyahSelection, initialSelection, initialSurahNumber, initialJuz, desiredCapacityOptions, paceRhythm]);
@@ -549,7 +560,7 @@ export function AyahRangeModal({
 
   // ── PaceDate flow helpers ──────────────────────────────────────────────────
 
-  // Convert weekly capacity (scaled by active days) → daily capacity assuming daily memorization.
+  // Derived daily pace (from weekly goal ÷ active days). Used for the actual weekly plan.
   const startAyahsPerDay = useMemo(
     () => Math.max(0.1, ayahsPerWeek / Math.max(1, normalizedPaceDays)),
     [ayahsPerWeek, normalizedPaceDays]
@@ -560,17 +571,50 @@ export function AyahRangeModal({
     [peakCapacityPerWeek, normalizedTargetPaceDays, startAyahsPerDay]
   );
 
+  // Canonical paces used exclusively for growth math and forecast.
+  // canonicalAyahsPerDay values are fixed (not scaled by days/week), so "1 page/day"
+  // always means 20 ayahs regardless of how many days/week the user practices.
+  // Resolved values look up canonical from the selected option label as a fallback,
+  // ensuring milestones and completion always match the displayed option even when
+  // explicit canonical state is null (e.g. on first render before a selection fires).
+  const resolvedStartCanonical = useMemo(() => {
+    if (currentCanonicalPace !== null) return currentCanonicalPace;
+    const match = capacityOptions.find((o) => o.ayahsPerWeek === ayahsPerWeek);
+    return VISUAL_CAPACITY_OPTIONS.find((o) => o.label === match?.label)?.canonicalAyahsPerDay ?? null;
+  }, [currentCanonicalPace, capacityOptions, ayahsPerWeek]);
+
+  const resolvedTargetCanonical = useMemo(() => {
+    if (targetCanonicalPace !== null) return targetCanonicalPace;
+    const match = desiredCapacityOptions.find((o) => o.ayahsPerWeek === peakCapacityPerWeek);
+    return DESIRED_CAPACITY_OPTIONS.find((o) => o.label === match?.label)?.canonicalAyahsPerDay ?? null;
+  }, [targetCanonicalPace, desiredCapacityOptions, peakCapacityPerWeek]);
+
+  const effectiveStartPace = resolvedStartCanonical ?? startAyahsPerDay;
+  const effectiveTargetPace = Math.max(effectiveStartPace, resolvedTargetCanonical ?? desiredAyahsPerDay);
+
   const growthMilestones = useMemo(
-    () => calculatePaceMilestones(startAyahsPerDay, desiredAyahsPerDay, gradualIncreaseStyle),
-    [startAyahsPerDay, desiredAyahsPerDay, gradualIncreaseStyle]
+    () => calculatePaceMilestones(effectiveStartPace, effectiveTargetPace, gradualIncreaseStyle),
+    [effectiveStartPace, effectiveTargetPace, gradualIncreaseStyle]
   );
 
   const autoWeeksNeeded = useMemo(() => {
     const forecastAyahs = Math.max(1, TOTAL_QURAN_AYAHS - memorizedAyahKeys.length);
     if (!startAtPaceDate) return null;
     if (memorizationStyle === "steady") return Math.ceil(forecastAyahs / Math.max(1, ayahsPerWeek));
-    return calculateQuranCompletionWeeks(startAyahsPerDay, desiredAyahsPerDay, gradualIncreaseStyle, forecastAyahs);
-  }, [startAtPaceDate, memorizedAyahKeys.length, startAyahsPerDay, desiredAyahsPerDay, memorizationStyle, gradualIncreaseStyle, ayahsPerWeek]);
+    return calculateQuranCompletionWeeks(effectiveStartPace, effectiveTargetPace, gradualIncreaseStyle, forecastAyahs);
+  }, [startAtPaceDate, memorizedAyahKeys.length, effectiveStartPace, effectiveTargetPace, memorizationStyle, gradualIncreaseStyle, ayahsPerWeek]);
+
+  // True when the ramp itself memorizes more than the remaining Quran —
+  // meaning the user finishes the Quran before ever reaching their target pace.
+  const completesBeforeTargetPace = useMemo(() => {
+    if (memorizationStyle !== "gradual" || effectiveStartPace >= effectiveTargetPace) return false;
+    const dailyGrowth = GROWTH_SPEED_PER_MONTH[gradualIncreaseStyle] / DAYS_PER_MONTH;
+    if (dailyGrowth <= 0) return false;
+    const rampDays = (effectiveTargetPace - effectiveStartPace) / dailyGrowth;
+    const rampMemorized = ((effectiveStartPace + effectiveTargetPace) / 2) * rampDays;
+    const remaining = Math.max(1, TOTAL_QURAN_AYAHS - memorizedAyahKeys.length);
+    return rampMemorized > remaining;
+  }, [memorizationStyle, gradualIncreaseStyle, effectiveStartPace, effectiveTargetPace, memorizedAyahKeys.length]);
 
   const gradualWeeklyPlan = useMemo(() => {
     if (!startAtPaceDate || !autoWeeksNeeded || memorizationStyle !== "gradual") return [];
@@ -607,6 +651,12 @@ export function AyahRangeModal({
   const currentPaceAyahsPerWeek = memorizationStyle === "gradual"
     ? gradualWeeklyPlan[0] ?? buildAdaptiveWeeklyPlan(ayahsPerWeek, peakCapacityPerWeek, gradualIncreaseStyle, 5)[0]
     : ayahsPerWeek;
+
+  // Human-readable label for the selected target pace, used in "completes before target" note.
+  const targetPaceDisplayLabel = useMemo(() => {
+    const match = desiredCapacityOptions.find((o) => o.ayahsPerWeek === peakCapacityPerWeek);
+    return (match?.label ?? "your target pace").replace(" daily", "/day");
+  }, [desiredCapacityOptions, peakCapacityPerWeek]);
 
   const peakOptions = desiredCapacityOptions.filter((option) => {
     const baseDesiredAyahsPerWeek = DESIRED_CAPACITY_OPTIONS.find((opt) => opt.label === option.label)?.ayahsPerWeek ?? option.ayahsPerWeek;
@@ -753,6 +803,8 @@ export function AyahRangeModal({
       targetHifzDaysPerWeek: startAtPaceDate ? (paceRhythm === "steady" ? normalizedPaceDays : normalizedTargetPaceDays) : undefined,
       gradualDaysPerWeekPlan: startAtPaceDate ? gradualDaysPerWeekPlan : undefined,
       paceRhythm: startAtPaceDate ? paceRhythm : undefined,
+      startCanonicalAyahsPerDay: startAtPaceDate ? effectiveStartPace : undefined,
+      targetCanonicalAyahsPerDay: startAtPaceDate ? effectiveTargetPace : undefined,
     });
     onClose();
   };
@@ -944,6 +996,7 @@ export function AyahRangeModal({
                           const baseCapacity = baseCurrentOption?.ayahsPerWeek ?? selectedCapacity;
                           setAyahsPerWeek(selectedCapacity);
                           setCurrentBaseAyahsPerWeek(baseCapacity);
+                          setCurrentCanonicalPace(baseCurrentOption?.canonicalAyahsPerDay ?? null);
                           const nextDesired = desiredCapacityOptions.find((desired) => {
                             const baseDesired = DESIRED_CAPACITY_OPTIONS.find((opt) => opt.label === desired.label)?.ayahsPerWeek ?? desired.ayahsPerWeek;
                             return baseDesired > baseCapacity;
@@ -952,6 +1005,12 @@ export function AyahRangeModal({
                             paceRhythm === "steady"
                               ? selectedCapacity
                               : nextDesired?.ayahsPerWeek ?? desiredCapacityOptions[desiredCapacityOptions.length - 1].ayahsPerWeek
+                          );
+                          const nextDesiredBase = DESIRED_CAPACITY_OPTIONS.find((opt) => opt.label === nextDesired?.label);
+                          setTargetCanonicalPace(
+                            paceRhythm === "steady"
+                              ? (baseCurrentOption?.canonicalAyahsPerDay ?? null)
+                              : (nextDesiredBase?.canonicalAyahsPerDay ?? null)
                           );
                           setPaceCurrentSelected(true);
                           setPaceDesiredSelected(paceRhythm === "steady");
@@ -1025,6 +1084,9 @@ export function AyahRangeModal({
                       selected,
                       onPress: () => {
                           setPeakCapacityPerWeek(option.ayahsPerWeek);
+                          setTargetCanonicalPace(
+                            DESIRED_CAPACITY_OPTIONS.find((opt) => opt.label === option.label)?.canonicalAyahsPerDay ?? null
+                          );
                           setPaceDesiredSelected(true);
                           setPaceGrowthSelected(false);
                       },
@@ -1132,9 +1194,17 @@ export function AyahRangeModal({
                 <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color={c.accentSoft} /></View>
                 <View style={s.timelineRow}>
                   <View style={[s.timelineDot, s.timelineDotMuted]} />
-                  <Text style={s.timelineLabel}>Estimated completion</Text>
+                  <Text style={s.timelineLabel}>Estimated Quran completion</Text>
                   <Text style={[s.timelineValue, s.timelineValueMuted]}>{autoWeeksNeeded ? formatWeeks(autoWeeksNeeded) : "—"}</Text>
                 </View>
+                {completesBeforeTargetPace && (
+                  <View style={s.earlyCompletionNote}>
+                    <Feather name="star" size={13} color={c.accentSoft} />
+                    <Text style={s.earlyCompletionText}>
+                      At this pace, you'll complete the Quran before even reaching {targetPaceDisplayLabel} — MashaAllah!
+                    </Text>
+                  </View>
+                )}
               </View>
               <View style={s.whyBox}>
                 <Text style={s.whyTitle}>WHY THIS WORKS</Text>
@@ -1889,7 +1959,10 @@ export function AyahRangeModal({
     const completionLabel = completionMonth.toLowerCase().includes("ramadan")
       ? `Ramadan ${completionDate.getFullYear()}`
       : `~${timeLabel}`;
-    const peakRampWeeks = growthMilestones[growthMilestones.length - 1]?.weeksToReach ?? 0;
+    // Months to reach the target pace (driven by pace distance, not a fixed number).
+    const paceGap = Math.max(0, effectiveTargetPace - effectiveStartPace);
+    const growthSpeed = GROWTH_SPEED_PER_MONTH[gradualIncreaseStyle];
+    const monthsToTarget = paceGap > 0 && growthSpeed > 0 ? Math.ceil(paceGap / growthSpeed) : 0;
     const selectedPeakLabel = desiredCapacityOptions.find((option) => option.ayahsPerWeek === peakCapacityPerWeek)?.label
       ?? `${Math.round(peakCapacityPerWeek / 7)} ayahs/day`;
 
@@ -1919,14 +1992,26 @@ export function AyahRangeModal({
           <View style={s.forecastInfoCard}>
             <Text style={s.forecastInfoLabel}>EXPECTED GROWTH</Text>
             <Text style={s.forecastInfoValue}>{selectedPeakLabel.replace(" daily", "/day")}</Text>
-            <Text style={s.forecastInfoSub}>reached in approximately {formatWeeks(peakRampWeeks)}</Text>
+            <Text style={s.forecastInfoSub}>
+              {monthsToTarget > 0
+                ? `reached in approximately ${monthsToTarget} month${monthsToTarget === 1 ? "" : "s"}`
+                : "already at or above this pace"}
+            </Text>
           </View>
 
           <View style={s.forecastCard}>
-            <Text style={s.forecastLabel}>ESTIMATED COMPLETION</Text>
+            <Text style={s.forecastLabel}>ESTIMATED QURAN COMPLETION</Text>
             <Text style={s.forecastTime}>{completionLabel}</Text>
             <Text style={s.forecastDate}>Inshallah</Text>
             <Text style={s.forecastSub}>{timeLabel} from today</Text>
+            {completesBeforeTargetPace && (
+              <View style={s.earlyCompletionNote}>
+                <Feather name="star" size={13} color={c.accentSoft} />
+                <Text style={s.earlyCompletionText}>
+                  You'll complete the Quran before even reaching {targetPaceDisplayLabel} — MashaAllah!
+                </Text>
+              </View>
+            )}
           </View>
 
           <View style={[s.insightBox, s.insightBoxFullHifz]}>
@@ -2827,6 +2912,22 @@ function createStyles(c: ReturnType<typeof useColors>) {
   growthNoticeText: {
     fontSize: 13,
     lineHeight: 20,
+    color: c.textSecondary,
+    fontFamily: "Inter_400Regular",
+  },
+  earlyCompletionNote: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: c.borderSubtle,
+  },
+  earlyCompletionText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
     color: c.textSecondary,
     fontFamily: "Inter_400Regular",
   },

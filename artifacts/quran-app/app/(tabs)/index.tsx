@@ -2141,6 +2141,8 @@ export default function HomeScreen() {
           targetHifzDaysPerWeek,
           gradualDaysPerWeekPlan,
           paceRhythm: confirmedPaceRhythm,
+          startCanonicalAyahsPerDay,
+          targetCanonicalAyahsPerDay,
         }) => {
           const today = new Date().toISOString().split("T")[0];
           setWidgetFirstAyah(null);
@@ -2166,6 +2168,8 @@ export default function HomeScreen() {
             targetHifzDaysPerWeek,
             gradualDaysPerWeekPlan,
             paceRhythm: confirmedPaceRhythm,
+            startCanonicalAyahsPerDay,
+            targetCanonicalAyahsPerDay,
             startDate: today,
           });
           setPaceDateVisible(false);
