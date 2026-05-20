@@ -266,7 +266,7 @@ const makeStyles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
   heroSubtitle: {
     fontSize: 13,
     lineHeight: 19,
-    color: colors.hifzMuted,
+    color: colors.hifzAccentMuted,
     fontFamily: "Inter_400Regular",
     marginBottom: 24,
   },

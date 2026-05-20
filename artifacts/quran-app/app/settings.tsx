@@ -121,15 +121,17 @@ export default function SettingsScreen() {
     <View style={[s.root, { paddingTop: insets.top }]}>
       <View style={[s.header, { paddingTop: 8 }]}>
         <BackButton onPress={() => router.back()} />
-        <Text style={s.headerTitle}>Settings</Text>
+        <Text style={s.headerTitle}>Your Madrasa Profile</Text>
         <View style={{ width: 38 }} />
       </View>
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-        <View style={s.heroCard}>
-          <Text style={s.heroTitle}>Personalize your madrasa</Text>
-          <Text style={s.heroSub}>Keep your reading, reminders, and account links calm and intentional.</Text>
+        <View style={s.greetingCard}>
+          <Text style={s.greetingText}>
+            {"السَّلَامُ عَلَيْكُمْ وَرَحْمَةُ اللَّهِ وَبَرَكَاتُهُ، يَا طَالِبَ الْقُرْآنِ"}
+          </Text>
+          <Text style={s.greetingTranslit}>{"As-salāmu ʿalaykum wa-raḥmatullāhi wa-barakātuh,"}</Text>
+          <Text style={s.greetingTranslit}>{"yā ṭāliba al-Qurʾān"}</Text>
         </View>
-
         <Section title="QURAN FOUNDATION">
           <SettingsRow
             label="Account Link"
@@ -251,29 +253,31 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     },
     headerTitle: { flex: 1, fontSize: 20, fontWeight: "700", color: colors.appText, fontFamily: "Inter_700Bold", textAlign: "center" },
     scroll: { flex: 1 },
-    heroCard: {
+    greetingCard: {
       marginHorizontal: 20,
       marginTop: 8,
       marginBottom: 8,
-      padding: 20,
-      borderRadius: 24,
-      borderWidth: 1,
-      borderColor: colors.appSoftBorder,
-      backgroundColor: colors.appCardWarm,
-      ...colors.shadows.softLift,
+      padding: 14,
+      borderRadius: 14,
+      backgroundColor: colors.surfaceSecondary,
+      alignItems: "flex-end",
+      gap: 4,
     },
-    heroTitle: {
-      fontSize: 17,
-      fontWeight: "700",
-      color: colors.appText,
-      fontFamily: "Inter_700Bold",
-      marginBottom: 3,
+    greetingText: {
+      fontSize: 19,
+      lineHeight: 32,
+      color: colors.textTertiary,
+      fontFamily: "Amiri_700Bold",
+      textAlign: "right",
+      writingDirection: "rtl",
     },
-    heroSub: {
-      fontSize: 13,
-      lineHeight: 19,
-      color: colors.appTextMuted,
+    greetingTranslit: {
+      fontSize: 11,
+      lineHeight: 16,
+      color: colors.disabledText,
       fontFamily: "Inter_400Regular",
+      textAlign: "right",
+      letterSpacing: 0.2,
     },
     section: { marginTop: 22 },
     sectionHeader: {

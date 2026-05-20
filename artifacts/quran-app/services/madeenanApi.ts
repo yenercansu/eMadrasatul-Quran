@@ -510,6 +510,8 @@ export const createUstadhModePlan = (body: UstadhModeBody) =>
 export const getProgress = () => apiRequest<unknown>("/user/progress");
 export const updateProgress = (body: UserProgressBody) =>
   apiRequest<unknown>("/user/progress", { method: "POST", body });
+export const clearProgress = () =>
+  apiRequest<unknown>("/user/progress", { method: "DELETE", suppressErrorLog: true });
 export const getDailyGoals = () => apiRequest<unknown>("/user/goals/daily");
 export const getLastVisited = () => apiRequest<LastVisitedBody | null>("/user/last-visited");
 export const updateLastVisited = (body: LastVisitedBody) =>

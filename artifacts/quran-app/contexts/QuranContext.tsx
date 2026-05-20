@@ -364,6 +364,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         "quran_saved_ayahs", "quran_position", "quran_surah_positions",
         "quran_checked_surahs", "quran_memorization_goal", "quran_memorized_ayahs",
         "quran_quiz_selected_surahs", "quran_certificates", "quran_added_collections",
+        "quran_hifz_reset_at",
       ];
       const results = await AsyncStorage.multiGet(keys);
       const map = Object.fromEntries(results.map(([k, v]) => [k, v]));
@@ -406,8 +407,10 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         await AsyncStorage.setItem("quran_quiz_selected_surahs", JSON.stringify(DEFAULT_QUIZ_SELECTED_SURAHS));
       }
       // Migration: merge legacy checkedSurahs into memorizedAyahKeys so there is one source of truth.
+      // Skip if a hifz reset just happened — checked_surahs is also cleared on reset, but guard
+      // defensively in case of an unlikely async race between multiRemove and the reset flag write.
       let memorizedKeys: string[] = map.quran_memorized_ayahs ? JSON.parse(map.quran_memorized_ayahs) : [];
-      if (map.quran_checked_surahs) {
+      if (map.quran_checked_surahs && !map.quran_hifz_reset_at) {
         const checkedNums: number[] = JSON.parse(map.quran_checked_surahs);
         if (checkedNums.length > 0) {
           const existing = new Set(memorizedKeys);
@@ -436,13 +439,21 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function hydrateRemoteData() {
+    // If the user just ran "Restart Hifz Journey", skip re-applying old server memorized
+    // ayahs. The flag persists until the user actively memorizes again (see markAyahsMemorized
+    // / toggleAyahMemorized), ensuring a clean state across app relaunches.
+    let skipRemoteProgress = false;
+    try {
+      skipRemoteProgress = !!(await AsyncStorage.getItem("quran_hifz_reset_at"));
+    } catch {}
+
     const [remoteSavedSurahs, remoteSavedWords, remoteLastVisited, remotePrefs, remoteProgress] =
       await Promise.allSettled([
         madeenanApi.getSavedSurahs(),
         madeenanApi.getSavedWords(),
         madeenanApi.getLastVisited(),
         madeenanApi.getReciterPreferences(),
-        madeenanApi.getProgress(),
+        skipRemoteProgress ? Promise.resolve(null) : madeenanApi.getProgress(),
       ]);
 
     if (remoteSavedSurahs.status === "fulfilled" && Array.isArray(remoteSavedSurahs.value)) {
@@ -497,7 +508,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
-    if (remoteProgress.status === "fulfilled" && remoteProgress.value && typeof remoteProgress.value === "object") {
+    if (!skipRemoteProgress && remoteProgress.status === "fulfilled" && remoteProgress.value && typeof remoteProgress.value === "object") {
       const record = remoteProgress.value as Record<string, unknown>;
       const ayahs = Array.isArray(record.ayahs) ? record.ayahs : Array.isArray(record.progress) ? record.progress : [];
       const memorized = ayahs
@@ -785,6 +796,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     setPendingCertToast(null);
     setPendingAlreadyCertToast(null);
     applyTheme(DEFAULT_ACCOUNT.theme);
+    AsyncStorage.removeItem("quran_hifz_reset_at").catch(() => {});
   }, []);
 
   // Clears all memorization progress while preserving account settings and preferences.
@@ -826,7 +838,14 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     ]).catch(() => {});
     AsyncStorage.setItem("quran_quiz_selected_surahs", JSON.stringify(DEFAULT_QUIZ_SELECTED_SURAHS)).catch(() => {});
     AsyncStorage.setItem("quran_saved_words", JSON.stringify(SEED_WORDS)).catch(() => {});
-  }, []);
+    // Write a persistent flag so hydrateRemoteData() skips re-applying old server
+    // memorized ayahs until the user intentionally starts memorizing again.
+    AsyncStorage.setItem("quran_hifz_reset_at", String(Date.now())).catch(() => {});
+    // Best-effort: ask the server to clear progress too (no-op if endpoint is unsupported).
+    if (isAuthenticated) {
+      madeenanApi.clearProgress().catch(() => {});
+    }
+  }, [isAuthenticated]);
 
   const toggleCheckedSurah = useCallback((surahNum: number) => {
     const surahMeta = SURAH_DATA.find(s => s.number === surahNum);
@@ -952,6 +971,8 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const markAyahsMemorized = useCallback((keys: string[]) => {
+    // Clear the post-reset hydration guard: user is actively memorizing again.
+    AsyncStorage.removeItem("quran_hifz_reset_at").catch(() => {});
     const newKeysForDailyEntry: string[] = [];
     setMemorizedAyahKeys((prev) => {
       const newKeys = keys.filter(k => !prev.includes(k));
@@ -1002,6 +1023,8 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toggleAyahMemorized = useCallback((surahNumber: number, ayahNumber: number) => {
+    // Clear the post-reset hydration guard: user is actively managing memorization again.
+    AsyncStorage.removeItem("quran_hifz_reset_at").catch(() => {});
     const key = `${surahNumber}:${ayahNumber}`;
     let added = false;
     setMemorizedAyahKeys((prev) => {

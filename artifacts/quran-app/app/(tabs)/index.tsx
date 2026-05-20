@@ -2481,15 +2481,15 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     // ── All Surahs by Juz ──────────────────────────────────────────────────────
     surahSection: { marginTop: 28 },
     juzHeader: {
-      backgroundColor: colors.appStone,
       paddingHorizontal: 20,
-      paddingVertical: 6,
+      paddingTop: 20,
+      paddingBottom: 4,
     },
     juzLabel: {
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: "700",
-      color: colors.appLightText,
-      letterSpacing: 1.4,
+      color: colors.textTertiary,
+      letterSpacing: 1.6,
       textTransform: "uppercase",
       fontFamily: "Inter_700Bold",
     },
@@ -2562,7 +2562,7 @@ const styles = (colors: ReturnType<typeof useColors>) =>
     niyyahAcceptedText: {
       fontSize: 10,
       fontWeight: "400",
-      color: colors.disabledText,
+      color: colors.textTertiary,
       fontFamily: "Inter_400Regular",
       letterSpacing: 0.4,
       textTransform: "uppercase",
