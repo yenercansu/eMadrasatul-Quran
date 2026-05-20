@@ -1,3 +1,4 @@
+import * as FileSystem from "expo-file-system";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 
@@ -40,6 +41,8 @@ export type FullQuranCertData = {
   hijriDate?: string;
   fullHifzDays: number;
   ayahsPerDay: string;
+  bestStreak: number;
+  activeDays: number;
 };
 
 export type CertificateData = SurahCertData | JuzCertData | FullQuranCertData;
@@ -121,7 +124,7 @@ function css(): string {
   return `<style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    @page { margin: 0; size: A4; }
+    @page { margin: 0; }
     html, body {
       width: 100%;
       background: #ede7d8;
@@ -130,17 +133,17 @@ function css(): string {
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    /* A4 canvas — full page, warm parchment surround */
     .page {
-      width: 595px; min-height: 842px; margin: 0 auto;
+      width: 398px; margin: 0 auto;
       padding: 0;
       display: flex; flex-direction: column; align-items: center;
       background: #ede7d8;
+      page-break-after: avoid;
     }
-    /* Outer frame — ~67% of A4 width, double-border archival structure */
+    .page-break { page-break-before: always; page-break-after: auto; }
     .doc-outer {
       width: 398px;
-      margin: 30px 0 40px;
+      margin: 30px 0 20px;
       padding: 5px;
       background: #faf7f0;
       border: 0.7px solid #c9a84c;
@@ -238,6 +241,14 @@ function css(): string {
     .surah-tags { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; padding: 4px 0; }
     .surah-tag { padding: 3px 9px; border-radius: 9999px; border: 0.5px solid #e2d9c8; background: #f5f0e8; font-size: 10px; color: #8a7a5a; direction: rtl; }
     .section-padded { width: 100%; padding: 10px 0; display: flex; flex-direction: column; gap: 8px; }
+    .page-title { font-size: 9px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #bfaa88; text-align: center; margin: 18px 0 8px; }
+    .juz-list { width: 100%; display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
+    .juz-row { display: flex; align-items: center; gap: 10px; }
+    .juz-label { font-size: 10px; color: #8a7a5a; width: 68px; flex-shrink: 0; }
+    .juz-track { flex: 1; height: 4px; border-radius: 9999px; background: #f0ebe0; overflow: hidden; }
+    .juz-fill { height: 100%; width: 100%; border-radius: 9999px; background: #c9a84c; }
+    .juz-check { width: 14px; height: 14px; border-radius: 7px; background: #c9a84c; display: inline-flex; align-items: center; justify-content: center; font-size: 8px; color: white; flex-shrink: 0; }
+    .juz-note { font-size: 9px; color: #bfaa88; text-align: center; margin-top: 4px; }
   </style>`;
 }
 
@@ -247,6 +258,21 @@ function shell(body: string): string {
     <div class="page">
       <div class="doc-outer">
         <div class="doc-inner">${body}</div>
+      </div>
+    </div>
+  </body></html>`;
+}
+
+function shellTwoPage(body1: string, body2: string): string {
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"/>${css()}</head><body>
+    <div class="page">
+      <div class="doc-outer">
+        <div class="doc-inner">${body1}</div>
+      </div>
+    </div>
+    <div class="page page-break">
+      <div class="doc-outer">
+        <div class="doc-inner">${body2}</div>
       </div>
     </div>
   </body></html>`;
@@ -352,8 +378,8 @@ function buildJuzHtml(d: JuzCertData): string {
   `);
 }
 
-function buildFullQuranHtml(d: FullQuranCertData): string {
-  return shell(`
+function buildFullQuranBody(d: FullQuranCertData): string {
+  return `
     <div class="accent-strip"></div>
     <div class="bismillah">بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</div>
     ${ornament()}
@@ -390,8 +416,86 @@ function buildFullQuranHtml(d: FullQuranCertData): string {
     <div class="dua-wrap">
       <div class="dua-ar">بَارَكَ اللَّهُ فِيكَ</div>
       <div class="dua-en">May Allah preserve your memorization and elevate you through it.</div>
+    </div>`;
+}
+
+function buildJourneyBody(d: FullQuranCertData): string {
+  const juzGroups = ["Juz 1–10", "Juz 11–20", "Juz 21–30"];
+  const juzRows = juzGroups.map(label => `
+    <div class="juz-row">
+      <div class="juz-label">${esc(label)}</div>
+      <div class="juz-track"><div class="juz-fill"></div></div>
+      <div class="juz-check">&#10003;</div>
+    </div>`).join("");
+
+  return `
+    <div class="accent-strip"></div>
+    <div class="page-title">YOUR JOURNEY</div>
+    ${ornament(true)}
+    <div class="cert-header">
+      <div class="label-xs">A COMPLETE RECORD FOR</div>
+      <div class="person-name">${esc(d.personName)}</div>
     </div>
-  `);
+    ${ornament()}
+    <div class="stats-grid">
+      <div class="stats-cell"><div class="stats-value">6,236</div><div class="stats-label">AYAHS</div></div>
+      <div class="stats-cell"><div class="stats-value">114</div><div class="stats-label">SURAHS</div></div>
+      <div class="stats-cell"><div class="stats-value">30</div><div class="stats-label">JUZ</div></div>
+    </div>
+    ${ornament(true)}
+    <div class="records-section">
+      <div class="label-xs">JOURNEY RECORDS</div>
+      <div class="records-list">
+        <div class="record-row"><div class="record-left"><div class="record-label">DURATION</div><div class="record-sublabel">total days</div></div><div class="record-value">${d.fullHifzDays} days</div></div>
+        <div class="record-row"><div class="record-left"><div class="record-label">DAILY AVG.</div><div class="record-sublabel">memorized per session</div></div><div class="record-value">${esc(d.ayahsPerDay)} ayahs</div></div>
+        <div class="record-row"><div class="record-left"><div class="record-label">BEST STREAK</div><div class="record-sublabel">unbroken consistency</div></div><div class="record-value">${d.bestStreak} days</div></div>
+        <div class="record-row last"><div class="record-left"><div class="record-label">ACTIVE DAYS</div><div class="record-sublabel">out of ${d.fullHifzDays} total</div></div><div class="record-value">${d.activeDays}</div></div>
+      </div>
+    </div>
+    ${ornament(true)}
+    <div class="section-padded">
+      <div class="label-xs">JUZ COMPLETION</div>
+      <div class="juz-list">
+        ${juzRows}
+        <div class="juz-note">All 30 Juz completed</div>
+      </div>
+    </div>
+    ${ornament(true)}
+    <div class="dua-wrap">
+      <div class="dua-ar">بَارَكَ اللَّهُ فِيكَ</div>
+      <div class="dua-en">May Allah preserve your memorization and elevate you.</div>
+    </div>`;
+}
+
+function buildFullQuranHtml(d: FullQuranCertData): string {
+  return shellTwoPage(buildFullQuranBody(d), buildJourneyBody(d));
+}
+
+// ── Filename builder ──────────────────────────────────────────────────────────
+
+function sanitizeSegment(s: string): string {
+  return s
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-zA-Z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export function buildCertificateFilename(data: CertificateData): string {
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const personSegment = sanitizeSegment(data.personName) || "Student";
+
+  let typeSegment: string;
+  if (data.type === "surah") {
+    typeSegment = `Surah-${sanitizeSegment(data.surahEnglishName)}`;
+  } else if (data.type === "juz") {
+    typeSegment = `Juz-${data.juzNumber}`;
+  } else {
+    typeSegment = "Full-Quran";
+  }
+
+  return `Quran-Madrasah-Certificate-${typeSegment}-${personSegment}-${dateStr}.pdf`;
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -407,12 +511,26 @@ export async function exportAndShareCertificate(data: CertificateData): Promise<
     html = buildFullQuranHtml(data);
   }
 
-  const { uri } = await Print.printToFileAsync({ html, base64: false });
+  const printHeight = data.type === "full-quran" ? 654 : data.type === "juz" ? 656 : 616;
+  const { uri } = await Print.printToFileAsync({ html, base64: false, width: 398, height: printHeight });
 
   const available = await Sharing.isAvailableAsync();
   if (!available) throw new Error("Sharing is not available on this device");
 
-  await Sharing.shareAsync(uri, {
+  let shareUri = uri;
+  if (FileSystem.cacheDirectory) {
+    const filename = buildCertificateFilename(data);
+    const destUri = FileSystem.cacheDirectory + filename;
+    try {
+      await FileSystem.deleteAsync(destUri, { idempotent: true });
+      await FileSystem.moveAsync({ from: uri, to: destUri });
+      shareUri = destUri;
+    } catch {
+      // renaming failed — share from the original temp path
+    }
+  }
+
+  await Sharing.shareAsync(shareUri, {
     mimeType: "application/pdf",
     dialogTitle: "Share Certificate",
     UTI: "com.adobe.pdf",

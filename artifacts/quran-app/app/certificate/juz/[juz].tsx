@@ -98,8 +98,8 @@ export default function JuzCertificateScreen() {
               durationLabel: durationLabel || undefined,
               ayahsPerDayLabel: ayahsPerDayLabel || undefined,
             });
-          } catch {
-            Alert.alert("Export failed", "Could not generate the certificate PDF. Please try again.");
+          } catch (e) {
+            Alert.alert("Export failed", e instanceof Error ? e.message : "Could not generate the certificate PDF. Please try again.");
           } finally {
             setExporting(false);
           }

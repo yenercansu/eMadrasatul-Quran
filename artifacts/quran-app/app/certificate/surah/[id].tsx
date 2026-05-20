@@ -92,8 +92,8 @@ export default function SurahCertificateScreen() {
               dua: certContent.dua,
               duaEn: certContent.duaEn,
             });
-          } catch {
-            Alert.alert("Export failed", "Could not generate the certificate PDF. Please try again.");
+          } catch (e) {
+            Alert.alert("Export failed", e instanceof Error ? e.message : "Could not generate the certificate PDF. Please try again.");
           } finally {
             setExporting(false);
           }
