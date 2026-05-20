@@ -172,6 +172,8 @@ interface QuranContextType {
   surahPositions: Record<number, number>;
   saveSurahPosition: (surahNum: number, ayahIndex: number) => void;
   resetLocalData: () => void;
+  /** Clears all memorization progress but preserves account settings and preferences. */
+  resetHifzProgress: () => void;
   checkedSurahs: number[];
   toggleCheckedSurah: (surahNum: number) => void;
   isSurahChecked: (surahNum: number) => boolean;
@@ -762,6 +764,34 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     applyTheme(DEFAULT_ACCOUNT.theme);
   }, []);
 
+  // Clears all memorization progress while preserving account settings and preferences.
+  // This is the authoritative reset used by "Restart Hifz Journey" so that every
+  // downstream system (certs, quiz, revision) recomputes from a clean slate.
+  const resetHifzProgress = useCallback(() => {
+    setGoalState(null);
+    setMemorizationGoalState(null);
+    setMemorizedAyahKeys([]);
+    setCheckedSurahs([]);
+    setCertificates([]);
+    certificatesRef.current = [];
+    prevFullyMemorizedRef.current = null;
+    setPendingCertToast(null);
+    setPendingAlreadyCertToast(null);
+    setQuizSelectedSurahsState(DEFAULT_QUIZ_SELECTED_SURAHS);
+    setQuranPosition(0);
+    setDailyEntries([]);
+    AsyncStorage.multiRemove([
+      "quran_goal",
+      "quran_memorization_goal",
+      "quran_memorized_ayahs",
+      "quran_checked_surahs",
+      "quran_certificates",
+      "quran_daily_entries",
+      "quran_position",
+    ]).catch(() => {});
+    AsyncStorage.setItem("quran_quiz_selected_surahs", JSON.stringify(DEFAULT_QUIZ_SELECTED_SURAHS)).catch(() => {});
+  }, []);
+
   const toggleCheckedSurah = useCallback((surahNum: number) => {
     const surahMeta = SURAH_DATA.find(s => s.number === surahNum);
     const ayahCount = surahMeta?.ayahCount ?? 0;
@@ -980,6 +1010,12 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     if (!dataLoadedRef.current) return;
 
     const memorized = new Set(memorizedAyahKeys);
+    for (const surahNum of checkedSurahs) {
+      const meta = SURAH_DATA[surahNum - 1];
+      if (meta) {
+        for (let a = 1; a <= meta.ayahCount; a++) memorized.add(`${surahNum}:${a}`);
+      }
+    }
     const current = certificatesRef.current;
     const certifiedSurahs = new Set(current.filter(c => c.type === "surah").map(c => c.surahNumber!));
     const certifiedJuz = new Set(current.filter(c => c.type === "juz").map(c => c.juzNumber!));
@@ -1045,7 +1081,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     } else if (alreadyEarnedCert) {
       setPendingAlreadyCertToast(alreadyEarnedCert);
     }
-  }, [memorizedAyahKeys]);
+  }, [memorizedAyahKeys, checkedSurahs]);
 
   const dismissCertToast = useCallback(() => setPendingCertToast(null), []);
   const dismissAlreadyCertToast = useCallback(() => setPendingAlreadyCertToast(null), []);
@@ -1066,7 +1102,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       dailyEntries, recordAyahRead, recordQuizCompletion, recordMilestoneCompletion, todayEntry,
       onlineUsers,
       quranPosition, advanceQuranPosition, getWeekGoalAyahs, getWeekGoalProgress,
-      surahPositions, saveSurahPosition, resetLocalData,
+      surahPositions, saveSurahPosition, resetLocalData, resetHifzProgress,
       checkedSurahs, toggleCheckedSurah, isSurahChecked, clearCheckedSurahs,
       quizSelectedSurahs, setQuizSelectedSurahs, toggleQuizSurahSelection, isQuizSurahSelected,
       memorizedAyahKeys, markAyahsMemorized, removeMemorizedAyahKeys, toggleAyahMemorized, isAyahMemorized,

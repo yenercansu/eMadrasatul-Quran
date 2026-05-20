@@ -135,7 +135,7 @@ export default function HomeScreen() {
     lastListened, goal, setGoal, memorizationGoal, setMemorizationGoal,
     todayEntry, dailyEntries, onlineUsers, recentProgress, savedSurahs,
     getWeekGoalAyahs, isSurahChecked, checkedSurahs, markAyahsMemorized, recordMilestoneCompletion,
-    memorizedAyahKeys,
+    memorizedAyahKeys, resetHifzProgress,
   } = useQuran();
   const [refreshing, setRefreshing] = useState(false);
   const [weeklyGoalVisible, setWeeklyGoalVisible] = useState(false);
@@ -773,8 +773,20 @@ export default function HomeScreen() {
   const fullHifzAyahsPerDay = (TOTAL_AYAHS / fullHifzDays).toFixed(1);
 
   const resetHifzFlow = useCallback(() => {
-    setGoal(null);
-    setMemorizationGoal(null);
+    // Central authoritative reset — clears all memorization state and AsyncStorage
+    resetHifzProgress();
+
+    // Clear weekly toast dedup so fresh completions show properly after restart
+    weeklyToastCelebratedRef.current = new Set();
+    AsyncStorage.removeItem(WEEKLY_TOAST_CELEBRATIONS_KEY).catch(() => {});
+
+    // Reset percentage trackers so completion effects re-run from a clean baseline
+    prevMemPercentRef.current = null;
+    prevWeekPercentRef.current = null;
+    prevMilestoneCompleteRef.current = null;
+
+    // Reset local UI state
+    setRevisionJourneyStarted(false);
     setShowHifzGoalOptions(false);
     setShowWeeklyToast(false);
     setShowWeekCompleteCard(false);
@@ -787,7 +799,7 @@ export default function HomeScreen() {
     setWidgetFirstAyah(null);
     setWidgetLastAyah(null);
     setWidgetJuz(null);
-  }, [setGoal, setMemorizationGoal]);
+  }, [resetHifzProgress]);
 
   const openNewHifzSelection = useCallback((path: "surah" | "juz", options?: { surahNumber?: number; juz?: number; startAtAyahSelection?: boolean }) => {
     setContinuationNotice(null);
@@ -831,7 +843,6 @@ export default function HomeScreen() {
   const handleRevisionComplete = useCallback(() => {
     if (!memorizationGoal || hifzTransition) return;
     if (memorizationGoal.path === "pace") return;
-    if (fullQuranComplete) return;
 
     recordMilestoneCompletion();
     const completedName = memorizationGoal.path === "juz"
@@ -949,7 +960,7 @@ export default function HomeScreen() {
       });
     }
   }, [
-    memorizationGoal, hifzTransition, fullQuranComplete, targetJuz, targetSurah,
+    memorizationGoal, hifzTransition, targetJuz, targetSurah,
     goal, memorizedAyahKeys, checkedSurahs, todayEntry, targetTotal, recordMilestoneCompletion,
     setHifzTransition,
   ]);

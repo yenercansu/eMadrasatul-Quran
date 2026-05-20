@@ -531,7 +531,16 @@ export async function exportAndShareCertificate(data: CertificateData): Promise<
     html = buildFullQuranHtml(data);
   }
 
-  const printHeight = data.type === "full-quran" ? 669 : data.type === "juz" ? 671 : 631;
+  const JUZ_EXTRA_PX: Record<number, number> = { 1: 20, 2: 20, 3: 20, 4: 20, 5: 20, 6: 20, 7: 20, 8: 20, 9: 20, 10: 20, 11: 20, 12: 20, 13: 20, 14: 20, 15: 20, 16: 20, 17: 20, 18: 20, 19: 20, 20: 20, 21: 20, 22: 20, 23: 20, 24: 20, 28: 20 };
+  const printHeight = data.type === "full-quran"
+    ? 669
+    : data.type === "juz"
+      ? (() => {
+          const BASE = 671;
+          const extraRows = Math.max(0, Math.ceil(data.surahsInJuz.length / 5) - 1);
+          return BASE + extraRows * 20 + (JUZ_EXTRA_PX[data.juzNumber] ?? 0);
+        })()
+      : 631;
   const { uri } = await Print.printToFileAsync({ html, base64: false, width: 398, height: printHeight });
 
   const available = await Sharing.isAvailableAsync();
