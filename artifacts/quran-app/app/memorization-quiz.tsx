@@ -908,13 +908,34 @@ export default function MemorizationQuizScreen() {
     }
   }, [savedAyahsBySurah, manuallyDeselectedSurahs, quizSelectedSurahs, selectedQuizSurahSet, setQuizSelectedSurahs]);
 
+  const virtualSpecialAyahs = useMemo(() => {
+    const savedNums = new Set(savedAyahs.map(a => a.surahNumber));
+    return DEFAULT_SURAHS
+      .filter(ds => SPECIAL_SURAH_NUMS.has(ds.number) && selectedQuizSurahSet.has(ds.number) && !savedNums.has(ds.number))
+      .flatMap((ds) =>
+        ds.ayahs.map((ayah, i) => ({
+          id: `virtual-${ds.number}-${i}`,
+          surahNumber: ds.number,
+          ayahNumber: i + 1,
+          arabicText: ayah,
+          translationText: ds.translations[i] ?? "",
+          surahName: ds.englishName,
+          isVirtual: true,
+        } as SavedAyah & { isVirtual: true }))
+      );
+  }, [savedAyahs, selectedQuizSurahSet]);
+
   const visibleAyahs = useMemo(() => {
-    let ayahs = savedAyahs;
+    let ayahs: SavedAyah[] = filterMode === "by-ayah" ? [...savedAyahs, ...virtualSpecialAyahs] : savedAyahs;
     if (filterMode === "by-surah" && selectedSurahNum !== null) {
       ayahs = ayahs.filter(ayah => ayah.surahNumber === selectedSurahNum);
     }
     if (filterMode === "by-ayah") {
-      if (tagFilter === "selected") ayahs = ayahs.filter(ayah => selectedAyahIds.has(ayah.id) && !excludedAyahIds.has(ayah.id));
+      if (tagFilter === "selected") ayahs = ayahs.filter(ayah =>
+        (ayah as any).isVirtual
+          ? selectedQuizSurahSet.has(ayah.surahNumber)
+          : selectedAyahIds.has(ayah.id) && !excludedAyahIds.has(ayah.id)
+      );
       if (ayahSearchQuery.trim()) {
         const q = ayahSearchQuery.toLowerCase();
         ayahs = ayahs.filter(a =>
@@ -925,7 +946,7 @@ export default function MemorizationQuizScreen() {
       }
     }
     return ayahs;
-  }, [savedAyahs, filterMode, selectedSurahNum, tagFilter, selectedAyahIds, excludedAyahIds, ayahSearchQuery]);
+  }, [savedAyahs, virtualSpecialAyahs, filterMode, selectedSurahNum, tagFilter, selectedAyahIds, excludedAyahIds, ayahSearchQuery, selectedQuizSurahSet]);
 
   const filteredSurahGroups = useMemo(() => {
     if (tagFilter === "selected") {
@@ -1347,7 +1368,9 @@ export default function MemorizationQuizScreen() {
             />
           </View>
 
-          {/* Search bar — fixed */}
+          {/* Scrollable list region */}
+          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          {/* Search bar */}
           <View style={s.searchWrapper}>
             <View style={[s.searchContainer, { backgroundColor: colors.muted }]}>
               <Feather name="search" size={15} color={colors.mutedForeground} />
@@ -1379,7 +1402,7 @@ export default function MemorizationQuizScreen() {
             </View>
           </View>
 
-          {/* Tag filter row — fixed */}
+          {/* Tag filter row */}
           <View style={s.tagRow2}>
             <View style={s.tagChipsRow}>
               {([{ key: "all", label: "All" }, { key: "selected", label: "Selected" }] as const).map(item => (
@@ -1401,8 +1424,6 @@ export default function MemorizationQuizScreen() {
             </View>
           </View>
 
-          {/* Scrollable list region */}
-          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
           <View style={s.selectionContent2}>
             {filterMode === "by-surah" ? (
               <>
@@ -1480,8 +1501,31 @@ export default function MemorizationQuizScreen() {
                 <View key={group.juz}>
                   <Text style={[s.juzHeader, { color: colors.mutedForeground }]}>JUZ {group.juz}</Text>
                   {group.ayahs.map(ayah => {
-                    const checked = selectedAyahIds.has(ayah.id);
+                    const isVirtual = !!(ayah as any).isVirtual;
+                    const checked = isVirtual ? selectedQuizSurahSet.has(ayah.surahNumber) : selectedAyahIds.has(ayah.id);
                     const juz = SURAH_DATA[ayah.surahNumber - 1]?.juz ?? 1;
+                    const cardContent = (
+                      <View
+                        style={[s.ayahCard2, colors.cardStyle, checked && { borderColor: colors.appSelectedPill, backgroundColor: colors.appCardPressed }]}
+                      >
+                        <TouchableOpacity
+                          style={[s.ayahBadge2, checked ? { backgroundColor: colors.appSelectedPill, borderColor: colors.appSelectedPill } : { backgroundColor: colors.appSoftPill, borderColor: colors.appSoftBorder }]}
+                          onPress={() => isVirtual ? toggleSurah(ayah.surahNumber) : toggleSelected(ayah.id)}
+                          activeOpacity={0.75}
+                        >
+                          {checked && <Feather name="check" size={12} color={colors.appText} />}
+                        </TouchableOpacity>
+                        <TouchableOpacity style={{ flex: 1 }} onPress={() => isVirtual ? toggleSurah(ayah.surahNumber) : toggleSelected(ayah.id)} activeOpacity={0.75}>
+                          <View style={s.ayahCard2Header}>
+                            <Text style={[s.ayahCard2Meta, { color: colors.mutedForeground }]}>{ayah.surahName.toUpperCase()} · {ayah.ayahNumber}</Text>
+                            <Text style={[s.ayahCard2Meta, { color: colors.mutedForeground }]}>JUZ {juz}</Text>
+                          </View>
+                          <Text style={[s.ayahCard2Arabic, { color: colors.foreground }]}>{ayah.arabicText}</Text>
+                          <Text style={[s.ayahCard2Translation, { color: colors.mutedForeground }]} numberOfLines={2}>{ayah.translationText || "No translation saved"}</Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                    if (isVirtual) return <View key={ayah.id}>{cardContent}</View>;
                     return (
                       <SwipeableRow
                         key={ayah.id}
@@ -1491,25 +1535,7 @@ export default function MemorizationQuizScreen() {
                           router.push(`/surah/${ayah.surahNumber}?ayah=${ayah.ayahNumber}`);
                         }}
                       >
-                        <View
-                          style={[s.ayahCard2, colors.cardStyle, checked && { borderColor: colors.appSelectedPill, backgroundColor: colors.appCardPressed }]}
-                        >
-                          <TouchableOpacity
-                            style={[s.ayahBadge2, checked ? { backgroundColor: colors.appSelectedPill, borderColor: colors.appSelectedPill } : { backgroundColor: colors.appSoftPill, borderColor: colors.appSoftBorder }]}
-                            onPress={() => toggleSelected(ayah.id)}
-                            activeOpacity={0.75}
-                          >
-                            {checked && <Feather name="check" size={12} color={colors.appText} />}
-                          </TouchableOpacity>
-                          <TouchableOpacity style={{ flex: 1 }} onPress={() => toggleSelected(ayah.id)} activeOpacity={0.75}>
-                            <View style={s.ayahCard2Header}>
-                              <Text style={[s.ayahCard2Meta, { color: colors.mutedForeground }]}>{ayah.surahName.toUpperCase()} · {ayah.ayahNumber}</Text>
-                              <Text style={[s.ayahCard2Meta, { color: colors.mutedForeground }]}>JUZ {juz}</Text>
-                            </View>
-                            <Text style={[s.ayahCard2Arabic, { color: colors.foreground }]}>{ayah.arabicText}</Text>
-                            <Text style={[s.ayahCard2Translation, { color: colors.mutedForeground }]} numberOfLines={2}>{ayah.translationText || "No translation saved"}</Text>
-                          </TouchableOpacity>
-                        </View>
+                        {cardContent}
                       </SwipeableRow>
                     );
                   })}
@@ -1519,36 +1545,32 @@ export default function MemorizationQuizScreen() {
               )
             )}
           </View>
+            <View style={{ paddingHorizontal: 16 }}>
+              {filterMode === "by-surah" ? (
+                <Pagination
+                  page={surahPage}
+                  totalPages={totalSurahPages}
+                  totalItems={allFilteredSurahs.length}
+                  itemLabel="surah"
+                  onPrev={() => setSurahPage(p => Math.max(0, p - 1))}
+                  onNext={() => setSurahPage(p => Math.min(totalSurahPages - 1, p + 1))}
+                />
+              ) : (
+                <Pagination
+                  page={ayahPage}
+                  totalPages={totalAyahPages}
+                  totalItems={visibleAyahs.length}
+                  itemLabel="ayah"
+                  onPrev={() => setAyahPage(p => Math.max(0, p - 1))}
+                  onNext={() => setAyahPage(p => Math.min(totalAyahPages - 1, p + 1))}
+                />
+              )}
+            </View>
+            <View style={{ height: 24 }} />
           </ScrollView>
 
           {/* Bottom panel */}
           <View style={[s.startPanel2, { paddingBottom: insets.bottom > 0 ? insets.bottom : 16, backgroundColor: colors.background, borderTopColor: colors.border }]}>
-            <View style={s.startStats}>
-              <Text style={[s.startStatText, { color: colors.mutedForeground }]}>{selectedQuizPoolAyahCount} ayah{selectedQuizPoolAyahCount !== 1 ? "s" : ""} selected</Text>
-              {filterMode === "by-surah"
-                ? <Text style={[s.startStatText, { color: colors.mutedForeground }]}>{selectedSurahCount} surah{selectedSurahCount !== 1 ? "s" : ""} chosen</Text>
-                : <Text style={[s.startStatText, { color: colors.mutedForeground }]}>from {selectedSurahCount} surah{selectedSurahCount !== 1 ? "s" : ""}</Text>
-              }
-            </View>
-            {filterMode === "by-surah" ? (
-              <Pagination
-                page={surahPage}
-                totalPages={totalSurahPages}
-                totalItems={allFilteredSurahs.length}
-                itemLabel="surah"
-                onPrev={() => setSurahPage(p => Math.max(0, p - 1))}
-                onNext={() => setSurahPage(p => Math.min(totalSurahPages - 1, p + 1))}
-              />
-            ) : (
-              <Pagination
-                page={ayahPage}
-                totalPages={totalAyahPages}
-                totalItems={visibleAyahs.length}
-                itemLabel="ayah"
-                onPrev={() => setAyahPage(p => Math.max(0, p - 1))}
-                onNext={() => setAyahPage(p => Math.min(totalAyahPages - 1, p + 1))}
-              />
-            )}
             <TouchableOpacity
               style={[s.startBtn2, selectedQuizPoolAyahCount === 0 && s.startBtn2Disabled]}
               onPress={startQuiz}

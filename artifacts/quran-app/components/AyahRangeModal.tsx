@@ -27,6 +27,7 @@ import { AppDialog } from "@/components/AppDialog";
 import { MemorizedBadge } from "@/components/SurahCard";
 import { InlineNotice } from "@/components/InlineNotice";
 import { calculatePaceMilestones, calculateQuranCompletionWeeks } from "@/utils/paceUtils";
+import { buildAdaptiveWeeklyPlan, estimatePeakWeeks } from "@/utils/forecastEngine";
 
 const TOTAL_QURAN_AYAHS = 6236;
 
@@ -99,32 +100,6 @@ function getPeakRampWeeks(
   return Math.max(2, Math.ceil(baseWeeks * distanceRatio));
 }
 
-function buildGradualWeeklyPlan({
-  targetAyahsPerWeek,
-  weeks,
-  increaseStyle,
-  peakAyahsPerWeek,
-}: {
-  targetAyahsPerWeek: number;
-  weeks: number;
-  increaseStyle: GradualIncreaseStyle;
-  peakAyahsPerWeek?: number;
-}) {
-  const safeWeeks = Math.max(1, weeks);
-  const startWeekly = Math.max(1, targetAyahsPerWeek);
-  const peakWeekly = Math.max(startWeekly, peakAyahsPerWeek ?? startWeekly);
-  const rampWeeks = getPeakRampWeeks(startWeekly, peakWeekly, increaseStyle);
-  const curve = { gentle: 1.45, medium: 1.1, fast: 0.8 }[increaseStyle];
-
-  return Array.from({ length: safeWeeks }, (_, index) => {
-    if (rampWeeks <= 1) return peakWeekly;
-    if (index >= rampWeeks - 1) return peakWeekly;
-    const t = index / (rampWeeks - 1);
-    const eased = Math.pow(t, curve);
-    return Math.max(1, Math.round(startWeekly + (peakWeekly - startWeekly) * eased));
-  });
-}
-
 function formatWeeks(weeks: number): string {
   if (weeks <= 0) return "—";
   if (weeks < 4) return `${weeks} week${weeks === 1 ? "" : "s"}`;
@@ -140,28 +115,6 @@ function getIslamicMonthName(date: Date) {
   } catch {
     return "";
   }
-}
-
-function calculateWeeksNeeded(
-  totalAyahs: number,
-  startPacePerWeek: number,
-  peakPacePerWeek: number,
-  memStyle: MemorizationStyle,
-  increaseStyle: GradualIncreaseStyle
-): number {
-  if (totalAyahs <= 0) return 0;
-  const safePace = Math.max(1, startPacePerWeek);
-  if (memStyle === "steady") return Math.ceil(totalAyahs / safePace);
-  for (let w = 1; w <= 1040; w++) {
-    const plan = buildGradualWeeklyPlan({
-      targetAyahsPerWeek: startPacePerWeek,
-      weeks: w,
-      increaseStyle,
-      peakAyahsPerWeek: peakPacePerWeek,
-    });
-    if (plan.reduce((s, n) => s + n, 0) >= totalAyahs) return w;
-  }
-  return 1040;
 }
 
 function AyahSlider({
@@ -615,12 +568,7 @@ export function AyahRangeModal({
 
   const gradualWeeklyPlan = useMemo(() => {
     if (!startAtPaceDate || !autoWeeksNeeded || memorizationStyle !== "gradual") return [];
-    return buildGradualWeeklyPlan({
-      targetAyahsPerWeek: ayahsPerWeek,
-      weeks: autoWeeksNeeded,
-      increaseStyle: gradualIncreaseStyle,
-      peakAyahsPerWeek: peakCapacityPerWeek,
-    });
+    return buildAdaptiveWeeklyPlan(ayahsPerWeek, peakCapacityPerWeek, gradualIncreaseStyle, autoWeeksNeeded);
   }, [ayahsPerWeek, gradualIncreaseStyle, memorizationStyle, peakCapacityPerWeek, autoWeeksNeeded, startAtPaceDate]);
 
   const gradualDaysPerWeekPlan = useMemo(() => {
@@ -651,12 +599,7 @@ export function AyahRangeModal({
     : 0;
 
   const currentPaceAyahsPerWeek = memorizationStyle === "gradual"
-    ? gradualWeeklyPlan[0] ?? buildGradualWeeklyPlan({
-        targetAyahsPerWeek: ayahsPerWeek,
-        weeks: 5,
-        increaseStyle: gradualIncreaseStyle,
-        peakAyahsPerWeek: peakCapacityPerWeek,
-      })[0]
+    ? gradualWeeklyPlan[0] ?? buildAdaptiveWeeklyPlan(ayahsPerWeek, peakCapacityPerWeek, gradualIncreaseStyle, 5)[0]
     : ayahsPerWeek;
 
   const peakOptions = desiredCapacityOptions.filter((option) => {
@@ -794,7 +737,7 @@ export function AyahRangeModal({
       ayahsPerWeek: startAtPaceDate ? currentPaceAyahsPerWeek : clampedAyahsPerWeek,
       isRevision: isRevisionMode,
       targetAyahsPerWeek: startAtPaceDate ? peakCapacityPerWeek : clampedAyahsPerWeek,
-      finishWeeks: autoWeeksNeeded ?? undefined,
+      finishWeeks: undefined,
       measurementStyle: "visual",
       memorizationStyle,
       gradualIncreaseStyle: memorizationStyle === "gradual" ? gradualIncreaseStyle : undefined,
@@ -1033,13 +976,8 @@ export function AyahRangeModal({
     }
 
     // ── paceStep 1: Desired capacity ─────────────────────────────────────────
-    const peakRampWeeks = getPeakRampWeeks(ayahsPerWeek, peakCapacityPerWeek, gradualIncreaseStyle);
-    const peakPreviewPlan = buildGradualWeeklyPlan({
-      targetAyahsPerWeek: ayahsPerWeek,
-      weeks: peakRampWeeks,
-      increaseStyle: gradualIncreaseStyle,
-      peakAyahsPerWeek: peakCapacityPerWeek,
-    });
+    const peakRampWeeks = estimatePeakWeeks(ayahsPerWeek / 7, peakCapacityPerWeek / 7, gradualIncreaseStyle);
+    const peakPreviewPlan = buildAdaptiveWeeklyPlan(ayahsPerWeek, peakCapacityPerWeek, gradualIncreaseStyle, peakRampWeeks);
     const peakPreviewBars = peakPreviewPlan.reduce<{ week: number; count: number }[]>((acc, count, index) => {
       if (index === 0 || count !== peakPreviewPlan[index - 1] || index === peakPreviewPlan.length - 1) {
         acc.push({ week: index + 1, count });

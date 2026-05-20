@@ -26,7 +26,7 @@ export interface PaceMilestone {
   weeksToReach: number;
 }
 
-function advanceCapacity(current: number, desired: number, style: GrowthStyle): number {
+export function advanceCapacity(current: number, desired: number, style: GrowthStyle): number {
   const { weeklyRate, minDailyIncrease } = GROWTH_STYLE_CONFIG[style];
   return Math.min(desired, Math.max(current * (1 + weeklyRate), current + minDailyIncrease));
 }

@@ -887,7 +887,9 @@ export default function QuizScreen() {
             />
           </View>
 
-          {/* Search bar — anchored */}
+          {/* Scrollable list region */}
+          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          {/* Search bar */}
           <View style={s.searchWrapper}>
             <View style={s.searchContainer}>
               <Feather name="search" size={15} color={colors.appIconMuted} />
@@ -917,7 +919,7 @@ export default function QuizScreen() {
             </View>
           </View>
 
-          {/* Tag filter row — anchored */}
+          {/* Tag filter row */}
           <View style={s.tagRow2}>
             <View style={s.tagChipsRow}>
               {([{ key: "all", label: "All" }, { key: "selected", label: "Selected" }] as const).map(item => (
@@ -939,8 +941,6 @@ export default function QuizScreen() {
             </View>
           </View>
 
-          {/* Scrollable list region */}
-          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
           <View style={s.selectionContent2}>
             {selectedQuizWordPool.length < 1 && (
               <View style={[s.selectionHintCard, { marginBottom: 12 }]}>
@@ -1033,36 +1033,31 @@ export default function QuizScreen() {
               )
             )}
           </View>
+            <View style={{ paddingHorizontal: 16 }}>
+              {showingAyahs ? (
+                <Pagination
+                  page={ayahPage}
+                  totalPages={totalAyahPages}
+                  totalItems={filteredAyahs.length}
+                  itemLabel="ayah"
+                  onPrev={() => setAyahPage(p => Math.max(0, p - 1))}
+                  onNext={() => setAyahPage(p => Math.min(totalAyahPages - 1, p + 1))}
+                />
+              ) : (
+                <Pagination
+                  page={wordPage}
+                  totalPages={totalWordPages}
+                  totalItems={filteredWords.length}
+                  itemLabel="word"
+                  onPrev={() => setWordPage(p => Math.max(0, p - 1))}
+                  onNext={() => setWordPage(p => Math.min(totalWordPages - 1, p + 1))}
+                />
+              )}
+            </View>
+            <View style={{ height: 24 }} />
           </ScrollView>
 
           <View style={[s.startPanel2, { paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }]}>
-            <View style={s.startStats}>
-              <Text style={s.startStatText}>
-                {selectedItemCount} {showingAyahs ? `ayah${selectedItemCount !== 1 ? "s" : ""}` : `word${selectedItemCount !== 1 ? "s" : ""}`} selected
-              </Text>
-              <Text style={s.startStatText}>
-                {selectedQuizWordPool.length} test word{selectedQuizWordPool.length !== 1 ? "s" : ""}
-              </Text>
-            </View>
-            {showingAyahs ? (
-              <Pagination
-                page={ayahPage}
-                totalPages={totalAyahPages}
-                totalItems={filteredAyahs.length}
-                itemLabel="ayah"
-                onPrev={() => setAyahPage(p => Math.max(0, p - 1))}
-                onNext={() => setAyahPage(p => Math.min(totalAyahPages - 1, p + 1))}
-              />
-            ) : (
-              <Pagination
-                page={wordPage}
-                totalPages={totalWordPages}
-                totalItems={filteredWords.length}
-                itemLabel="word"
-                onPrev={() => setWordPage(p => Math.max(0, p - 1))}
-                onNext={() => setWordPage(p => Math.min(totalWordPages - 1, p + 1))}
-              />
-            )}
             <ActionPill
               label="Start the Test"
               variant={selectedQuizWordPool.length < 1 ? "soft" : "primary"}

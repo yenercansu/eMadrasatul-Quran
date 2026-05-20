@@ -43,6 +43,7 @@ import { InlineNotice } from "@/components/InlineNotice";
 import { FullQuranCertificate } from "@/components/cert/FullQuranCertificate";
 import { AppDialog } from "@/components/AppDialog";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAdaptiveForecast } from "@/hooks/useAdaptiveForecast";
 
 const TOTAL_AYAHS = 6236;
 const WEEKLY_TOAST_CELEBRATIONS_KEY = "@squran/weekly-complete-toast-celebrations-v1";
@@ -486,6 +487,8 @@ export default function HomeScreen() {
     }).length;
   }, [currentGoalSurfaceAyahs, goal, memorizationGoal, memorizedAyahKeys]);
 
+  const forecast = useAdaptiveForecast();
+
   // Derive pace from actual memorization history (median of non-zero days).
   // Falls back to configured goal only when no history exists.
   const userTypicalPace = useMemo(() => {
@@ -538,12 +541,15 @@ export default function HomeScreen() {
   const remainingRangeAyahs = Math.max(0, activeRangeTotal - totalRangeMemorized);
 
   const activeGoalTargetDate = useMemo(() => {
-    if (!goal?.ayahsPerWeek || !memorizationGoal) return null;
+    if (!memorizationGoal) return null;
+    // Prefer the adaptive forecast (gradual goals); fall back to linear division for steady goals.
+    if (forecast?.estimatedCompletionDate) return forecast.estimatedCompletionDate;
+    if (!goal?.ayahsPerWeek) return null;
     const weeksNeeded = Math.max(1, Math.ceil(remainingRangeAyahs / goal.ayahsPerWeek));
     const d = new Date();
     d.setDate(d.getDate() + weeksNeeded * 7);
     return d;
-  }, [goal?.ayahsPerWeek, memorizationGoal, remainingRangeAyahs]);
+  }, [forecast, goal?.ayahsPerWeek, memorizationGoal, remainingRangeAyahs]);
 
   const milestoneComplete =
     memorizationGoal !== null &&
@@ -1470,6 +1476,9 @@ export default function HomeScreen() {
                         Finish Line: {activeGoalTargetDate ? formatTargetDate(activeGoalTargetDate) : "—"}
                         {memorizationGoal?.endAyahNumber ? `, Ayah ${memorizationGoal.endAyahNumber}` : ""}
                       </Text>
+                      {forecast?.isAheadOfBaseline ? (
+                        <Feather name="trending-up" size={11} color={colors.appLightText} style={{ marginLeft: 4 }} />
+                      ) : null}
                     </View>
                   )}
                 </View>
