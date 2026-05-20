@@ -14,9 +14,19 @@
       "backgroundColor": "#FDFBF7"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.alzahira.quranmadrasa",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
-    "android": {},
+    "android": {
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
+      "package": "com.alzahira.quranmadrasa"
+    },
     "web": {
       "favicon": "./assets/images/logo.png"
     },
@@ -30,6 +40,18 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e8c88ad5-fa14-4f07-8c35-e9663e04564d"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e8c88ad5-fa14-4f07-8c35-e9663e04564d"
     }
   }
 }
