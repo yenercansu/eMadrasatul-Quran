@@ -244,7 +244,7 @@ const colors = {
     hifzOuterBg: "#211C17",
     hifzWarmBand: "#2A241D",
     hifzCardBg: "#211C17",
-    hifzHeroCard: "#5D4D3F",
+    hifzHeroCard: "#3A3028",
     hifzBorder: "#40372F",
     hifzText: "#F1E9DC",
     hifzAccent: "#D8CCBA",

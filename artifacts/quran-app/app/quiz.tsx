@@ -152,8 +152,8 @@ function NoWordsScreen({ colors, topPad }: { colors: ReturnType<typeof useColors
             <Text style={s.graphicPopupArabic}>اللَّهِ</Text>
             <Text style={s.graphicPopupTrans}>Allah / God</Text>
             <View style={s.graphicSaveBtn}>
-              <Ionicons name="bookmark-outline" size={14} color={colors.primaryForeground} />
-              <Text style={s.graphicSaveBtnText}>Add to Library</Text>
+              <Feather name="download" size={14} color={colors.primaryForeground} />
+              <Text style={s.graphicSaveBtnText}>Save Word</Text>
             </View>
           </View>
         </View>
@@ -165,7 +165,7 @@ function NoWordsScreen({ colors, topPad }: { colors: ReturnType<typeof useColors
           {[
             { num: "1", icon: "book-open" as const, text: "Open any Surah from the Quran tab" },
             { num: "2", icon: "mouse-pointer" as const, text: "Long-press on any Arabic word" },
-            { num: "3", icon: "bookmark" as const, text: "Tap \"Add to Library\" in the popup" },
+            { num: "3", icon: "download" as const, text: "Tap \"Save Word\" in the popup" },
             { num: "4", icon: "zap" as const, text: "Come back here to test yourself!" },
           ].map(step => (
             <View key={step.num} style={s.howToStep}>
@@ -942,6 +942,18 @@ export default function QuizScreen() {
           {/* Scrollable list region */}
           <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
           <View style={s.selectionContent2}>
+            {selectedQuizWordPool.length < 1 && (
+              <View style={[s.selectionHintCard, { marginBottom: 12 }]}>
+                <View style={s.selectionHintIcon}>
+                  <Feather name="check-circle" size={16} color={colors.appIconMuted} />
+                </View>
+                <Text style={s.selectionHintText}>
+                  {showingAyahs
+                    ? "Choose saved ayahs that contain words you want to review."
+                    : "Choose at least one saved word to begin practicing."}
+                </Text>
+              </View>
+            )}
             {showingAyahs ? (
               pagedAyahs.length === 0 ? (
                 <InlineNotice
@@ -1032,18 +1044,6 @@ export default function QuizScreen() {
                 {selectedQuizWordPool.length} test word{selectedQuizWordPool.length !== 1 ? "s" : ""}
               </Text>
             </View>
-            {selectedQuizWordPool.length < 1 && (
-              <View style={s.selectionHintCard}>
-                <View style={s.selectionHintIcon}>
-                  <Feather name="check-circle" size={16} color={colors.appIconMuted} />
-                </View>
-                <Text style={s.selectionHintText}>
-                  {showingAyahs
-                    ? "Choose saved ayahs that contain words you want to review."
-                    : "Choose at least one saved word to begin practicing."}
-                </Text>
-              </View>
-            )}
             {showingAyahs ? (
               <Pagination
                 page={ayahPage}

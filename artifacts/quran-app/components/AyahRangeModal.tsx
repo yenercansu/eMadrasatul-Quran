@@ -26,6 +26,7 @@ import { BackButton } from "@/components/BackButton";
 import { AppDialog } from "@/components/AppDialog";
 import { MemorizedBadge } from "@/components/SurahCard";
 import { InlineNotice } from "@/components/InlineNotice";
+import { calculatePaceMilestones, calculateQuranCompletionWeeks } from "@/utils/paceUtils";
 
 const TOTAL_QURAN_AYAHS = 6236;
 
@@ -302,6 +303,7 @@ export function AyahRangeModal({
   const [paceRangeTab, setPaceRangeTab] = useState<"surah" | "juz">("surah");
   const [search, setSearch] = useState("");
   const [ayahsPerWeek, setAyahsPerWeek] = useState(1);
+  const [currentBaseAyahsPerWeek, setCurrentBaseAyahsPerWeek] = useState(1);
   const [memorizationStyle, setMemorizationStyle] = useState<MemorizationStyle>("steady");
   const [gradualIncreaseStyle, setGradualIncreaseStyle] = useState<GradualIncreaseStyle>("medium");
   const [peakCapacityPerWeek, setPeakCapacityPerWeek] = useState(105);
@@ -347,11 +349,17 @@ export function AyahRangeModal({
       setLastAyah(startAtAyahSelection ? null : initialSelection?.last ?? null);
       setActivePhase("first");
       const initialAyahsPerWeek = initialSelection?.ayahsPerWeek ?? 1;
+      const initialBaseAyahsPerWeek = VISUAL_CAPACITY_OPTIONS.find((opt) =>
+        Math.round((opt.ayahsPerWeek / 7) * normalizedPaceDays) === initialAyahsPerWeek
+      )?.ayahsPerWeek ?? initialAyahsPerWeek;
       const initialPeak = initialSelection?.peakCapacityPerWeek ?? initialSelection?.targetAyahsPerWeek;
-      const fallbackPeak = desiredCapacityOptions.find((option) => option.ayahsPerWeek > initialAyahsPerWeek)?.ayahsPerWeek
-        ?? desiredCapacityOptions[desiredCapacityOptions.length - 1].ayahsPerWeek;
+      const fallbackPeak = desiredCapacityOptions.find((option) => {
+        const baseDesired = DESIRED_CAPACITY_OPTIONS.find((opt) => opt.label === option.label)?.ayahsPerWeek ?? option.ayahsPerWeek;
+        return baseDesired > initialBaseAyahsPerWeek;
+      })?.ayahsPerWeek ?? desiredCapacityOptions[desiredCapacityOptions.length - 1].ayahsPerWeek;
       const validPeak = initialPeak && initialPeak > initialAyahsPerWeek ? initialPeak : fallbackPeak;
       setAyahsPerWeek(initialAyahsPerWeek);
+      setCurrentBaseAyahsPerWeek(initialBaseAyahsPerWeek);
       setMemorizationStyle(startAtPaceDate ? (paceRhythm === "steady" ? "steady" : "gradual") : initialSelection?.memorizationStyle ?? "steady");
       setGradualIncreaseStyle(initialSelection?.gradualIncreaseStyle ?? "medium");
       setPeakCapacityPerWeek(validPeak);
@@ -581,17 +589,29 @@ export function AyahRangeModal({
   }, [dynamicMax]);
 
   // ── PaceDate flow helpers ──────────────────────────────────────────────────
+
+  // Convert weekly capacity (scaled by active days) → daily capacity assuming daily memorization.
+  const startAyahsPerDay = useMemo(
+    () => Math.max(0.1, ayahsPerWeek / Math.max(1, normalizedPaceDays)),
+    [ayahsPerWeek, normalizedPaceDays]
+  );
+
+  const desiredAyahsPerDay = useMemo(
+    () => Math.max(startAyahsPerDay, peakCapacityPerWeek / Math.max(1, normalizedTargetPaceDays)),
+    [peakCapacityPerWeek, normalizedTargetPaceDays, startAyahsPerDay]
+  );
+
+  const growthMilestones = useMemo(
+    () => calculatePaceMilestones(startAyahsPerDay, desiredAyahsPerDay, gradualIncreaseStyle),
+    [startAyahsPerDay, desiredAyahsPerDay, gradualIncreaseStyle]
+  );
+
   const autoWeeksNeeded = useMemo(() => {
     const forecastAyahs = Math.max(1, TOTAL_QURAN_AYAHS - memorizedAyahKeys.length);
     if (!startAtPaceDate) return null;
-    return calculateWeeksNeeded(
-      forecastAyahs,
-      ayahsPerWeek,
-      peakCapacityPerWeek,
-      memorizationStyle,
-      gradualIncreaseStyle,
-    );
-  }, [startAtPaceDate, memorizedAyahKeys.length, ayahsPerWeek, peakCapacityPerWeek, memorizationStyle, gradualIncreaseStyle]);
+    if (memorizationStyle === "steady") return Math.ceil(forecastAyahs / Math.max(1, ayahsPerWeek));
+    return calculateQuranCompletionWeeks(startAyahsPerDay, desiredAyahsPerDay, gradualIncreaseStyle, forecastAyahs);
+  }, [startAtPaceDate, memorizedAyahKeys.length, startAyahsPerDay, desiredAyahsPerDay, memorizationStyle, gradualIncreaseStyle, ayahsPerWeek]);
 
   const gradualWeeklyPlan = useMemo(() => {
     if (!startAtPaceDate || !autoWeeksNeeded || memorizationStyle !== "gradual") return [];
@@ -639,7 +659,10 @@ export function AyahRangeModal({
       })[0]
     : ayahsPerWeek;
 
-  const peakOptions = desiredCapacityOptions.filter((option) => option.ayahsPerWeek > ayahsPerWeek);
+  const peakOptions = desiredCapacityOptions.filter((option) => {
+    const baseDesiredAyahsPerWeek = DESIRED_CAPACITY_OPTIONS.find((opt) => opt.label === option.label)?.ayahsPerWeek ?? option.ayahsPerWeek;
+    return baseDesiredAyahsPerWeek > currentBaseAyahsPerWeek;
+  });
   const hasDesiredOptions = peakOptions.length > 0;
 
   const isAyahAfterFirst = (surahNum: number, ayahNum: number, first: AyahRef): boolean => {
@@ -967,11 +990,15 @@ export function AyahRangeModal({
                   onPress: () => {
                         const selectedCapacity = option.ayahsPerWeek;
                         if (selectedCapacity == null) return;
-	                      setAyahsPerWeek(selectedCapacity);
-	                      const nextDesired = desiredCapacityOptions.find((desired) =>
-	                        desired.ayahsPerWeek != null && desired.ayahsPerWeek > selectedCapacity
-	                      );
-	                      setPeakCapacityPerWeek(
+                        const baseCurrentOption = VISUAL_CAPACITY_OPTIONS.find((opt) => opt.label === option.label);
+                        const baseCapacity = baseCurrentOption?.ayahsPerWeek ?? selectedCapacity;
+                        setAyahsPerWeek(selectedCapacity);
+                        setCurrentBaseAyahsPerWeek(baseCapacity);
+                        const nextDesired = desiredCapacityOptions.find((desired) => {
+                          const baseDesired = DESIRED_CAPACITY_OPTIONS.find((opt) => opt.label === desired.label)?.ayahsPerWeek ?? desired.ayahsPerWeek;
+                          return baseDesired > baseCapacity;
+                        });
+                        setPeakCapacityPerWeek(
                           paceRhythm === "steady"
                             ? selectedCapacity
                             : nextDesired?.ayahsPerWeek ?? desiredCapacityOptions[desiredCapacityOptions.length - 1].ayahsPerWeek
@@ -1043,7 +1070,8 @@ export function AyahRangeModal({
           {hasDesiredOptions ? (
             <View style={s.paceChoiceStack}>
               {peakOptions.map((option) => {
-                const selected = paceDesiredSelected && peakCapacityPerWeek === option.ayahsPerWeek && option.ayahsPerWeek > ayahsPerWeek;
+                const baseDesiredAyahsPerWeek = DESIRED_CAPACITY_OPTIONS.find((opt) => opt.label === option.label)?.ayahsPerWeek ?? option.ayahsPerWeek;
+                const selected = paceDesiredSelected && peakCapacityPerWeek === option.ayahsPerWeek && baseDesiredAyahsPerWeek > currentBaseAyahsPerWeek;
                 return renderPaceChoice({
                   label: formatPaceOptionLabel(option.label).replace(/^~/, ""),
                   selected,
@@ -1127,37 +1155,49 @@ export function AyahRangeModal({
               );
             })}
           </View>
-          <View style={s.weekPreview}>
-            <View style={s.timelineRow}>
-              <View style={[s.timelineDot, s.timelineDotActive]} />
-              <Text style={s.timelineLabel}>Today</Text>
-              <Text style={s.timelineValue}>{formatPaceOptionLabel(capacityOptions.find(o => o.ayahsPerWeek === ayahsPerWeek)?.label ?? "")}</Text>
-            </View>
-            <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color={c.accentSoft} /></View>
-            <View style={s.timelineRow}>
-              <View style={s.timelineDot} />
-              <Text style={s.timelineLabel}>In ~{formatWeeks(Math.max(1, Math.round(peakRampWeeks / 2)))}</Text>
-              <Text style={s.timelineValue}>{formatPaceOptionLabel("½ page daily")}</Text>
-            </View>
-            <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color={c.accentSoft} /></View>
-            <View style={s.timelineRow}>
-              <View style={s.timelineDot} />
-              <Text style={s.timelineLabel}>In ~{formatWeeks(peakRampWeeks)}</Text>
-              <Text style={s.timelineValue}>{selectedPeakLabel.replace(" daily", "/day")}</Text>
-            </View>
-            <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color={c.accentSoft} /></View>
-            <View style={s.timelineRow}>
-              <View style={[s.timelineDot, s.timelineDotMuted]} />
-              <Text style={s.timelineLabel}>Estimated completion</Text>
-              <Text style={[s.timelineValue, s.timelineValueMuted]}>{autoWeeksNeeded ? formatWeeks(autoWeeksNeeded) : "—"}</Text>
-            </View>
+          <View style={s.growthNotice}>
+            <Text style={s.growthNoticeText}>If you are not sure yet, just pick one for now — we'll adapt to your pace over time :)</Text>
           </View>
-          <View style={s.whyBox}>
-            <Text style={s.whyTitle}>WHY THIS WORKS</Text>
-            <Text style={s.whyText}>
-              {INCREASE_STYLE_OPTIONS.find((option) => option.value === gradualIncreaseStyle)?.label} growth reduces burnout while steadily increasing memorization capacity.
-            </Text>
-          </View>
+          {paceGrowthSelected && (
+            <>
+              <View style={s.weekPreview}>
+                <View style={s.timelineRow}>
+                  <View style={[s.timelineDot, s.timelineDotActive]} />
+                  <Text style={s.timelineLabel}>Today</Text>
+                  <Text style={s.timelineValue}>{formatPaceOptionLabel(capacityOptions.find(o => o.ayahsPerWeek === ayahsPerWeek)?.label ?? "")}</Text>
+                </View>
+                {growthMilestones.map((milestone) => (
+                  <React.Fragment key={milestone.label}>
+                    <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color={c.accentSoft} /></View>
+                    <View style={s.timelineRow}>
+                      <View style={s.timelineDot} />
+                      <Text style={s.timelineLabel}>In ~{formatWeeks(milestone.weeksToReach)}</Text>
+                      <Text style={s.timelineValue}>{milestone.label}</Text>
+                    </View>
+                  </React.Fragment>
+                ))}
+                <View style={s.timelineArrow}><Feather name="arrow-down" size={20} color={c.accentSoft} /></View>
+                <View style={s.timelineRow}>
+                  <View style={[s.timelineDot, s.timelineDotMuted]} />
+                  <Text style={s.timelineLabel}>Estimated completion</Text>
+                  <Text style={[s.timelineValue, s.timelineValueMuted]}>{autoWeeksNeeded ? formatWeeks(autoWeeksNeeded) : "—"}</Text>
+                </View>
+              </View>
+              <View style={s.whyBox}>
+                <Text style={s.whyTitle}>WHY THIS WORKS</Text>
+                <Text style={s.whyText}>
+                  {(() => {
+                    const styleName = INCREASE_STYLE_OPTIONS.find((o) => o.value === gradualIncreaseStyle)?.label ?? "";
+                    const lastMilestone = growthMilestones[growthMilestones.length - 1];
+                    if (lastMilestone) {
+                      return `${styleName} growth may help you reach ${lastMilestone.label} in ~${formatWeeks(lastMilestone.weeksToReach)}.`;
+                    }
+                    return `${styleName} growth reduces burnout while steadily increasing memorization capacity.`;
+                  })()}
+                </Text>
+              </View>
+            </>
+          )}
         </ScrollView>
         <View style={[s.confirmWrap, { paddingBottom: insets.bottom + 16 }]}>
           <ActionPill
@@ -1896,7 +1936,7 @@ export function AyahRangeModal({
     const completionLabel = completionMonth.toLowerCase().includes("ramadan")
       ? `Ramadan ${completionDate.getFullYear()}`
       : `~${timeLabel}`;
-    const peakRampWeeks = getPeakRampWeeks(ayahsPerWeek, peakCapacityPerWeek, gradualIncreaseStyle);
+    const peakRampWeeks = growthMilestones[growthMilestones.length - 1]?.weeksToReach ?? 0;
     const selectedPeakLabel = desiredCapacityOptions.find((option) => option.ayahsPerWeek === peakCapacityPerWeek)?.label
       ?? `${Math.round(peakCapacityPerWeek / 7)} ayahs/day`;
 
@@ -1939,14 +1979,17 @@ export function AyahRangeModal({
           <View style={[s.insightBox, s.insightBoxFullHifz]}>
             <View style={s.insightHeader}>
               <Feather
-                name="rotate-ccw"
+                name="trending-up"
                 size={14}
-                color={c.appSuccess}
+                color={c.textTertiary}
               />
-              <Text style={[s.insightTitle, s.insightTitleFullHifz]}>Built-in Revision Support</Text>
+              <Text style={[s.insightTitle, s.insightTitleFullHifz]}>Adaptive Memorization Guidance</Text>
             </View>
             <Text style={[s.insightText, s.insightTextFullHifz]}>
-              Your memorized ayahs will continue to return for review as you progress.
+              This forecast adapts over time based on your memorization pace, consistency, and progress.
+            </Text>
+            <Text style={[s.insightText, s.insightTextFullHifz, s.insightTextSecondLine]}>
+              Your completion estimate may change as your learning rhythm evolves.
             </Text>
           </View>
         </ScrollView>
@@ -2685,7 +2728,7 @@ function createStyles(c: ReturnType<typeof useColors>) {
     textAlign: "center",
   },
   growthChoiceSubSelected: {
-    color: c.textTertiary,
+    color: c.onAccent,
   },
   weekPreview: {
     borderRadius: 20,
@@ -2815,6 +2858,20 @@ function createStyles(c: ReturnType<typeof useColors>) {
     marginBottom: 6,
   },
   whyText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: c.textSecondary,
+    fontFamily: "Inter_400Regular",
+  },
+  growthNotice: {
+    marginTop: 12,
+    marginBottom: 4,
+    backgroundColor: c.surfaceSecondary,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  growthNoticeText: {
     fontSize: 13,
     lineHeight: 20,
     color: c.textSecondary,
@@ -3000,8 +3057,8 @@ function createStyles(c: ReturnType<typeof useColors>) {
     gap: 6,
   },
   insightBoxFullHifz: {
-    backgroundColor: c.successSoft,
-    borderColor: c.appSuccess,
+    backgroundColor: c.surfaceSecondary,
+    borderColor: c.borderSubtle,
   },
   insightHeader: {
     flexDirection: "row",
@@ -3018,7 +3075,7 @@ function createStyles(c: ReturnType<typeof useColors>) {
     textTransform: "uppercase",
   },
   insightTitleFullHifz: {
-    color: c.appSuccess,
+    color: c.textSecondary,
     fontSize: 12,
   },
   insightText: {
@@ -3032,6 +3089,10 @@ function createStyles(c: ReturnType<typeof useColors>) {
     fontFamily: "Inter_400Regular",
     fontSize: 12,
     lineHeight: 20,
+  },
+  insightTextSecondLine: {
+    marginTop: 6,
+    color: c.textTertiary,
   },
   insightBold: {
     fontFamily: "Inter_700Bold",

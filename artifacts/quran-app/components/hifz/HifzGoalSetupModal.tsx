@@ -210,7 +210,7 @@ export function HifzGoalSetupModal({
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={m.rhythmTitle}>{option.title}</Text>
-                      <Text style={m.rhythmSub}>{option.subtitle}</Text>
+                      <Text style={[m.rhythmSub, selected && m.rhythmSubSelected]}>{option.subtitle}</Text>
                     </View>
                   </TouchableOpacity>
                 );
@@ -440,6 +440,9 @@ const styles = (colors: ReturnType<typeof useColors>) => StyleSheet.create({
     color: colors.hifzLightMuted,
     fontFamily: "Inter_400Regular",
     marginTop: 4,
+  },
+  rhythmSubSelected: {
+    color: colors.hifzMuted,
   },
   daysRow: { alignItems: "center", marginTop: 24 },
   daysLabel: {

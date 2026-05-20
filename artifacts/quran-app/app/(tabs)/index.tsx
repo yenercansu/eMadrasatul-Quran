@@ -188,6 +188,7 @@ export default function HomeScreen() {
   const [widgetJuz, setWidgetJuz] = useState<number | null>(null);
   const [ayahRangeVisible, setAyahRangeVisible] = useState(false);
   const [paceDateVisible, setPaceDateVisible] = useState(false);
+  const [paceDateInitialStep, setPaceDateInitialStep] = useState(0);
   const [pendingCheck, setPendingCheck] = useState(false);
 
   const surahsQuery = useQuery({ queryKey: ["chapters"], queryFn: fetchSurahs });
@@ -833,6 +834,7 @@ export default function HomeScreen() {
     if (options?.rhythm) setPaceRhythm(options.rhythm);
     if (options?.daysPerWeek) setPaceDaysPerWeek(options.daysPerWeek);
     if (options?.targetDaysPerWeek) setPaceTargetDaysPerWeek(options.targetDaysPerWeek);
+    setPaceDateInitialStep(0);
     setPaceDateVisible(true);
   }, []);
 
@@ -1304,7 +1306,7 @@ export default function HomeScreen() {
                   activeOpacity={0.78}
                   style={s.manageCta}
                 >
-                  <Text style={s.manageLink}>Manage goal</Text>
+                  <Text style={s.manageLink}>Manage Goal</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -1321,6 +1323,52 @@ export default function HomeScreen() {
             ) : (
               /* Progress card — shown while a goal is active */
               <>
+              {showHifzGoalOptions && (
+              <View style={s.hifzManageCard}>
+                <View>
+                  <View style={s.hifzInlineOptionsRow}>
+                    <TouchableOpacity
+                      style={s.hifzInlineOptionBtn}
+                      onPress={() => openPaceHifzSelection()}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={s.hifzInlineOptionText}>By Pace</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={s.hifzInlineCloseBtn}
+                      onPress={() => setShowHifzGoalOptions(false)}
+                      activeOpacity={0.75}
+                    >
+                      <Feather name="x" size={18} color={colors.appLightText} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={s.hifzInlineOptionBtn}
+                      onPress={() => openNewHifzSelection("juz")}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={s.hifzInlineOptionText}>By Juz</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={s.hifzInlineOptionBtn}
+                      onPress={() => openNewHifzSelection("surah")}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={s.hifzInlineOptionText}>By Surah</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={s.restartHifzRow}>
+                    <TouchableOpacity
+                      style={s.restartHifzBtn}
+                      onPress={() => setShowRestartHifzConfirm(true)}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="refresh-cw" size={12} color={colors.textTertiary} />
+                      <Text style={s.restartHifzText}>Restart Hifz Journey</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+              )}
               <HifzHeroCard
                 pill={activeModeLabel}
                 title={heroTitle}
@@ -1354,54 +1402,6 @@ export default function HomeScreen() {
                   </View>
                 </View>
               )}
-              {showHifzGoalOptions && (
-              <View style={s.hifzManageCard}>
-                {showHifzGoalOptions ? (
-                  <View>
-                    <View style={s.hifzInlineOptionsRow}>
-                      <TouchableOpacity
-                        style={s.hifzInlineOptionBtn}
-                        onPress={() => openNewHifzSelection("juz")}
-                        activeOpacity={0.85}
-                      >
-                        <Text style={s.hifzInlineOptionText}>By Juz</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={s.hifzInlineOptionBtn}
-                        onPress={() => openNewHifzSelection("surah")}
-                        activeOpacity={0.85}
-                      >
-                        <Text style={s.hifzInlineOptionText}>By Surah</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={s.hifzInlineOptionBtn}
-                        onPress={() => openPaceHifzSelection()}
-                        activeOpacity={0.85}
-                      >
-                        <Text style={s.hifzInlineOptionText}>By Pace</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={s.hifzInlineCloseBtn}
-                        onPress={() => setShowHifzGoalOptions(false)}
-                        activeOpacity={0.75}
-                      >
-                        <Feather name="x" size={18} color={colors.appLightText} />
-                      </TouchableOpacity>
-                    </View>
-                    <View style={s.restartHifzRow}>
-                      <TouchableOpacity
-                        style={s.restartHifzBtn}
-                        onPress={() => setShowRestartHifzConfirm(true)}
-                        activeOpacity={0.7}
-                      >
-                        <Feather name="refresh-cw" size={12} color={colors.textTertiary} />
-                        <Text style={s.restartHifzText}>Restart Hifz Journey</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ) : null}
-              </View>
-              )}
               </>
             )}
           </View>
@@ -1421,7 +1421,14 @@ export default function HomeScreen() {
               <View style={s.sectionHeadingRow}>
                 <Text style={s.goalWidgetTitle}>{isRevisionGoal ? "THIS WEEK'S REVISION" : "THIS WEEK"}</Text>
                 <TouchableOpacity
-                  onPress={() => isPaceGoal ? setPaceDateVisible(true) : setWeeklyGoalVisible(true)}
+                  onPress={() => {
+                    if (isPaceGoal) {
+                      setPaceDateInitialStep(2);
+                      setPaceDateVisible(true);
+                    } else {
+                      setWeeklyGoalVisible(true);
+                    }
+                  }}
                   activeOpacity={0.78}
                   style={s.manageCta}
                 >
@@ -1999,7 +2006,7 @@ export default function HomeScreen() {
         path={widgetPath}
         memorizedAyahKeys={memorizedAyahKeys}
         startAtPaceDate
-        initialPaceStep={2}
+        initialPaceStep={paceDateInitialStep}
         modalAnimationType="none"
         paceRhythm={paceRhythm}
         paceDaysPerWeek={paceDaysPerWeek}
@@ -2558,19 +2565,54 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontFamily: "Inter_600SemiBold",
     },
     manageCta: {
-      minHeight: 28,
+      minHeight: 34,
       borderRadius: 999,
-      borderWidth: 1,
-      borderColor: colors.borderSubtle,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      backgroundColor: colors.overlayElevated,
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      backgroundColor: colors.surfacePrimary,
       alignItems: "center",
       justifyContent: "center",
     },
     hifzManageCard: {
-      marginTop: 14,
+      marginBottom: 14,
       backgroundColor: "transparent",
+    },
+    hifzInlineOptionsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+    },
+    hifzInlineOptionBtn: {
+      flexGrow: 1,
+      flexBasis: "42%" as any,
+      minHeight: 58,
+      borderRadius: 20,
+      backgroundColor: colors.hifzHeroCard,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    hifzInlineOptionText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: colors.textSecondary,
+      fontFamily: "Inter_700Bold",
+    },
+    hifzInlineCloseBtn: {
+      width: 58,
+      height: 58,
+      borderRadius: 29,
+      backgroundColor: colors.hifzHeroCard,
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0,
+    },
+    restartHifzRow: {
+      alignItems: "center",
+      paddingBottom: 10,
+      paddingTop: 2,
     },
     goalWidgetCard: {
       backgroundColor: colors.surfacePrimary,
@@ -2940,43 +2982,6 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       color: colors.appLightText,
       fontFamily: "Inter_600SemiBold",
       textAlign: "center",
-    },
-    hifzInlineOptionsRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      alignItems: "center",
-      gap: 8,
-      paddingHorizontal: 14,
-      paddingVertical: 14,
-    },
-    hifzInlineOptionBtn: {
-      flexGrow: 1,
-      flexBasis: "42%" as any,
-      minHeight: 58,
-      borderRadius: 20,
-      backgroundColor: colors.accentSoft,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    hifzInlineOptionText: {
-      fontSize: 14,
-      fontWeight: "700",
-      color: colors.textSecondary,
-      fontFamily: "Inter_700Bold",
-    },
-    hifzInlineCloseBtn: {
-      width: 58,
-      height: 58,
-      borderRadius: 29,
-      backgroundColor: colors.accentSoft,
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: 0,
-    },
-    restartHifzRow: {
-      alignItems: "center",
-      paddingBottom: 10,
-      paddingTop: 2,
     },
     restartHifzBtn: {
       flexDirection: "row",
