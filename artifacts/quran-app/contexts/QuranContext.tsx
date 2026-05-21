@@ -467,7 +467,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       AsyncStorage.setItem("quran_saved_surahs", JSON.stringify(next)).catch(() => {});
     }
 
-    if (remoteSavedWords.status === "fulfilled" && Array.isArray(remoteSavedWords.value)) {
+    if (!skipRemoteProgress && remoteSavedWords.status === "fulfilled" && Array.isArray(remoteSavedWords.value)) {
       const next: SavedWord[] = remoteSavedWords.value.map((word) => ({
         id: String(word.id),
         arabic: word.textArabic,
@@ -816,7 +816,17 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     setQuizSelectedSurahsState(DEFAULT_QUIZ_SELECTED_SURAHS);
     setQuranPosition(0);
     setDailyEntries([]);
-    setSavedWords(SEED_WORDS);
+    setSavedWords((currentWords) => {
+      if (isAuthenticated) {
+        for (const word of currentWords) {
+          if (!word.id.startsWith("seed")) {
+            madeenanApi.deleteSavedWord(word.id).catch(() => {});
+          }
+        }
+      }
+      AsyncStorage.setItem("quran_saved_words", JSON.stringify(SEED_WORDS)).catch(() => {});
+      return SEED_WORDS;
+    });
     setSavedAyahs([]);
     setAddedCollectionIds([]);
     setRecentProgress([]);
@@ -839,7 +849,6 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       "quran_surah_positions",
     ]).catch(() => {});
     AsyncStorage.setItem("quran_quiz_selected_surahs", JSON.stringify(DEFAULT_QUIZ_SELECTED_SURAHS)).catch(() => {});
-    AsyncStorage.setItem("quran_saved_words", JSON.stringify(SEED_WORDS)).catch(() => {});
     // Write a persistent flag so hydrateRemoteData() skips re-applying old server
     // memorized ayahs until the user intentionally starts memorizing again.
     AsyncStorage.setItem("quran_hifz_reset_at", String(Date.now())).catch(() => {});

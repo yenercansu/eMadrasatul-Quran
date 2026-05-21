@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,143 +6,64 @@ import {
   Animated,
   TouchableOpacity,
   Dimensions,
-  Easing,
 } from "react-native";
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 
 const { width: SCREEN_W } = Dimensions.get("window");
-
-interface Step {
-  key: string;
-  icon: React.ReactNode;
-  title: string;
-  body: string;
-  arrowDir: "left" | "right" | "down";
-}
-
-const STEPS: Step[] = [
-  {
-    key: "right",
-    icon: <Ionicons name="arrow-forward" size={36} color="#FFFFFF" />,
-    title: "Swipe right",
-    body: "to move to the next page",
-    arrowDir: "right",
-  },
-  {
-    key: "left",
-    icon: <Ionicons name="arrow-back" size={36} color="#FFFFFF" />,
-    title: "Swipe left",
-    body: "to return to the previous page",
-    arrowDir: "left",
-  },
-  {
-    key: "long",
-    icon: <MaterialCommunityIcons name="gesture-tap-hold" size={36} color="#FFFFFF" />,
-    title: "Long-press a word",
-    body: "to see its root, meaning, and add it to your quiz",
-    arrowDir: "down",
-  },
-];
 
 interface Props {
   visible: boolean;
   onDismiss: () => void;
 }
 
-/**
- * Three-step onboarding swipe hints, shown once on first launch of a Surah page.
- */
 export function OnboardingHints({ visible, onDismiss }: Props) {
-  const [step, setStep] = useState(0);
-  const slide = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!visible) return;
-    setStep(0);
     fade.setValue(0);
     Animated.timing(fade, { toValue: 1, duration: 240, useNativeDriver: true }).start();
   }, [visible, fade]);
 
   useEffect(() => {
     if (!visible) return;
-    // Animate the gesture indicator
-    slide.setValue(0);
-    const cur = STEPS[step];
-    let loop: Animated.CompositeAnimation;
-    if (cur.arrowDir === "right") {
-      loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(slide, { toValue: 60, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.timing(slide, { toValue: 0, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        ]),
-      );
-    } else if (cur.arrowDir === "left") {
-      loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(slide, { toValue: -60, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.timing(slide, { toValue: 0, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        ]),
-      );
-    } else {
-      loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(slide, { toValue: 1, duration: 700, useNativeDriver: true }),
-          Animated.timing(slide, { toValue: 0, duration: 700, useNativeDriver: true }),
-        ]),
-      );
-    }
+    pulse.setValue(0);
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 700, useNativeDriver: true }),
+      ]),
+    );
     loop.start();
     return () => { loop.stop(); };
-  }, [step, visible, slide]);
+  }, [visible, pulse]);
 
   if (!visible) return null;
 
-  const cur = STEPS[step];
-
-  const handleNext = () => {
-    if (step < STEPS.length - 1) {
-      setStep((s) => s + 1);
-    } else {
-      Animated.timing(fade, { toValue: 0, duration: 200, useNativeDriver: true })
-        .start(() => onDismiss());
-    }
-  };
-
-  const handleSkip = () => {
+  const dismiss = () => {
     Animated.timing(fade, { toValue: 0, duration: 200, useNativeDriver: true })
       .start(() => onDismiss());
   };
 
-  const arrowTransform = cur.arrowDir === "down"
-    ? { transform: [{ scale: slide.interpolate({ inputRange: [0, 1], outputRange: [1, 1.25] }) }] }
-    : { transform: [{ translateX: slide }] };
+  const iconScale = { transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.25] }) }] };
 
   return (
     <Animated.View pointerEvents="auto" style={[s.overlay, { opacity: fade }]}>
-      <TouchableOpacity activeOpacity={1} style={s.fill} onPress={handleNext}>
+      <TouchableOpacity activeOpacity={1} style={s.fill} onPress={dismiss}>
         <View style={s.center}>
-          <View style={s.iconBubble}>{cur.icon}</View>
-          <Animated.View style={[s.gestureIndicator, arrowTransform]}>
-            {cur.arrowDir === "right" && <Feather name="arrow-right" size={48} color="#FFFFFF" />}
-            {cur.arrowDir === "left" && <Feather name="arrow-left" size={48} color="#FFFFFF" />}
-            {cur.arrowDir === "down" && <Feather name="arrow-down" size={48} color="#FFFFFF" />}
-          </Animated.View>
-          <Text style={s.title}>{cur.title}</Text>
-          <Text style={s.body}>{cur.body}</Text>
-
-          <View style={s.dotsRow}>
-            {STEPS.map((_, i) => (
-              <View key={i} style={[s.dot, i === step && s.dotActive]} />
-            ))}
+          <View style={s.iconBubble}>
+            <MaterialCommunityIcons name="gesture-tap-hold" size={36} color="#FFFFFF" />
           </View>
+          <Animated.View style={[s.gestureIndicator, iconScale]}>
+            <Feather name="arrow-down" size={48} color="#FFFFFF" />
+          </Animated.View>
+          <Text style={s.title}>Long-press a word</Text>
+          <Text style={s.body}>to see its root, meaning, and add it to your quiz</Text>
 
           <View style={s.btnRow}>
-            <TouchableOpacity onPress={handleSkip} activeOpacity={0.75} style={s.skipBtn}>
-              <Text style={s.skipText}>Skip</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleNext} activeOpacity={0.85} style={s.nextBtn}>
-              <Text style={s.nextText}>{step === STEPS.length - 1 ? "Got it" : "Next"}</Text>
+            <TouchableOpacity onPress={dismiss} activeOpacity={0.85} style={s.nextBtn}>
+              <Text style={s.nextText}>Got it</Text>
               <Feather name="arrow-right" size={16} color="#1A1A1A" />
             </TouchableOpacity>
           </View>
@@ -191,16 +112,7 @@ const s = StyleSheet.create({
     marginTop: 8,
     lineHeight: 22,
   },
-  dotsRow: {
-    flexDirection: "row",
-    gap: 6,
-    marginTop: 28,
-  },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.3)" },
-  dotActive: { backgroundColor: "#FFFFFF", width: 18 },
-  btnRow: { flexDirection: "row", gap: 12, marginTop: 24, alignItems: "center" },
-  skipBtn: { paddingHorizontal: 16, paddingVertical: 10 },
-  skipText: { fontSize: 14, color: "rgba(255,255,255,0.7)", fontFamily: "Inter_400Regular" },
+  btnRow: { flexDirection: "row", gap: 12, marginTop: 32, alignItems: "center" },
   nextBtn: {
     flexDirection: "row",
     alignItems: "center",
