@@ -289,7 +289,7 @@ function getWeekStartStr(): string {
 export const QuranContext = createContext<QuranContextType | undefined>(undefined);
 
 export function QuranProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLocalMode } = useAuth();
   const { isOffline } = useNetworkStatus();
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [accountSettings, setAccountSettings] = useState<AccountSettings>(DEFAULT_ACCOUNT);
@@ -319,14 +319,14 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { loadData(); }, []);
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !isLocalMode) {
       hydrateRemoteData().catch(() => {});
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isLocalMode]);
 
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const syncActiveUsers = useCallback(async () => {
-    if (!isAuthenticated || isOffline || appStateRef.current !== "active") return;
+    if (!isAuthenticated || isLocalMode || isOffline || appStateRef.current !== "active") return;
     try {
       await madeenanApi.sendHeartbeat();
       const response = await madeenanApi.getActiveUserCount();
@@ -334,10 +334,10 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Presence is non-critical; keep the last known count if the network blips.
     }
-  }, [isAuthenticated, isOffline]);
+  }, [isAuthenticated, isLocalMode, isOffline]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || isLocalMode) {
       setOnlineUsers(0);
       return;
     }
@@ -355,7 +355,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       clearInterval(intervalId);
       subscription.remove();
     };
-  }, [isAuthenticated, syncActiveUsers]);
+  }, [isAuthenticated, isLocalMode, syncActiveUsers]);
 
   async function loadData() {
     try {
@@ -467,7 +467,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       AsyncStorage.setItem("quran_saved_surahs", JSON.stringify(next)).catch(() => {});
     }
 
-    if (remoteSavedWords.status === "fulfilled" && Array.isArray(remoteSavedWords.value)) {
+    if (!skipRemoteProgress && remoteSavedWords.status === "fulfilled" && Array.isArray(remoteSavedWords.value)) {
       const next: SavedWord[] = remoteSavedWords.value.map((word) => ({
         id: String(word.id),
         arabic: word.textArabic,
@@ -536,7 +536,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       if (partial.tajweedColorCoding === true) next.colorCoding = false;
       AsyncStorage.setItem("quran_settings", JSON.stringify(next));
       if (
-        isAuthenticated &&
+        isAuthenticated && !isLocalMode &&
         (partial.selectedReciter !== undefined || partial.repeatCount !== undefined)
       ) {
         madeenanApi.updateReciterPreferences({
@@ -548,7 +548,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       }
       return next;
     });
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isLocalMode]);
 
   const updateAccountSettings = useCallback((partial: Partial<AccountSettings>) => {
     setAccountSettings((prev) => {
@@ -565,7 +565,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       if (exists) return prev;
       const next = [{ ...word, id: Date.now().toString() + Math.random().toString(36).substr(2, 9), addedAt: Date.now() }, ...prev];
       AsyncStorage.setItem("quran_saved_words", JSON.stringify(next));
-      if (isAuthenticated) {
+      if (isAuthenticated && !isLocalMode) {
         madeenanApi.saveWord({
           surahNumber: word.surahNumber,
           ayahNumber: word.ayahNumber,
@@ -580,16 +580,16 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       }
       return next;
     });
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isLocalMode]);
 
   const removeWord = useCallback((id: string) => {
     setSavedWords((prev) => {
       const next = prev.filter(w => w.id !== id);
       AsyncStorage.setItem("quran_saved_words", JSON.stringify(next));
-      if (isAuthenticated && !id.startsWith("seed")) madeenanApi.deleteSavedWord(id).catch(() => {});
+      if (isAuthenticated && !isLocalMode && !id.startsWith("seed")) madeenanApi.deleteSavedWord(id).catch(() => {});
       return next;
     });
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isLocalMode]);
 
   const toggleHighlight = useCallback((id: string) => {
     setSavedWords((prev) => { const next = prev.map(w => w.id === id ? { ...w, highlighted: !w.highlighted } : w); AsyncStorage.setItem("quran_saved_words", JSON.stringify(next)); return next; });
@@ -617,7 +617,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     if (prev.includes(num)) return prev;
     const next = [num, ...prev];
     AsyncStorage.setItem("quran_saved_surahs", JSON.stringify(next));
-    if (isAuthenticated) {
+    if (isAuthenticated && !isLocalMode) {
       madeenanApi.saveSurah({
         surahNumber: num,
         name: SURAH_DATA[num - 1]?.englishName ?? `Surah ${num}`,
@@ -626,14 +626,14 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       }).catch(() => {});
     }
     return next;
-  }); }, [isAuthenticated]);
+  }); }, [isAuthenticated, isLocalMode]);
   const removeSavedSurah = useCallback((num: number) => { setSavedSurahs((prev) => {
     const next = prev.filter(n => n !== num);
     AsyncStorage.setItem("quran_saved_surahs", JSON.stringify(next));
     const remoteId = savedSurahRemoteIds[num] ?? num;
-    if (isAuthenticated) madeenanApi.deleteSavedSurah(remoteId).catch(() => {});
+    if (isAuthenticated && !isLocalMode) madeenanApi.deleteSavedSurah(remoteId).catch(() => {});
     return next;
-  }); }, [isAuthenticated, savedSurahRemoteIds]);
+  }); }, [isAuthenticated, isLocalMode, savedSurahRemoteIds]);
   const isSurahSaved = useCallback((num: number) => savedSurahs.includes(num), [savedSurahs]);
 
   const highlightWord = useCallback((arabic: string, surahNumber: number, ayahNumber: number) => {
@@ -655,7 +655,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     setLastListened(full);
     setRecentProgress((prev) => { const filtered = prev.filter(p => p.surahNumber !== progress.surahNumber); const next = [full, ...filtered].slice(0, 10); AsyncStorage.setItem("quran_recent_progress", JSON.stringify(next)); return next; });
     AsyncStorage.setItem("quran_last_listened", JSON.stringify(full));
-    if (isAuthenticated) {
+    if (isAuthenticated && !isLocalMode) {
       madeenanApi.updateLastVisited({
         surahNumber: progress.surahNumber,
         ayahNumber: progress.ayahNumberInSurah,
@@ -664,7 +664,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
         lastPositionMs: 0,
       }).catch(() => {});
     }
-  }, [isAuthenticated, settings.selectedReciter]);
+  }, [isAuthenticated, isLocalMode, settings.selectedReciter]);
 
   const recordVisit = useCallback((progress: Omit<Progress, "timestamp">) => {
     const full: Progress = { ...progress, timestamp: Date.now() };
@@ -816,7 +816,17 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
     setQuizSelectedSurahsState(DEFAULT_QUIZ_SELECTED_SURAHS);
     setQuranPosition(0);
     setDailyEntries([]);
-    setSavedWords(SEED_WORDS);
+    setSavedWords((currentWords) => {
+      if (isAuthenticated && !isLocalMode) {
+        for (const word of currentWords) {
+          if (!word.id.startsWith("seed")) {
+            madeenanApi.deleteSavedWord(word.id).catch(() => {});
+          }
+        }
+      }
+      AsyncStorage.setItem("quran_saved_words", JSON.stringify(SEED_WORDS)).catch(() => {});
+      return SEED_WORDS;
+    });
     setSavedAyahs([]);
     setAddedCollectionIds([]);
     setRecentProgress([]);
@@ -839,15 +849,14 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       "quran_surah_positions",
     ]).catch(() => {});
     AsyncStorage.setItem("quran_quiz_selected_surahs", JSON.stringify(DEFAULT_QUIZ_SELECTED_SURAHS)).catch(() => {});
-    AsyncStorage.setItem("quran_saved_words", JSON.stringify(SEED_WORDS)).catch(() => {});
     // Write a persistent flag so hydrateRemoteData() skips re-applying old server
     // memorized ayahs until the user intentionally starts memorizing again.
     AsyncStorage.setItem("quran_hifz_reset_at", String(Date.now())).catch(() => {});
     // Best-effort: ask the server to clear progress too (no-op if endpoint is unsupported).
-    if (isAuthenticated) {
+    if (isAuthenticated && !isLocalMode) {
       madeenanApi.clearProgress().catch(() => {});
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isLocalMode]);
 
   const toggleCheckedSurah = useCallback((surahNum: number) => {
     const surahMeta = SURAH_DATA.find(s => s.number === surahNum);
@@ -1033,7 +1042,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       added = !prev.includes(key);
       const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key];
       AsyncStorage.setItem("quran_memorized_ayahs", JSON.stringify(next));
-      if (isAuthenticated && added) {
+      if (isAuthenticated && !isLocalMode && added) {
         madeenanApi.updateProgress({
           goalDate: getTodayStr(),
           ayahs: [{
@@ -1047,7 +1056,7 @@ export function QuranProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
     if (added) recordAyahRead(surahNumber, ayahNumber);
-  }, [isAuthenticated, recordAyahRead]);
+  }, [isAuthenticated, isLocalMode, recordAyahRead]);
 
   const isAyahMemorized = useCallback((surahNumber: number, ayahNumber: number) =>
     memorizedAyahSet.has(`${surahNumber}:${ayahNumber}`), [memorizedAyahSet]);

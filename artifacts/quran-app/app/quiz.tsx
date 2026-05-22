@@ -537,8 +537,37 @@ export default function QuizScreen() {
   const [ayahPage, setAyahPage] = useState(0);
   const [wordPage, setWordPage] = useState(0);
   const ayahsWithWords = useMemo(() => {
-    const wordKeys = new Set(savedWords.map(w => `${w.surahNumber}:${w.ayahNumber}`));
-    return savedAyahs.filter(a => wordKeys.has(`${a.surahNumber}:${a.ayahNumber}`));
+    const wordsByAyah = new Map<string, SavedWord[]>();
+    for (const w of savedWords) {
+      const key = `${w.surahNumber}:${w.ayahNumber}`;
+      if (!wordsByAyah.has(key)) wordsByAyah.set(key, []);
+      wordsByAyah.get(key)!.push(w);
+    }
+    const result: SavedAyah[] = [];
+    const coveredKeys = new Set<string>();
+    for (const a of savedAyahs) {
+      const key = `${a.surahNumber}:${a.ayahNumber}`;
+      if (wordsByAyah.has(key)) {
+        result.push(a);
+        coveredKeys.add(key);
+      }
+    }
+    for (const [key, words] of wordsByAyah) {
+      if (!coveredKeys.has(key)) {
+        const w = words[0];
+        const surahMeta = SURAH_DATA[w.surahNumber - 1];
+        result.push({
+          id: `word-ayah-${key}`,
+          surahNumber: w.surahNumber,
+          surahName: surahMeta?.englishName ?? `Surah ${w.surahNumber}`,
+          ayahNumber: w.ayahNumber,
+          arabicText: "",
+          translationText: "",
+          addedAt: w.addedAt,
+        });
+      }
+    }
+    return result.sort((a, b) => a.surahNumber - b.surahNumber || a.ayahNumber - b.ayahNumber);
   }, [savedAyahs, savedWords]);
 
   const [selectedAyahIds, setSelectedAyahIds] = useState<Set<string>>(() => new Set(ayahsWithWords.map(a => a.id)));
@@ -592,7 +621,17 @@ export default function QuizScreen() {
       );
     }
     return ayahs;
-  }, [ayahSearchQuery, excludedAyahIds, savedAyahs, selectedAyahIds, tagFilter]);
+  }, [ayahSearchQuery, ayahsWithWords, excludedAyahIds, selectedAyahIds, tagFilter]);
+
+  const handleDeleteAyahEntry = useCallback((ayah: SavedAyah) => {
+    if (ayah.id.startsWith("word-ayah-")) {
+      savedWords
+        .filter(w => w.surahNumber === ayah.surahNumber && w.ayahNumber === ayah.ayahNumber)
+        .forEach(w => removeWord(w.id));
+    } else {
+      removeAyah(ayah.id);
+    }
+  }, [removeAyah, removeWord, savedWords]);
 
   const filteredWords = useMemo(() => {
     let words = savedWords;
@@ -620,8 +659,8 @@ export default function QuizScreen() {
   }, [filteredWords, wordPage]);
 
   const selectedAyahCount = useMemo(
-    () => savedAyahs.filter(ayah => selectedAyahIds.has(ayah.id) && !excludedAyahIds.has(ayah.id)).length,
-    [excludedAyahIds, savedAyahs, selectedAyahIds]
+    () => ayahsWithWords.filter(ayah => selectedAyahIds.has(ayah.id) && !excludedAyahIds.has(ayah.id)).length,
+    [ayahsWithWords, excludedAyahIds, selectedAyahIds]
   );
   const selectedWordCount = useMemo(
     () => savedWords.filter(word => selectedWordIds.has(word.id) && !excludedWordIds.has(word.id)).length,
@@ -632,12 +671,12 @@ export default function QuizScreen() {
       return savedWords.filter(word => selectedWordIds.has(word.id) && !excludedWordIds.has(word.id));
     }
     const selectedKeys = new Set(
-      savedAyahs
+      ayahsWithWords
         .filter(ayah => selectedAyahIds.has(ayah.id) && !excludedAyahIds.has(ayah.id))
         .map(ayahKey)
     );
     return savedWords.filter(word => selectedKeys.has(`${word.surahNumber}:${word.ayahNumber}`));
-  }, [excludedAyahIds, excludedWordIds, savedAyahs, savedWords, selectedAyahIds, selectedWordIds, selectionMode]);
+  }, [ayahsWithWords, excludedAyahIds, excludedWordIds, savedWords, selectedAyahIds, selectedWordIds, selectionMode]);
   const selectedItemCount = selectionMode === "by-ayah" ? selectedAyahCount : selectedWordCount;
 
   const initQuiz = useCallback((words: SavedWord[]) => {
@@ -974,7 +1013,7 @@ export default function QuizScreen() {
                     return (
                       <SwipeableRow
                         key={ayah.id}
-                        onDelete={() => removeAyah(ayah.id)}
+                        onDelete={() => handleDeleteAyahEntry(ayah)}
                         onOpen={() => router.push(`/surah/${ayah.surahNumber}?ayah=${ayah.ayahNumber}` as any)}
                       >
                         <TouchableOpacity
@@ -990,8 +1029,16 @@ export default function QuizScreen() {
                               <Text style={[s.ayahCard2Meta, { color: colors.appTextMuted }]}>{ayah.surahName.toUpperCase()} · {ayah.ayahNumber}</Text>
                               <Text style={[s.ayahCard2Meta, { color: colors.appTextMuted }]}>JUZ {juz}</Text>
                             </View>
-                            <Text style={[s.ayahCard2Arabic, { color: colors.appText }]}>{ayah.arabicText}</Text>
-                            <Text style={[s.ayahCard2Translation, { color: colors.appTextMuted }]} numberOfLines={2}>{ayah.translationText || "No translation saved"}</Text>
+                            {ayah.arabicText ? (
+                              <>
+                                <Text style={[s.ayahCard2Arabic, { color: colors.appText }]}>{ayah.arabicText}</Text>
+                                <Text style={[s.ayahCard2Translation, { color: colors.appTextMuted }]} numberOfLines={2}>{ayah.translationText || "No translation saved"}</Text>
+                              </>
+                            ) : (
+                              <Text style={[s.ayahCard2Translation, { color: colors.appTextMuted }]} numberOfLines={2}>
+                                {savedWords.filter(w => w.surahNumber === ayah.surahNumber && w.ayahNumber === ayah.ayahNumber).map(w => w.arabic).join(" · ")}
+                              </Text>
+                            )}
                           </View>
                         </TouchableOpacity>
                       </SwipeableRow>

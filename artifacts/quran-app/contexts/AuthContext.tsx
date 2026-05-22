@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
@@ -18,12 +19,21 @@ import {
   storeSessionToken,
 } from "@/services/sessionStore";
 
+const LOCAL_MODE_KEY = "local-mode-active";
+const LOCAL_SESSION: MadeenanSession = {
+  token: "local-demo-token",
+  authProvider: "local",
+  isLocalMode: true,
+};
+
 interface AuthContextType {
   session: MadeenanSession | null;
   isAuthenticated: boolean;
+  isLocalMode: boolean;
   isBootstrapping: boolean;
   authError: string | null;
   signInWithGoogle: () => Promise<void>;
+  continueLocally: () => Promise<void>;
   signOut: () => Promise<void>;
   clearAuthError: () => void;
 }
@@ -42,32 +52,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
 
+  const isLocalMode = !!session?.isLocalMode;
+
   const signOut = useCallback(async () => {
     setSession(null);
     setApiSessionToken(null);
     await clearStoredSessionToken();
+    await AsyncStorage.removeItem(LOCAL_MODE_KEY);
     queryClient.clear();
     router.replace("/auth" as any);
   }, [queryClient]);
 
+  // Only install the unauthorized handler for real (non-local) sessions.
   useEffect(() => {
-    setUnauthorizedHandler(session?.token ? signOut : null);
+    const hasRealToken = !!session?.token && !session.isLocalMode;
+    setUnauthorizedHandler(hasRealToken ? signOut : null);
     return () => setUnauthorizedHandler(null);
-  }, [session?.token, signOut]);
+  }, [session?.token, session?.isLocalMode, signOut]);
 
   useEffect(() => {
     let mounted = true;
-    getStoredSessionToken()
-      .then((token) => {
-        if (!mounted) return;
-        if (token) {
+    (async () => {
+      try {
+        const localMode = await AsyncStorage.getItem(LOCAL_MODE_KEY);
+        if (localMode === "true") {
+          if (mounted) setSession(LOCAL_SESSION);
+          return;
+        }
+        const token = await getStoredSessionToken();
+        if (mounted && token) {
           setApiSessionToken(token);
           setSession({ token });
         }
-      })
-      .finally(() => {
+      } finally {
         if (mounted) setIsBootstrapping(false);
-      });
+      }
+    })();
     return () => { mounted = false; };
   }, []);
 
@@ -127,15 +147,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [persistSession]);
 
+  const continueLocally = useCallback(async () => {
+    await AsyncStorage.setItem(LOCAL_MODE_KEY, "true");
+    setSession(LOCAL_SESSION);
+    router.replace("/(tabs)");
+  }, []);
+
   const value = useMemo<AuthContextType>(() => ({
     session,
     isAuthenticated: !!session?.token,
+    isLocalMode,
     isBootstrapping,
     authError,
     signInWithGoogle,
+    continueLocally,
     signOut,
     clearAuthError: () => setAuthError(null),
-  }), [authError, isBootstrapping, session, signInWithGoogle, signOut]);
+  }), [authError, continueLocally, isBootstrapping, isLocalMode, session, signInWithGoogle, signOut]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

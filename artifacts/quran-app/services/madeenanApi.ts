@@ -240,6 +240,8 @@ export interface MetaData {
 
 export interface MadeenanSession {
   token: string;
+  authProvider?: string;
+  isLocalMode?: boolean;
   user?: { id?: string; name?: string; email?: string } | null;
   raw?: unknown;
 }

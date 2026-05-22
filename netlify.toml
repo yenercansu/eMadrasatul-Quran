@@ -1,4 +1,2 @@
 [build]
-  base = "artifacts/quran-app"
-  command = "npx expo export --platform web"
-  publish = "dist"
+
