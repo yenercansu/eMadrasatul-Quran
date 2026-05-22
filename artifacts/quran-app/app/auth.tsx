@@ -21,8 +21,9 @@ export default function AuthScreen() {
   const colors = useColors();
   const s = styles(colors);
   const insets = useSafeAreaInsets();
-  const { signInWithGoogle, isAuthenticated, authError, clearAuthError } = useAuth();
+  const { signInWithGoogle, continueLocally, isAuthenticated, authError, clearAuthError } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [localLoading, setLocalLoading] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) router.replace("/(tabs)");
@@ -37,6 +38,15 @@ export default function AuthScreen() {
       // error is stored in context
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleContinueLocally = async () => {
+    setLocalLoading(true);
+    try {
+      await continueLocally();
+    } finally {
+      setLocalLoading(false);
     }
   };
 
@@ -61,10 +71,10 @@ export default function AuthScreen() {
         ) : null}
 
         <TouchableOpacity
-          style={[s.googleBtn, loading && s.googleBtnLoading]}
+          style={[s.googleBtn, loading && s.btnLoading]}
           onPress={handleSignIn}
           activeOpacity={0.85}
-          disabled={loading}
+          disabled={loading || localLoading}
         >
           {loading ? (
             <ActivityIndicator color={colors.textPrimary} />
@@ -73,6 +83,19 @@ export default function AuthScreen() {
               <Feather name="log-in" size={18} color={colors.textPrimary} />
               <Text style={s.googleBtnText}>Sign in with Google</Text>
             </>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[s.localBtn, localLoading && s.btnLoading]}
+          onPress={handleContinueLocally}
+          activeOpacity={0.7}
+          disabled={loading || localLoading}
+        >
+          {localLoading ? (
+            <ActivityIndicator color={colors.appLightText} />
+          ) : (
+            <Text style={s.localBtnText}>Continue without login</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -118,8 +141,15 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       shadowRadius: 3,
       elevation: 2,
     },
-    googleBtnLoading: {
+    localBtn: {
+      height: 44,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    btnLoading: {
       opacity: 0.55,
     },
     googleBtnText: { color: colors.textPrimary, fontSize: 15, fontFamily: "Inter_600SemiBold" },
+    localBtnText: { color: colors.appLightText, fontSize: 14, fontFamily: "Inter_400Regular" },
   });
